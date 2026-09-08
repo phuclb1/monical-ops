@@ -27,7 +27,7 @@ export default async function LoginPage({
           <h1 className="hidden text-xl font-bold md:block">Đăng nhập</h1>
           <label>
             Tài khoản
-            <input name="username" autoComplete="username" required placeholder="letan" />
+            <input name="username" autoComplete="username" required placeholder="ngan" />
           </label>
           <label>
             Mật khẩu
@@ -40,7 +40,7 @@ export default async function LoginPage({
         </form>
         <div className="mt-5 text-center text-xs leading-5 text-cream/70 md:text-left md:text-[#6b5a52]">
           <p className="font-semibold text-cream md:text-ink">Tài khoản demo / mật khẩu 123456</p>
-          <p>letan · hk · bep · tapvu · quanly · ketoan</p>
+          <p>ngan · thu · tuyen · uyen · thuy · oanh · quanly</p>
         </div>
       </section>
     </main>

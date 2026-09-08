@@ -10,7 +10,9 @@
     "preview": "opennextjs-cloudflare build && opennextjs-cloudflare preview",
     "deploy": "opennextjs-cloudflare build && opennextjs-cloudflare deploy",
     "cf-typegen": "wrangler types --env-interface CloudflareEnv cloudflare-env.d.ts",
-    "db:reset": "rm -f data/ops.db && echo 'Xóa DB local. Chạy npm run dev để seed lại.'"
+    "db:reset": "rm -f data/ops.db && echo 'Xóa DB local. Chạy npm run dev để seed lại.'",
+    "db:reseed-users": "npx tsx scripts/reseed-users.ts",
+    "db:reseed-rooms": "npx tsx scripts/reseed-rooms.ts"
   },
   "dependencies": {
     "@libsql/client": "^0.18.0",

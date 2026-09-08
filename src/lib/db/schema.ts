@@ -19,6 +19,13 @@ export const users = sqliteTable("users", {
   updatedAt: text("updated_at").notNull(),
 });
 
+export const roomTypes = sqliteTable("room_types", {
+  id: text("id").primaryKey(),
+  code: text("code").notNull().unique(),
+  name: text("name").notNull().unique(),
+  sortOrder: integer("sort_order").notNull().default(0),
+});
+
 export const rooms = sqliteTable("rooms", {
   id: text("id").primaryKey(),
   number: text("number").notNull().unique(),
@@ -71,6 +78,24 @@ export const vehicles = sqliteTable("vehicles", {
   keyLocation: text("key_location"),
   notes: text("notes"),
   createdAt: text("created_at").notNull(),
+});
+
+export const receptionWeekSlots = sqliteTable("reception_week_slots", {
+  id: text("id").primaryKey(),
+  weekday: integer("weekday").notNull(),
+  shiftType: text("shift_type").notNull(),
+  userId: text("user_id").notNull(),
+});
+
+export const receptionDayOverrides = sqliteTable("reception_day_overrides", {
+  id: text("id").primaryKey(),
+  date: text("date").notNull(),
+  shiftType: text("shift_type").notNull(),
+  userId: text("user_id").notNull(),
+  note: text("note"),
+  createdBy: text("created_by"),
+  createdAt: text("created_at").notNull(),
+  updatedAt: text("updated_at").notNull(),
 });
 
 export const shifts = sqliteTable("shifts", {

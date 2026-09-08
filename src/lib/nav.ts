@@ -18,6 +18,8 @@ export function extraNav(role: Role) {
     { href: "/incidents", label: "Sự cố", show: true },
     { href: "/reports", label: "Báo cáo", show: can(role, "viewReports") },
     { href: "/staff", label: "Nhân viên", show: can(role, "manageStaff") },
+    { href: "/roster", label: "Lịch lễ tân", show: can(role, "manageRoster") },
+    { href: "/rooms/manage", label: "Hạng phòng", show: can(role, "manageRooms") },
     { href: "/notifications", label: "Thông báo", show: true },
   ].filter((item) => item.show);
 }

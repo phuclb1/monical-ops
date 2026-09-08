@@ -1,10 +1,12 @@
-import { and, desc, eq, like, or, sql } from "drizzle-orm";
+import { and, desc, eq, like, ne, or, sql } from "drizzle-orm";
 import { getDb } from "./db";
 import * as t from "./db/schema";
-import { addMinutes, currentShiftType, nid, nowISO, shiftWindow, todayVN } from "./datetime";
+import { addMinutes, currentShiftType, nid, nextDate, nextShiftSlot, nowISO, shiftWindow, todayVN, weekdayISO } from "./datetime";
+import { dayOverrideId, weekSlotId } from "./roster";
 import { shiftChecklistTemplate } from "./checklists";
 import type { DepartmentCode, Role, SessionUser, ShiftType, TaskStatus } from "./types";
 import { ROLE_DEPT, SHIFT_LABEL } from "./constants";
+import { floorOf, roomIdOf, slugTypeName } from "./rooms-catalog";
 import { hashPassword } from "./password";
 
 export async function audit(actorId: string, entity: string, entityId: string, action: string, before?: unknown, after?: unknown) {
@@ -52,6 +54,157 @@ export async function listUsers() {
     .innerJoin(t.departments, eq(t.users.departmentId, t.departments.id));
 }
 
+export type ReceptionDuty = {
+  date: string;
+  shiftType: ShiftType;
+  userId: string | null;
+  user: Awaited<ReturnType<typeof listUsers>>[number] | null;
+  source: "week" | "adhoc";
+  note: string | null;
+};
+
+export async function listReceptionists() {
+  const people = await listUsers();
+  return people.filter((p) => p.active && (p.role === "reception" || p.role === "manager"));
+}
+
+export async function receptionDuty(date: string, shiftType: ShiftType): Promise<ReceptionDuty> {
+  const db = await getDb();
+  const people = await listUsers();
+  const override = (
+    await db
+      .select()
+      .from(t.receptionDayOverrides)
+      .where(and(eq(t.receptionDayOverrides.date, date), eq(t.receptionDayOverrides.shiftType, shiftType)))
+      .limit(1)
+  )[0];
+  if (override) {
+    return {
+      date,
+      shiftType,
+      userId: override.userId,
+      user: people.find((p) => p.id === override.userId) ?? null,
+      source: "adhoc",
+      note: override.note,
+    };
+  }
+  const slot = (
+    await db
+      .select()
+      .from(t.receptionWeekSlots)
+      .where(and(eq(t.receptionWeekSlots.weekday, weekdayISO(date)), eq(t.receptionWeekSlots.shiftType, shiftType)))
+      .limit(1)
+  )[0];
+  return {
+    date,
+    shiftType,
+    userId: slot?.userId ?? null,
+    user: slot ? people.find((p) => p.id === slot.userId) ?? null : null,
+    source: "week",
+    note: null,
+  };
+}
+
+export async function receptionDutyDay(date: string) {
+  const shifts = {
+    morning: await receptionDuty(date, "morning"),
+    afternoon: await receptionDuty(date, "afternoon"),
+    night: await receptionDuty(date, "night"),
+  };
+  return { date, weekday: weekdayISO(date), shifts };
+}
+
+export async function listWeekRoster() {
+  const db = await getDb();
+  return db.select().from(t.receptionWeekSlots);
+}
+
+function assertReceptionAssignee(people: Awaited<ReturnType<typeof listUsers>>, userId: string) {
+  const person = people.find((p) => p.id === userId);
+  if (!person || !person.active) throw new Error("Không tìm thấy lễ tân");
+  if (person.role !== "reception" && person.role !== "manager") throw new Error("Chỉ gán lễ tân hoặc quản lý cover");
+  return person;
+}
+
+function assertAdhocDate(date: string) {
+  const today = todayVN();
+  if (date !== today && date !== nextDate(today)) throw new Error("Chỉ đổi ca hôm nay hoặc ngày mai");
+}
+
+export async function saveWeekRoster(
+  actor: SessionUser,
+  slots: { weekday: number; shiftType: ShiftType; userId: string }[],
+) {
+  const db = await getDb();
+  const people = await listUsers();
+  const now = nowISO();
+  for (const slot of slots) {
+    if (slot.weekday < 1 || slot.weekday > 7) throw new Error("Ngày trong tuần không hợp lệ");
+    assertReceptionAssignee(people, slot.userId);
+    const id = weekSlotId(slot.weekday, slot.shiftType);
+    const existing = (await db.select().from(t.receptionWeekSlots).where(eq(t.receptionWeekSlots.id, id)).limit(1))[0];
+    if (existing) {
+      await db.update(t.receptionWeekSlots).set({ userId: slot.userId }).where(eq(t.receptionWeekSlots.id, id));
+    } else {
+      await db.insert(t.receptionWeekSlots).values({ id, weekday: slot.weekday, shiftType: slot.shiftType, userId: slot.userId });
+    }
+  }
+  await audit(actor.id, "roster_week", "week", "save", null, { count: slots.length, at: now });
+}
+
+export async function saveDayOverrides(
+  actor: SessionUser,
+  date: string,
+  assignments: { shiftType: ShiftType; userId: string }[],
+  note?: string,
+) {
+  assertAdhocDate(date);
+  const db = await getDb();
+  const people = await listUsers();
+  const now = nowISO();
+  for (const item of assignments) {
+    assertReceptionAssignee(people, item.userId);
+    const weekUser = (
+      await db
+        .select()
+        .from(t.receptionWeekSlots)
+        .where(and(eq(t.receptionWeekSlots.weekday, weekdayISO(date)), eq(t.receptionWeekSlots.shiftType, item.shiftType)))
+        .limit(1)
+    )[0]?.userId;
+    const id = dayOverrideId(date, item.shiftType);
+    const existing = (await db.select().from(t.receptionDayOverrides).where(eq(t.receptionDayOverrides.id, id)).limit(1))[0];
+    if (weekUser === item.userId) {
+      if (existing) await db.delete(t.receptionDayOverrides).where(eq(t.receptionDayOverrides.id, id));
+      continue;
+    }
+    if (existing) {
+      await db
+        .update(t.receptionDayOverrides)
+        .set({ userId: item.userId, note: note || null, updatedAt: now })
+        .where(eq(t.receptionDayOverrides.id, id));
+    } else {
+      await db.insert(t.receptionDayOverrides).values({
+        id,
+        date,
+        shiftType: item.shiftType,
+        userId: item.userId,
+        note: note || null,
+        createdBy: actor.id,
+        createdAt: now,
+        updatedAt: now,
+      });
+    }
+  }
+  await audit(actor.id, "roster_day", date, "save", null, { date, note });
+}
+
+export async function clearDayOverrides(actor: SessionUser, date: string) {
+  assertAdhocDate(date);
+  const db = await getDb();
+  await db.delete(t.receptionDayOverrides).where(eq(t.receptionDayOverrides.date, date));
+  await audit(actor.id, "roster_day", date, "clear", { date }, null);
+}
+
 export async function getDashboard(user: SessionUser) {
   const db = await getDb();
   const today = todayVN();
@@ -92,6 +245,8 @@ export async function getDashboard(user: SessionUser) {
     ooo: rooms.filter((r) => r.opsStatus === "ooo"),
     openRequests: requests.filter((r) => r.status === "open"),
     shiftEnd: shift ? shiftWindow(shift.type as ShiftType, shift.date).end : null,
+    duty: await receptionDuty(today, (shift?.type as ShiftType) || currentShiftType()),
+    tomorrowDuty: await receptionDutyDay(nextDate(today)),
   };
 }
 
@@ -370,6 +525,109 @@ export async function listRooms() {
   return db.select().from(t.rooms);
 }
 
+export async function listRoomTypes() {
+  const db = await getDb();
+  return db.select().from(t.roomTypes).orderBy(t.roomTypes.sortOrder, t.roomTypes.name);
+}
+
+export async function createRoomType(actor: SessionUser, name: string) {
+  const db = await getDb();
+  const trimmed = name.trim().toUpperCase();
+  if (!trimmed) throw new Error("Nhập tên hạng phòng");
+  const code = slugTypeName(trimmed);
+  if (!code) throw new Error("Tên hạng phòng không hợp lệ");
+  const exists = (await db.select({ id: t.roomTypes.id }).from(t.roomTypes).where(or(eq(t.roomTypes.code, code), eq(t.roomTypes.name, trimmed))).limit(1))[0];
+  if (exists) throw new Error("Hạng phòng đã tồn tại");
+  const last = (await db.select().from(t.roomTypes).orderBy(desc(t.roomTypes.sortOrder)).limit(1))[0];
+  const id = `rt-${code}`;
+  await db.insert(t.roomTypes).values({
+    id,
+    code,
+    name: trimmed,
+    sortOrder: (last?.sortOrder ?? 0) + 10,
+  });
+  await audit(actor.id, "room_type", id, "create", null, { name: trimmed });
+  return id;
+}
+
+export async function renameRoomType(actor: SessionUser, id: string, name: string) {
+  const db = await getDb();
+  const before = (await db.select().from(t.roomTypes).where(eq(t.roomTypes.id, id)).limit(1))[0];
+  if (!before) throw new Error("Không tìm thấy hạng phòng");
+  const trimmed = name.trim().toUpperCase();
+  if (!trimmed) throw new Error("Nhập tên hạng phòng");
+  const clash = (await db.select({ id: t.roomTypes.id }).from(t.roomTypes).where(and(eq(t.roomTypes.name, trimmed), ne(t.roomTypes.id, id))).limit(1))[0];
+  if (clash) throw new Error("Tên hạng phòng đã dùng");
+  await db.update(t.roomTypes).set({ name: trimmed }).where(eq(t.roomTypes.id, id));
+  await db.update(t.rooms).set({ type: trimmed, updatedAt: nowISO(), updatedBy: actor.id }).where(eq(t.rooms.type, before.name));
+  await audit(actor.id, "room_type", id, "rename", before, { name: trimmed });
+}
+
+export async function deleteRoomType(actor: SessionUser, id: string) {
+  const db = await getDb();
+  const before = (await db.select().from(t.roomTypes).where(eq(t.roomTypes.id, id)).limit(1))[0];
+  if (!before) throw new Error("Không tìm thấy hạng phòng");
+  const used = (await db.select({ id: t.rooms.id }).from(t.rooms).where(eq(t.rooms.type, before.name)).limit(1))[0];
+  if (used) throw new Error("Còn phòng thuộc hạng này");
+  await db.delete(t.roomTypes).where(eq(t.roomTypes.id, id));
+  await audit(actor.id, "room_type", id, "delete", before, null);
+}
+
+export async function createManagedRoom(actor: SessionUser, number: string, typeName: string) {
+  const db = await getDb();
+  const num = number.trim();
+  if (!/^\d{3,4}$/.test(num)) throw new Error("Số phòng 3–4 chữ số");
+  const type = (await db.select().from(t.roomTypes).where(eq(t.roomTypes.name, typeName.trim().toUpperCase())).limit(1))[0];
+  if (!type) throw new Error("Chọn hạng phòng");
+  const exists = (await db.select({ id: t.rooms.id }).from(t.rooms).where(eq(t.rooms.number, num)).limit(1))[0];
+  if (exists) throw new Error("Số phòng đã tồn tại");
+  const id = roomIdOf(num);
+  const now = nowISO();
+  await db.insert(t.rooms).values({
+    id,
+    number: num,
+    floor: floorOf(num),
+    type: type.name,
+    opsStatus: "vacant_clean",
+    hkStatus: "ins",
+    assignedTo: null,
+    oooReason: null,
+    oooApproved: false,
+    notes: null,
+    updatedAt: now,
+    updatedBy: actor.id,
+  });
+  await audit(actor.id, "room", id, "create", null, { number: num, type: type.name });
+  return id;
+}
+
+export async function setRoomType(actor: SessionUser, id: string, typeName: string) {
+  const db = await getDb();
+  const before = (await db.select().from(t.rooms).where(eq(t.rooms.id, id)).limit(1))[0];
+  if (!before) throw new Error("Không tìm thấy phòng");
+  const type = (await db.select().from(t.roomTypes).where(eq(t.roomTypes.name, typeName.trim().toUpperCase())).limit(1))[0];
+  if (!type) throw new Error("Chọn hạng phòng");
+  await db.update(t.rooms).set({ type: type.name, updatedAt: nowISO(), updatedBy: actor.id }).where(eq(t.rooms.id, id));
+  await audit(actor.id, "room", id, "set_type", before, { type: type.name });
+}
+
+export async function deleteManagedRoom(actor: SessionUser, id: string) {
+  const db = await getDb();
+  const before = (await db.select().from(t.rooms).where(eq(t.rooms.id, id)).limit(1))[0];
+  if (!before) throw new Error("Không tìm thấy phòng");
+  const stays = await db.select().from(t.stays).where(eq(t.stays.roomId, id));
+  if (stays.some((s) => ["inhouse", "arriving", "departing"].includes(s.status))) {
+    throw new Error("Phòng đang có khách tham chiếu, không xóa");
+  }
+  await db.update(t.stays).set({ roomId: null }).where(eq(t.stays.roomId, id));
+  await db.update(t.tasks).set({ roomId: null }).where(eq(t.tasks.roomId, id));
+  await db.update(t.guestRequests).set({ roomId: null }).where(eq(t.guestRequests.roomId, id));
+  await db.update(t.formSubmissions).set({ roomId: null }).where(eq(t.formSubmissions.roomId, id));
+  await db.update(t.incidents).set({ roomId: null }).where(eq(t.incidents.roomId, id));
+  await db.delete(t.rooms).where(eq(t.rooms.id, id));
+  await audit(actor.id, "room", id, "delete", before, null);
+}
+
 export async function getRoom(id: string) {
   const db = await getDb();
   const room = (await db.select().from(t.rooms).where(eq(t.rooms.id, id)))[0];
@@ -589,7 +847,10 @@ export async function createHandover(user: SessionUser, notes: string) {
       })),
     );
   }
+  const next = nextShiftSlot(shift.type as ShiftType, shift.date);
+  const nextDuty = await receptionDuty(next.date, next.type);
   await notify({
+    userId: nextDuty.userId,
     role: "reception",
     title: "Bàn giao ca mới",
     body: `${user.fullName} đã gửi bàn giao. Ca sau cần bấm Đã nhận.`,

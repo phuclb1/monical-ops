@@ -17,6 +17,12 @@ CREATE TABLE IF NOT EXISTS users (
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL
 );
+CREATE TABLE IF NOT EXISTS room_types (
+  id TEXT PRIMARY KEY,
+  code TEXT NOT NULL UNIQUE,
+  name TEXT NOT NULL UNIQUE,
+  sort_order INTEGER NOT NULL DEFAULT 0
+);
 CREATE TABLE IF NOT EXISTS rooms (
   id TEXT PRIMARY KEY,
   number TEXT NOT NULL UNIQUE,
@@ -68,6 +74,24 @@ CREATE TABLE IF NOT EXISTS vehicles (
   notes TEXT,
   created_at TEXT NOT NULL
 );
+CREATE TABLE IF NOT EXISTS reception_week_slots (
+  id TEXT PRIMARY KEY,
+  weekday INTEGER NOT NULL,
+  shift_type TEXT NOT NULL,
+  user_id TEXT NOT NULL
+);
+CREATE UNIQUE INDEX IF NOT EXISTS reception_week_slots_day_shift ON reception_week_slots (weekday, shift_type);
+CREATE TABLE IF NOT EXISTS reception_day_overrides (
+  id TEXT PRIMARY KEY,
+  date TEXT NOT NULL,
+  shift_type TEXT NOT NULL,
+  user_id TEXT NOT NULL,
+  note TEXT,
+  created_by TEXT,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+);
+CREATE UNIQUE INDEX IF NOT EXISTS reception_day_overrides_date_shift ON reception_day_overrides (date, shift_type);
 CREATE TABLE IF NOT EXISTS shifts (
   id TEXT PRIMARY KEY,
   type TEXT NOT NULL,

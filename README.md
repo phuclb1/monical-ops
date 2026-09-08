@@ -16,14 +16,15 @@ Mở [http://localhost:3000](http://localhost:3000) trên điện thoại (cùng
 
 Tài khoản demo, mật khẩu `123456`:
 
-| Tài khoản | Vai trò   |
-| --------- | --------- |
-| `letan`   | Lễ tân    |
-| `hk`      | Buồng phòng |
-| `bep`     | Bếp       |
-| `tapvu`   | Tạp vụ    |
-| `quanly`  | Quản lý   |
-| `ketoan`  | Kế toán   |
+| Tài khoản | Vai trò              |
+| --------- | -------------------- |
+| `ngan`    | Lễ tân ca sáng       |
+| `thu`     | Lễ tân ca chiều      |
+| `tuyen`   | Lễ tân ca tối        |
+| `uyen`    | Buồng phòng          |
+| `thuy`    | Buồng phòng          |
+| `oanh`    | Bếp                  |
+| `quanly`  | Quản lý              |
 
 Lần đầu chạy sẽ tạo `data/ops.db` và seed ca hôm nay, khách P.305 đang đếm 30 phút đăng ký lưu trú, việc khăn tắm, phòng OOO và bàn giao ca trước.
 

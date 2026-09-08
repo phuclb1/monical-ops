@@ -33,6 +33,65 @@ export function shiftWindow(type: ShiftType, date = todayVN()) {
   return { start: `${date}T22:00:00+07:00`, end: `${nextDate(date)}T06:00:00+07:00` };
 }
 
+export const WEEKDAYS = [
+  { iso: 1, short: "T2", long: "Thứ 2" },
+  { iso: 2, short: "T3", long: "Thứ 3" },
+  { iso: 3, short: "T4", long: "Thứ 4" },
+  { iso: 4, short: "T5", long: "Thứ 5" },
+  { iso: 5, short: "T6", long: "Thứ 6" },
+  { iso: 6, short: "T7", long: "Thứ 7" },
+  { iso: 7, short: "CN", long: "Chủ nhật" },
+] as const;
+
+export function weekdayISO(isoDate: string) {
+  const js = new Date(`${isoDate}T12:00:00+07:00`).getDay();
+  return js === 0 ? 7 : js;
+}
+
+export function addDaysVN(isoDate: string, days: number) {
+  const d = new Date(`${isoDate}T12:00:00+07:00`);
+  d.setDate(d.getDate() + days);
+  return todayVN(d);
+}
+
+export function startOfWeekVN(isoDate: string) {
+  return addDaysVN(isoDate, 1 - weekdayISO(isoDate));
+}
+
+export function weekOfVN(isoDate = todayVN()) {
+  const start = startOfWeekVN(isoDate);
+  return WEEKDAYS.map((day, i) => ({
+    ...day,
+    date: addDaysVN(start, i),
+  }));
+}
+
+export function formatDayMonth(isoDate: string) {
+  const [, month, day] = isoDate.split("-");
+  return `${day}/${month}`;
+}
+
+export function formatDateLong(isoDate: string) {
+  return new Intl.DateTimeFormat("vi-VN", {
+    timeZone: TZ,
+    weekday: "long",
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  }).format(new Date(`${isoDate}T12:00:00+07:00`));
+}
+
+export function formatWeekRange(isoDate = todayVN()) {
+  const days = weekOfVN(isoDate);
+  return `${formatDayMonth(days[0].date)} – ${formatDayMonth(days[6].date)}/${days[6].date.slice(0, 4)}`;
+}
+
+export function nextShiftSlot(type: ShiftType, date: string) {
+  if (type === "morning") return { type: "afternoon" as const, date };
+  if (type === "afternoon") return { type: "night" as const, date };
+  return { type: "morning" as const, date: nextDate(date) };
+}
+
 export function nextDate(isoDate: string) {
   const d = new Date(`${isoDate}T12:00:00+07:00`);
   d.setDate(d.getDate() + 1);

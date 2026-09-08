@@ -3,7 +3,8 @@ import { getSession } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { currentOpenShift, getDashboard, getShiftBundle } from "@/lib/repos";
 import { SHIFT_LABEL } from "@/lib/constants";
-import { formatTime, remainingLabel } from "@/lib/datetime";
+import { can } from "@/lib/permissions";
+import { formatDateLong, formatTime, nextDate, remainingLabel, todayVN } from "@/lib/datetime";
 import { Card, Chip, Empty, SectionTitle, Stat } from "@/components/ui";
 import { RegistrationTimer } from "@/components/countdown";
 import { openShiftAction } from "@/actions/ops";
@@ -25,10 +26,14 @@ export default async function TodayPage() {
             <div>
               <p className="text-xs font-semibold text-teal">Ca đang làm</p>
               <h1 className="text-xl font-bold">
-                {SHIFT_LABEL[data.shift.type as keyof typeof SHIFT_LABEL]} · {data.shift.date}
+                {SHIFT_LABEL[data.shift.type as keyof typeof SHIFT_LABEL]} · {formatDateLong(data.shift.date)}
               </h1>
               <p className="mt-1 text-sm text-[#5c6665]">
                 Mở {formatTime(data.shift.openedAt)} · {data.shiftEnd ? remainingLabel(data.shiftEnd) : ""}
+              </p>
+              <p className="mt-1 text-sm">
+                Trực lễ tân: <b>{data.duty.user?.fullName || "Chưa gán"}</b>
+                {data.duty.source === "adhoc" ? " · đổi ca" : ""}
               </p>
             </div>
             <Chip tone={data.handover && !data.handover.acceptedBy ? "warn" : "ok"}>
@@ -43,6 +48,28 @@ export default async function TodayPage() {
           </form>
         )}
       </Card>
+
+      {user.role === "reception" || user.role === "manager" ? (
+        <Card>
+          <SectionTitle hint={formatDateLong(nextDate(todayVN()))}>Lễ tân ngày mai</SectionTitle>
+          <ul className="space-y-1 text-sm">
+            {(["morning", "afternoon", "night"] as const).map((shift) => (
+              <li key={shift} className="flex justify-between gap-2">
+                <span>{SHIFT_LABEL[shift]}</span>
+                <span className="font-semibold">
+                  {data.tomorrowDuty.shifts[shift].user?.fullName || "Chưa gán"}
+                  {data.tomorrowDuty.shifts[shift].source === "adhoc" ? " · đổi ca" : ""}
+                </span>
+              </li>
+            ))}
+          </ul>
+          {can(user.role, "manageRoster") ? (
+            <Link href="/roster" className="mt-3 block text-sm font-semibold text-teal">
+              Xếp lịch / đổi ca ngày mai
+            </Link>
+          ) : null}
+        </Card>
+      ) : null}
 
       <div className="today-wide grid grid-cols-3 gap-2 md:gap-3">
         <Stat label="Việc ngay" value={data.nowTasks.length} />

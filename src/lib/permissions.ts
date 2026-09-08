@@ -23,6 +23,8 @@ export const CAN = {
   viewGuestPii: ["reception", "hk", "manager"] as Role[],
   manageProcess: ["manager"] as Role[],
   manageStaff: ["manager"] as Role[],
+  manageRooms: ["manager"] as Role[],
+  manageRoster: ["manager"] as Role[],
   approveIncident: ["manager"] as Role[],
 };
 

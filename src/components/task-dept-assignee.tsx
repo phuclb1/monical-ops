@@ -15,10 +15,14 @@ type Person = {
 export function TaskDeptAssignee({
   fromDept,
   defaultToDept = "hk",
+  defaultAssigneeId = "",
+  onDutyId,
   users,
 }: {
   fromDept: DepartmentCode;
   defaultToDept?: DepartmentCode;
+  defaultAssigneeId?: string;
+  onDutyId?: string;
   users: Person[];
 }) {
   const [toDept, setToDept] = useState<DepartmentCode>(defaultToDept);
@@ -50,18 +54,26 @@ export function TaskDeptAssignee({
         </Field>
       </div>
       <Field label="Người phụ trách">
-        <select name="assigneeId" defaultValue="" key={toDept}>
+        <select
+          name="assigneeId"
+          defaultValue={toDept === "reception" ? onDutyId || "" : toDept === defaultToDept ? defaultAssigneeId : ""}
+          key={`${toDept}-${onDutyId || defaultAssigneeId}`}
+        >
           <option value="">Chưa gán</option>
           {assignees.map((u) => (
             <option key={u.id} value={u.id}>
               {u.fullName}
+              {u.id === onDutyId ? " · đang ca" : ""}
             </option>
           ))}
         </select>
         {assignees.length === 0 ? (
           <p className="mt-1 text-xs text-[#c47b12]">Chưa có nhân viên thuộc {DEPT_LABEL[toDept]}.</p>
         ) : (
-          <p className="mt-1 text-xs text-[#6b7372]">Chỉ hiện người thuộc {DEPT_LABEL[toDept]}.</p>
+          <p className="mt-1 text-xs text-[#6b7372]">
+            Chỉ hiện người thuộc {DEPT_LABEL[toDept]}
+            {onDutyId && toDept === "reception" ? ". Ưu tiên lễ tân đang ca." : "."}
+          </p>
         )}
       </Field>
     </>

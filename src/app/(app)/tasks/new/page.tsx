@@ -3,7 +3,8 @@ import { createTaskAction } from "@/actions/ops";
 import { Btn, Card, Field } from "@/components/ui";
 import { TaskDeptAssignee } from "@/components/task-dept-assignee";
 import { getSession } from "@/lib/auth";
-import { listRooms, listUsers } from "@/lib/repos";
+import { currentShiftType, todayVN } from "@/lib/datetime";
+import { listRooms, listUsers, receptionDuty } from "@/lib/repos";
 
 export default async function NewTaskPage({
   searchParams,
@@ -13,7 +14,11 @@ export default async function NewTaskPage({
   const user = await getSession();
   if (!user) redirect("/login");
   const { error } = await searchParams;
-  const [rooms, users] = await Promise.all([listRooms(), listUsers()]);
+  const [rooms, users, duty] = await Promise.all([
+    listRooms(),
+    listUsers(),
+    receptionDuty(todayVN(), currentShiftType()),
+  ]);
   return (
     <main className="space-y-3 px-3 py-4">
       <h1 className="text-xl font-bold">Tạo việc liên bộ phận</h1>
@@ -23,6 +28,8 @@ export default async function NewTaskPage({
           <TaskDeptAssignee
             fromDept={user.departmentCode}
             defaultToDept="hk"
+            defaultAssigneeId=""
+            onDutyId={duty.userId || undefined}
             users={users.map((u) => ({
               id: u.id,
               fullName: u.fullName,

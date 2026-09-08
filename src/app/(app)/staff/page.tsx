@@ -21,8 +21,15 @@ export default async function StaffPage({
 
   return (
     <main className="space-y-3 px-3 py-4">
-      <h1 className="text-xl font-bold">Nhân viên</h1>
-      <p className="text-xs text-[#5c6665]">Chỉ quản lý tạo, sửa, khóa và đặt lại mật khẩu. Không xóa vĩnh viễn.</p>
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <h1 className="text-xl font-bold">Nhân viên</h1>
+          <p className="text-xs text-[#5c6665]">Chỉ quản lý tạo, sửa, khóa và đặt lại mật khẩu. Không xóa vĩnh viễn.</p>
+        </div>
+        <Link href="/roster" className="text-sm font-semibold text-teal">
+          Lịch lễ tân
+        </Link>
+      </div>
       {error ? <p className="text-sm text-[#c23b3b]">{error}</p> : null}
 
       <div className="md:grid md:grid-cols-[360px_minmax(0,1fr)] md:items-start md:gap-4">
