@@ -1,0 +1,23 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "ops-monical",
+  "main": ".open-next/worker.js",
+  "compatibility_date": "2026-09-07",
+  "compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
+  "assets": {
+    "directory": ".open-next/assets",
+    "binding": "ASSETS"
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "ops-monical",
+      "database_id": "52bda0cc-4f78-4c8c-80c2-9fdf806e2404"
+    }
+  ],
+  "vars": {
+    "NEXTJS_ENV": "production",
+    "NEXT_PUBLIC_HOTEL_NAME": "MONICAL hotel dalat",
+    "NEXT_PUBLIC_APP_URL": "https://ops-monical.phuclb1.workers.dev"
+  }
+}

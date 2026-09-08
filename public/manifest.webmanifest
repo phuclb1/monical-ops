@@ -1,0 +1,24 @@
+{
+  "name": "MONICAL Ops",
+  "short_name": "MONICAL",
+  "description": "Điều phối vận hành MONICAL hotel dalat — không thay thế ezCloudhotel PMS",
+  "start_url": "/today",
+  "display": "standalone",
+  "background_color": "#5c1a1b",
+  "theme_color": "#5c1a1b",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "/logo.png",
+      "sizes": "1024x1536",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/apple-touch-icon.png",
+      "sizes": "1024x1536",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}

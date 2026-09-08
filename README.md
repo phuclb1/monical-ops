@@ -1,36 +1,59 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Ops Monical
 
-## Getting Started
+Web vận hành khách sạn (mobile-first / PWA) trên Next.js, sẵn sàng đẩy Cloudflare Workers qua OpenNext.
 
-First, run the development server:
+**Không thay thế ezCloudhotel PMS.** Booking, check-in, check-out và tiền phòng vẫn nằm trên PMS. Web này lưu nhiệm vụ, checklist, bàn giao, sự cố và bằng chứng công việc. Zalo chỉ để thông báo nhanh.
+
+## Chạy local
 
 ```bash
+cp .env.example .env
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Mở [http://localhost:3000](http://localhost:3000) trên điện thoại (cùng Wi-Fi) hoặc Chrome DevTools chế độ mobile 390px.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+Tài khoản demo, mật khẩu `123456`:
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+| Tài khoản | Vai trò   |
+| --------- | --------- |
+| `letan`   | Lễ tân    |
+| `hk`      | Buồng phòng |
+| `bep`     | Bếp       |
+| `tapvu`   | Tạp vụ    |
+| `quanly`  | Quản lý   |
+| `ketoan`  | Kế toán   |
 
-## Learn More
+Lần đầu chạy sẽ tạo `data/ops.db` và seed ca hôm nay, khách P.305 đang đếm 30 phút đăng ký lưu trú, việc khăn tắm, phòng OOO và bàn giao ca trước.
 
-To learn more about Next.js, take a look at the following resources:
+## PWA
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+Trên Chrome Android / Safari iOS: Mở trang → menu trình duyệt → **Thêm vào màn hình chính**.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Live: https://ops-monical.phuclb1.workers.dev
 
-## Deploy on Vercel
+## Đẩy Cloudflare
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+1. Tạo D1: `npx wrangler d1 create ops-monical`
+2. Dán `database_id` vào `wrangler.jsonc`
+3. `npx wrangler d1 execute ops-monical --remote --file=drizzle/0000_init.sql`
+4. `cp .env.example .dev.vars` và đặt `SESSION_SECRET` mạnh, `NEXTJS_ENV=production`
+5. `npm run deploy`
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Lần đầu đăng nhập trên Workers sẽ seed dữ liệu demo nếu bảng `rooms` còn trống.
+
+SQLite local (`data/ops.db`) dùng khi `next dev`. Khi chạy trên Workers, app dùng binding D1 `DB`.
+
+## Phạm vi MVP (P0)
+
+- Đăng nhập / phân quyền
+- Ca sáng · chiều · đêm + checklist
+- Việc liên bộ phận + lịch sử + tin nhắn Zalo chuẩn
+- Trạng thái phòng HK / INS / OOO
+- Đồng hồ đăng ký lưu trú 30 phút
+- Bàn giao ca tự sinh từ việc tồn
+- BM-01, 03, 04, 05, 06, 09, 13, 14, 15
+- Thông báo trong web + báo cáo việc chưa xong
+
+P1/P2 (PDF, Zalo OA, API PMS, kho…) chưa làm — đúng lộ trình spec.
