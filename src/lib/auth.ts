@@ -11,7 +11,9 @@ export async function getSession(): Promise<SessionUser | null> {
   const store = await cookies();
   const token = store.get(SESSION_COOKIE)?.value;
   if (!token) return null;
-  return readSessionToken(token);
+  const session = await readSessionToken(token);
+  if (!session) return null;
+  return loadUserSession(session.id);
 }
 
 export async function requireSession(): Promise<SessionUser> {

@@ -4,6 +4,7 @@ import { ZaloShare } from "@/components/zalo-button";
 import { Btn, Card, Chip, Field } from "@/components/ui";
 import { getSession } from "@/lib/auth";
 import { DEPT_LABEL, PRIORITY_LABEL, TASK_STATUS_LABEL } from "@/lib/constants";
+import { taskTypeLabel } from "@/lib/task-types";
 import { formatDateTime } from "@/lib/datetime";
 import { getTask } from "@/lib/repos";
 import { buildZaloMessage } from "@/lib/zalo";
@@ -42,6 +43,7 @@ export default async function TaskDetailPage({
     <main className="space-y-3 px-3 py-4">
       <h1 className="text-xl font-bold">{task.content}</h1>
       <div className="flex flex-wrap gap-1">
+        <Chip tone="teal">{taskTypeLabel(task.kind)}</Chip>
         <Chip>{TASK_STATUS_LABEL[task.status as TaskStatus]}</Chip>
         <Chip tone={task.priority === "urgent" ? "danger" : task.priority === "priority" ? "warn" : "neutral"}>
           {PRIORITY_LABEL[task.priority as TaskPriority]}
@@ -65,7 +67,7 @@ export default async function TaskDetailPage({
           <input type="hidden" name="id" value={task.id} />
           <Field label="Cập nhật trạng thái">
             <select name="status" defaultValue={task.status}>
-              {["accepted", "in_progress", "done", "checked", "blocked"].map((s) => (
+              {["in_progress", "done", "blocked", "archive"].map((s) => (
                 <option key={s} value={s}>
                   {TASK_STATUS_LABEL[s as TaskStatus]}
                 </option>

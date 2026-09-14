@@ -15,7 +15,7 @@ export default async function HandoverPage() {
   return (
     <main className="space-y-3 px-3 py-4">
       <h1 className="text-xl font-bold">Bàn giao ca</h1>
-      <p className="text-xs text-[#5c6665]">Hệ thống gom việc tồn — không chỉ một ô ghi chú chung.</p>
+      <p className="text-xs text-[#5c6665]">Gom việc đang dở, xe, yêu cầu khách (khăn, dọn…) và ghi chú phòng — không chỉ một ô ghi chú chung.</p>
 
       {pending && !pending.acceptedBy ? (
         <Card>

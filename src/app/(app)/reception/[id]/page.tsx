@@ -1,11 +1,16 @@
+import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
-import { addRequestAction, addVehicleAction, inspectRoomAction, stayPatchAction } from "@/actions/ops";
+import { addRequestAction, addVehicleAction, completeRequestAction, inspectRoomAction, stayPatchAction, taskStatusAction } from "@/actions/ops";
 import { Btn, Card, Chip, Field } from "@/components/ui";
 import { RegistrationTimer } from "@/components/countdown";
 import { getSession } from "@/lib/auth";
+import { requestKindLabel, TASK_STATUS_LABEL } from "@/lib/constants";
 import { can } from "@/lib/permissions";
 import { maskName, maskPhone } from "@/lib/mask";
-import { getStay, listUsers } from "@/lib/repos";
+import { getStay } from "@/lib/repos";
+import { stayOpsChecklist } from "@/lib/stay-checklist";
+import { STAY_TASK_KINDS, taskTypeLabel } from "@/lib/task-types";
+import type { TaskStatus } from "@/lib/types";
 
 function Confirm({ id, field, label, done }: { id: string; field: string; label: string; done: boolean }) {
   if (done) return <Chip tone="ok">{label} — đã xác nhận</Chip>;
@@ -26,8 +31,8 @@ export default async function StayPage({ params }: { params: Promise<{ id: strin
   const { id } = await params;
   const stay = await getStay(id);
   if (!stay) notFound();
-  const users = await listUsers();
   const pii = can(user.role, "viewGuestPii");
+  const ops = stayOpsChecklist(stay);
 
   return (
     <main className="space-y-3 px-3 py-4">
@@ -38,12 +43,44 @@ export default async function StayPage({ params }: { params: Promise<{ id: strin
       {pii ? <p className="text-sm">SĐT {maskPhone(stay.guestPhone)}</p> : <p className="text-sm">SĐT đã che</p>}
       <RegistrationTimer dueAt={stay.registrationDueAt} doneAt={stay.registrationDoneAt} />
 
+      {ops.length ? (
+        <Card className="space-y-2">
+          <h2 className="font-bold">Checklist khách</h2>
+          <p className="text-xs text-[#5c6665]">Theo trạng thái đến / ở / đi. Booking gốc vẫn trên ezCloudhotel.</p>
+          <ul className="space-y-1.5">
+            {ops.map((item) => (
+              <li key={item.key} className="flex items-start justify-between gap-2 text-sm">
+                <span>
+                  {item.label}
+                  {item.required ? "" : " · tùy chọn"}
+                </span>
+                <Chip tone={item.done ? "ok" : item.required ? "warn" : "neutral"}>{item.done ? "Xong" : "Chưa"}</Chip>
+              </li>
+            ))}
+          </ul>
+        </Card>
+      ) : null}
+
       <Card className="space-y-2">
         <h2 className="font-bold">Đối chiếu ezCloudhotel PMS</h2>
+        <p className="text-xs text-[#5c6665]">Tạo / sửa booking trên PMS, rồi bấm xác nhận ở đây — không chép lại booking.</p>
         <Confirm id={stay.id} field="pmsBookingOk" label="Đã nhập booking" done={!!stay.pmsBookingOk} />
         <Confirm id={stay.id} field="pmsCheckinOk" label="Đã check-in PMS (bắt đầu 30 phút)" done={!!stay.pmsCheckinOk} />
         <Confirm id={stay.id} field="pmsCheckoutOk" label="Đã check-out PMS" done={!!stay.pmsCheckoutOk} />
         <Confirm id={stay.id} field="invoiceOk" label="Đã xuất hóa đơn" done={!!stay.invoiceOk} />
+      </Card>
+
+      <Card>
+        <h2 className="mb-2 font-bold">Ghi chú bàn giao</h2>
+        <p className="mb-2 text-xs text-[#5c6665]">Chỉ ghi lưu ý vận hành: VIP, dị ứng, ETA, giờ checkout… Không ghi lại nội dung booking.</p>
+        <form action={stayPatchAction} className="space-y-2">
+          <input type="hidden" name="id" value={stay.id} />
+          <input type="hidden" name="field" value="notes" />
+          <textarea name="notes" defaultValue={stay.notes || ""} rows={3} placeholder="Ví dụ: ăn chay, xe 51H-… chìa hộc 3, checkout 12:00" />
+          <Btn type="submit" variant="ghost" className="w-full">
+            Lưu ghi chú
+          </Btn>
+        </form>
       </Card>
 
       {!stay.registrationDoneAt && stay.pmsCheckinOk ? (
@@ -81,43 +118,69 @@ export default async function StayPage({ params }: { params: Promise<{ id: strin
       </Card>
 
       <Card>
-        <h2 className="mb-2 font-bold">Yêu cầu thêm</h2>
-        {stay.requests.map((r) => (
-          <p key={r.id} className="text-sm">
-            {r.kind}: {r.content} ×{r.quantity} · {r.status}
-          </p>
-        ))}
-        <form action={addRequestAction} className="mt-2 space-y-2">
+        <h2 className="mb-2 font-bold">Việc theo phòng</h2>
+        <p className="mb-2 text-xs text-[#5c6665]">Thành task trên bảng việc — khăn, dọn, báo thức, xe…</p>
+        <ul className="space-y-2">
+          {stay.tasks.map((task) => (
+            <li key={task.id} className="flex items-start justify-between gap-2 text-sm">
+              <Link href={`/tasks/${task.id}`} className="font-medium text-teal">
+                {taskTypeLabel(task.kind)}: {task.content}
+              </Link>
+              {["done", "checked", "archive"].includes(task.status) ? (
+                <Chip tone="ok">{TASK_STATUS_LABEL[task.status as TaskStatus]}</Chip>
+              ) : (
+                <form action={taskStatusAction}>
+                  <input type="hidden" name="id" value={task.id} />
+                  <input type="hidden" name="status" value="done" />
+                  <Btn type="submit" variant="ghost">
+                    Xong
+                  </Btn>
+                </form>
+              )}
+            </li>
+          ))}
+          {stay.requests.map((r) => (
+            <li key={r.id} className="flex items-start justify-between gap-2 text-sm">
+              <span>
+                {requestKindLabel(r.kind)}: {r.content} ×{r.quantity}
+              </span>
+              {r.status === "open" ? (
+                <form action={completeRequestAction}>
+                  <input type="hidden" name="id" value={r.id} />
+                  <input type="hidden" name="stayId" value={stay.id} />
+                  <Btn type="submit" variant="ghost">
+                    Xong
+                  </Btn>
+                </form>
+              ) : (
+                <Chip tone="ok">Đã xong</Chip>
+              )}
+            </li>
+          ))}
+        </ul>
+        <form action={addRequestAction} className="mt-3 space-y-2">
           <input type="hidden" name="stayId" value={stay.id} />
           <input type="hidden" name="roomId" value={stay.roomId || ""} />
-          <select name="kind" defaultValue="extra">
-            <option value="extra">Yêu cầu thêm</option>
-            <option value="complaint">Phàn nàn</option>
-            <option value="wake">Báo thức</option>
-            <option value="pickup">Xe đón</option>
-            <option value="early_breakfast">Ăn sáng sớm</option>
-          </select>
-          <input name="content" required placeholder="Nội dung" />
-          <input name="quantity" type="number" defaultValue={1} />
-          <select name="assigneeId" defaultValue="">
-            <option value="">Người xử lý</option>
-            {users.map((u) => (
-              <option key={u.id} value={u.id}>
-                {u.fullName}
+          <select name="kind" defaultValue="towels">
+            {STAY_TASK_KINDS.map((kind) => (
+              <option key={kind} value={kind}>
+                {taskTypeLabel(kind)}
               </option>
             ))}
           </select>
+          <input name="content" required placeholder="Ví dụ: 2 khăn tắm / dọn đồ 14:00" />
           <Btn type="submit" variant="ghost" className="w-full">
-            Thêm yêu cầu
+            Thêm việc
           </Btn>
         </form>
       </Card>
 
-      {stay.roomId ? (
+      {stay.roomId && stay.status === "departing" ? (
         <form action={inspectRoomAction}>
           <input type="hidden" name="roomId" value={stay.roomId} />
+          <input type="hidden" name="stayId" value={stay.id} />
           <Btn type="submit" className="w-full">
-            Gửi HK kiểm / dọn phòng
+            Gửi HK dọn phòng trả
           </Btn>
         </form>
       ) : null}

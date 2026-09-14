@@ -121,6 +121,8 @@ CREATE TABLE IF NOT EXISTS checklist_items (
 );
 CREATE TABLE IF NOT EXISTS tasks (
   id TEXT PRIMARY KEY,
+  kind TEXT NOT NULL DEFAULT 'general',
+  stay_id TEXT,
   from_dept TEXT NOT NULL,
   to_dept TEXT NOT NULL,
   room_id TEXT,
@@ -251,3 +253,10 @@ CREATE TABLE IF NOT EXISTS audit_logs (
   created_at TEXT NOT NULL
 );
 `;
+
+export const SCHEMA_PATCHES = [
+  "ALTER TABLE tasks ADD COLUMN kind TEXT NOT NULL DEFAULT 'general'",
+  "ALTER TABLE tasks ADD COLUMN stay_id TEXT",
+  "CREATE INDEX IF NOT EXISTS tasks_kind ON tasks (kind)",
+  "CREATE INDEX IF NOT EXISTS tasks_stay ON tasks (stay_id)",
+];

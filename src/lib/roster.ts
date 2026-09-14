@@ -1,9 +1,9 @@
 import { SHIFT_TYPES, type ShiftType } from "./types";
 
 export const DEFAULT_WEEK_DUTY: Record<ShiftType, string> = {
-  morning: "u-ngan",
-  afternoon: "u-thu",
-  night: "u-tuyen",
+  morning: "u-quanly",
+  afternoon: "u-quanly",
+  night: "u-quanly",
 };
 
 export function weekSlotId(weekday: number, shiftType: ShiftType) {

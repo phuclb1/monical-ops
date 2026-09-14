@@ -1,0 +1,180 @@
+{
+  "runId": "R-20260914-1",
+  "date": "2026-09-14T15:49:00.407Z",
+  "commit": "8d2a100-dirty",
+  "env": "http://localhost:3002",
+  "pass": 24,
+  "fail": 0,
+  "total": 24,
+  "passRate": "100%",
+  "results": [
+    {
+      "id": "TC-01",
+      "title": "Màn đăng nhập",
+      "result": "pass",
+      "evidence": "qa/evidence/R-20260914-1/TC-01.png",
+      "note": ""
+    },
+    {
+      "id": "TC-02",
+      "title": "Login sai mật khẩu",
+      "result": "pass",
+      "evidence": "qa/evidence/R-20260914-1/TC-02.png",
+      "note": ""
+    },
+    {
+      "id": "TC-03",
+      "title": "Lễ tân đăng nhập — Today ca đang mở",
+      "result": "pass",
+      "evidence": "qa/evidence/R-20260914-1/TC-03.png",
+      "note": ""
+    },
+    {
+      "id": "TC-10",
+      "title": "Khách đang check-in (đến)",
+      "result": "pass",
+      "evidence": "qa/evidence/R-20260914-1/TC-10.png",
+      "note": ""
+    },
+    {
+      "id": "TC-11",
+      "title": "Khách đang ở",
+      "result": "pass",
+      "evidence": "qa/evidence/R-20260914-1/TC-11.png",
+      "note": ""
+    },
+    {
+      "id": "TC-12",
+      "title": "Khách checkout",
+      "result": "pass",
+      "evidence": "qa/evidence/R-20260914-1/TC-12.png",
+      "note": ""
+    },
+    {
+      "id": "TC-13",
+      "title": "Thẻ khách check-in P.105",
+      "result": "pass",
+      "evidence": "qa/evidence/R-20260914-1/TC-13.png",
+      "note": ""
+    },
+    {
+      "id": "TC-14",
+      "title": "Khách gửi ô tô + timer đăng ký",
+      "result": "pass",
+      "evidence": "qa/evidence/R-20260914-1/TC-14.png",
+      "note": ""
+    },
+    {
+      "id": "TC-15",
+      "title": "Khách đi — thiếu hóa đơn + dọn phòng trả",
+      "result": "pass",
+      "evidence": "qa/evidence/R-20260914-1/TC-15.png",
+      "note": ""
+    },
+    {
+      "id": "TC-20",
+      "title": "Bảng việc: thay khăn / dọn phòng / checkout",
+      "result": "pass",
+      "evidence": "qa/evidence/R-20260914-1/TC-20.png",
+      "note": ""
+    },
+    {
+      "id": "TC-21",
+      "title": "Quản lý yêu cầu thêm HK (lễ tân thấy việc)",
+      "result": "pass",
+      "evidence": "qa/evidence/R-20260914-1/TC-21.png",
+      "note": ""
+    },
+    {
+      "id": "TC-22",
+      "title": "Tạo việc — loại lễ tân",
+      "result": "pass",
+      "evidence": "qa/evidence/R-20260914-1/TC-22.png",
+      "note": ""
+    },
+    {
+      "id": "TC-30",
+      "title": "Báo ăn sáng ngày mai",
+      "result": "pass",
+      "evidence": "qa/evidence/R-20260914-1/TC-30.png",
+      "note": ""
+    },
+    {
+      "id": "TC-40",
+      "title": "Danh sách phòng",
+      "result": "pass",
+      "evidence": "qa/evidence/R-20260914-1/TC-40.png",
+      "note": ""
+    },
+    {
+      "id": "TC-50",
+      "title": "Bàn giao gom việc / xe",
+      "result": "pass",
+      "evidence": "qa/evidence/R-20260914-1/TC-50.png",
+      "note": ""
+    },
+    {
+      "id": "TC-70",
+      "title": "Checklist ca lễ tân",
+      "result": "pass",
+      "evidence": "qa/evidence/R-20260914-1/TC-70.png",
+      "note": ""
+    },
+    {
+      "id": "TC-04",
+      "title": "Quản lý Today — không bắt mở ca",
+      "result": "pass",
+      "evidence": "qa/evidence/R-20260914-1/TC-04.png",
+      "note": ""
+    },
+    {
+      "id": "TC-21b",
+      "title": "Quản lý thấy việc thêm HK do mình tạo",
+      "result": "pass",
+      "evidence": "qa/evidence/R-20260914-1/TC-21b.png",
+      "note": ""
+    },
+    {
+      "id": "TC-23",
+      "title": "Tạo việc — loại quản lý",
+      "result": "pass",
+      "evidence": "qa/evidence/R-20260914-1/TC-23.png",
+      "note": ""
+    },
+    {
+      "id": "TC-60",
+      "title": "Staff: 3 lễ tân + 1 HK",
+      "result": "pass",
+      "evidence": "qa/evidence/R-20260914-1/TC-60.png",
+      "note": ""
+    },
+    {
+      "id": "TC-61",
+      "title": "Lịch lễ tân tuần",
+      "result": "pass",
+      "evidence": "qa/evidence/R-20260914-1/TC-61.png",
+      "note": ""
+    },
+    {
+      "id": "TC-05",
+      "title": "HK không vào trang nhân viên",
+      "result": "pass",
+      "evidence": "qa/evidence/R-20260914-1/TC-05.png",
+      "note": ""
+    },
+    {
+      "id": "TC-24",
+      "title": "HK thấy việc khăn / dọn / thêm HK",
+      "result": "pass",
+      "evidence": "qa/evidence/R-20260914-1/TC-24.png",
+      "note": ""
+    },
+    {
+      "id": "TC-25",
+      "title": "HK tạo việc",
+      "result": "pass",
+      "evidence": "qa/evidence/R-20260914-1/TC-25.png",
+      "note": ""
+    }
+  ]
+}

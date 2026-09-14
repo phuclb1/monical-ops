@@ -12,7 +12,10 @@
     "cf-typegen": "wrangler types --env-interface CloudflareEnv cloudflare-env.d.ts",
     "db:reset": "rm -f data/ops.db && echo 'Xóa DB local. Chạy npm run dev để seed lại.'",
     "db:reseed-users": "npx tsx scripts/reseed-users.ts",
-    "db:reseed-rooms": "npx tsx scripts/reseed-rooms.ts"
+    "db:reseed-rooms": "npx tsx scripts/reseed-rooms.ts",
+    "db:reseed-ops": "npx tsx scripts/reseed-ops.ts",
+    "db:reseed-local": "npx tsx scripts/reseed-local-test.ts",
+    "qa:run": "node scripts/qa-run.mjs"
   },
   "dependencies": {
     "@libsql/client": "^0.18.0",

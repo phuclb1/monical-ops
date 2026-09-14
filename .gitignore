@@ -47,3 +47,7 @@ next-env.d.ts
 .dev.vars
 wrangler.toml
 *.db
+
+# local screenshots — QA evidence & flow captures (not committed)
+qa/evidence/**/*.png
+tmp/

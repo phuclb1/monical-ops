@@ -42,6 +42,7 @@ export const TASK_STATUS_LABEL: Record<TaskStatus, string> = {
   done: "Hoàn tất",
   checked: "Đã kiểm tra",
   blocked: "Vướng",
+  archive: "Lưu",
 };
 
 export const PRIORITY_LABEL: Record<TaskPriority, string> = {
@@ -65,6 +66,30 @@ export const STAY_LABEL: Record<StayStatus, string> = {
   departed: "Đã trả",
   no_show: "Chưa đến",
 };
+
+export const REQUEST_KIND_LABEL: Record<string, string> = {
+  towels: "Thay khăn",
+  housekeeping: "Dọn phòng / dọn đồ",
+  extra: "Yêu cầu thêm",
+  complaint: "Phàn nàn",
+  wake: "Báo thức",
+  pickup: "Xe đón",
+  early_breakfast: "Ăn sáng sớm",
+};
+
+export const REQUEST_KINDS = [
+  "towels",
+  "housekeeping",
+  "extra",
+  "complaint",
+  "wake",
+  "pickup",
+  "early_breakfast",
+] as const;
+
+export function requestKindLabel(kind: string) {
+  return REQUEST_KIND_LABEL[kind] || kind;
+}
 
 export const FORM_CATALOG: { code: FormCode; name: string; p0: boolean }[] = [
   { code: "BM-01", name: "Bàn giao ca", p0: true },

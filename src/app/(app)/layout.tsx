@@ -41,8 +41,8 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
         </form>
       </aside>
 
-      <div className="mx-auto min-h-dvh w-full max-w-md pb-20 md:max-w-none md:flex-1 md:pb-0">
-        <header className="sticky top-0 z-20 flex items-center justify-between border-b border-line bg-sand/90 px-3 py-2 backdrop-blur md:px-6">
+      <div className="mx-auto min-h-dvh w-full max-w-md pb-[calc(5.5rem+env(safe-area-inset-bottom))] md:max-w-none md:flex-1 md:pb-0">
+        <header className="sticky top-0 z-20 flex items-center justify-between border-b border-line bg-sand/95 px-3 py-2 pt-[max(0.5rem,env(safe-area-inset-top))] backdrop-blur md:px-6 md:pt-2">
           <div className="flex items-center gap-2 md:hidden">
             <div className="overflow-hidden rounded-lg bg-burgundy">
               <Logo className="h-11 w-[34px] object-cover object-[center_8%]" />

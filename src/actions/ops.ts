@@ -42,15 +42,19 @@ export async function skipCheckAction(formData: FormData) {
 
 export async function createTaskAction(formData: FormData) {
   const user = await requireSession();
+  const stayId = String(formData.get("stayId") || "") || undefined;
+  const returnTo = String(formData.get("returnTo") || "");
   let id: string;
   try {
     id = await repo.createTask(user, {
+      kind: String(formData.get("kind") || "general"),
+      stayId,
       fromDept: String(formData.get("fromDept") || user.departmentCode),
-      toDept: String(formData.get("toDept")),
+      toDept: String(formData.get("toDept") || "") || undefined,
       roomId: String(formData.get("roomId") || "") || undefined,
       area: String(formData.get("area") || "") || undefined,
       content: String(formData.get("content")),
-      priority: String(formData.get("priority") || "normal"),
+      priority: String(formData.get("priority") || "") || undefined,
       assigneeId: String(formData.get("assigneeId") || "") || undefined,
       dueAt: String(formData.get("dueAt") || "") || undefined,
       formCode: "BM-13",
@@ -59,7 +63,8 @@ export async function createTaskAction(formData: FormData) {
   } catch (e) {
     redirect(`/tasks/new?error=${encodeURIComponent((e as Error).message)}`);
   }
-  refresh(["/today", "/tasks"]);
+  refresh(["/today", "/tasks", "/handover", stayId ? `/reception/${stayId}` : "/reception"]);
+  if (returnTo === "stay" && stayId) redirect(`/reception/${stayId}`);
   redirect(`/tasks/${id}`);
 }
 
@@ -74,7 +79,7 @@ export async function taskStatusAction(formData: FormData) {
   } catch (e) {
     redirect(`/tasks/${id}?error=${encodeURIComponent((e as Error).message)}`);
   }
-  refresh(["/today", "/tasks", `/tasks/${id}`]);
+  refresh(["/today", "/tasks", `/tasks/${id}`, "/handover"]);
 }
 
 export async function zaloSentAction(formData: FormData) {
@@ -157,9 +162,10 @@ export async function stayPatchAction(formData: FormData) {
     patch.registrationReason = String(formData.get("reason") || "") || null;
   }
   if (field === "registrationReason") patch.registrationReason = String(value || "");
+  if (field === "notes") patch.notes = String(formData.get("notes") || "");
   if (field === "status") patch.status = String(value || "");
   await repo.updateStay(user, id, patch);
-  refresh(["/today", "/reception", `/reception/${id}`]);
+  refresh(["/today", "/reception", `/reception/${id}`, "/handover"]);
 }
 
 export async function addVehicleAction(formData: FormData) {
@@ -177,29 +183,44 @@ export async function addVehicleAction(formData: FormData) {
 export async function addRequestAction(formData: FormData) {
   const user = await requireSession();
   const stayId = String(formData.get("stayId") || "");
-  await repo.addGuestRequest(user, {
+  const mapped: Record<string, string> = { extra: "towels", early_breakfast: "general" };
+  const rawKind = String(formData.get("kind") || "towels");
+  const kind = mapped[rawKind] || rawKind;
+  const content = String(formData.get("content"));
+  const roomId = String(formData.get("roomId") || "") || undefined;
+  await repo.createTask(user, {
+    kind,
     stayId: stayId || undefined,
-    roomId: String(formData.get("roomId") || "") || undefined,
-    kind: String(formData.get("kind") || "extra"),
-    content: String(formData.get("content")),
-    quantity: Number(formData.get("quantity") || 1),
-    dueAt: String(formData.get("dueAt") || "") || undefined,
+    fromDept: user.departmentCode,
+    roomId,
+    content,
     assigneeId: String(formData.get("assigneeId") || "") || undefined,
+    dueAt: String(formData.get("dueAt") || "") || undefined,
   });
-  refresh(["/today", "/reception", stayId ? `/reception/${stayId}` : "/today"]);
+  refresh(["/today", "/reception", "/tasks", "/handover", stayId ? `/reception/${stayId}` : "/today"]);
+}
+
+export async function completeRequestAction(formData: FormData) {
+  const user = await requireSession();
+  const id = String(formData.get("id"));
+  const stayId = String(formData.get("stayId") || "");
+  await repo.completeRequest(user, id);
+  refresh(["/today", "/reception", "/handover", stayId ? `/reception/${stayId}` : "/today"]);
 }
 
 export async function inspectRoomAction(formData: FormData) {
   const user = await requireSession();
   const roomId = String(formData.get("roomId"));
+  const stayId = String(formData.get("stayId") || "") || undefined;
   await repo.updateRoom(user, roomId, { hkStatus: "waiting", opsStatus: "vacant_dirty" });
-  await repo.notify({
-    role: "hk",
-    title: "Yêu cầu kiểm / dọn phòng",
-    body: `${user.fullName} gửi yêu cầu từ lễ tân`,
-    link: `/rooms/${roomId}`,
+  await repo.createTask(user, {
+    kind: "checkout_clean",
+    stayId,
+    fromDept: user.departmentCode,
+    roomId,
+    content: "Dọn phòng trả — cần INS trước khách mới",
   });
-  refresh(["/rooms", "/today"]);
+  refresh(["/rooms", "/today", "/handover", "/tasks", stayId ? `/reception/${stayId}` : "/reception"]);
 }
 
 export async function createHandoverAction(formData: FormData) {

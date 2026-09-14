@@ -2,7 +2,16 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { readSessionToken } from "@/lib/session-token";
 
-const PUBLIC = ["/login", "/manifest.webmanifest", "/sw.js", "/offline.html", "/api/auth/login"];
+const PUBLIC = [
+  "/login",
+  "/tin-tuc",
+  "/sitemap.xml",
+  "/robots.txt",
+  "/manifest.webmanifest",
+  "/sw.js",
+  "/offline.html",
+  "/api/auth/login",
+];
 
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;

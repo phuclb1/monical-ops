@@ -30,6 +30,7 @@ export const TASK_STATUSES = [
   "done",
   "checked",
   "blocked",
+  "archive",
 ] as const;
 export type TaskStatus = (typeof TASK_STATUSES)[number];
 

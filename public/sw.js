@@ -1,5 +1,5 @@
-const CACHE = "ops-monical-v1";
-const SHELL = ["/", "/today", "/login", "/offline.html", "/logo.png", "/manifest.webmanifest"];
+const CACHE = "ops-monical-v3";
+const SHELL = ["/", "/today", "/login", "/offline.html", "/logo.png", "/icon-192.png", "/icon-512.png", "/manifest.webmanifest"];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(caches.open(CACHE).then((cache) => cache.addAll(SHELL).catch(() => {})));

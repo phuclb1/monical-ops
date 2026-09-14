@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { Btn } from "@/components/ui";
 import { Logo } from "@/components/logo";
 
@@ -8,8 +9,8 @@ export default async function LoginPage({
 }) {
   const { error } = await searchParams;
   return (
-    <main className="min-h-dvh bg-burgundy md:grid md:grid-cols-[1.1fr_min(440px,42vw)]">
-      <section className="flex flex-col justify-center px-5 pb-4 pt-8 md:px-16">
+    <main className="min-h-dvh min-h-[100dvh] bg-burgundy md:grid md:grid-cols-[1.1fr_min(440px,42vw)]">
+      <section className="flex flex-col justify-center px-5 pb-4 pt-[max(2rem,calc(env(safe-area-inset-top)+0.75rem))] md:px-16 md:pt-8">
         <div className="mx-auto w-[220px] md:mx-0 md:w-[280px]">
           <Logo priority className="w-full" />
         </div>
@@ -22,7 +23,7 @@ export default async function LoginPage({
         <p className="mt-6 hidden text-sm text-cream/60 md:block">Mở trên điện thoại để dùng PWA, hoặc làm việc trên laptop tại đây.</p>
       </section>
 
-      <section className="px-5 pb-10 md:flex md:flex-col md:justify-center md:bg-sand md:px-10">
+      <section className="px-5 pb-[max(2.5rem,calc(env(safe-area-inset-bottom)+1.25rem))] md:flex md:flex-col md:justify-center md:bg-sand md:px-10 md:pb-10">
         <form action="/api/auth/login" method="post" className="card mt-6 space-y-3 p-4 md:mt-0">
           <h1 className="hidden text-xl font-bold md:block">Đăng nhập</h1>
           <label>
@@ -41,6 +42,11 @@ export default async function LoginPage({
         <div className="mt-5 text-center text-xs leading-5 text-cream/70 md:text-left md:text-[#6b5a52]">
           <p className="font-semibold text-cream md:text-ink">Tài khoản demo / mật khẩu 123456</p>
           <p>ngan · thu · tuyen · uyen · thuy · oanh · quanly</p>
+          <p className="mt-3">
+            <Link href="/tin-tuc" className="font-semibold text-cream underline decoration-cream/40 md:text-burgundy">
+              Tin tức · Top 5 khách sạn Đà Lạt gần trung tâm
+            </Link>
+          </p>
         </div>
       </section>
     </main>

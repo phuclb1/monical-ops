@@ -1,6 +1,6 @@
 import { drizzle, type LibSQLDatabase } from "drizzle-orm/libsql";
 import * as schema from "./schema";
-import { SCHEMA_SQL } from "./migrate";
+import { SCHEMA_PATCHES, SCHEMA_SQL } from "./migrate";
 import { seedIfEmpty } from "./seed";
 
 export type AppDb = LibSQLDatabase<typeof schema>;
@@ -63,6 +63,7 @@ async function prepareD1(db: AppDb) {
       await db.run(stmt);
     }
   }
+  await applyPatches(db);
   await seedIfEmpty(db);
 }
 
@@ -74,5 +75,16 @@ async function prepareLocal(db: AppDb) {
     : `file:${join(process.cwd(), "data", "ops.db")}`;
   const client = createClient({ url });
   await client.executeMultiple(SCHEMA_SQL);
+  await applyPatches(db);
   await seedIfEmpty(db);
+}
+
+async function applyPatches(db: AppDb) {
+  for (const stmt of SCHEMA_PATCHES) {
+    try {
+      await db.run(stmt);
+    } catch {
+      // column / index already exists on live DBs
+    }
+  }
 }

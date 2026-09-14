@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { requireSession } from "@/lib/auth";
+import { loadUserSession, requireSession, setSessionCookie } from "@/lib/auth";
 import { can } from "@/lib/permissions";
 import type { Role } from "@/lib/types";
 import * as repo from "@/lib/repos";
@@ -18,6 +18,17 @@ function fail(path: string, e: unknown): never {
   redirect(`${path}?error=${encodeURIComponent((e as Error).message)}`);
 }
 
+function refreshStaffSurfaces(id?: string) {
+  revalidatePath("/staff");
+  if (id) revalidatePath(`/staff/${id}`);
+  revalidatePath("/roster");
+  revalidatePath("/today");
+  revalidatePath("/more");
+  revalidatePath("/tasks");
+  revalidatePath("/tasks/new");
+  revalidatePath("/reception");
+}
+
 export async function createStaffAction(formData: FormData) {
   const user = await requireManager();
   try {
@@ -28,7 +39,7 @@ export async function createStaffAction(formData: FormData) {
       role: String(formData.get("role") || "") as Role,
       phone: String(formData.get("phone") || "") || undefined,
     });
-    revalidatePath("/staff");
+    refreshStaffSurfaces(id);
     redirect(`/staff/${id}`);
   } catch (e) {
     if ((e as { digest?: string }).digest?.startsWith("NEXT_REDIRECT")) throw e;
@@ -45,11 +56,14 @@ export async function updateStaffAction(formData: FormData) {
       role: String(formData.get("role") || "") as Role,
       phone: String(formData.get("phone") || "") || undefined,
     });
+    if (id === user.id) {
+      const live = await loadUserSession(id);
+      if (live) await setSessionCookie(live);
+    }
   } catch (e) {
     fail(`/staff/${id}`, e);
   }
-  revalidatePath("/staff");
-  revalidatePath(`/staff/${id}`);
+  refreshStaffSurfaces(id);
   redirect(`/staff/${id}?ok=1`);
 }
 
@@ -61,8 +75,7 @@ export async function toggleStaffAction(formData: FormData) {
   } catch (e) {
     fail(`/staff/${id}`, e);
   }
-  revalidatePath("/staff");
-  revalidatePath(`/staff/${id}`);
+  refreshStaffSurfaces(id);
 }
 
 export async function resetStaffPasswordAction(formData: FormData) {

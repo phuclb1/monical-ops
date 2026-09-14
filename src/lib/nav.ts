@@ -3,7 +3,7 @@ import type { Role } from "./types";
 
 export const PRIMARY_NAV = [
   { href: "/today", label: "Hôm nay" },
-  { href: "/tasks", label: "Công việc" },
+  { href: "/tasks", label: "Việc" },
   { href: "/rooms", label: "Phòng" },
   { href: "/handover", label: "Bàn giao" },
   { href: "/more", label: "Thêm" },

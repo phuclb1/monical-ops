@@ -86,7 +86,7 @@ export default async function RosterPage({
             );
           })}
           <Field label="Lý do (tuỳ chọn)">
-            <input name="note" placeholder="Thu cover ca sáng, Ngân nghỉ..." />
+            <input name="note" placeholder="Cover ca sáng, nghỉ phép..." />
           </Field>
           <Btn type="submit" className="w-full">
             Lưu đổi ca ngày mai

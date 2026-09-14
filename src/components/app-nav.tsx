@@ -39,8 +39,8 @@ const ICONS: Record<string, typeof CalendarDays> = {
 export function BottomNav() {
   const path = usePathname();
   return (
-    <nav className="fixed inset-x-0 bottom-0 z-30 border-t border-line bg-[#fffdf8]/95 backdrop-blur-md md:hidden">
-      <ul className="mx-auto grid max-w-md grid-cols-5 px-1 pb-[max(6px,env(safe-area-inset-bottom))] pt-1">
+    <nav className="fixed inset-x-0 bottom-0 z-30 border-t border-line bg-[#fffdf8]/95 pb-[env(safe-area-inset-bottom)] backdrop-blur-md md:hidden">
+      <ul className="mx-auto grid max-w-md grid-cols-5 px-1 pb-1 pt-1">
         {PRIMARY_NAV.map((item) => {
           const active = path === item.href || path.startsWith(`${item.href}/`);
           const Icon = ICONS[item.href] ?? Menu;

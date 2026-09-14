@@ -131,6 +131,8 @@ export const checklistItems = sqliteTable("checklist_items", {
 
 export const tasks = sqliteTable("tasks", {
   id: text("id").primaryKey(),
+  kind: text("kind").notNull().default("general"),
+  stayId: text("stay_id"),
   fromDept: text("from_dept").notNull(),
   toDept: text("to_dept").notNull(),
   roomId: text("room_id"),

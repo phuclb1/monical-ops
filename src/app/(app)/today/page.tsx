@@ -40,12 +40,29 @@ export default async function TodayPage() {
               {data.handover && !data.handover.acceptedBy ? "Chưa nhận bàn giao" : "Ca đang chạy"}
             </Chip>
           </div>
-        ) : (
+        ) : user.role === "reception" ? (
           <form action={openShiftAction}>
             <h1 className="text-xl font-bold">Chưa mở ca</h1>
             <p className="mt-1 text-sm text-[#5c6665]">Mở ca để nhận checklist đúng ca sáng / chiều / đêm.</p>
             <button className="mt-3 w-full rounded-xl bg-teal py-3 text-sm font-semibold text-white">Mở ca hiện tại</button>
           </form>
+        ) : (
+          <div>
+            <h1 className="text-xl font-bold">Ca lễ tân chưa mở</h1>
+            <p className="mt-1 text-sm text-[#5c6665]">
+              Ca là khung việc của lễ tân đang trực, không phải giờ vào của quản lý. Dashboard vẫn xem được.
+            </p>
+            <p className="mt-1 text-sm">
+              Trực lễ tân: <b>{data.duty.user?.fullName || "Chưa gán"}</b>
+            </p>
+            {user.role === "manager" ? (
+              <form action={openShiftAction}>
+                <button className="mt-3 w-full rounded-xl border border-line bg-white py-3 text-sm font-semibold">
+                  Mở ca hộ — đang đứng quầy
+                </button>
+              </form>
+            ) : null}
+          </div>
         )}
       </Card>
 
@@ -97,7 +114,10 @@ export default async function TodayPage() {
             ))}
           </ul>
         ) : (
-          <Empty title="Chưa có checklist" text="Mở ca để sinh checklist." />
+          <Empty
+            title="Chưa có checklist"
+            text={user.role === "reception" ? "Mở ca để sinh checklist." : "Checklist sinh khi lễ tân mở ca."}
+          />
         )}
         <Link href="/shifts" className="mt-3 block text-center text-sm font-semibold text-teal">
           Xem hết checklist ca

@@ -122,6 +122,8 @@ CREATE TABLE IF NOT EXISTS checklist_items (
 );
 CREATE TABLE IF NOT EXISTS tasks (
   id TEXT PRIMARY KEY,
+  kind TEXT NOT NULL DEFAULT 'general',
+  stay_id TEXT,
   from_dept TEXT NOT NULL,
   to_dept TEXT NOT NULL,
   room_id TEXT,

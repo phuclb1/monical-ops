@@ -4,8 +4,9 @@ import * as t from "./db/schema";
 import { addMinutes, currentShiftType, nid, nextDate, nextShiftSlot, nowISO, shiftWindow, todayVN, weekdayISO } from "./datetime";
 import { dayOverrideId, weekSlotId } from "./roster";
 import { shiftChecklistTemplate } from "./checklists";
-import type { DepartmentCode, Role, SessionUser, ShiftType, TaskStatus } from "./types";
-import { ROLE_DEPT, SHIFT_LABEL } from "./constants";
+import { getTaskType, isOpenTaskStatus, taskBoardColumn, taskTypeLabel, type TaskBoardColumn } from "./task-types";
+import type { DepartmentCode, HkStatus, Role, SessionUser, ShiftType, TaskStatus } from "./types";
+import { DEPT_LABEL, HK_LABEL, ROLE_DEPT, SHIFT_LABEL, TASK_STATUS_LABEL, requestKindLabel } from "./constants";
 import { floorOf, roomIdOf, slugTypeName } from "./rooms-catalog";
 import { hashPassword } from "./password";
 
@@ -372,10 +373,22 @@ export async function closeShift(user: SessionUser, closeReason?: string) {
   return true;
 }
 
-export async function listTasks(filter?: { status?: string; mine?: string; q?: string }) {
+export async function listTasks(filter?: {
+  status?: string;
+  mine?: string;
+  q?: string;
+  kind?: string;
+  group?: "room" | "general";
+  column?: TaskBoardColumn;
+}) {
   const db = await getDb();
   let rows = await db.select().from(t.tasks).orderBy(desc(t.tasks.createdAt));
   if (filter?.status) rows = rows.filter((r) => r.status === filter.status);
+  if (filter?.column) rows = rows.filter((r) => taskBoardColumn(r.status) === filter.column);
+  if (!filter?.status && !filter?.column) rows = rows.filter((r) => r.status !== "archive");
+  if (filter?.kind) rows = rows.filter((r) => r.kind === filter.kind);
+  if (filter?.group === "room") rows = rows.filter((r) => !!r.roomId);
+  if (filter?.group === "general") rows = rows.filter((r) => !r.roomId);
   if (filter?.mine) rows = rows.filter((r) => r.assigneeId === filter.mine || r.toDept === filter.mine);
   if (filter?.q) {
     const q = filter.q.toLowerCase();
@@ -394,39 +407,63 @@ export async function getTask(id: string) {
   return { task, history, users, room };
 }
 
+function parseDueAt(raw?: string) {
+  if (!raw) return null;
+  if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(raw)) {
+    return new Date(`${raw}:00+07:00`).toISOString();
+  }
+  return raw;
+}
+
 export async function createTask(user: SessionUser, data: {
+  kind?: string;
+  stayId?: string;
   fromDept: string;
-  toDept: string;
+  toDept?: string;
   roomId?: string;
   area?: string;
   content: string;
-  priority: string;
+  priority?: string;
   assigneeId?: string;
   dueAt?: string;
   formCode?: string;
   photo?: string;
   zaloMessage?: string;
 }) {
+  const type = getTaskType(data.kind);
+  if (!type.canCreate.includes(user.role)) {
+    throw new Error(`Bạn không tạo được việc “${type.label}”`);
+  }
+  if (type.room === "required" && !data.roomId) {
+    throw new Error(`Việc “${type.label}” cần gắn phòng`);
+  }
+  const toDept = data.toDept || type.toDept || user.departmentCode;
   if (data.assigneeId) {
     const people = await listUsers();
     const assignee = people.find((u) => u.id === data.assigneeId);
-    if (!assignee || assignee.departmentCode !== data.toDept) {
+    if (!assignee || assignee.departmentCode !== toDept) {
       throw new Error("Người phụ trách phải thuộc bộ phận nhận việc");
     }
   }
+  const dueAt =
+    parseDueAt(data.dueAt) ||
+    (type.due === "shift_end" ? shiftWindow(currentShiftType()).end : null);
+  const roomId = type.room === "none" ? undefined : data.roomId;
   const db = await getDb();
   const id = nid();
   const now = nowISO();
   await db.insert(t.tasks).values({
     id,
+    kind: type.kind,
+    stayId: data.stayId || null,
     fromDept: data.fromDept,
-    toDept: data.toDept,
-    roomId: data.roomId || null,
-    area: data.area || null,
+    toDept,
+    roomId: roomId || null,
+    area: type.group === "general" ? data.area || "Chung" : data.area || null,
     content: data.content,
-    priority: data.priority,
+    priority: data.priority || type.priority,
     assigneeId: data.assigneeId || null,
-    dueAt: data.dueAt || null,
+    dueAt,
     formCode: data.formCode || "BM-13",
     status: "new",
     blockedReason: null,
@@ -450,8 +487,8 @@ export async function createTask(user: SessionUser, data: {
     createdAt: now,
   });
   await notify({
-    role: data.toDept,
-    title: "Việc liên bộ phận mới",
+    role: toDept === "management" ? "manager" : toDept === "hk" ? "hk" : toDept,
+    title: `Việc mới: ${type.label}`,
     body: data.content,
     link: `/tasks/${id}`,
   });
@@ -460,12 +497,13 @@ export async function createTask(user: SessionUser, data: {
 }
 
 const FLOW: Record<string, TaskStatus[]> = {
-  new: ["accepted", "blocked"],
-  accepted: ["in_progress", "blocked"],
+  new: ["accepted", "in_progress", "done", "blocked"],
+  accepted: ["in_progress", "done", "blocked"],
   in_progress: ["done", "blocked"],
-  done: ["checked", "in_progress"],
+  done: ["checked", "in_progress", "archive"],
   blocked: ["accepted", "in_progress"],
-  checked: [],
+  checked: ["archive"],
+  archive: ["in_progress"],
 };
 
 export async function updateTaskStatus(user: SessionUser, id: string, toStatus: TaskStatus, note?: string, blocked?: { reason: string; action: string }) {
@@ -679,11 +717,13 @@ export async function listStays() {
   const rooms = await db.select().from(t.rooms);
   const vehicles = await db.select().from(t.vehicles);
   const requests = await db.select().from(t.guestRequests);
+  const tasks = await db.select().from(t.tasks);
   return stays.map((s) => ({
     ...s,
     room: rooms.find((r) => r.id === s.roomId) ?? null,
     vehicles: vehicles.filter((v) => v.stayId === s.id),
     requests: requests.filter((r) => r.stayId === s.id),
+    tasks: tasks.filter((task) => task.stayId === s.id),
   }));
 }
 
@@ -779,38 +819,92 @@ export async function listHandovers() {
   }));
 }
 
+function stayTag(s: { pmsCode: string; guestName: string; room?: { number: string } | null }) {
+  return `${s.pmsCode} ${s.guestName} — P.${s.room?.number || "—"}`;
+}
+
 export async function buildHandoverDraft() {
   const stays = await listStays();
   const rooms = await listRooms();
   const tasks = await listTasks();
   const requests = stays.flatMap((s) => s.requests.map((r) => ({ ...r, room: s.room?.number })));
   const items: { category: string; refType: string; refId: string; summary: string }[] = [];
+  const openTask = new Set(["new", "accepted", "in_progress"]);
 
+  for (const s of stays.filter((x) => x.status === "arriving")) {
+    items.push({ category: "Khách đến chưa nhận", refType: "stay", refId: s.id, summary: stayTag(s) });
+  }
   for (const s of stays.filter((x) => x.status === "no_show")) {
-    items.push({ category: "Khách chưa đến", refType: "stay", refId: s.id, summary: `${s.pmsCode} ${s.guestName} — P.${s.room?.number || "?"}` });
+    items.push({ category: "Khách chưa đến", refType: "stay", refId: s.id, summary: stayTag(s) });
+  }
+  for (const s of stays.filter((x) => ["arriving", "inhouse", "departing", "no_show"].includes(x.status) && x.notes)) {
+    items.push({
+      category: "Ghi chú khách",
+      refType: "stay",
+      refId: s.id,
+      summary: `P.${s.room?.number || "—"} ${s.guestName}: ${s.notes}`,
+    });
   }
   for (const s of stays.filter((x) => x.status === "inhouse" && x.registrationDueAt && !x.registrationDoneAt)) {
-    items.push({ category: "Đăng ký lưu trú chưa xong", refType: "stay", refId: s.id, summary: `P.${s.room?.number} ${s.guestName}` });
+    items.push({ category: "Đăng ký lưu trú chưa xong", refType: "stay", refId: s.id, summary: stayTag(s) });
   }
   for (const s of stays.filter((x) => x.status === "departing" && (!x.invoiceOk || !x.pmsCheckoutOk))) {
-    items.push({ category: "Hóa đơn / thanh toán còn thiếu", refType: "stay", refId: s.id, summary: `P.${s.room?.number} chưa xác nhận PMS/hóa đơn` });
+    items.push({
+      category: "Khách đi — hóa đơn / PMS",
+      refType: "stay",
+      refId: s.id,
+      summary: `${stayTag(s)} chưa xác nhận hóa đơn hoặc check-out PMS`,
+    });
   }
   for (const s of stays) {
     for (const v of s.vehicles) {
-      items.push({ category: "Khách gửi xe", refType: "vehicle", refId: v.id, summary: `P.${s.room?.number} ${v.vehicleType} ${v.plate}` });
+      const bits = [`P.${s.room?.number || "—"}`, v.vehicleType, v.plate];
+      if (v.location) bits.push(v.location);
+      if (v.keyLocation) bits.push(`chìa ${v.keyLocation}`);
+      items.push({ category: "Khách gửi xe", refType: "vehicle", refId: v.id, summary: bits.join(" · ") });
     }
   }
   for (const r of requests.filter((x) => x.status === "open")) {
-    items.push({ category: "Yêu cầu thêm chưa hoàn thành", refType: "request", refId: r.id, summary: `${r.content} (${r.kind})` });
+    const qty = r.quantity > 1 ? ` ×${r.quantity}` : "";
+    items.push({
+      category: "Yêu cầu khách chưa xong",
+      refType: "request",
+      refId: r.id,
+      summary: `P.${r.room || "—"} ${requestKindLabel(r.kind)}: ${r.content}${qty}`,
+    });
+  }
+  for (const task of tasks.filter((x) => openTask.has(x.status) || x.status === "blocked")) {
+    const room = rooms.find((rm) => rm.id === task.roomId);
+    const loc = room ? `P.${room.number}` : task.area || DEPT_LABEL[task.toDept as DepartmentCode] || task.toDept;
+    const status = TASK_STATUS_LABEL[task.status as TaskStatus] || task.status;
+    const extra =
+      task.status === "blocked" && task.blockedReason
+        ? ` — vướng: ${task.blockedReason}`
+        : task.zaloSent
+          ? ""
+          : " · chưa gửi Zalo";
+    items.push({
+      category: task.status === "blocked" ? "Việc vướng" : "Việc đang dở",
+      refType: "task",
+      refId: task.id,
+      summary: `${loc}: ${taskTypeLabel(task.kind)} — ${task.content} (${status})${extra}`,
+    });
   }
   for (const r of rooms.filter((x) => x.opsStatus === "ooo")) {
     items.push({ category: "Phòng OOO / đang sửa", refType: "room", refId: r.id, summary: `P.${r.number} ${r.oooReason || ""}` });
   }
-  for (const task of tasks.filter((x) => x.zaloSent === false && ["new", "accepted", "in_progress"].includes(x.status))) {
-    items.push({ category: "Công việc Zalo chưa xác nhận", refType: "task", refId: task.id, summary: task.content });
-  }
-  for (const task of tasks.filter((x) => x.status === "blocked")) {
-    items.push({ category: "Phàn nàn và sự cố", refType: "task", refId: task.id, summary: `${task.content} — vướng: ${task.blockedReason}` });
+  for (const r of rooms.filter(
+    (x) =>
+      x.opsStatus !== "ooo" &&
+      (["vacant_dirty", "cleaning", "waiting_inspect"].includes(x.opsStatus) ||
+        ["waiting", "accepted", "cleaning", "waiting_inspect"].includes(x.hkStatus)),
+  )) {
+    items.push({
+      category: "Phòng đang dọn / chờ kiểm",
+      refType: "room",
+      refId: r.id,
+      summary: `P.${r.number} ${HK_LABEL[r.hkStatus as HkStatus] || r.hkStatus}`,
+    });
   }
   return items;
 }

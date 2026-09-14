@@ -21,11 +21,29 @@ export default async function ShiftsPage({
       <h1 className="text-xl font-bold">Ca làm việc</h1>
       {error ? <p className="text-sm text-[#c23b3b]">{error}</p> : null}
       {!open ? (
-        <form action={openShiftAction}>
-          <Btn type="submit" className="w-full">
-            Mở ca
-          </Btn>
-        </form>
+        user.role === "reception" ? (
+          <form action={openShiftAction}>
+            <Btn type="submit" className="w-full">
+              Mở ca
+            </Btn>
+          </form>
+        ) : (
+          <Card>
+            <p className="font-bold">Ca lễ tân chưa mở</p>
+            <p className="mt-1 text-sm text-[#5c6665]">
+              {user.role === "manager"
+                ? "Quản lý không cần start ca. Checklist và bàn giao thuộc lễ tân đang trực."
+                : "Chờ lễ tân mở ca để có checklist bộ phận."}
+            </p>
+            {user.role === "manager" ? (
+              <form action={openShiftAction} className="mt-3">
+                <Btn type="submit" variant="ghost" className="w-full">
+                  Mở ca hộ — đang đứng quầy
+                </Btn>
+              </form>
+            ) : null}
+          </Card>
+        )
       ) : (
         <Card>
           <p className="font-bold">
