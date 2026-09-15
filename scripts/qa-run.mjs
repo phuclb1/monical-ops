@@ -117,7 +117,7 @@ try {
 
   await check("TC-03", "Lễ tân đăng nhập — Today ca đang mở", async (shot) => {
     await login("tuyen");
-    await must(shot, ["Ca đang làm", currentShiftLabel()]);
+    await must(shot, ["Ca đang làm", currentShiftLabel(), "Đầu ca"]);
   });
 
   await check("TC-10", "Khách đang check-in (đến)", async (shot) => {
@@ -137,7 +137,7 @@ try {
 
   await check("TC-13", "Thẻ khách check-in P.105", async (shot) => {
     await go("/reception/s-201");
-    await must(shot, ["Nguyễn Thu Hà", "Đang check-in", "Đã nhập booking"]);
+    await must(shot, ["Nguyễn Thu Hà", "Đang check-in", "Đã nhập booking", "Phòng INS"]);
   });
 
   await check("TC-14", "Khách gửi ô tô + timer đăng ký", async (shot) => {
@@ -147,7 +147,7 @@ try {
 
   await check("TC-15", "Khách đi — thiếu hóa đơn + dọn phòng trả", async (shot) => {
     await go("/reception/s-102");
-    await must(shot, ["Phạm Đức Anh", "Checkout 12:00"]);
+    await must(shot, ["Phạm Đức Anh", "Checkout 12:00", "Hóa đơn"]);
   });
 
   await check("TC-90", "PMS khách đến — booking xong, chưa check-in", async (shot) => {
@@ -174,7 +174,7 @@ try {
 
   await check("TC-20", "Bảng việc: thay khăn / dọn phòng / checkout", async (shot) => {
     await go("/tasks");
-    await must(shot, ["Thay 2 khăn tắm P.305", "Dọn phòng khách ở P.202", "Dọn phòng trả P.102"]);
+    await must(shot, ["Thay 2 khăn tắm P.305", "Dọn phòng khách ở P.202", "Dọn phòng trả P.102", "Nhận P.105", "Trả P.102"]);
   });
 
   await check("TC-21", "Quản lý yêu cầu thêm HK (lễ tân thấy việc)", async (shot) => {
@@ -240,7 +240,35 @@ try {
 
   await check("TC-70", "Checklist ca lễ tân", async (shot) => {
     await go("/shifts");
-    await must(shot, [currentShiftLabel(), "Đang mở"]);
+    await must(shot, [currentShiftLabel(), "Đang mở", "Đầu ca", "Cuối ca"]);
+  });
+
+  await check("TC-72", "Today — task nhận/trả theo phòng", async (shot) => {
+    await go("/today");
+    await must(shot, ["Nhận P.105", "Trả P.102", "Nhận / trả hôm nay"]);
+  });
+
+  await check("TC-73", "Bảng việc — nhận P.105 / trả P.102 / nhận P.506", async (shot) => {
+    await go("/tasks");
+    await must(shot, ["Nhận P.105", "Trả P.102", "Nhận P.506"]);
+  });
+
+  await check("TC-74", "Task nhận P.105 có checklist", async (shot) => {
+    await go("/tasks");
+    await page.getByRole("link", { name: /Nhận P\.105/ }).first().click();
+    await page.getByText("Phòng INS").waitFor({ timeout: 15000 });
+    await ready();
+    await must(shot, ["Phòng INS", "Check-in PMS", "Đưa chìa", "Ảnh tuỳ chọn"]);
+  });
+
+  await check("TC-75", "Thẻ khách P.105 cùng checklist nhận", async (shot) => {
+    await go("/reception/s-201");
+    await must(shot, ["Phòng INS / sẵn sàng", "Check-in PMS", "Đưa chìa / thẻ phòng"]);
+  });
+
+  await check("TC-76", "Chỗ bán P.506 có checklist nhận phòng", async (shot) => {
+    await go("/sales/sale-506");
+    await must(shot, ["Công ty An Phú", "Nhận phòng P.506"]);
   });
 
   await logout();

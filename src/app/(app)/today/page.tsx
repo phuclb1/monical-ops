@@ -9,7 +9,7 @@ import { formatVnd } from "@/lib/sales";
 import { Card, Chip, Empty, SectionTitle, Stat } from "@/components/ui";
 import { RegistrationTimer } from "@/components/countdown";
 import { openShiftAction } from "@/actions/ops";
-import { toggleCheckAction } from "@/actions/ops";
+import { isChecklistTaskKind } from "@/lib/task-types";
 
 export default async function TodayPage() {
   const user = await getSession();
@@ -17,7 +17,9 @@ export default async function TodayPage() {
   const data = await getDashboard(user);
   const open = await currentOpenShift();
   const bundle = open ? await getShiftBundle(open.id, user.role === "manager" ? undefined : user.departmentCode) : null;
-  const myList = bundle?.checklists.find((c) => c.departmentCode === user.departmentCode) ?? bundle?.checklists[0];
+  const myShiftLists = (bundle?.checklists ?? []).slice().sort((a, b) => (a.kind === "shift_open" ? -1 : 1));
+  const roomJobs = data.nowTasks.filter((task) => task.kind === "checkin" || task.kind === "checkout");
+  const otherNow = data.nowTasks.filter((task) => !isChecklistTaskKind(task.kind));
   const sales = can(user.role, "manageSales") ? await salesBoard(todayVN()) : null;
 
   return (
@@ -115,38 +117,56 @@ export default async function TodayPage() {
       ) : null}
 
       <div className="today-wide grid grid-cols-3 gap-2 md:gap-3">
-        <Stat label="Việc ngay" value={data.nowTasks.length} />
+        <Stat label="Việc ngay" value={otherNow.length + roomJobs.filter((task) => ["new", "accepted", "in_progress", "blocked"].includes(task.status)).length} />
         <Stat label="Quá hạn" value={data.overdueTasks.length} tone="text-[#c23b3b]" />
         <Stat label="Yêu cầu" value={data.openRequests.length} tone="text-[#c47b12]" />
       </div>
 
       <Card>
-        <SectionTitle hint="Ca này">Việc phải làm ngay</SectionTitle>
-        {myList?.items.length ? (
+        <SectionTitle hint="Ca này">Đầu ca / cuối ca</SectionTitle>
+        {myShiftLists.length ? (
           <ul className="space-y-2">
-            {myList.items.slice(0, 5).map((item) => (
-              <li key={item.id} className="flex items-start gap-2">
-                <form action={toggleCheckAction}>
-                  <input type="hidden" name="itemId" value={item.id} />
-                  <button className="flex h-11 w-11 items-center justify-center rounded-xl border border-line bg-white text-base" type="submit" aria-label={item.done ? "Bỏ tích" : "Đánh dấu xong"}>
-                    {item.done ? "✓" : ""}
-                  </button>
-                </form>
-                <div>
-                  <p className={item.done ? "text-sm line-through text-[#8a918f]" : "text-sm font-medium"}>{item.label}</p>
-                  {item.required ? <p className="text-[11px] text-[#c47b12]">Bắt buộc</p> : null}
-                </div>
+            {myShiftLists.map((list) => {
+              const pending = list.items.filter((item) => item.required && !item.done && !item.skipReason).length;
+              return (
+                <li key={list.id}>
+                  <Link href={list.taskId ? `/tasks/${list.taskId}` : "/shifts"} className="flex min-h-12 items-center justify-between">
+                    <span className="text-sm font-medium">{list.title}</span>
+                    <Chip tone={pending ? "warn" : "ok"}>{pending ? `${pending} còn` : "Xong"}</Chip>
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
+        ) : (
+          <Empty
+            title="Chưa có checklist ca"
+            text={user.role === "reception" ? "Mở ca để sinh đầu ca / cuối ca." : "Checklist ca sinh khi lễ tân mở ca."}
+          />
+        )}
+        <Link href="/shifts" className="mt-3 block text-center text-sm font-semibold text-teal">
+          Mở checklist ca
+        </Link>
+      </Card>
+
+      <Card>
+        <SectionTitle hint="Ca sáng phụ trách">Nhận / trả hôm nay</SectionTitle>
+        {roomJobs.length ? (
+          <ul className="space-y-2">
+            {roomJobs.map((task) => (
+              <li key={task.id}>
+                <Link href={`/tasks/${task.id}`} className="flex min-h-12 items-center justify-between gap-2">
+                  <span className="text-sm font-medium">{task.content}</span>
+                  <Chip tone={task.kind === "checkin" ? "teal" : "warn"}>{task.kind === "checkin" ? "Nhận" : "Trả"}</Chip>
+                </Link>
               </li>
             ))}
           </ul>
         ) : (
-          <Empty
-            title="Chưa có checklist"
-            text={user.role === "reception" ? "Mở ca để sinh checklist." : "Checklist sinh khi lễ tân mở ca."}
-          />
+          <Empty title="Không có phòng nhận / trả hôm nay" />
         )}
-        <Link href="/shifts" className="mt-3 block text-center text-sm font-semibold text-teal">
-          Xem hết checklist ca
+        <Link href="/tasks" className="mt-3 block text-center text-sm font-semibold text-teal">
+          Bảng việc
         </Link>
       </Card>
 

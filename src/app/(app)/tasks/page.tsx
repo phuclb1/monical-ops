@@ -72,7 +72,7 @@ export default async function TasksPage({
         </TabChip>
       </div>
       <div className="tab-scroller -mx-3 px-3">
-        {TASK_TYPES.slice(0, 8).map((item) => (
+        {TASK_TYPES.filter((item) => item.canCreate.length).slice(0, 8).map((item) => (
           <TabChip key={item.kind} href={`/tasks?kind=${item.kind}`} active={kind === item.kind}>
             {item.label}
           </TabChip>

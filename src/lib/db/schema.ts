@@ -141,20 +141,28 @@ export const shifts = sqliteTable("shifts", {
 
 export const checklists = sqliteTable("checklists", {
   id: text("id").primaryKey(),
-  shiftId: text("shift_id").notNull(),
-  departmentCode: text("department_code").notNull(),
+  kind: text("kind").notNull().default("shift_open"),
+  shiftId: text("shift_id"),
+  stayId: text("stay_id"),
+  roomId: text("room_id"),
+  taskId: text("task_id"),
+  date: text("date"),
+  departmentCode: text("department_code").notNull().default("reception"),
   title: text("title").notNull(),
 });
 
 export const checklistItems = sqliteTable("checklist_items", {
   id: text("id").primaryKey(),
   checklistId: text("checklist_id").notNull(),
+  itemKey: text("item_key"),
   label: text("label").notNull(),
   required: integer("required", { mode: "boolean" }).notNull().default(true),
   done: integer("done", { mode: "boolean" }).notNull().default(false),
   doneBy: text("done_by"),
   doneAt: text("done_at"),
   skipReason: text("skip_reason"),
+  note: text("note"),
+  photo: text("photo"),
   sortOrder: integer("sort_order").notNull().default(0),
 });
 

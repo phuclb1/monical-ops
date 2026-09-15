@@ -3,6 +3,7 @@ import { getDb } from "./db";
 import * as t from "./db/schema";
 import { nid, nowISO } from "./datetime";
 import { audit } from "./repos";
+import { ensureTodayRoomTasks } from "./checklist-ops";
 import { catalogRate, isActiveSaleStatus, normalizeDiscount, parseSaleSource, rangesOverlap } from "./sales";
 import type { SaleOrigin, SaleStatus, StayStatus } from "./types";
 import { SALE_STATUSES, STAY_STATUSES } from "./types";
@@ -92,6 +93,8 @@ export async function ingestPmsBookings(bookings: IngestBooking[]): Promise<Inge
   for (const raw of bookings) {
     results.push(await ingestOne(raw));
   }
+  const db = await getDb();
+  await ensureTodayRoomTasks(db, { actorId: INGEST_ACTOR_ID });
   return results;
 }
 

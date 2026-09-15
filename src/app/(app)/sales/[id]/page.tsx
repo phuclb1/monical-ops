@@ -7,7 +7,7 @@ import { getSession } from "@/lib/auth";
 import { SALE_ORIGIN_LABEL, SALE_SOURCE_LABEL, SALE_STATUS_LABEL } from "@/lib/constants";
 import { formatDateLong, todayVN } from "@/lib/datetime";
 import { can } from "@/lib/permissions";
-import { getRoomSale, listRooms, listRoomTypes } from "@/lib/repos";
+import { getRoomSale, getRoomDayChecklists, listRooms, listRoomTypes } from "@/lib/repos";
 import { discountLabel, formatVnd, isOpsBookingCode, saleQuote } from "@/lib/sales";
 import type { SaleOrigin, SaleSource, SaleStatus } from "@/lib/types";
 
@@ -33,6 +33,7 @@ export default async function SaleDetailPage({
   const { error } = await searchParams;
   const [sale, rooms, types] = await Promise.all([getRoomSale(id), listRooms(), listRoomTypes()]);
   if (!sale) notFound();
+  const roomLists = sale.roomId ? await getRoomDayChecklists(sale.roomId) : [];
   const today = todayVN();
   const active = sale.status === "reserved" || sale.status === "inhouse";
   const quote = saleQuote(sale);
@@ -74,6 +75,19 @@ export default async function SaleDetailPage({
         {sale.pmsCode ? <p className="mt-1 text-sm">{isOpsBookingCode(sale.pmsCode) ? "Mã Ops" : "PMS"} {sale.pmsCode}</p> : null}
         {sale.notes ? <p className="mt-2 text-sm text-[#5c6665]">{sale.notes}</p> : null}
       </Card>
+
+      {roomLists.length ? (
+        <Card className="space-y-2">
+          <h2 className="font-bold">Checklist lễ tân</h2>
+          <p className="text-xs text-[#5c6665]">Không chặn nhận / trả phòng. Tick trên việc theo phòng.</p>
+          {roomLists.map((list) => (
+            <Link key={list.id} href={list.taskId ? `/tasks/${list.taskId}` : "/tasks"} className="block min-h-11 text-sm font-semibold text-teal">
+              {list.title}
+              {list.taskId ? " — mở việc" : ""}
+            </Link>
+          ))}
+        </Card>
+      ) : null}
 
       {sale.status === "reserved" ? (
         <form action={checkinSaleAction}>

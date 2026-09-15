@@ -31,13 +31,29 @@ export async function closeShiftAction(formData: FormData) {
 export async function toggleCheckAction(formData: FormData) {
   const user = await requireSession();
   await repo.toggleChecklistItem(user, String(formData.get("itemId")));
-  refresh(["/today", "/shifts"]);
+  refresh(["/today", "/shifts", "/tasks", "/reception", "/handover"]);
+  revalidatePath("/tasks", "layout");
+  revalidatePath("/reception", "layout");
 }
 
 export async function skipCheckAction(formData: FormData) {
   const user = await requireSession();
   await repo.skipChecklistItem(user, String(formData.get("itemId")), String(formData.get("reason") || ""));
-  refresh(["/today", "/shifts"]);
+  refresh(["/today", "/shifts", "/tasks", "/reception", "/handover"]);
+  revalidatePath("/tasks", "layout");
+  revalidatePath("/reception", "layout");
+}
+
+export async function saveCheckItemAction(formData: FormData) {
+  const user = await requireSession();
+  await repo.saveChecklistItem(user, String(formData.get("itemId")), {
+    note: String(formData.get("note") || ""),
+    photo: String(formData.get("photo") || ""),
+    skipReason: String(formData.get("reason") || "") || undefined,
+  });
+  refresh(["/today", "/shifts", "/tasks", "/reception", "/handover"]);
+  revalidatePath("/tasks", "layout");
+  revalidatePath("/reception", "layout");
 }
 
 export async function createTaskAction(formData: FormData) {

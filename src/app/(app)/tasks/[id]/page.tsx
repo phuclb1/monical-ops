@@ -1,5 +1,6 @@
 import { notFound, redirect } from "next/navigation";
 import { taskStatusAction } from "@/actions/ops";
+import { ChecklistPanel } from "@/components/checklist-panel";
 import { ZaloShare } from "@/components/zalo-button";
 import { Btn, Card, Chip, Field } from "@/components/ui";
 import { getSession } from "@/lib/auth";
@@ -23,7 +24,7 @@ export default async function TaskDetailPage({
   const { error } = await searchParams;
   const data = await getTask(id);
   if (!data) notFound();
-  const { task, history, users, room } = data;
+  const { task, history, users, room, checklist } = data;
   const assignee = users.find((u) => u.id === task.assigneeId);
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
   const message =
@@ -54,6 +55,10 @@ export default async function TaskDetailPage({
         {room ? <Chip tone="teal">P.{room.number}</Chip> : null}
       </div>
       {error ? <p className="text-sm text-[#c23b3b]">{error}</p> : null}
+
+      {checklist ? (
+        <ChecklistPanel list={checklist} hint="Cùng checklist trên thẻ khách / ca. Note và ảnh tuỳ chọn." />
+      ) : null}
 
       <Card>
         <p className="text-sm">Phụ trách: {assignee?.fullName || "Chưa gán"}</p>

@@ -145,6 +145,11 @@ try {
   skip("TC-90", "PMS khách đến — booking xong, chưa check-in", "prd không seed kịch bản khách");
   skip("TC-91", "PMS khách đang ở — đã check-in PMS", "prd không seed kịch bản khách");
   skip("TC-92", "PMS khách đi — chưa checkout / hóa đơn", "prd không seed kịch bản khách");
+  skip("TC-72", "Today — task nhận/trả theo phòng", "prd không seed khách đến/đi hôm nay");
+  skip("TC-73", "Bảng việc — nhận P.105 / trả P.102 / nhận P.506", "prd không seed việc demo");
+  skip("TC-74", "Task nhận P.105 có checklist", "prd không seed kịch bản khách");
+  skip("TC-75", "Thẻ khách P.105 cùng checklist nhận", "prd không seed kịch bản khách");
+  skip("TC-76", "Chỗ bán P.506 có checklist nhận phòng", "prd không seed chỗ bán demo");
   skip("TC-20", "Bảng việc: thay khăn / dọn phòng / checkout", "prd không seed việc demo");
   skip("TC-21", "Việc «cần thêm HK» hiện với lễ tân", "prd không có lễ tân / việc demo");
   skip("TC-21b", "Quản lý thấy việc thêm HK", "prd không seed việc demo");
@@ -276,9 +281,14 @@ try {
     await go("/shifts");
     const text = await pageText();
     await page.screenshot({ path: shot, fullPage: true });
-    if (!text.includes("Ca") && !text.includes("checklist") && !text.includes("Checklist") && !text.includes("mở") && !text.includes("Mở")) {
-      throw new Error("Trang ca không nhận ra");
-    }
+    const ok =
+      text.includes("Đầu ca") ||
+      text.includes("Cuối ca") ||
+      text.includes("Mở ca hộ") ||
+      text.includes("Ca lễ tân chưa mở") ||
+      text.includes("Đang mở") ||
+      text.includes("Mở ca");
+    if (!ok) throw new Error("Trang ca không nhận ra checklist đầu/cuối ca");
   });
 
   await checkAuthed("TC-83", "Prompt bật thông báo điện thoại", async (shot) => {

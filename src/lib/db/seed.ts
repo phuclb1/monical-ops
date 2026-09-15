@@ -2,10 +2,10 @@ import { eq, inArray } from "drizzle-orm";
 import { DEMO_PASSWORD } from "../constants";
 import { addDaysVN, addMinutes, currentShiftType, nid, nowISO, todayVN, WEEKDAYS } from "../datetime";
 import { hashPassword } from "../password";
-import { shiftChecklistTemplate } from "../checklists";
+import { ensureShiftChecklists, ensureTodayRoomTasks } from "../checklist-ops";
 import type { AppDb } from "./index";
 import * as t from "./schema";
-import type { DepartmentCode, ShiftType } from "../types";
+import type { ShiftType } from "../types";
 import { insertInBatches } from "./batch";
 import { ROOM_REMAP, ROOM_SEED, ROOM_TYPE_SEED, floorOf, roomIdOf } from "../rooms-catalog";
 import { DEFAULT_WEEK_DUTY, ROSTER_SHIFTS, weekSlotId } from "../roster";
@@ -427,32 +427,9 @@ export async function seedOpsDemo(db: AppDb) {
     closeReason: null,
   });
 
-  const deptsForList: DepartmentCode[] = ["reception", "hk", "kitchen", "utility", "management"];
-  for (const dept of deptsForList) {
-    const cid = nid();
-    await db.insert(t.checklists).values({
-      id: cid,
-      shiftId: curShiftId,
-      departmentCode: dept,
-      title: `Checklist ${dept} — ca hiện tại`,
-    });
-    const items = shiftChecklistTemplate(shiftType, dept);
-    if (items.length) {
-      await db.insert(t.checklistItems).values(
-        items.map((item, i) => ({
-          id: nid(),
-          checklistId: cid,
-          label: item.label,
-          required: item.required,
-          done: false,
-          doneBy: null,
-          doneAt: null,
-          skipReason: null,
-          sortOrder: i,
-        })),
-      );
-    }
-  }
+  const curShift = (await db.select().from(t.shifts).where(eq(t.shifts.id, curShiftId)))[0];
+  await ensureShiftChecklists(db, curShift, { actorId: dutyId, assigneeId: dutyId });
+  await ensureTodayRoomTasks(db, { actorId: dutyId, assigneeId: LOCAL_WEEK_DUTY.morning });
 
   const due = addMinutes(now, 90);
   const tasks = [

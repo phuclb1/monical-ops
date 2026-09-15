@@ -1,66 +1,81 @@
-import type { DepartmentCode, ShiftType } from "./types";
+import type { ShiftType } from "./types";
 
-type Item = { label: string; required: boolean };
+export const CHECKLIST_KINDS = ["shift_open", "shift_close", "checkin", "checkout"] as const;
+export type ChecklistKind = (typeof CHECKLIST_KINDS)[number];
 
-const R = (label: string, required = true): Item => ({ label, required });
+export type ChecklistTemplateItem = { key: string; label: string; required: boolean };
 
-export function shiftChecklistTemplate(type: ShiftType, dept: DepartmentCode): Item[] {
-  if (dept === "reception") {
-    if (type === "morning") {
-      return [
-        R("Kiểm quỹ đầu ca, đối chiếu BM-02"),
-        R("Kiểm chìa khóa, thẻ phòng, chìa xe khách"),
-        R("Xem khách đến / đi / chưa đến trên web và đối chiếu PMS"),
-        R("Gửi số khách ăn sáng cho bếp"),
-        R("Kiểm phòng trống / INS trước khi nhận khách"),
-        R("Ghi nhận gửi xe còn tồn ca trước"),
-        R("Xem bàn giao ca trước và bấm Đã nhận", true),
-      ];
-    }
-    if (type === "afternoon") {
-      return [
-        R("Nhận bàn giao ca sáng"),
-        R("Chuẩn bị khách đến chiều và check-in"),
-        R("Khởi động bộ đếm 30 phút đăng ký lưu trú sau nhận phòng"),
-        R("Theo dõi yêu cầu khách chưa xong"),
-        R("Chuẩn bị khách đi ngày mai"),
-        R("Gửi dự báo ăn sáng ngày mai cho bếp"),
-        R("Không kết ca khi còn việc bắt buộc chưa xử lý"),
-      ];
-    }
+const R = (key: string, label: string, required = true): ChecklistTemplateItem => ({ key, label, required });
+
+export const CHECKLIST_KIND_LABEL: Record<ChecklistKind, string> = {
+  shift_open: "Đầu ca",
+  shift_close: "Cuối ca",
+  checkin: "Nhận phòng",
+  checkout: "Trả phòng",
+};
+
+export function isChecklistKind(value: string | null | undefined): value is ChecklistKind {
+  return CHECKLIST_KINDS.includes(value as ChecklistKind);
+}
+
+export function shiftOpenTemplate(type: ShiftType): ChecklistTemplateItem[] {
+  if (type === "morning") {
     return [
-      R("Nhận bàn giao ca chiều"),
-      R("Kiểm khách chưa đến / no-show"),
-      R("Theo dõi đăng ký lưu trú còn hạn"),
-      R("Báo thức, xe đón, ăn sáng sớm"),
-      R("An ninh sảnh và chìa khóa"),
-      R("Chuẩn bị quỹ và hóa đơn ca sáng"),
+      R("fund", "Kiểm quỹ đầu ca"),
+      R("keys", "Kiểm chìa / thẻ phòng / chìa xe khách"),
+      R("arrivals", "Xem khách đến / đi hôm nay"),
+      R("handover", "Nhận bàn giao ca trước"),
     ];
   }
-  if (dept === "hk") {
+  if (type === "afternoon") {
     return [
-      R("Nhận danh sách phòng theo ưu tiên"),
-      R("Cập nhật trạng thái đang dọn"),
-      R("Hoàn tất checklist phòng sạch trước khi chuyển INS"),
-      R("Báo hỏng / đồ thất lạc kèm ảnh"),
-      R("Báo phòng OOO nếu cần duyệt"),
+      R("handover", "Nhận bàn giao ca sáng"),
+      R("arrivals", "Xem khách đến chiều / việc nhận-trả còn dở"),
+      R("keys", "Kiểm chìa / thẻ / quỹ"),
+      R("leftover", "Việc ca sáng để lại đã nắm"),
     ];
   }
-  if (dept === "kitchen") {
-    return [
-      R("Nhận số khách ăn sáng và bấm Đã nhận số"),
-      R("Checklist mở bếp / đóng bếp"),
-      R("Ghi thực tế khách ăn"),
-      R("Báo sự cố thiết bị hoặc ATTP nếu có", false),
-    ];
-  }
-  if (dept === "utility") {
-    return [
-      R("Checklist setup khu vực công cộng"),
-      R("Vệ sinh sảnh / WC"),
-      R("Rửa và cất dụng cụ"),
-      R("Đóng ca tạp vụ"),
-    ];
-  }
-  return [R("Xem việc quá hạn và sự cố chờ duyệt"), R("Duyệt OOO / sự cố nếu có")];
+  return [
+    R("handover", "Nhận bàn giao ca chiều"),
+    R("noshow", "Kiểm khách chưa đến / no-show"),
+    R("keys", "An ninh sảnh và chìa khóa"),
+    R("wake", "Xem báo thức / xe đón / ăn sáng sớm"),
+  ];
+}
+
+export function shiftCloseTemplate(type: ShiftType): ChecklistTemplateItem[] {
+  const base = [
+    R("fund", "Đối chiếu quỹ cuối ca"),
+    R("keys", "Chìa / thẻ đã đủ"),
+    R("leftover", "Việc dở đã ghi bàn giao"),
+  ];
+  if (type === "afternoon") return [...base, R("breakfast", "Đã gửi số ăn sáng ngày mai")];
+  return base;
+}
+
+export function checkinTemplate(): ChecklistTemplateItem[] {
+  return [
+    R("ins", "Phòng INS / sẵn sàng"),
+    R("pms", "Check-in PMS"),
+    R("key", "Đưa chìa / thẻ phòng"),
+    R("registration", "Đăng ký lưu trú"),
+    R("vehicle", "Gửi xe nếu có", false),
+  ];
+}
+
+export function checkoutTemplate(): ChecklistTemplateItem[] {
+  return [
+    R("invoice", "Hóa đơn"),
+    R("pms", "Check-out PMS"),
+    R("key", "Thu chìa / thẻ"),
+    R("vehicle", "Xe / chìa đã trả", false),
+    R("hk", "Đã gửi HK dọn trả"),
+  ];
+}
+
+export function checklistTemplate(kind: ChecklistKind, shiftType?: ShiftType): ChecklistTemplateItem[] {
+  if (kind === "shift_open") return shiftOpenTemplate(shiftType || "morning");
+  if (kind === "shift_close") return shiftCloseTemplate(shiftType || "morning");
+  if (kind === "checkin") return checkinTemplate();
+  return checkoutTemplate();
 }

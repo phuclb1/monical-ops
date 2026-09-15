@@ -1,5 +1,7 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
-import { closeShiftAction, openShiftAction, skipCheckAction, toggleCheckAction } from "@/actions/ops";
+import { closeShiftAction, openShiftAction } from "@/actions/ops";
+import { ChecklistPanel } from "@/components/checklist-panel";
 import { Btn, Card, Chip } from "@/components/ui";
 import { getSession } from "@/lib/auth";
 import { SHIFT_LABEL } from "@/lib/constants";
@@ -15,6 +17,7 @@ export default async function ShiftsPage({
   const { error } = await searchParams;
   const open = await currentOpenShift();
   const bundle = open ? await getShiftBundle(open.id, user.role === "manager" ? undefined : user.departmentCode) : null;
+  const lists = (bundle?.checklists ?? []).slice().sort((a, b) => (a.kind === "shift_open" ? -1 : 1));
 
   return (
     <main className="space-y-3 px-3 py-4">
@@ -32,8 +35,8 @@ export default async function ShiftsPage({
             <p className="font-bold">Ca lễ tân chưa mở</p>
             <p className="mt-1 text-sm text-[#5c6665]">
               {user.role === "manager"
-                ? "Quản lý không cần start ca. Checklist và bàn giao thuộc lễ tân đang trực."
-                : "Chờ lễ tân mở ca để có checklist bộ phận."}
+                ? "Quản lý không cần start ca. Checklist đầu / cuối ca thuộc lễ tân đang trực."
+                : "Chờ lễ tân mở ca để có checklist đầu / cuối ca."}
             </p>
             {user.role === "manager" ? (
               <form action={openShiftAction} className="mt-3">
@@ -53,40 +56,20 @@ export default async function ShiftsPage({
         </Card>
       )}
 
-      {bundle?.checklists.map((list) => (
-        <Card key={list.id}>
-          <h2 className="mb-2 font-bold">{list.title}</h2>
-          <ul className="space-y-3">
-            {list.items.map((item) => (
-              <li key={item.id}>
-                <div className="flex items-start gap-2">
-                  <form action={toggleCheckAction}>
-                    <input type="hidden" name="itemId" value={item.id} />
-                    <button className="flex h-6 w-6 items-center justify-center rounded-md border border-line bg-white">
-                      {item.done ? "✓" : ""}
-                    </button>
-                  </form>
-                  <div className="flex-1">
-                    <p className={item.done ? "text-sm line-through" : "text-sm font-medium"}>{item.label}</p>
-                    {item.required ? <p className="text-[11px] text-[#c47b12]">Bắt buộc</p> : null}
-                    {!item.done && item.required ? (
-                      <form action={skipCheckAction} className="mt-1 flex gap-1">
-                        <input type="hidden" name="itemId" value={item.id} />
-                        <input name="reason" placeholder="Lý do bỏ qua" className="min-h-9" />
-                        <button className="rounded-lg bg-white px-2 text-xs font-semibold">Lý do</button>
-                      </form>
-                    ) : null}
-                  </div>
-                </div>
-              </li>
-            ))}
-          </ul>
-        </Card>
+      {lists.map((list) => (
+        <div key={list.id} className="space-y-2">
+          {list.taskId ? (
+            <Link href={`/tasks/${list.taskId}`} className="block text-sm font-semibold text-teal">
+              Mở việc {list.title}
+            </Link>
+          ) : null}
+          <ChecklistPanel list={list} hint="Tick tay. Bỏ qua thì ghi lý do. Note / ảnh tuỳ chọn." />
+        </div>
       ))}
 
       {open ? (
         <form action={closeShiftAction} className="space-y-2">
-          <textarea name="reason" placeholder="Bắt buộc nếu còn mục chưa xong hoặc chưa bàn giao" />
+          <textarea name="reason" placeholder="Bắt buộc nếu chưa bàn giao. Checklist dở không chặn kết ca." />
           <Btn type="submit" variant="danger" className="w-full">
             Kết ca
           </Btn>

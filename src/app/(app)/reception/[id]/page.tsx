@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { addRequestAction, addVehicleAction, completeRequestAction, inspectRoomAction, stayPatchAction, taskStatusAction } from "@/actions/ops";
+import { ChecklistPanel } from "@/components/checklist-panel";
 import { Btn, Card, Chip, Field } from "@/components/ui";
 import { RegistrationTimer } from "@/components/countdown";
 import { getSession } from "@/lib/auth";
@@ -8,8 +9,7 @@ import { requestKindLabel, SALE_ORIGIN_LABEL, SALE_SOURCE_LABEL, TASK_STATUS_LAB
 import { can } from "@/lib/permissions";
 import { maskName, maskPhone } from "@/lib/mask";
 import { getStay } from "@/lib/repos";
-import { stayOpsChecklist } from "@/lib/stay-checklist";
-import { STAY_TASK_KINDS, taskTypeLabel } from "@/lib/task-types";
+import { STAY_TASK_KINDS, isChecklistTaskKind, taskTypeLabel } from "@/lib/task-types";
 import type { SaleOrigin, SaleSource, TaskStatus } from "@/lib/types";
 
 function Confirm({ id, field, label, done }: { id: string; field: string; label: string; done: boolean }) {
@@ -32,7 +32,7 @@ export default async function StayPage({ params }: { params: Promise<{ id: strin
   const stay = await getStay(id);
   if (!stay) notFound();
   const pii = can(user.role, "viewGuestPii");
-  const ops = stayOpsChecklist(stay);
+  const roomTasks = stay.tasks.filter((task) => !isChecklistTaskKind(task.kind));
 
   return (
     <main className="space-y-3 px-3 py-4">
@@ -46,23 +46,16 @@ export default async function StayPage({ params }: { params: Promise<{ id: strin
       {pii ? <p className="text-sm">SĐT {maskPhone(stay.guestPhone)}</p> : <p className="text-sm">SĐT đã che</p>}
       <RegistrationTimer dueAt={stay.registrationDueAt} doneAt={stay.registrationDoneAt} />
 
-      {ops.length ? (
-        <Card className="space-y-2">
-          <h2 className="font-bold">Checklist khách</h2>
-          <p className="text-xs text-[#5c6665]">Theo trạng thái đến / ở / đi. Booking gốc vẫn trên ezCloudhotel.</p>
-          <ul className="space-y-1.5">
-            {ops.map((item) => (
-              <li key={item.key} className="flex items-start justify-between gap-2 text-sm">
-                <span>
-                  {item.label}
-                  {item.required ? "" : " · tùy chọn"}
-                </span>
-                <Chip tone={item.done ? "ok" : item.required ? "warn" : "neutral"}>{item.done ? "Xong" : "Chưa"}</Chip>
-              </li>
-            ))}
-          </ul>
-        </Card>
-      ) : null}
+      {stay.checklists.map((list) => (
+        <div key={list.id} className="space-y-1">
+          {list.taskId ? (
+            <Link href={`/tasks/${list.taskId}`} className="block text-sm font-semibold text-teal">
+              Mở việc trên bảng
+            </Link>
+          ) : null}
+          <ChecklistPanel list={list} hint="Cùng task trên bảng việc. Tick tay — không chặn nhận/trả phòng." />
+        </div>
+      ))}
 
       <Card className="space-y-2">
         <h2 className="font-bold">Đối chiếu ezCloudhotel PMS</h2>
@@ -124,7 +117,7 @@ export default async function StayPage({ params }: { params: Promise<{ id: strin
         <h2 className="mb-2 font-bold">Việc theo phòng</h2>
         <p className="mb-2 text-xs text-[#5c6665]">Thành task trên bảng việc — khăn, dọn, báo thức, xe…</p>
         <ul className="space-y-2">
-          {stay.tasks.map((task) => (
+          {roomTasks.map((task) => (
             <li key={task.id} className="flex items-start justify-between gap-2 text-sm">
               <Link href={`/tasks/${task.id}`} className="font-medium text-teal">
                 {taskTypeLabel(task.kind)}: {task.content}

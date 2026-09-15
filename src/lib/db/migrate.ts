@@ -135,19 +135,27 @@ CREATE TABLE IF NOT EXISTS shifts (
 );
 CREATE TABLE IF NOT EXISTS checklists (
   id TEXT PRIMARY KEY,
-  shift_id TEXT NOT NULL,
-  department_code TEXT NOT NULL,
+  kind TEXT NOT NULL DEFAULT 'shift_open',
+  shift_id TEXT,
+  stay_id TEXT,
+  room_id TEXT,
+  task_id TEXT,
+  date TEXT,
+  department_code TEXT NOT NULL DEFAULT 'reception',
   title TEXT NOT NULL
 );
 CREATE TABLE IF NOT EXISTS checklist_items (
   id TEXT PRIMARY KEY,
   checklist_id TEXT NOT NULL,
+  item_key TEXT,
   label TEXT NOT NULL,
   required INTEGER NOT NULL DEFAULT 1,
   done INTEGER NOT NULL DEFAULT 0,
   done_by TEXT,
   done_at TEXT,
   skip_reason TEXT,
+  note TEXT,
+  photo TEXT,
   sort_order INTEGER NOT NULL DEFAULT 0
 );
 CREATE TABLE IF NOT EXISTS tasks (
@@ -349,4 +357,15 @@ export const SCHEMA_PATCHES = [
   "CREATE INDEX IF NOT EXISTS room_sales_origin ON room_sales (origin)",
   "CREATE INDEX IF NOT EXISTS room_sales_source ON room_sales (source)",
   "CREATE INDEX IF NOT EXISTS stays_origin ON stays (origin)",
+  "ALTER TABLE checklists ADD COLUMN kind TEXT NOT NULL DEFAULT 'shift_open'",
+  "ALTER TABLE checklists ADD COLUMN stay_id TEXT",
+  "ALTER TABLE checklists ADD COLUMN room_id TEXT",
+  "ALTER TABLE checklists ADD COLUMN task_id TEXT",
+  "ALTER TABLE checklists ADD COLUMN date TEXT",
+  "ALTER TABLE checklist_items ADD COLUMN item_key TEXT",
+  "ALTER TABLE checklist_items ADD COLUMN note TEXT",
+  "ALTER TABLE checklist_items ADD COLUMN photo TEXT",
+  "CREATE INDEX IF NOT EXISTS checklists_kind_date ON checklists (kind, date)",
+  "CREATE INDEX IF NOT EXISTS checklists_task ON checklists (task_id)",
+  "CREATE INDEX IF NOT EXISTS checklists_room ON checklists (room_id)",
 ];

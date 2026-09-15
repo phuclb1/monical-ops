@@ -15,6 +15,10 @@ export const TASK_KINDS = [
   "complaint",
   "ooo",
   "follow_up",
+  "shift_open",
+  "shift_close",
+  "checkin",
+  "checkout",
   "general",
 ] as const;
 
@@ -218,6 +222,58 @@ export const TASK_TYPES: TaskType[] = [
     placeholder: "Đôn khăn P.305",
   },
   {
+    kind: "shift_open",
+    label: "Đầu ca",
+    hint: "Checklist routine khi mở ca lễ tân",
+    owner: "reception",
+    toDept: "reception",
+    priority: "priority",
+    room: "none",
+    group: "general",
+    due: "shift_end",
+    canCreate: [],
+    placeholder: "Đầu ca",
+  },
+  {
+    kind: "shift_close",
+    label: "Cuối ca",
+    hint: "Checklist routine trước khi kết ca",
+    owner: "reception",
+    toDept: "reception",
+    priority: "priority",
+    room: "none",
+    group: "general",
+    due: "shift_end",
+    canCreate: [],
+    placeholder: "Cuối ca",
+  },
+  {
+    kind: "checkin",
+    label: "Nhận phòng",
+    hint: "Checklist nhận khách theo phòng — tự sinh ngày đến",
+    owner: "reception",
+    toDept: "reception",
+    priority: "priority",
+    room: "required",
+    group: "room",
+    due: "none",
+    canCreate: [],
+    placeholder: "Nhận P.xxx",
+  },
+  {
+    kind: "checkout",
+    label: "Trả phòng",
+    hint: "Checklist trả khách theo phòng — tự sinh ngày đi",
+    owner: "reception",
+    toDept: "reception",
+    priority: "priority",
+    room: "required",
+    group: "room",
+    due: "none",
+    canCreate: [],
+    placeholder: "Trả P.xxx",
+  },
+  {
     kind: "general",
     label: "Việc khác",
     hint: "Không khớp loại trên — chọn bộ phận nhận",
@@ -240,6 +296,12 @@ export function getTaskType(kind: string | null | undefined): TaskType {
 
 export function taskTypeLabel(kind: string | null | undefined) {
   return getTaskType(kind).label;
+}
+
+export const CHECKLIST_TASK_KINDS: TaskKind[] = ["shift_open", "shift_close", "checkin", "checkout"];
+
+export function isChecklistTaskKind(kind: string | null | undefined) {
+  return CHECKLIST_TASK_KINDS.includes(kind as TaskKind);
 }
 
 export function taskTypesForRole(role: Role) {

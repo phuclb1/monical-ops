@@ -5,10 +5,10 @@ import { addDaysVN, addMinutes, currentShiftType, nid, nextDate, nextShiftSlot, 
 import { isActiveSaleStatus, isOpsBookingCode, isSaleOrigin, isSaleSource, nightlyNet, normalizeDiscount, occupiesNight, parseSaleSource, rangesOverlap, saleQuote, saleStatusToStay } from "./sales";
 import { can } from "./permissions";
 import { dayOverrideId, rosterVersionOf, weekSlotId } from "./roster";
-import { shiftChecklistTemplate } from "./checklists";
-import { getTaskType, isOpenTaskStatus, taskBoardColumn, taskTypeLabel, type TaskBoardColumn } from "./task-types";
+import { ensureShiftChecklists, ensureTodayRoomTasks, loadChecklistByTask, loadChecklistsForRoom, loadChecklistsForStay, requiredPending } from "./checklist-ops";
+import { getTaskType, taskBoardColumn, taskTypeLabel, type TaskBoardColumn } from "./task-types";
 import type { DepartmentCode, HkStatus, Role, SaleSource, SaleStatus, SessionUser, ShiftType, TaskStatus } from "./types";
-import { DEPT_LABEL, HK_LABEL, ROLE_DEPT, SHIFT_LABEL, TASK_STATUS_LABEL, requestKindLabel } from "./constants";
+import { DEPT_LABEL, HK_LABEL, ROLE_DEPT, TASK_STATUS_LABEL, requestKindLabel } from "./constants";
 import { floorOf, roomIdOf, slugTypeName } from "./rooms-catalog";
 import { hashPassword } from "./password";
 import { schedulePush } from "./push";
@@ -220,7 +220,6 @@ export async function getDashboard(user: SessionUser) {
   const shift = await currentOpenShift();
   const rooms = await db.select().from(t.rooms);
   const stays = await db.select().from(t.stays);
-  const tasks = await db.select().from(t.tasks);
   const requests = await db.select().from(t.guestRequests);
   const breakfast = (
     await db.select().from(t.breakfasts).where(eq(t.breakfasts.date, addDay(today, 1))).limit(1)
@@ -235,6 +234,10 @@ export async function getDashboard(user: SessionUser) {
         or(eq(t.notifications.userId, user.id), eq(t.notifications.role, user.role)),
       ),
     );
+
+  if (shift) await ensureShiftChecklists(db, shift, { actorId: user.id });
+  await ensureTodayRoomTasks(db, { actorId: user.id });
+  const tasks = await db.select().from(t.tasks);
 
   const now = Date.now();
   return {
@@ -283,42 +286,23 @@ export async function openShift(user: SessionUser, type?: ShiftType) {
     closedBy: null,
     closeReason: null,
   });
-  const depts: DepartmentCode[] = ["reception", "hk", "kitchen", "utility", "management"];
-  for (const dept of depts) {
-    const cid = nid();
-    await db.insert(t.checklists).values({
-      id: cid,
-      shiftId: id,
-      departmentCode: dept,
-      title: `Checklist ${SHIFT_LABEL[shiftType]} — ${dept}`,
-    });
-    const items = shiftChecklistTemplate(shiftType, dept);
-    if (items.length) {
-      await db.insert(t.checklistItems).values(
-        items.map((item, i) => ({
-          id: nid(),
-          checklistId: cid,
-          label: item.label,
-          required: item.required,
-          done: false,
-          doneBy: null,
-          doneAt: null,
-          skipReason: null,
-          sortOrder: i,
-        })),
-      );
-    }
-  }
+  const created = (await db.select().from(t.shifts).where(eq(t.shifts.id, id)))[0];
+  await ensureShiftChecklists(db, created, { actorId: user.id });
+  await ensureTodayRoomTasks(db, { actorId: user.id });
   await audit(user.id, "shift", id, "open", null, { type: shiftType });
-  return (await db.select().from(t.shifts).where(eq(t.shifts.id, id)))[0];
+  return created;
 }
 
 export async function getShiftBundle(shiftId: string, departmentCode?: string) {
   const db = await getDb();
   const shift = (await db.select().from(t.shifts).where(eq(t.shifts.id, shiftId)))[0];
   if (!shift) return null;
-  const lists = await db.select().from(t.checklists).where(eq(t.checklists.shiftId, shiftId));
-  const filtered = departmentCode ? lists.filter((l) => l.departmentCode === departmentCode || departmentCode === "management") : lists;
+  const lists = (await db.select().from(t.checklists).where(eq(t.checklists.shiftId, shiftId))).filter(
+    (row) => row.kind === "shift_open" || row.kind === "shift_close",
+  );
+  const filtered = departmentCode
+    ? lists.filter((l) => l.departmentCode === departmentCode || departmentCode === "management")
+    : lists;
   const items = await db.select().from(t.checklistItems);
   return {
     shift,
@@ -344,31 +328,70 @@ export async function toggleChecklistItem(user: SessionUser, itemId: string, ski
     })
     .where(eq(t.checklistItems.id, itemId));
   await audit(user.id, "checklist_item", itemId, done ? "done" : "undo", item, { done, skipReason });
+  await syncChecklistTask(user, item.checklistId);
 }
 
 export async function skipChecklistItem(user: SessionUser, itemId: string, reason: string) {
   const db = await getDb();
+  const item = (await db.select().from(t.checklistItems).where(eq(t.checklistItems.id, itemId)))[0];
+  if (!item) throw new Error("Không tìm thấy mục");
   await db
     .update(t.checklistItems)
     .set({ skipReason: reason, done: true, doneBy: user.id, doneAt: nowISO() })
     .where(eq(t.checklistItems.id, itemId));
   await audit(user.id, "checklist_item", itemId, "skip", null, { reason });
+  await syncChecklistTask(user, item.checklistId);
+}
+
+export async function saveChecklistItem(
+  user: SessionUser,
+  itemId: string,
+  patch: { note?: string; photo?: string; skipReason?: string },
+) {
+  const db = await getDb();
+  const item = (await db.select().from(t.checklistItems).where(eq(t.checklistItems.id, itemId)))[0];
+  if (!item) throw new Error("Không tìm thấy mục");
+  const skipReason = patch.skipReason !== undefined ? patch.skipReason || null : item.skipReason;
+  const skipped = Boolean(skipReason);
+  await db
+    .update(t.checklistItems)
+    .set({
+      note: patch.note !== undefined ? patch.note || null : item.note,
+      photo: patch.photo !== undefined ? patch.photo || null : item.photo,
+      skipReason,
+      done: skipped ? true : item.done,
+      doneBy: skipped ? user.id : item.doneBy,
+      doneAt: skipped ? nowISO() : item.doneAt,
+    })
+    .where(eq(t.checklistItems.id, itemId));
+  await audit(user.id, "checklist_item", itemId, "save", item, patch);
+  await syncChecklistTask(user, item.checklistId);
+}
+
+async function syncChecklistTask(user: SessionUser, checklistId: string) {
+  const db = await getDb();
+  const list = (await db.select().from(t.checklists).where(eq(t.checklists.id, checklistId)))[0];
+  if (!list?.taskId) return;
+  const items = await db.select().from(t.checklistItems).where(eq(t.checklistItems.checklistId, checklistId));
+  const pending = requiredPending(items);
+  const task = (await db.select().from(t.tasks).where(eq(t.tasks.id, list.taskId)))[0];
+  if (!task) return;
+  if (!pending.length && ["new", "accepted", "in_progress", "blocked"].includes(task.status)) {
+    await updateTaskStatus(user, task.id, "done", "Checklist xong");
+  }
+  if (pending.length && task.status === "done") {
+    await updateTaskStatus(user, task.id, "in_progress", "Còn mục checklist");
+  }
 }
 
 export function unfinishedRequired(items: { required: boolean; done: boolean; skipReason: string | null }[]) {
-  return items.filter((i) => i.required && !i.done && !i.skipReason);
+  return requiredPending(items);
 }
 
 export async function closeShift(user: SessionUser, closeReason?: string) {
   const db = await getDb();
   const shift = await currentOpenShift();
   if (!shift) throw new Error("Không có ca đang mở");
-  const bundle = await getShiftBundle(shift.id, user.role === "manager" ? undefined : user.departmentCode);
-  const items = bundle?.checklists.flatMap((c) => c.items) ?? [];
-  const blocked = unfinishedRequired(items);
-  if (blocked.length && !closeReason) {
-    throw new Error(`Còn ${blocked.length} mục bắt buộc chưa xử lý. Ghi lý do để kết ca.`);
-  }
   const ho = (await db.select().from(t.handovers).where(eq(t.handovers.fromShiftId, shift.id)))[0];
   if (!ho && !closeReason) {
     throw new Error("Chưa tạo bàn giao ca. Tạo bàn giao hoặc ghi lý do.");
@@ -390,6 +413,7 @@ export async function listTasks(filter?: {
   column?: TaskBoardColumn;
 }) {
   const db = await getDb();
+  await ensureTodayRoomTasks(db, { actorId: "system" });
   let rows = await db.select().from(t.tasks).orderBy(desc(t.tasks.createdAt));
   if (filter?.status) rows = rows.filter((r) => r.status === filter.status);
   if (filter?.column) rows = rows.filter((r) => taskBoardColumn(r.status) === filter.column);
@@ -412,7 +436,8 @@ export async function getTask(id: string) {
   const history = await db.select().from(t.taskHistory).where(eq(t.taskHistory.taskId, id)).orderBy(desc(t.taskHistory.createdAt));
   const users = await db.select().from(t.users);
   const room = task.roomId ? (await db.select().from(t.rooms).where(eq(t.rooms.id, task.roomId)))[0] : null;
-  return { task, history, users, room };
+  const checklist = await loadChecklistByTask(db, id);
+  return { task, history, users, room, checklist };
 }
 
 function parseDueAt(raw?: string) {
@@ -921,6 +946,8 @@ export async function createRoomSale(user: SessionUser, data: SaleInput) {
   const db = await getDb();
   await db.insert(t.roomSales).values(row);
   await syncStayFromSale(user.id, row);
+  const dbAfter = await getDb();
+  await ensureTodayRoomTasks(dbAfter, { actorId: user.id });
   await notify({
     role: user.role === "manager" ? "reception" : "manager",
     title: `Bán P.${room.number} · ${guestName}`,
@@ -970,6 +997,7 @@ export async function updateRoomSale(user: SessionUser, id: string, data: SaleIn
   };
   await db.update(t.roomSales).set(patch).where(eq(t.roomSales.id, id));
   await syncStayFromSale(user.id, { ...before, ...patch });
+  await ensureTodayRoomTasks(db, { actorId: user.id });
   await audit(user.id, "room_sale", id, "update", before, patch);
 }
 
@@ -985,6 +1013,7 @@ export async function checkinRoomSale(user: SessionUser, id: string) {
     .set({ status: "inhouse", updatedAt: nowISO(), updatedBy: user.id })
     .where(eq(t.roomSales.id, id));
   await syncStayFromSale(user.id, { ...before, status: "inhouse" });
+  await ensureTodayRoomTasks(db, { actorId: user.id });
   await audit(user.id, "room_sale", id, "checkin", before, { status: "inhouse" });
 }
 
@@ -1001,6 +1030,7 @@ export async function checkoutRoomSale(user: SessionUser, id: string) {
     .set({ status: "departed", checkOut, updatedAt: nowISO(), updatedBy: user.id })
     .where(eq(t.roomSales.id, id));
   await syncStayFromSale(user.id, { ...before, status: "departed", checkOut });
+  await ensureTodayRoomTasks(db, { actorId: user.id });
   await audit(user.id, "room_sale", id, "checkout", before, { status: "departed", checkOut });
 }
 
@@ -1016,6 +1046,7 @@ export async function cancelRoomSale(user: SessionUser, id: string, asNoShow = f
     .set({ status, updatedAt: nowISO(), updatedBy: user.id })
     .where(eq(t.roomSales.id, id));
   await syncStayFromSale(user.id, { ...before, status });
+  await ensureTodayRoomTasks(db, { actorId: user.id });
   await audit(user.id, "room_sale", id, asNoShow ? "no_show" : "cancel", before, { status });
 }
 
@@ -1050,8 +1081,26 @@ export async function listStays() {
 }
 
 export async function getStay(id: string) {
+  const db = await getDb();
+  await ensureTodayRoomTasks(db, { actorId: "system" });
   const all = await listStays();
-  return all.find((s) => s.id === id) ?? null;
+  const stay = all.find((s) => s.id === id) ?? null;
+  if (!stay) return null;
+  const byStay = await loadChecklistsForStay(db, id);
+  const byRoom = stay.roomId ? await loadChecklistsForRoom(db, stay.roomId) : [];
+  const seen = new Set<string>();
+  const checklists = [...byStay, ...byRoom].filter((row) => {
+    if (seen.has(row.id)) return false;
+    seen.add(row.id);
+    return true;
+  });
+  return { ...stay, checklists };
+}
+
+export async function getRoomDayChecklists(roomId: string) {
+  const db = await getDb();
+  await ensureTodayRoomTasks(db, { actorId: "system" });
+  return loadChecklistsForRoom(db, roomId);
 }
 
 export async function updateStay(user: SessionUser, id: string, patch: Record<string, unknown>) {
@@ -1066,6 +1115,7 @@ export async function updateStay(user: SessionUser, id: string, patch: Record<st
     if (before.status === "arriving" || before.status === "no_show") next.status = "inhouse";
   }
   await db.update(t.stays).set(next as typeof t.stays.$inferInsert).where(eq(t.stays.id, id));
+  await ensureTodayRoomTasks(db, { actorId: user.id });
   await audit(user.id, "stay", id, "update", before, next);
 }
 
