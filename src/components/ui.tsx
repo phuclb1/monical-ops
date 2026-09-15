@@ -64,7 +64,7 @@ export function Btn({
     <button
       {...props}
       className={clsx(
-        "inline-flex min-h-12 items-center justify-center rounded-xl px-4 text-sm font-semibold disabled:opacity-50",
+        "inline-flex min-h-12 items-center justify-center rounded-xl px-4 text-sm font-semibold disabled:opacity-50 active:brightness-95",
         map[variant],
         props.className,
       )}

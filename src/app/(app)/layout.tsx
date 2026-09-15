@@ -8,16 +8,13 @@ import { extraNav } from "@/lib/nav";
 import { BottomNav, SideNav } from "@/components/app-nav";
 import { Logo } from "@/components/logo";
 import { PushPrompt } from "@/components/push-prompt";
-import { listNotifications } from "@/lib/repos";
+import { countUnreadNotifications } from "@/lib/repos";
 import { logoutAction } from "@/actions/auth";
-
-export const dynamic = "force-dynamic";
 
 export default async function AppLayout({ children }: { children: ReactNode }) {
   const user = await getSession();
   if (!user) redirect("/login");
-  const notifs = await listNotifications(user);
-  const unread = notifs.filter((n) => !n.read).length;
+  const unread = await countUnreadNotifications(user);
   const extras = extraNav(user.role);
 
   return (
@@ -43,7 +40,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
       </aside>
 
       <div className="mx-auto min-h-dvh w-full max-w-md pb-[calc(6.25rem+env(safe-area-inset-bottom))] md:max-w-none md:flex-1 md:pb-0">
-        <header className="sticky top-0 z-20 flex items-center justify-between border-b border-line bg-sand/95 px-4 py-2.5 pt-[max(0.5rem,env(safe-area-inset-top))] backdrop-blur md:px-6 md:pt-2">
+        <header className="sticky top-0 z-20 flex items-center justify-between border-b border-line bg-sand px-4 py-2.5 pt-[max(0.5rem,env(safe-area-inset-top))] md:bg-sand/95 md:px-6 md:pt-2 md:backdrop-blur">
           <div className="flex items-center gap-2 md:hidden">
             <div className="overflow-hidden rounded-lg bg-burgundy">
               <Logo className="h-11 w-[34px] object-cover object-[center_8%]" />

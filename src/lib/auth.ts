@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { cookies } from "next/headers";
 import { eq } from "drizzle-orm";
 import { getDb } from "./db";
@@ -7,14 +8,14 @@ import type { DepartmentCode, Role, SessionUser } from "./types";
 
 export { readSessionToken, signSession, SESSION_COOKIE };
 
-export async function getSession(): Promise<SessionUser | null> {
+export const getSession = cache(async (): Promise<SessionUser | null> => {
   const store = await cookies();
   const token = store.get(SESSION_COOKIE)?.value;
   if (!token) return null;
   const session = await readSessionToken(token);
   if (!session) return null;
   return loadUserSession(session.id);
-}
+});
 
 export async function requireSession(): Promise<SessionUser> {
   const session = await getSession();
@@ -39,7 +40,7 @@ export async function clearSessionCookie() {
   store.delete(SESSION_COOKIE);
 }
 
-export async function loadUserSession(userId: string): Promise<SessionUser | null> {
+export const loadUserSession = cache(async (userId: string): Promise<SessionUser | null> => {
   const db = await getDb();
   const rows = await db
     .select({
@@ -61,4 +62,4 @@ export async function loadUserSession(userId: string): Promise<SessionUser | nul
     role: row.role as Role,
     departmentCode: row.departmentCode as DepartmentCode,
   };
-}
+});

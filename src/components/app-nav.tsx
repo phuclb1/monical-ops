@@ -49,7 +49,7 @@ function navActive(path: string, href: string, others: string[]) {
 export function BottomNav() {
   const path = usePathname();
   return (
-    <nav className="fixed inset-x-0 bottom-0 z-30 border-t border-line bg-[#fffdf8]/95 pb-[env(safe-area-inset-bottom)] backdrop-blur-md md:hidden">
+    <nav className="fixed inset-x-0 bottom-0 z-30 border-t border-line bg-[#fffdf8] pb-[env(safe-area-inset-bottom)] md:hidden">
       <ul className="mx-auto grid max-w-md grid-cols-5 px-1 pt-1">
         {PRIMARY_NAV.map((item) => {
           const active = path === item.href || path.startsWith(`${item.href}/`);
@@ -58,8 +58,9 @@ export function BottomNav() {
             <li key={item.href}>
               <Link
                 href={item.href}
+                prefetch
                 className={clsx(
-                  "flex h-14 min-h-14 flex-col items-center justify-center gap-0.5 text-[12px] font-semibold",
+                  "flex h-14 min-h-14 flex-col items-center justify-center gap-0.5 rounded-xl text-[12px] font-semibold",
                   active ? "text-burgundy" : "text-[#8a7a72]",
                 )}
               >
@@ -87,6 +88,7 @@ export function SideNav({ extras }: { extras: { href: string; label: string }[] 
           <Link
             key={item.href}
             href={item.href}
+            prefetch
             className={clsx(
               "flex min-h-11 items-center gap-3 rounded-xl px-3 text-sm font-semibold",
               active ? "bg-burgundy text-cream" : "text-[#3d2a2a] hover:bg-white",

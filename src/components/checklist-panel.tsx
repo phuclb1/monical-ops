@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import { saveCheckItemAction, skipCheckAction, toggleCheckAction } from "@/actions/ops";
 import { CHECKLIST_KIND_LABEL, isChecklistKind } from "@/lib/checklists";
 import { Chip } from "@/components/ui";
@@ -49,23 +49,30 @@ function ItemRow({ item }: { item: ChecklistItemView }) {
   const [note, setNote] = useState(item.note || "");
   const [reason, setReason] = useState(item.skipReason || "");
   const [photo, setPhoto] = useState(item.photo || "");
+  const [done, setDone] = useState(item.done);
   const [pending, start] = useTransition();
   const fileRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    setDone(item.done);
+  }, [item.done]);
 
   return (
     <li className="rounded-xl border border-line bg-white p-3">
       <div className="flex items-start gap-2">
-        <form action={toggleCheckAction}>
+        <form
+          action={(formData) => {
+            setDone((value) => !value);
+            start(() => toggleCheckAction(formData));
+          }}
+        >
           <input type="hidden" name="itemId" value={item.id} />
-          <button
-            className="mt-0.5 flex h-6 w-6 items-center justify-center rounded-md border border-line bg-white text-xs"
-            disabled={pending}
-          >
-            {item.done ? "✓" : ""}
+          <button type="submit" className="hit-check mt-0.5 flex items-center justify-center rounded-lg border border-line bg-white text-sm font-bold">
+            {done ? "✓" : ""}
           </button>
         </form>
         <div className="min-w-0 flex-1">
-          <p className={item.done ? "text-sm line-through text-[#8a918f]" : "text-sm font-medium"}>{item.label}</p>
+          <p className={done ? "text-sm line-through text-[#8a918f]" : "text-sm font-medium"}>{item.label}</p>
           {item.required ? <p className="text-[11px] text-[#c47b12]">Bắt buộc</p> : <p className="text-[11px] text-[#8a918f]">Không bắt buộc</p>}
           {item.skipReason ? <p className="text-[11px] text-[#9a5b00]">Bỏ qua: {item.skipReason}</p> : null}
         </div>

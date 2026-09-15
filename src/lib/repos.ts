@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { and, desc, eq, like, ne, or, sql } from "drizzle-orm";
 import { getDb } from "./db";
 import * as t from "./db/schema";
@@ -43,7 +44,7 @@ export async function notify(input: { userId?: string | null; role?: string | nu
   await schedulePush(input);
 }
 
-export async function listUsers() {
+export const listUsers = cache(async () => {
   const db = await getDb();
   return db
     .select({
@@ -58,7 +59,7 @@ export async function listUsers() {
     })
     .from(t.users)
     .innerJoin(t.departments, eq(t.users.departmentId, t.departments.id));
-}
+});
 
 export type ReceptionDuty = {
   date: string;
@@ -214,7 +215,7 @@ export async function clearDayOverrides(actor: SessionUser, date: string) {
   await audit(actor.id, "roster_day", date, "clear", { date }, null);
 }
 
-export async function getDashboard(user: SessionUser) {
+export const getDashboard = cache(async (user: SessionUser) => {
   const db = await getDb();
   const today = todayVN();
   const shift = await currentOpenShift();
@@ -260,13 +261,13 @@ export async function getDashboard(user: SessionUser) {
     duty: await receptionDuty(today, (shift?.type as ShiftType) || currentShiftType()),
     tomorrowDuty: await receptionDutyDay(nextDate(today)),
   };
-}
+});
 
-export async function currentOpenShift() {
+export const currentOpenShift = cache(async () => {
   const db = await getDb();
   const rows = await db.select().from(t.shifts).where(eq(t.shifts.status, "open")).orderBy(desc(t.shifts.openedAt)).limit(1);
   return rows[0] ?? null;
-}
+});
 
 export async function openShift(user: SessionUser, type?: ShiftType) {
   const db = await getDb();
@@ -591,15 +592,15 @@ export async function saveZaloDraft(id: string, message: string) {
   await db.update(t.tasks).set({ zaloMessage: message, updatedAt: nowISO() }).where(eq(t.tasks.id, id));
 }
 
-export async function listRooms() {
+export const listRooms = cache(async () => {
   const db = await getDb();
   return db.select().from(t.rooms);
-}
+});
 
-export async function listRoomTypes() {
+export const listRoomTypes = cache(async () => {
   const db = await getDb();
   return db.select().from(t.roomTypes).orderBy(t.roomTypes.sortOrder, t.roomTypes.name);
-}
+});
 
 export async function createRoomType(actor: SessionUser, name: string) {
   const db = await getDb();
@@ -1469,6 +1470,20 @@ export async function listNotifications(user: SessionUser) {
     .where(or(eq(t.notifications.userId, user.id), eq(t.notifications.role, user.role), sql`${t.notifications.userId} is null`))
     .orderBy(desc(t.notifications.createdAt));
 }
+
+export const countUnreadNotifications = cache(async (user: SessionUser) => {
+  const db = await getDb();
+  const rows = await db
+    .select({ n: sql<number>`count(*)` })
+    .from(t.notifications)
+    .where(
+      and(
+        or(eq(t.notifications.userId, user.id), eq(t.notifications.role, user.role), sql`${t.notifications.userId} is null`),
+        eq(t.notifications.read, false),
+      ),
+    );
+  return Number(rows[0]?.n ?? 0);
+});
 
 export async function markNotifRead(id: string) {
   const db = await getDb();

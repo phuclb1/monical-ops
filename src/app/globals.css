@@ -44,6 +44,35 @@ body {
   -webkit-tap-highlight-color: transparent;
 }
 
+/* Instant press: native highlight was cleared on html/body (inherits). Restore on
+   controls + :active overlay so the finger-down is visible before navigation/RSC. */
+a,
+button,
+summary,
+[role="button"],
+.tab-chip,
+.hit-btn,
+.cta-link,
+label:has(> input[type="checkbox"]),
+label:has(> input[type="radio"]) {
+  cursor: pointer;
+  -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: color-mix(in srgb, var(--burgundy) 22%, transparent);
+  transition: none;
+}
+
+a:active,
+button:active:not(:disabled),
+summary:active,
+[role="button"]:active,
+.tab-chip:active,
+.hit-btn:active,
+.cta-link:active,
+label:has(> input[type="checkbox"]):active,
+label:has(> input[type="radio"]):active {
+  filter: brightness(0.92);
+}
+
 body {
   font-family: var(--font-be-vietnam), ui-sans-serif, system-ui, sans-serif;
 }
@@ -202,6 +231,15 @@ label {
   font-weight: 700;
   color: var(--ink);
   text-decoration: none;
+}
+
+.hit-check {
+  width: 48px;
+  height: 48px;
+  min-width: 48px;
+  min-height: 48px;
+  padding: 0;
+  flex-shrink: 0;
 }
 
 .cta-link {

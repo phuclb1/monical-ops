@@ -25,6 +25,8 @@ export function PwaBoot() {
       if (Date.now() - last > 10 * 60 * 1000) setLocked(true);
     }, 10_000);
     ["pointerdown", "keydown", "touchstart"].forEach((n) => window.addEventListener(n, bump));
+    // iOS only applies :active if a touchstart listener exists on document/body.
+    document.addEventListener("touchstart", () => {}, { passive: true });
     return () => {
       window.removeEventListener("beforeinstallprompt", onPrompt);
       window.clearInterval(tick);
