@@ -1,3 +1,4 @@
+/** D1 allows at most 100 bound parameters per query. Keep batches well under that. */
 export async function insertInBatches<T extends Record<string, unknown>>(
   insert: (rows: T[]) => Promise<unknown>,
   rows: T[],

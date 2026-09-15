@@ -7,6 +7,7 @@ import { ROLE_LABEL } from "@/lib/constants";
 import { extraNav } from "@/lib/nav";
 import { BottomNav, SideNav } from "@/components/app-nav";
 import { Logo } from "@/components/logo";
+import { PushPrompt } from "@/components/push-prompt";
 import { listNotifications } from "@/lib/repos";
 import { logoutAction } from "@/actions/auth";
 
@@ -64,6 +65,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
             ) : null}
           </Link>
         </header>
+        <PushPrompt />
         <div className="page-frame">{children}</div>
         <BottomNav />
       </div>

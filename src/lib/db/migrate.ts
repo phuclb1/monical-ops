@@ -77,9 +77,10 @@ CREATE TABLE IF NOT EXISTS reception_week_slots (
   id TEXT PRIMARY KEY,
   weekday INTEGER NOT NULL,
   shift_type TEXT NOT NULL,
-  user_id TEXT NOT NULL
+  user_id TEXT NOT NULL,
+  effective_from TEXT NOT NULL DEFAULT '1970-01-01'
 );
-CREATE UNIQUE INDEX IF NOT EXISTS reception_week_slots_day_shift ON reception_week_slots (weekday, shift_type);
+CREATE UNIQUE INDEX IF NOT EXISTS reception_week_slots_day_shift_from ON reception_week_slots (weekday, shift_type, effective_from);
 CREATE TABLE IF NOT EXISTS reception_day_overrides (
   id TEXT PRIMARY KEY,
   date TEXT NOT NULL,
@@ -252,6 +253,16 @@ CREATE TABLE IF NOT EXISTS audit_logs (
   after_json TEXT,
   created_at TEXT NOT NULL
 );
+CREATE TABLE IF NOT EXISTS push_subscriptions (
+  id TEXT PRIMARY KEY,
+  user_id TEXT NOT NULL,
+  endpoint TEXT NOT NULL UNIQUE,
+  p256dh TEXT NOT NULL,
+  auth TEXT NOT NULL,
+  user_agent TEXT,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+);
 `;
 
 export const SCHEMA_PATCHES = [
@@ -259,4 +270,18 @@ export const SCHEMA_PATCHES = [
   "ALTER TABLE tasks ADD COLUMN stay_id TEXT",
   "CREATE INDEX IF NOT EXISTS tasks_kind ON tasks (kind)",
   "CREATE INDEX IF NOT EXISTS tasks_stay ON tasks (stay_id)",
+  `CREATE TABLE IF NOT EXISTS push_subscriptions (
+  id TEXT PRIMARY KEY,
+  user_id TEXT NOT NULL,
+  endpoint TEXT NOT NULL UNIQUE,
+  p256dh TEXT NOT NULL,
+  auth TEXT NOT NULL,
+  user_agent TEXT,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+)`,
+  "CREATE INDEX IF NOT EXISTS push_subscriptions_user ON push_subscriptions (user_id)",
+  "ALTER TABLE reception_week_slots ADD COLUMN effective_from TEXT NOT NULL DEFAULT '1970-01-01'",
+  "DROP INDEX IF EXISTS reception_week_slots_day_shift",
+  "CREATE UNIQUE INDEX IF NOT EXISTS reception_week_slots_day_shift_from ON reception_week_slots (weekday, shift_type, effective_from)",
 ];

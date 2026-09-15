@@ -18,6 +18,8 @@
   "vars": {
     "NEXTJS_ENV": "production",
     "NEXT_PUBLIC_HOTEL_NAME": "MONICAL hotel dalat",
-    "NEXT_PUBLIC_APP_URL": "https://ops-monical.phuclb1.workers.dev"
+    "NEXT_PUBLIC_APP_URL": "https://ops-monical.phuclb1.workers.dev",
+    "NEXT_PUBLIC_VAPID_PUBLIC_KEY": "BB5b4KJ43Tmex5SVN1wDfoBwuyf2g63XM3wMVna9Sm2BEEwwO__XUs9zNKsffkm40zI1cyewYmEIe3IpqQwqeQw",
+    "VAPID_SUBJECT": "https://ops-monical.phuclb1.workers.dev"
   }
 }

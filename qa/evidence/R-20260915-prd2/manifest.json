@@ -1,0 +1,230 @@
+{
+  "runId": "R-20260915-prd2",
+  "date": "2026-09-15T04:15:18.898Z",
+  "commit": "b3a95be-dirty",
+  "env": "https://ops-monical.phuclb1.workers.dev",
+  "pass": 17,
+  "fail": 0,
+  "skip": 14,
+  "total": 31,
+  "passRate": "100%",
+  "results": [
+    {
+      "id": "TC-01",
+      "title": "Màn đăng nhập",
+      "result": "pass",
+      "evidence": "qa/evidence/R-20260915-prd2/TC-01.png",
+      "note": ""
+    },
+    {
+      "id": "TC-02",
+      "title": "Login sai mật khẩu",
+      "result": "pass",
+      "evidence": "qa/evidence/R-20260915-prd2/TC-02.png",
+      "note": ""
+    },
+    {
+      "id": "TC-03",
+      "title": "Lễ tân đăng nhập — Today ca đang mở",
+      "result": "skip",
+      "evidence": "",
+      "note": "prd chỉ có quanly, không có tài khoản lễ tân"
+    },
+    {
+      "id": "TC-04",
+      "title": "Quản lý Today — không bắt mở ca",
+      "result": "pass",
+      "evidence": "qa/evidence/R-20260915-prd2/TC-04.png",
+      "note": ""
+    },
+    {
+      "id": "TC-05",
+      "title": "HK không vào trang nhân viên",
+      "result": "skip",
+      "evidence": "",
+      "note": "prd không có user HK"
+    },
+    {
+      "id": "TC-10",
+      "title": "Tab khách đến — Nguyễn Thu Hà P.105",
+      "result": "skip",
+      "evidence": "",
+      "note": "prd không seed kịch bản khách"
+    },
+    {
+      "id": "TC-11",
+      "title": "Tab đang ở — Khoa + Hạnh",
+      "result": "skip",
+      "evidence": "",
+      "note": "prd không seed kịch bản khách"
+    },
+    {
+      "id": "TC-12",
+      "title": "Tab khách đi — Phạm Đức Anh P.102",
+      "result": "skip",
+      "evidence": "",
+      "note": "prd không seed kịch bản khách"
+    },
+    {
+      "id": "TC-13",
+      "title": "Thẻ khách check-in P.105",
+      "result": "skip",
+      "evidence": "",
+      "note": "prd không seed kịch bản khách"
+    },
+    {
+      "id": "TC-14",
+      "title": "Khách gửi ô tô + timer đăng ký",
+      "result": "skip",
+      "evidence": "",
+      "note": "prd không seed kịch bản khách"
+    },
+    {
+      "id": "TC-15",
+      "title": "Khách đi — thiếu hóa đơn + dọn phòng trả",
+      "result": "skip",
+      "evidence": "",
+      "note": "prd không seed kịch bản khách"
+    },
+    {
+      "id": "TC-20",
+      "title": "Bảng việc: thay khăn / dọn phòng / checkout",
+      "result": "skip",
+      "evidence": "",
+      "note": "prd không seed việc demo"
+    },
+    {
+      "id": "TC-21",
+      "title": "Việc «cần thêm HK» hiện với lễ tân",
+      "result": "skip",
+      "evidence": "",
+      "note": "prd không có lễ tân / việc demo"
+    },
+    {
+      "id": "TC-21b",
+      "title": "Quản lý thấy việc thêm HK",
+      "result": "skip",
+      "evidence": "",
+      "note": "prd không seed việc demo"
+    },
+    {
+      "id": "TC-24",
+      "title": "HK thấy khăn / dọn / thêm HK",
+      "result": "skip",
+      "evidence": "",
+      "note": "prd không có user HK"
+    },
+    {
+      "id": "TC-25",
+      "title": "HK tạo việc",
+      "result": "skip",
+      "evidence": "",
+      "note": "prd không có user HK"
+    },
+    {
+      "id": "TC-30",
+      "title": "Báo ăn sáng ngày mai (số + dị ứng P.105)",
+      "result": "skip",
+      "evidence": "",
+      "note": "prd không seed số ăn sáng demo"
+    },
+    {
+      "id": "TC-10p",
+      "title": "Lễ tân — các tab khách (prd)",
+      "result": "pass",
+      "evidence": "qa/evidence/R-20260915-prd2/TC-10p.png",
+      "note": ""
+    },
+    {
+      "id": "TC-20p",
+      "title": "Bảng việc trống / cột Mới",
+      "result": "pass",
+      "evidence": "qa/evidence/R-20260915-prd2/TC-20p.png",
+      "note": ""
+    },
+    {
+      "id": "TC-22",
+      "title": "Tạo việc — loại lễ tân (quản lý cũng tạo được)",
+      "result": "pass",
+      "evidence": "qa/evidence/R-20260915-prd2/TC-22.png",
+      "note": ""
+    },
+    {
+      "id": "TC-23",
+      "title": "Tạo việc — loại quản lý",
+      "result": "pass",
+      "evidence": "qa/evidence/R-20260915-prd2/TC-23.png",
+      "note": ""
+    },
+    {
+      "id": "TC-30p",
+      "title": "Bếp / dự báo ăn sáng",
+      "result": "pass",
+      "evidence": "qa/evidence/R-20260915-prd2/TC-30p.png",
+      "note": ""
+    },
+    {
+      "id": "TC-40",
+      "title": "Danh sách phòng",
+      "result": "pass",
+      "evidence": "qa/evidence/R-20260915-prd2/TC-40.png",
+      "note": ""
+    },
+    {
+      "id": "TC-41",
+      "title": "Quản lý hạng phòng",
+      "result": "pass",
+      "evidence": "qa/evidence/R-20260915-prd2/TC-41.png",
+      "note": ""
+    },
+    {
+      "id": "TC-50",
+      "title": "Bàn giao",
+      "result": "pass",
+      "evidence": "qa/evidence/R-20260915-prd2/TC-50.png",
+      "note": ""
+    },
+    {
+      "id": "TC-60",
+      "title": "Staff prd — chỉ quản lý",
+      "result": "pass",
+      "evidence": "qa/evidence/R-20260915-prd2/TC-60.png",
+      "note": ""
+    },
+    {
+      "id": "TC-61",
+      "title": "Lịch lễ tân — xếp 1 lần",
+      "result": "pass",
+      "evidence": "qa/evidence/R-20260915-prd2/TC-61.png",
+      "note": ""
+    },
+    {
+      "id": "TC-61s",
+      "title": "Lưu lịch tuần (batch D1)",
+      "result": "pass",
+      "evidence": "qa/evidence/R-20260915-prd2/TC-61s.png",
+      "note": ""
+    },
+    {
+      "id": "TC-70",
+      "title": "Ca / checklist (quản lý)",
+      "result": "pass",
+      "evidence": "qa/evidence/R-20260915-prd2/TC-70.png",
+      "note": ""
+    },
+    {
+      "id": "TC-83",
+      "title": "Prompt bật thông báo điện thoại",
+      "result": "pass",
+      "evidence": "qa/evidence/R-20260915-prd2/TC-83.png",
+      "note": ""
+    },
+    {
+      "id": "TC-06",
+      "title": "Đăng xuất về login",
+      "result": "pass",
+      "evidence": "qa/evidence/R-20260915-prd2/TC-06.png",
+      "note": ""
+    }
+  ]
+}

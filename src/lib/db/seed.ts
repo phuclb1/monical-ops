@@ -93,6 +93,7 @@ export async function wipeAllLocal(db: AppDb) {
   await db.delete(t.notifications);
   await db.delete(t.formSubmissions);
   await db.delete(t.auditLogs);
+  await db.delete(t.pushSubscriptions);
   await db.delete(t.receptionDayOverrides);
   await db.delete(t.receptionWeekSlots);
   await db.delete(t.rooms);
@@ -541,15 +542,19 @@ export async function syncReceptionRoster(db: AppDb) {
     ids.has(LOCAL_WEEK_DUTY.morning) && ids.has(LOCAL_WEEK_DUTY.afternoon) && ids.has(LOCAL_WEEK_DUTY.night)
       ? LOCAL_WEEK_DUTY
       : DEFAULT_WEEK_DUTY;
+  const from = todayVN();
   const rows = WEEKDAYS.flatMap((day) =>
     ROSTER_SHIFTS.filter((shift) => ids.has(duty[shift])).map((shift) => ({
-      id: weekSlotId(day.iso, shift),
+      id: weekSlotId(day.iso, shift, from),
       weekday: day.iso,
       shiftType: shift,
       userId: duty[shift],
+      effectiveFrom: from,
     })),
   );
-  if (rows.length) await db.insert(t.receptionWeekSlots).values(rows);
+  if (rows.length) {
+    await insertInBatches((batch) => db.insert(t.receptionWeekSlots).values(batch), rows);
+  }
 }
 
 export async function syncRoomCatalog(db: AppDb, opts?: { prune?: boolean }) {

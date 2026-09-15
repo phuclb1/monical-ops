@@ -82,7 +82,7 @@ export default async function TodayPage() {
           </ul>
           {can(user.role, "manageRoster") ? (
             <Link href="/roster" className="mt-3 block text-sm font-semibold text-teal">
-              Xếp lịch / đổi ca ngày mai
+              Lịch lễ tân (xếp 1 lần, đổi khi cần)
             </Link>
           ) : null}
         </Card>

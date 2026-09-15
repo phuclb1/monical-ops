@@ -29,11 +29,16 @@ function refresh() {
 export async function saveWeekRosterAction(formData: FormData) {
   const user = await requireManager();
   try {
+    const fill: Record<ShiftType, string> = {
+      morning: String(formData.get("fill-morning") || ""),
+      afternoon: String(formData.get("fill-afternoon") || ""),
+      night: String(formData.get("fill-night") || ""),
+    };
     const slots = WEEKDAYS.flatMap((day) =>
       SHIFT_TYPES.map((shift) => ({
         weekday: day.iso,
         shiftType: shift,
-        userId: String(formData.get(`w-${day.iso}-${shift}`) || ""),
+        userId: fill[shift] || String(formData.get(`w-${day.iso}-${shift}`) || ""),
       })),
     ).filter((slot) => slot.userId);
     await repo.saveWeekRoster(user, slots);

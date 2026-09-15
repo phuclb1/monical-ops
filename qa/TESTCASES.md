@@ -4,11 +4,18 @@ File này là sổ QA. Mỗi lần test: ghi **commit**, **pass/fail**, và **sc
 
 ## Cách chạy một vòng test
 
-1. Local data kịch bản (3 lễ tân + 1 HK): `npm run db:reseed-local`
+**Local** (kịch bản đầy đủ: 3 lễ tân + 1 HK):
+
+1. Data: `npm run db:reseed-local`
 2. App: `http://localhost:3002`
-3. Chụp evidence + assert: `npm run qa:run`
-4. Copy block **Run mới nhất** từ `qa/evidence/<run-id>/manifest.json` vào bảng dưới (hoặc để agent cập nhật file này).
-5. Ghi commit:
+3. `npm run qa:run`
+
+**PRD** (chỉ `quanly`, không seed khách/việc demo — case kịch bản local bị skip):
+
+1. App: `https://ops-monical.phuclb1.workers.dev`
+2. `npm run qa:run:prd`
+
+Sau đó copy block **Run mới nhất** từ `qa/evidence/<run-id>/manifest.json` vào bảng dưới (hoặc để agent cập nhật file này). Ghi commit:
 
 ```bash
 git rev-parse --short HEAD
@@ -19,25 +26,29 @@ Evidence (ảnh) nằm tại `qa/evidence/<run-id>/TC-xx.png` — **đã gitigno
 
 Tài khoản local (mật khẩu `123456`): `tuyen` lễ tân tối · `ngan` sáng · `thu` chiều · `uyen` HK · `quanly` quản lý.
 
+Tài khoản PRD: chỉ `quanly` / `123456`.
+
 ---
 
 ## Run mới nhất
 
 | | |
 |---|---|
-| **Run** | `R-20260914-1` |
-| **Ngày** | 2026-09-14 22:49 +07 |
-| **Commit** | `8d2a100-dirty` (HEAD `8d2a100`, working tree chưa commit — seed local, iPhone, task board, staff) |
-| **Môi trường** | local `http://localhost:3002` · data `db:reseed-local` |
-| **Pass** | **24 / 24** |
+| **Run** | `R-20260915-prd2` |
+| **Ngày** | 2026-09-15 11:12 +07 |
+| **Commit** | `b3a95be-dirty` |
+| **Môi trường** | **prd** `https://ops-monical.phuclb1.workers.dev` · Worker `bf8342a9` |
+| **Pass** | **17 / 17** đã chạy |
 | **Fail** | 0 |
-| **Skip** | 12 case catalog chưa gắn runner |
+| **Skip** | 14 (kịch bản local: lễ tân/HK/khách/việc demo) |
 | **Tỷ lệ pass (đã chạy)** | **100%** |
-| **Tỷ lệ pass (cả catalog)** | 24 / 36 = **67%** (phần còn lại chưa test vòng này) |
+| **Ghi chú** | Login hết 500. `TC-61s` lưu lịch tuần (21 ca, batch D1) pass. |
+
+Local gần nhất vẫn là `R-20260914-1` · **24/24 = 100%** trên `:3002`.
 
 ---
 
-## Catalog + kết quả run `R-20260914-1`
+## Catalog + kết quả run `R-20260914-1` (local)
 
 Trạng thái: `pass` · `fail` · `skip` (chưa chạy vòng này).
 
@@ -125,6 +136,22 @@ Dùng sau `npm run db:reseed-local`.
 ## Lịch sử run
 
 Thêm block mới **trên cùng** mỗi lần test.
+
+### R-20260915-prd2 — 2026-09-15
+
+- Commit: `b3a95be-dirty`
+- Env: https://ops-monical.phuclb1.workers.dev · Worker `bf8342a9-8961-44dc-b596-15e868704f9d`
+- Pass / Fail / Skip: **17 / 0 / 14** · đã chạy 17 = **100%**
+- Evidence: `qa/evidence/R-20260915-prd2/`
+- Ghi chú: deploy gồm fix `prepareD1` + insert lịch theo lô. `TC-61s` bấm Áp dụng từ hôm nay trên lưới đã đủ 21 ca → không còn `Failed query`.
+
+### R-20260915-prd — 2026-09-15
+
+- Commit: `b3a95be-dirty`
+- Env: https://ops-monical.phuclb1.workers.dev
+- Pass / Fail / Skip: **1 / 2 / 27** · đã chạy 3 = **33%**
+- Evidence: `qa/evidence/R-20260915-prd/`
+- Ghi chú: GET `/login` pass (`TC-01`). POST `/api/auth/login` **500** (cả mật khẩu đúng và sai) → `TC-02`/`TC-04` fail; 13 case cần session skip. 14 case kịch bản local skip vì PRD chỉ có `quanly`, không seed khách/việc. Nguyên nhân khả dĩ: `prepareD1` chạy `CREATE UNIQUE INDEX ... effective_from` trước khi ALTER cột trên D1 cũ — đã sửa try/catch từng statement trong `src/lib/db/index.ts`, **chưa deploy**. Cần `npm run deploy` rồi chạy lại `npm run qa:run:prd`.
 
 ### R-20260914-1 — 2026-09-14
 

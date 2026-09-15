@@ -85,6 +85,7 @@ export const receptionWeekSlots = sqliteTable("reception_week_slots", {
   weekday: integer("weekday").notNull(),
   shiftType: text("shift_type").notNull(),
   userId: text("user_id").notNull(),
+  effectiveFrom: text("effective_from").notNull().default("1970-01-01"),
 });
 
 export const receptionDayOverrides = sqliteTable("reception_day_overrides", {
@@ -270,4 +271,15 @@ export const auditLogs = sqliteTable("audit_logs", {
   beforeJson: text("before_json"),
   afterJson: text("after_json"),
   createdAt: text("created_at").notNull(),
+});
+
+export const pushSubscriptions = sqliteTable("push_subscriptions", {
+  id: text("id").primaryKey(),
+  userId: text("user_id").notNull(),
+  endpoint: text("endpoint").notNull().unique(),
+  p256dh: text("p256dh").notNull(),
+  auth: text("auth").notNull(),
+  userAgent: text("user_agent"),
+  createdAt: text("created_at").notNull(),
+  updatedAt: text("updated_at").notNull(),
 });

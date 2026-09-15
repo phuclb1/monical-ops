@@ -2,13 +2,15 @@ import { and, desc, eq, like, ne, or, sql } from "drizzle-orm";
 import { getDb } from "./db";
 import * as t from "./db/schema";
 import { addMinutes, currentShiftType, nid, nextDate, nextShiftSlot, nowISO, shiftWindow, todayVN, weekdayISO } from "./datetime";
-import { dayOverrideId, weekSlotId } from "./roster";
+import { dayOverrideId, rosterVersionOf, weekSlotId } from "./roster";
 import { shiftChecklistTemplate } from "./checklists";
 import { getTaskType, isOpenTaskStatus, taskBoardColumn, taskTypeLabel, type TaskBoardColumn } from "./task-types";
 import type { DepartmentCode, HkStatus, Role, SessionUser, ShiftType, TaskStatus } from "./types";
 import { DEPT_LABEL, HK_LABEL, ROLE_DEPT, SHIFT_LABEL, TASK_STATUS_LABEL, requestKindLabel } from "./constants";
 import { floorOf, roomIdOf, slugTypeName } from "./rooms-catalog";
 import { hashPassword } from "./password";
+import { schedulePush } from "./push";
+import { insertInBatches } from "./db/batch";
 
 export async function audit(actorId: string, entity: string, entityId: string, action: string, before?: unknown, after?: unknown) {
   const db = await getDb();
@@ -36,6 +38,7 @@ export async function notify(input: { userId?: string | null; role?: string | nu
     read: false,
     createdAt: nowISO(),
   });
+  await schedulePush(input);
 }
 
 export async function listUsers() {
@@ -89,13 +92,11 @@ export async function receptionDuty(date: string, shiftType: ShiftType): Promise
       note: override.note,
     };
   }
-  const slot = (
-    await db
-      .select()
-      .from(t.receptionWeekSlots)
-      .where(and(eq(t.receptionWeekSlots.weekday, weekdayISO(date)), eq(t.receptionWeekSlots.shiftType, shiftType)))
-      .limit(1)
-  )[0];
+  const candidates = await db
+    .select()
+    .from(t.receptionWeekSlots)
+    .where(and(eq(t.receptionWeekSlots.weekday, weekdayISO(date)), eq(t.receptionWeekSlots.shiftType, shiftType)));
+  const slot = rosterVersionOf(candidates, date).slots[0];
   return {
     date,
     shiftType,
@@ -115,9 +116,10 @@ export async function receptionDutyDay(date: string) {
   return { date, weekday: weekdayISO(date), shifts };
 }
 
-export async function listWeekRoster() {
+export async function listWeekRoster(date = todayVN()) {
   const db = await getDb();
-  return db.select().from(t.receptionWeekSlots);
+  const rows = await db.select().from(t.receptionWeekSlots);
+  return rosterVersionOf(rows, date);
 }
 
 function assertReceptionAssignee(people: Awaited<ReturnType<typeof listUsers>>, userId: string) {
@@ -139,18 +141,28 @@ export async function saveWeekRoster(
   const db = await getDb();
   const people = await listUsers();
   const now = nowISO();
+  const from = todayVN();
+  if (slots.length < 21) throw new Error("Chọn đủ lễ tân cho 7 ngày × 3 ca");
+  const seen = new Set<string>();
   for (const slot of slots) {
     if (slot.weekday < 1 || slot.weekday > 7) throw new Error("Ngày trong tuần không hợp lệ");
     assertReceptionAssignee(people, slot.userId);
-    const id = weekSlotId(slot.weekday, slot.shiftType);
-    const existing = (await db.select().from(t.receptionWeekSlots).where(eq(t.receptionWeekSlots.id, id)).limit(1))[0];
-    if (existing) {
-      await db.update(t.receptionWeekSlots).set({ userId: slot.userId }).where(eq(t.receptionWeekSlots.id, id));
-    } else {
-      await db.insert(t.receptionWeekSlots).values({ id, weekday: slot.weekday, shiftType: slot.shiftType, userId: slot.userId });
-    }
+    const key = `${slot.weekday}-${slot.shiftType}`;
+    if (seen.has(key)) throw new Error("Trùng ca trong tuần");
+    seen.add(key);
   }
-  await audit(actor.id, "roster_week", "week", "save", null, { count: slots.length, at: now });
+  await db.delete(t.receptionWeekSlots).where(eq(t.receptionWeekSlots.effectiveFrom, from));
+  await insertInBatches(
+    (rows) => db.insert(t.receptionWeekSlots).values(rows),
+    slots.map((slot) => ({
+      id: weekSlotId(slot.weekday, slot.shiftType, from),
+      weekday: slot.weekday,
+      shiftType: slot.shiftType,
+      userId: slot.userId,
+      effectiveFrom: from,
+    })),
+  );
+  await audit(actor.id, "roster_week", from, "save", null, { count: slots.length, effectiveFrom: from, at: now });
 }
 
 export async function saveDayOverrides(
@@ -165,13 +177,7 @@ export async function saveDayOverrides(
   const now = nowISO();
   for (const item of assignments) {
     assertReceptionAssignee(people, item.userId);
-    const weekUser = (
-      await db
-        .select()
-        .from(t.receptionWeekSlots)
-        .where(and(eq(t.receptionWeekSlots.weekday, weekdayISO(date)), eq(t.receptionWeekSlots.shiftType, item.shiftType)))
-        .limit(1)
-    )[0]?.userId;
+    const weekUser = (await receptionDuty(date, item.shiftType)).userId;
     const id = dayOverrideId(date, item.shiftType);
     const existing = (await db.select().from(t.receptionDayOverrides).where(eq(t.receptionDayOverrides.id, id)).limit(1))[0];
     if (weekUser === item.userId) {

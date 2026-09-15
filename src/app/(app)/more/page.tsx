@@ -13,9 +13,9 @@ const LINKS = [
   { href: "/forms", label: "Biểu mẫu điện tử", show: () => true },
   { href: "/incidents", label: "Sự cố", show: () => true },
   { href: "/reports", label: "Báo cáo việc chưa xong", show: (r: Parameters<typeof can>[0]) => can(r, "viewReports") || true },
-  { href: "/notifications", label: "Thông báo trong web", show: () => true },
+  { href: "/notifications", label: "Thông báo + push điện thoại", show: () => true },
   { href: "/staff", label: "Nhân viên — tài khoản", show: (r: Parameters<typeof can>[0]) => can(r, "manageStaff") },
-  { href: "/roster", label: "Lịch lễ tân — ca tuần & đổi ngày mai", show: (r: Parameters<typeof can>[0]) => can(r, "manageRoster") },
+  { href: "/roster", label: "Lịch lễ tân — xếp 1 lần đến khi đổi", show: (r: Parameters<typeof can>[0]) => can(r, "manageRoster") },
   { href: "/rooms/manage", label: "Phòng & hạng phòng", show: (r: Parameters<typeof can>[0]) => can(r, "manageRooms") },
 ];
 
