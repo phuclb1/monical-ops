@@ -124,6 +124,8 @@ Trạng thái: `pass` · `fail` · `skip` (chưa chạy vòng này).
 | TC-60 | Staff: 3 lễ tân + 1 HK + quản lý | `quanly` | pass | `7849f8e-dirty` | [TC-60.png](evidence/R-20260915-1/TC-60.png) |
 | TC-61 | Roster tuần Ngân/Thu/Tuyến | `quanly` | pass | `7849f8e-dirty` | [TC-61.png](evidence/R-20260915-1/TC-61.png) |
 | TC-62 | Tạo / khóa nhân viên | `quanly` | skip | — | — |
+| TC-64 | Nhật ký thao tác: ai / thêm / sửa | `quanly` | skip | — | chưa chạy vòng này |
+| TC-64b | Lễ tân không vào `/audit` | `tuyen` | skip | — | chưa chạy vòng này |
 | TC-70 | Checklist đầu ca / cuối ca đang mở | `tuyen` | pass | `ff9574e-dirty` | [TC-70.png](evidence/R-20260915-4/TC-70.png) |
 | TC-71 | Lễ tân mở ca khi chưa có ca | `tuyen` | skip | — | data hiện đã mở ca |
 | TC-72 | Today: task nhận P.105 / trả P.102 | `tuyen` | pass | `ff9574e-dirty` | [TC-72.png](evidence/R-20260915-4/TC-72.png) |
@@ -174,6 +176,8 @@ Dùng sau `npm run db:reseed-local`.
 | TC-74 | `/tasks` → việc Nhận P.105 | Phòng INS · Check-in PMS · Đưa chìa · ô ghi chú / ảnh |
 | TC-75 | `/reception/s-201` | Cùng checklist nhận với task (không list derived cũ trong khối checklist) |
 | TC-76 | `/sales/sale-506` | Checklist lễ tân · Nhận phòng P.506 |
+| TC-64 | login `quanly` `/audit` | Nhật ký thao tác · người làm · chi tiết thay đổi before → after |
+| TC-64b | login `tuyen` `/audit` | Redirect Thêm, không vào nhật ký |
 
 ---
 

@@ -240,6 +240,11 @@ try {
     }
   });
 
+  await checkAuthed("TC-64", "Nhật ký thao tác quản lý", async (shot) => {
+    await go("/audit");
+    await must(shot, ["Nhật ký thao tác", "Người làm"]);
+  });
+
   await checkAuthed("TC-61", "Lịch lễ tân — xếp 1 lần", async (shot) => {
     await go("/roster");
     const text = await pageText();

@@ -368,4 +368,6 @@ export const SCHEMA_PATCHES = [
   "CREATE INDEX IF NOT EXISTS checklists_kind_date ON checklists (kind, date)",
   "CREATE INDEX IF NOT EXISTS checklists_task ON checklists (task_id)",
   "CREATE INDEX IF NOT EXISTS checklists_room ON checklists (room_id)",
+  "CREATE INDEX IF NOT EXISTS audit_logs_created ON audit_logs (created_at)",
+  "CREATE INDEX IF NOT EXISTS audit_logs_entity ON audit_logs (entity, created_at)",
 ];

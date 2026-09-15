@@ -15,6 +15,7 @@ const LINKS = [
   { href: "/forms", label: "Biểu mẫu điện tử", show: () => true },
   { href: "/incidents", label: "Sự cố", show: () => true },
   { href: "/reports", label: "Báo cáo việc chưa xong", show: (r: Parameters<typeof can>[0]) => can(r, "viewReports") || true },
+  { href: "/audit", label: "Nhật ký thao tác — ai làm gì, thêm / sửa", show: (r: Parameters<typeof can>[0]) => can(r, "viewAudit") },
   { href: "/notifications", label: "Thông báo + push điện thoại", show: () => true },
   { href: "/staff", label: "Nhân viên — tài khoản", show: (r: Parameters<typeof can>[0]) => can(r, "manageStaff") },
   { href: "/roster", label: "Lịch lễ tân — xếp 1 lần đến khi đổi", show: (r: Parameters<typeof can>[0]) => can(r, "manageRoster") },

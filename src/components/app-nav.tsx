@@ -15,6 +15,7 @@ import {
   TimerReset,
   Users,
   BarChart3,
+  ScrollText,
   ConciergeBell,
   BedDouble,
   Tag,
@@ -36,6 +37,7 @@ const ICONS: Record<string, typeof CalendarDays> = {
   "/forms": FileText,
   "/incidents": ShieldAlert,
   "/reports": BarChart3,
+  "/audit": ScrollText,
   "/staff": Users,
   "/notifications": Bell,
 };

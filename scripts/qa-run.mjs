@@ -243,6 +243,16 @@ try {
     await must(shot, [currentShiftLabel(), "Đang mở", "Đầu ca", "Cuối ca"]);
   });
 
+  await check("TC-64b", "Lễ tân không vào nhật ký", async (shot) => {
+    await go("/audit");
+    await ready();
+    const text = await page.locator("body").innerText();
+    await page.screenshot({ path: shot, fullPage: true });
+    if (text.includes("Chỉ quản lý") && text.includes("Người làm")) {
+      throw new Error("Lễ tân vẫn xem được nhật ký");
+    }
+  });
+
   await check("TC-72", "Today — task nhận/trả theo phòng", async (shot) => {
     await go("/today");
     await must(shot, ["Nhận P.105", "Trả P.102", "Nhận / trả hôm nay"]);
@@ -308,6 +318,11 @@ try {
   await check("TC-41", "Quản lý hạng phòng", async (shot) => {
     await go("/rooms/manage");
     await must(shot, ["Hạng phòng", "Thêm hạng"]);
+  });
+
+  await check("TC-64", "Nhật ký thao tác quản lý", async (shot) => {
+    await go("/audit");
+    await must(shot, ["Nhật ký thao tác", "Người làm", "Đối tượng"]);
   });
 
   await check("TC-97", "Quản lý sơ đồ bán + giá phòng", async (shot) => {
