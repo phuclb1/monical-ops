@@ -11,6 +11,7 @@ const PUBLIC = [
   "/sw.js",
   "/offline.html",
   "/api/auth/login",
+  "/api/ingest",
 ];
 
 export async function proxy(request: NextRequest) {

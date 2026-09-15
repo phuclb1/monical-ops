@@ -4,13 +4,13 @@ import { addRequestAction, addVehicleAction, completeRequestAction, inspectRoomA
 import { Btn, Card, Chip, Field } from "@/components/ui";
 import { RegistrationTimer } from "@/components/countdown";
 import { getSession } from "@/lib/auth";
-import { requestKindLabel, TASK_STATUS_LABEL } from "@/lib/constants";
+import { requestKindLabel, SALE_ORIGIN_LABEL, SALE_SOURCE_LABEL, TASK_STATUS_LABEL } from "@/lib/constants";
 import { can } from "@/lib/permissions";
 import { maskName, maskPhone } from "@/lib/mask";
 import { getStay } from "@/lib/repos";
 import { stayOpsChecklist } from "@/lib/stay-checklist";
 import { STAY_TASK_KINDS, taskTypeLabel } from "@/lib/task-types";
-import type { TaskStatus } from "@/lib/types";
+import type { SaleOrigin, SaleSource, TaskStatus } from "@/lib/types";
 
 function Confirm({ id, field, label, done }: { id: string; field: string; label: string; done: boolean }) {
   if (done) return <Chip tone="ok">{label} — đã xác nhận</Chip>;
@@ -38,7 +38,10 @@ export default async function StayPage({ params }: { params: Promise<{ id: strin
     <main className="space-y-3 px-3 py-4">
       <h1 className="text-xl font-bold">{pii ? stay.guestName : maskName(stay.guestName, user.role)}</h1>
       <p className="text-sm text-[#5c6665]">
-        Mã PMS {stay.pmsCode} · P.{stay.room?.number || "—"} · {stay.adults} NL / {stay.children} TE
+        Mã {stay.pmsCode} · P.{stay.room?.number || "—"} · {stay.adults} NL / {stay.children} TE
+      </p>
+      <p className="text-xs text-[#5c6665]">
+        {SALE_SOURCE_LABEL[stay.source as SaleSource] || stay.source || "—"} · {SALE_ORIGIN_LABEL[(stay.origin as SaleOrigin) || "ops"]}
       </p>
       {pii ? <p className="text-sm">SĐT {maskPhone(stay.guestPhone)}</p> : <p className="text-sm">SĐT đã che</p>}
       <RegistrationTimer dueAt={stay.registrationDueAt} doneAt={stay.registrationDoneAt} />
@@ -63,7 +66,7 @@ export default async function StayPage({ params }: { params: Promise<{ id: strin
 
       <Card className="space-y-2">
         <h2 className="font-bold">Đối chiếu ezCloudhotel PMS</h2>
-        <p className="text-xs text-[#5c6665]">Tạo / sửa booking trên PMS, rồi bấm xác nhận ở đây — không chép lại booking.</p>
+        <p className="text-xs text-[#5c6665]">Booking có thể do agent đẩy từ ezCloud. Nút xác nhận vẫn dùng khi nhập tay trên PMS.</p>
         <Confirm id={stay.id} field="pmsBookingOk" label="Đã nhập booking" done={!!stay.pmsBookingOk} />
         <Confirm id={stay.id} field="pmsCheckinOk" label="Đã check-in PMS (bắt đầu 30 phút)" done={!!stay.pmsCheckinOk} />
         <Confirm id={stay.id} field="pmsCheckoutOk" label="Đã check-out PMS" done={!!stay.pmsCheckoutOk} />

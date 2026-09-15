@@ -8,6 +8,8 @@ import { can } from "@/lib/permissions";
 
 const LINKS = [
   { href: "/reception", label: "Lễ tân — khách & đăng ký lưu trú", show: (r: Parameters<typeof can>[0]) => can(r, "viewReception") || r === "hk" },
+  { href: "/sales", label: "Bán phòng — sơ đồ trống / giữ / nhận", show: (r: Parameters<typeof can>[0]) => can(r, "manageSales") },
+  { href: "/sales/rates", label: "Giá phòng — ngày thường / cuối tuần", show: (r: Parameters<typeof can>[0]) => can(r, "manageRates") },
   { href: "/kitchen", label: "Bếp — ăn sáng", show: (r: Parameters<typeof can>[0]) => can(r, "viewKitchen") },
   { href: "/shifts", label: "Ca làm việc & checklist", show: () => true },
   { href: "/forms", label: "Biểu mẫu điện tử", show: () => true },
@@ -31,19 +33,19 @@ export default async function MorePage() {
       </Card>
       <div className="list-cards">
       {LINKS.filter((l) => l.show(user.role)).map((l) => (
-        <Link key={l.href} href={l.href} className="card mb-2 block p-4 font-semibold md:mb-0">
+        <Link key={l.href} href={l.href} className="card mb-2 flex min-h-16 items-center p-4 font-semibold md:mb-0">
           {l.label}
         </Link>
       ))}
       </div>
       <Card>
         <p className="text-sm leading-6 text-[#5c6665]">
-          MONICAL Ops không thay ezCloudhotel PMS. Booking, check-in, check-out và tiền phòng đối chiếu bằng mã PMS. Zalo chỉ để
-          thông báo nhanh — hồ sơ chính thức lưu trên web.
+          MONICAL Ops không gọi ezCloudhotel. Agent crawl PMS rồi POST vào <code className="text-xs">/api/ingest/pms</code>.
+          Lễ tân/quản lý bán phòng và đối chiếu mã PMS trên web. Zalo chỉ để thông báo nhanh.
         </p>
       </Card>
       <form action={logoutAction}>
-        <button className="w-full rounded-xl border border-line bg-white py-3 font-semibold">Đăng xuất</button>
+        <button className="w-full rounded-xl border border-line bg-white py-3.5 text-base font-semibold">Đăng xuất</button>
       </form>
     </main>
   );

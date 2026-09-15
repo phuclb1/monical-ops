@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { Card, Chip, Empty } from "@/components/ui";
+import { Card, Chip, Empty, TabChip } from "@/components/ui";
 import { getSession } from "@/lib/auth";
 import { DEPT_LABEL, PRIORITY_LABEL, TASK_STATUS_LABEL } from "@/lib/constants";
 import { formatTime } from "@/lib/datetime";
@@ -45,51 +45,37 @@ export default async function TasksPage({
     <main className="space-y-3 px-3 py-4">
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-bold">Bảng việc</h1>
-        <Link href="/tasks/new" className="rounded-xl bg-teal px-3 py-2 text-sm font-semibold text-white">
+        <Link href="/tasks/new" className="cta-link">
           Tạo việc
         </Link>
       </div>
 
-      <div className="flex gap-2 overflow-x-auto">
-        <Link href="/tasks" className={`rounded-full px-3 py-1 text-xs font-bold ${!boardColumn && !group && !kind ? "bg-teal text-white" : "bg-white"}`}>
+      <div className="tab-scroller -mx-3 px-3">
+        <TabChip href="/tasks" active={!boardColumn && !group && !kind}>
           Bảng ngày
-        </Link>
+        </TabChip>
         {(Object.keys(TASK_BOARD_LABEL) as TaskBoardColumn[]).map((key) => (
-          <Link
-            key={key}
-            href={`/tasks?column=${key}`}
-            className={`rounded-full px-3 py-1 text-xs font-bold ${boardColumn === key ? "bg-teal text-white" : "bg-white"}`}
-          >
+          <TabChip key={key} href={`/tasks?column=${key}`} active={boardColumn === key}>
             {TASK_BOARD_LABEL[key]}
-          </Link>
+          </TabChip>
         ))}
       </div>
-      <div className="flex gap-2 overflow-x-auto">
-        <Link href={column ? `/tasks?column=${column}` : "/tasks"} className={`rounded-full px-3 py-1 text-xs font-bold ${!group ? "bg-white" : "bg-white"}`}>
-          <span className={!group ? "text-teal" : ""}>Tất cả nhóm</span>
-        </Link>
-        <Link
-          href={`/tasks?group=room${column ? `&column=${column}` : ""}`}
-          className={`rounded-full px-3 py-1 text-xs font-bold ${group === "room" ? "bg-teal text-white" : "bg-white"}`}
-        >
+      <div className="tab-scroller -mx-3 px-3">
+        <TabChip href={column ? `/tasks?column=${column}` : "/tasks"} active={!group}>
+          Tất cả nhóm
+        </TabChip>
+        <TabChip href={`/tasks?group=room${column ? `&column=${column}` : ""}`} active={group === "room"}>
           Theo phòng
-        </Link>
-        <Link
-          href={`/tasks?group=general${column ? `&column=${column}` : ""}`}
-          className={`rounded-full px-3 py-1 text-xs font-bold ${group === "general" ? "bg-teal text-white" : "bg-white"}`}
-        >
+        </TabChip>
+        <TabChip href={`/tasks?group=general${column ? `&column=${column}` : ""}`} active={group === "general"}>
           Việc chung
-        </Link>
+        </TabChip>
       </div>
-      <div className="flex gap-2 overflow-x-auto">
+      <div className="tab-scroller -mx-3 px-3">
         {TASK_TYPES.slice(0, 8).map((item) => (
-          <Link
-            key={item.kind}
-            href={`/tasks?kind=${item.kind}`}
-            className={`whitespace-nowrap rounded-full px-3 py-1 text-xs font-bold ${kind === item.kind ? "bg-teal text-white" : "bg-white"}`}
-          >
+          <TabChip key={item.kind} href={`/tasks?kind=${item.kind}`} active={kind === item.kind}>
             {item.label}
-          </Link>
+          </TabChip>
         ))}
       </div>
 
@@ -105,8 +91,8 @@ export default async function TasksPage({
               const who = users.find((u) => u.id === task.assigneeId);
               const overdue = task.dueAt && new Date(task.dueAt).getTime() < Date.now() && !["done", "checked", "archive"].includes(task.status);
               return (
-                <Link key={task.id} href={`/tasks/${task.id}`}>
-                  <Card className="mb-2">
+                <Link key={task.id} href={`/tasks/${task.id}`} className="block">
+                  <Card className="mb-2 min-h-16">
                     <div className="flex items-start justify-between gap-2">
                       <p className="font-semibold">{task.content}</p>
                       <Chip tone={TONE[task.priority]}>{PRIORITY_LABEL[task.priority as TaskPriority]}</Chip>

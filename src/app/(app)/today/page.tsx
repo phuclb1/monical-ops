@@ -1,10 +1,11 @@
 import Link from "next/link";
 import { getSession } from "@/lib/auth";
 import { redirect } from "next/navigation";
-import { currentOpenShift, getDashboard, getShiftBundle } from "@/lib/repos";
+import { currentOpenShift, getDashboard, getShiftBundle, salesBoard } from "@/lib/repos";
 import { SHIFT_LABEL } from "@/lib/constants";
 import { can } from "@/lib/permissions";
 import { formatDateLong, formatTime, nextDate, remainingLabel, todayVN } from "@/lib/datetime";
+import { formatVnd } from "@/lib/sales";
 import { Card, Chip, Empty, SectionTitle, Stat } from "@/components/ui";
 import { RegistrationTimer } from "@/components/countdown";
 import { openShiftAction } from "@/actions/ops";
@@ -17,6 +18,7 @@ export default async function TodayPage() {
   const open = await currentOpenShift();
   const bundle = open ? await getShiftBundle(open.id, user.role === "manager" ? undefined : user.departmentCode) : null;
   const myList = bundle?.checklists.find((c) => c.departmentCode === user.departmentCode) ?? bundle?.checklists[0];
+  const sales = can(user.role, "manageSales") ? await salesBoard(todayVN()) : null;
 
   return (
     <main className="today-grid space-y-4 px-3 py-4 md:space-y-0">
@@ -66,6 +68,30 @@ export default async function TodayPage() {
         )}
       </Card>
 
+      {sales ? (
+        <Card>
+          <SectionTitle hint={formatDateLong(todayVN())}>Bán phòng hôm nay</SectionTitle>
+          <div className="grid grid-cols-3 gap-2 text-center">
+            <div className="rounded-xl bg-[#e4f5eb] p-2">
+              <p className="text-xl font-bold">{sales.vacant}</p>
+              <p className="text-[11px]">Trống</p>
+            </div>
+            <div className="rounded-xl bg-[#fff1d6] p-2">
+              <p className="text-xl font-bold">{sales.sold}</p>
+              <p className="text-[11px]">Đã bán</p>
+            </div>
+            <div className="rounded-xl bg-[#e8f3f2] p-2">
+              <p className="text-xl font-bold">{sales.inhouse}</p>
+              <p className="text-[11px]">Đang ở</p>
+            </div>
+          </div>
+          <p className="mt-2 text-sm text-[#5c6665]">Doanh thu đêm {formatVnd(sales.revenue)}</p>
+          <Link href="/sales" className="cta-link mt-3 w-full">
+            Mở sơ đồ bán phòng
+          </Link>
+        </Card>
+      ) : null}
+
       {user.role === "reception" || user.role === "manager" ? (
         <Card>
           <SectionTitle hint={formatDateLong(nextDate(todayVN()))}>Lễ tân ngày mai</SectionTitle>
@@ -102,7 +128,7 @@ export default async function TodayPage() {
               <li key={item.id} className="flex items-start gap-2">
                 <form action={toggleCheckAction}>
                   <input type="hidden" name="itemId" value={item.id} />
-                  <button className="mt-0.5 flex h-6 w-6 items-center justify-center rounded-md border border-line bg-white text-xs">
+                  <button className="flex h-11 w-11 items-center justify-center rounded-xl border border-line bg-white text-base" type="submit" aria-label={item.done ? "Bỏ tích" : "Đánh dấu xong"}>
                     {item.done ? "✓" : ""}
                   </button>
                 </form>
@@ -130,7 +156,7 @@ export default async function TodayPage() {
           <ul className="space-y-2">
             {data.overdueTasks.map((task) => (
               <li key={task.id}>
-                <Link href={`/tasks/${task.id}`} className="flex items-center justify-between">
+                <Link href={`/tasks/${task.id}`} className="flex min-h-12 items-center justify-between">
                   <span className="text-sm font-medium">{task.content}</span>
                   <Chip tone="danger">Trễ</Chip>
                 </Link>
@@ -143,17 +169,17 @@ export default async function TodayPage() {
       <Card>
         <SectionTitle>Khách hôm nay</SectionTitle>
         <div className="grid grid-cols-3 gap-2 text-center">
-          <Link href="/reception" className="rounded-xl bg-[#e8f3f2] p-2">
+          <Link href="/reception" className="flex min-h-[4.5rem] flex-col items-center justify-center rounded-xl bg-[#e8f3f2] p-3">
             <p className="text-xl font-bold">{data.arriving.length}</p>
-            <p className="text-[11px]">Đến</p>
+            <p className="text-xs">Đến</p>
           </Link>
-          <Link href="/reception" className="rounded-xl bg-[#fff1d6] p-2">
+          <Link href="/reception" className="flex min-h-[4.5rem] flex-col items-center justify-center rounded-xl bg-[#fff1d6] p-3">
             <p className="text-xl font-bold">{data.departing.length}</p>
-            <p className="text-[11px]">Đi</p>
+            <p className="text-xs">Đi</p>
           </Link>
-          <Link href="/reception" className="rounded-xl bg-[#fde8e8] p-2">
+          <Link href="/reception" className="flex min-h-[4.5rem] flex-col items-center justify-center rounded-xl bg-[#fde8e8] p-3">
             <p className="text-xl font-bold">{data.noShow.length}</p>
-            <p className="text-[11px]">Chưa đến</p>
+            <p className="text-xs">Chưa đến</p>
           </Link>
         </div>
         {data.stays

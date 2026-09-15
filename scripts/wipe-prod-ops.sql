@@ -8,6 +8,7 @@ DELETE FROM tasks;
 DELETE FROM guest_requests;
 DELETE FROM vehicles;
 DELETE FROM stays;
+DELETE FROM room_sales;
 DELETE FROM shifts;
 DELETE FROM breakfasts;
 DELETE FROM incidents;

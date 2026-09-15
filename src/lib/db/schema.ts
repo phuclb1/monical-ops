@@ -24,6 +24,8 @@ export const roomTypes = sqliteTable("room_types", {
   code: text("code").notNull().unique(),
   name: text("name").notNull().unique(),
   sortOrder: integer("sort_order").notNull().default(0),
+  baseRate: integer("base_rate").notNull().default(0),
+  weekendRate: integer("weekend_rate").notNull().default(0),
 });
 
 export const rooms = sqliteTable("rooms", {
@@ -41,9 +43,35 @@ export const rooms = sqliteTable("rooms", {
   updatedBy: text("updated_by"),
 });
 
+export const roomSales = sqliteTable("room_sales", {
+  id: text("id").primaryKey(),
+  roomId: text("room_id").notNull(),
+  guestName: text("guest_name").notNull(),
+  guestPhone: text("guest_phone"),
+  origin: text("origin").notNull().default("ops"),
+  source: text("source").notNull(),
+  status: text("status").notNull(),
+  checkIn: text("check_in").notNull(),
+  checkOut: text("check_out").notNull(),
+  adults: integer("adults").notNull().default(1),
+  children: integer("children").notNull().default(0),
+  rate: integer("rate").notNull().default(0),
+  discountKind: text("discount_kind").notNull().default("none"),
+  discountValue: integer("discount_value").notNull().default(0),
+  deposit: integer("deposit").notNull().default(0),
+  pmsCode: text("pms_code"),
+  notes: text("notes"),
+  createdAt: text("created_at").notNull(),
+  updatedAt: text("updated_at").notNull(),
+  createdBy: text("created_by"),
+  updatedBy: text("updated_by"),
+});
+
 export const stays = sqliteTable("stays", {
   id: text("id").primaryKey(),
   pmsCode: text("pms_code").notNull(),
+  origin: text("origin").notNull().default("ops"),
+  source: text("source").notNull().default("walk_in"),
   roomId: text("room_id"),
   guestName: text("guest_name").notNull(),
   guestPhone: text("guest_phone"),

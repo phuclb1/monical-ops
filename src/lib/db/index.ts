@@ -81,7 +81,18 @@ async function prepareLocal(db: AppDb) {
     ? process.env.DATABASE_URL
     : `file:${join(process.cwd(), "data", "ops.db")}`;
   const client = createClient({ url });
-  await client.executeMultiple(SCHEMA_SQL);
+  const statements = SCHEMA_SQL.split(";").map((s) => s.trim()).filter(Boolean);
+  try {
+    await client.executeMultiple(SCHEMA_SQL);
+  } catch {
+    for (const stmt of statements) {
+      try {
+        await client.execute(stmt);
+      } catch {
+        // table / index already exists, or depends on a SCHEMA_PATCHES column
+      }
+    }
+  }
   await applyPatches(db);
   await seedIfEmpty(db);
 }

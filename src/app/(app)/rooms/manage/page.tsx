@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import {
   createRoomAction,
@@ -29,7 +30,10 @@ export default async function ManageRoomsPage({
     <main className="space-y-4 px-3 py-4">
       <div>
         <h1 className="text-xl font-bold">Phòng & hạng phòng</h1>
-        <p className="text-xs text-[#5c6665]">Quản lý danh mục phòng vận hành. Bán phòng vẫn do PMS.</p>
+        <p className="text-xs text-[#5c6665]">Quản lý danh mục phòng vận hành. Bán phòng nằm ở mục Bán phòng.</p>
+        <Link href="/sales" className="mt-1 inline-block text-sm font-semibold text-teal">
+          Mở bán phòng
+        </Link>
       </div>
       {error ? <p className="text-sm text-[#c23b3b]">{error}</p> : null}
       {ok ? <p className="text-sm text-[#1b7a4e]">Đã lưu.</p> : null}

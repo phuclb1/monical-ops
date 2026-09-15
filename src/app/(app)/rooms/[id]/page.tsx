@@ -50,7 +50,7 @@ export default async function RoomDetailPage({ params }: { params: Promise<{ id:
         <form action={saveRoomChecklistAction} className="space-y-2">
           <input type="hidden" name="roomId" value={room.id} />
           {ROOM_CHECKLIST.map((item) => (
-            <label key={item.key} className="flex items-center gap-2 text-sm font-normal">
+            <label key={item.key} className="text-sm">
               <input type="checkbox" name={item.key} className="h-5 w-5" />
               <span>
                 {item.label} {item.required ? <em className="text-[#c47b12]">*</em> : null}

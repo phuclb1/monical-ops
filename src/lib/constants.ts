@@ -1,4 +1,4 @@
-import type { DepartmentCode, FormCode, HkStatus, Role, ShiftType, StayStatus, TaskPriority, TaskStatus } from "./types";
+import type { DepartmentCode, DiscountKind, FormCode, HkStatus, Role, SaleOrigin, SaleSource, SaleStatus, ShiftType, StayStatus, TaskPriority, TaskStatus } from "./types";
 
 export const HOTEL_NAME = process.env.NEXT_PUBLIC_HOTEL_NAME ?? "MONICAL hotel dalat";
 
@@ -65,6 +65,43 @@ export const STAY_LABEL: Record<StayStatus, string> = {
   departing: "Khách đi",
   departed: "Đã trả",
   no_show: "Chưa đến",
+};
+
+export const SALE_STATUS_LABEL: Record<SaleStatus, string> = {
+  reserved: "Đã giữ",
+  inhouse: "Đang ở",
+  departed: "Đã trả",
+  cancelled: "Hủy",
+  no_show: "No-show",
+};
+
+export const SALE_ORIGIN_LABEL: Record<SaleOrigin, string> = {
+  ops: "Tạo trên Ops",
+  ezcloud: "Từ ezCloud",
+};
+
+export const SALE_SOURCE_LABEL: Record<SaleSource, string> = {
+  walk_in: "Vãng lai",
+  phone: "Điện thoại",
+  company: "Công ty / đoàn",
+  ezcloud: "ezCloud / web KS",
+  booking: "Booking.com",
+  agoda: "Agoda",
+  traveloka: "Traveloka",
+  expedia: "Expedia",
+  airbnb: "Airbnb",
+  ota: "OTA khác",
+};
+
+export const SALE_SOURCE_GROUPS: { label: string; values: SaleSource[] }[] = [
+  { label: "Trực tiếp", values: ["walk_in", "phone", "company", "ezcloud"] },
+  { label: "OTA", values: ["booking", "agoda", "traveloka", "expedia", "airbnb", "ota"] },
+];
+
+export const DISCOUNT_KIND_LABEL: Record<DiscountKind, string> = {
+  none: "Không",
+  percent: "%",
+  amount: "Số tiền",
 };
 
 export const REQUEST_KIND_LABEL: Record<string, string> = {

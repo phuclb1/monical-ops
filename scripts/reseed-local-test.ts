@@ -10,7 +10,18 @@ import { currentShiftType, todayVN } from "../src/lib/datetime";
 async function main() {
   const url = `file:${join(process.cwd(), "data", "ops.db")}`;
   const client = createClient({ url });
-  await client.executeMultiple(SCHEMA_SQL);
+  const statements = SCHEMA_SQL.split(";").map((s) => s.trim()).filter(Boolean);
+  try {
+    await client.executeMultiple(SCHEMA_SQL);
+  } catch {
+    for (const stmt of statements) {
+      try {
+        await client.execute(stmt);
+      } catch {
+        // table / index already exists, or depends on a later patch
+      }
+    }
+  }
   const db = drizzle(client, { schema });
   for (const stmt of SCHEMA_PATCHES) {
     try {
@@ -47,6 +58,14 @@ async function main() {
   const vehicles = await db.select().from(schema.vehicles);
   const breakfast = (await db.select().from(schema.breakfasts))[0];
   const shift = (await db.select().from(schema.shifts).where(eq(schema.shifts.status, "open")))[0];
+  const sales = await db
+    .select({
+      guest: schema.roomSales.guestName,
+      status: schema.roomSales.status,
+      roomId: schema.roomSales.roomId,
+      pms: schema.roomSales.pmsCode,
+    })
+    .from(schema.roomSales);
 
   console.log(`Local wipe xong · ${today} · ca ${currentShiftType()} ${shift ? "đang mở" : "chưa mở"}`);
   console.log("\nTài khoản (mật khẩu 123456):");
@@ -56,6 +75,9 @@ async function main() {
   console.log("\nKịch bản:");
   for (const row of stays) {
     console.log(`  ${row.status.padEnd(10)} ${row.roomId ?? "—"} ${row.guest}`);
+  }
+  for (const row of sales) {
+    console.log(`  bán       ${row.status.padEnd(10)} ${row.roomId} ${row.guest}${row.pms ? ` · ${row.pms}` : ""}`);
   }
   console.log(`  xe        ${vehicles.map((v) => `${v.plate} ${v.location}`).join(", ") || "—"}`);
   console.log(

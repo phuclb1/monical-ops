@@ -141,11 +141,16 @@ try {
   skip("TC-13", "Thẻ khách check-in P.105", "prd không seed kịch bản khách");
   skip("TC-14", "Khách gửi ô tô + timer đăng ký", "prd không seed kịch bản khách");
   skip("TC-15", "Khách đi — thiếu hóa đơn + dọn phòng trả", "prd không seed kịch bản khách");
+  skip("TC-16", "Bấm xác nhận check-in PMS", "prd không seed kịch bản khách");
+  skip("TC-90", "PMS khách đến — booking xong, chưa check-in", "prd không seed kịch bản khách");
+  skip("TC-91", "PMS khách đang ở — đã check-in PMS", "prd không seed kịch bản khách");
+  skip("TC-92", "PMS khách đi — chưa checkout / hóa đơn", "prd không seed kịch bản khách");
   skip("TC-20", "Bảng việc: thay khăn / dọn phòng / checkout", "prd không seed việc demo");
   skip("TC-21", "Việc «cần thêm HK» hiện với lễ tân", "prd không có lễ tân / việc demo");
   skip("TC-21b", "Quản lý thấy việc thêm HK", "prd không seed việc demo");
   skip("TC-24", "HK thấy khăn / dọn / thêm HK", "prd không có user HK");
   skip("TC-25", "HK tạo việc", "prd không có user HK");
+  skip("TC-98", "HK không vào bán phòng", "prd không có user HK");
   skip("TC-30", "Báo ăn sáng ngày mai (số + dị ứng P.105)", "prd không seed số ăn sáng demo");
 
   async function checkAuthed(id, title, fn) {
@@ -184,6 +189,23 @@ try {
   await checkAuthed("TC-40", "Danh sách phòng", async (shot) => {
     await go("/rooms");
     await must(shot, ["305", "102"]);
+  });
+
+  await checkAuthed("TC-93", "Sơ đồ bán phòng", async (shot) => {
+    await go("/sales");
+    await must(shot, ["Bán phòng", "Trống"]);
+  });
+
+  skip("TC-94", "Chỗ bán seed P.401 / P.506", "prd không seed chỗ bán demo");
+
+  await checkAuthed("TC-95", "Form bán phòng: giá, chiết khấu, mã PMS", async (shot) => {
+    await go("/sales/new");
+    await must(shot, ["Giá / đêm", "Chiết khấu", "Mã PMS"]);
+  });
+
+  await checkAuthed("TC-96", "Giá phòng ngày thường / cuối tuần", async (shot) => {
+    await go("/sales/rates");
+    await must(shot, ["Giá phòng", "Ngày thường", "Cuối tuần"]);
   });
 
   await checkAuthed("TC-41", "Quản lý hạng phòng", async (shot) => {

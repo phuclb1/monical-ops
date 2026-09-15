@@ -1,11 +1,13 @@
 import { and, desc, eq, like, ne, or, sql } from "drizzle-orm";
 import { getDb } from "./db";
 import * as t from "./db/schema";
-import { addMinutes, currentShiftType, nid, nextDate, nextShiftSlot, nowISO, shiftWindow, todayVN, weekdayISO } from "./datetime";
+import { addDaysVN, addMinutes, currentShiftType, nid, nextDate, nextShiftSlot, nowISO, shiftWindow, todayVN, weekdayISO } from "./datetime";
+import { isActiveSaleStatus, isOpsBookingCode, isSaleOrigin, isSaleSource, nightlyNet, normalizeDiscount, occupiesNight, parseSaleSource, rangesOverlap, saleQuote, saleStatusToStay } from "./sales";
+import { can } from "./permissions";
 import { dayOverrideId, rosterVersionOf, weekSlotId } from "./roster";
 import { shiftChecklistTemplate } from "./checklists";
 import { getTaskType, isOpenTaskStatus, taskBoardColumn, taskTypeLabel, type TaskBoardColumn } from "./task-types";
-import type { DepartmentCode, HkStatus, Role, SessionUser, ShiftType, TaskStatus } from "./types";
+import type { DepartmentCode, HkStatus, Role, SaleSource, SaleStatus, SessionUser, ShiftType, TaskStatus } from "./types";
 import { DEPT_LABEL, HK_LABEL, ROLE_DEPT, SHIFT_LABEL, TASK_STATUS_LABEL, requestKindLabel } from "./constants";
 import { floorOf, roomIdOf, slugTypeName } from "./rooms-catalog";
 import { hashPassword } from "./password";
@@ -589,6 +591,8 @@ export async function createRoomType(actor: SessionUser, name: string) {
     code,
     name: trimmed,
     sortOrder: (last?.sortOrder ?? 0) + 10,
+    baseRate: 0,
+    weekendRate: 0,
   });
   await audit(actor.id, "room_type", id, "create", null, { name: trimmed });
   return id;
@@ -663,11 +667,16 @@ export async function deleteManagedRoom(actor: SessionUser, id: string) {
   if (stays.some((s) => ["inhouse", "arriving", "departing"].includes(s.status))) {
     throw new Error("Phòng đang có khách tham chiếu, không xóa");
   }
+  const activeSales = await db.select().from(t.roomSales).where(eq(t.roomSales.roomId, id));
+  if (activeSales.some((sale) => isActiveSaleStatus(sale.status))) {
+    throw new Error("Phòng đang có chỗ bán, không xóa");
+  }
   await db.update(t.stays).set({ roomId: null }).where(eq(t.stays.roomId, id));
   await db.update(t.tasks).set({ roomId: null }).where(eq(t.tasks.roomId, id));
   await db.update(t.guestRequests).set({ roomId: null }).where(eq(t.guestRequests.roomId, id));
   await db.update(t.formSubmissions).set({ roomId: null }).where(eq(t.formSubmissions.roomId, id));
   await db.update(t.incidents).set({ roomId: null }).where(eq(t.incidents.roomId, id));
+  await db.delete(t.roomSales).where(eq(t.roomSales.roomId, id));
   await db.delete(t.rooms).where(eq(t.rooms.id, id));
   await audit(actor.id, "room", id, "delete", before, null);
 }
@@ -715,6 +724,313 @@ export async function updateRoom(user: SessionUser, id: string, patch: Partial<{
     });
   }
   await audit(user.id, "room", id, "update", before, patch);
+}
+
+type SaleInput = {
+  roomId: string;
+  guestName: string;
+  guestPhone?: string;
+  source: string;
+  checkIn: string;
+  checkOut: string;
+  adults?: number;
+  children?: number;
+  rate: number;
+  discountKind?: string;
+  discountValue?: number;
+  deposit?: number;
+  pmsCode?: string;
+  notes?: string;
+  checkinNow?: boolean;
+  origin?: string;
+};
+
+async function syncStayFromSale(
+  actorId: string,
+  sale: {
+    origin: string;
+    source: string;
+    pmsCode: string | null;
+    roomId: string;
+    guestName: string;
+    guestPhone: string | null;
+    status: string;
+    checkIn: string;
+    checkOut: string;
+    adults: number;
+    children: number;
+    notes: string | null;
+  },
+) {
+  const pmsCode = sale.pmsCode?.trim();
+  if (!pmsCode) return;
+  const db = await getDb();
+  const now = nowISO();
+  const stayStatus = saleStatusToStay(sale.status);
+  const existing = (await db.select().from(t.stays).where(eq(t.stays.pmsCode, pmsCode)).limit(1))[0];
+  const origin = isSaleOrigin(sale.origin) ? sale.origin : existing?.origin === "ezcloud" ? "ezcloud" : "ops";
+  const payload = {
+    pmsCode,
+    origin,
+    source: parseSaleSource(sale.source),
+    roomId: sale.roomId,
+    guestName: sale.guestName,
+    guestPhone: sale.guestPhone,
+    status: stayStatus,
+    arrivalDate: sale.checkIn,
+    departureDate: sale.checkOut,
+    adults: sale.adults,
+    children: sale.children,
+    notes: sale.notes || existing?.notes || null,
+    updatedAt: now,
+    updatedBy: actorId,
+  };
+  if (existing) {
+    await db.update(t.stays).set({
+      ...payload,
+      pmsBookingOk: existing.pmsBookingOk || origin === "ops",
+    }).where(eq(t.stays.id, existing.id));
+    return;
+  }
+  const id = `s-${pmsCode.toLowerCase().replace(/[^a-z0-9]+/g, "-").slice(0, 20)}-${nid().slice(0, 8)}`;
+  await db.insert(t.stays).values({
+    id,
+    ...payload,
+    breakfast: true,
+    pmsBookingOk: true,
+    pmsCheckinOk: stayStatus === "inhouse" || stayStatus === "departed",
+    pmsCheckoutOk: stayStatus === "departed",
+    invoiceOk: false,
+    paymentNote: null,
+    checkinAt: stayStatus === "inhouse" || stayStatus === "departed" ? now : null,
+    registrationDueAt: stayStatus === "inhouse" ? addMinutes(now, 30) : null,
+    registrationDoneAt: null,
+    registrationReason: null,
+    createdAt: now,
+    createdBy: actorId,
+  });
+}
+
+function withSaleRoom<T extends { roomId: string }>(sale: T, rooms: { id: string; number: string; type: string; floor: number; opsStatus: string }[]) {
+  return { ...sale, room: rooms.find((room) => room.id === sale.roomId) ?? null };
+}
+
+async function overlappingSale(roomId: string, checkIn: string, checkOut: string, exceptId?: string) {
+  const db = await getDb();
+  const rows = await db.select().from(t.roomSales).where(eq(t.roomSales.roomId, roomId));
+  return rows.find(
+    (sale) =>
+      sale.id !== exceptId &&
+      isActiveSaleStatus(sale.status) &&
+      rangesOverlap(checkIn, checkOut, sale.checkIn, sale.checkOut),
+  );
+}
+
+async function assertSaleWindow(roomId: string, checkIn: string, checkOut: string, exceptId?: string) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(checkIn) || !/^\d{4}-\d{2}-\d{2}$/.test(checkOut)) {
+    throw new Error("Ngày nhận / trả không hợp lệ");
+  }
+  if (checkOut <= checkIn) throw new Error("Ngày trả phải sau ngày nhận");
+  const db = await getDb();
+  const room = (await db.select().from(t.rooms).where(eq(t.rooms.id, roomId)).limit(1))[0];
+  if (!room) throw new Error("Chọn phòng");
+  if (room.opsStatus === "ooo") throw new Error(`P.${room.number} đang OOO, không bán`);
+  const clash = await overlappingSale(roomId, checkIn, checkOut, exceptId);
+  if (clash) {
+    throw new Error(`P.${room.number} đã bán ${clash.checkIn} → ${clash.checkOut} (${clash.guestName})`);
+  }
+  return room;
+}
+
+export async function listRoomSales() {
+  const db = await getDb();
+  const [sales, rooms] = await Promise.all([db.select().from(t.roomSales), db.select().from(t.rooms)]);
+  return sales
+    .map((sale) => withSaleRoom(sale, rooms))
+    .sort((a, b) => b.checkIn.localeCompare(a.checkIn) || (a.room?.number || "").localeCompare(b.room?.number || ""));
+}
+
+export async function getRoomSale(id: string) {
+  const sales = await listRoomSales();
+  return sales.find((sale) => sale.id === id) ?? null;
+}
+
+export async function salesBoard(date: string) {
+  const [rooms, types, sales] = await Promise.all([listRooms(), listRoomTypes(), listRoomSales()]);
+  const nightSales = sales.filter((sale) => isActiveSaleStatus(sale.status) && occupiesNight(sale.checkIn, sale.checkOut, date));
+  const byRoom = new Map(nightSales.map((sale) => [sale.roomId, sale]));
+  const cells = rooms
+    .slice()
+    .sort((a, b) => a.floor - b.floor || a.number.localeCompare(b.number))
+    .map((room) => {
+      const sale = byRoom.get(room.id) ?? null;
+      const kind =
+        room.opsStatus === "ooo" ? "ooo" : sale?.status === "inhouse" ? "inhouse" : sale ? "reserved" : "vacant";
+      return { room, sale, kind };
+    });
+  const vacant = cells.filter((cell) => cell.kind === "vacant").length;
+  const reserved = cells.filter((cell) => cell.kind === "reserved").length;
+  const inhouse = cells.filter((cell) => cell.kind === "inhouse").length;
+  const ooo = cells.filter((cell) => cell.kind === "ooo").length;
+  const revenue = nightSales.reduce((sum, sale) => sum + nightlyNet(sale), 0);
+  const upcoming = sales
+    .filter((sale) => sale.status === "reserved" && sale.checkIn > date && sale.checkIn <= addDaysVN(date, 14))
+    .sort((a, b) => a.checkIn.localeCompare(b.checkIn));
+  return { date, types, cells, vacant, reserved, inhouse, ooo, sold: reserved + inhouse, revenue, nightSales, upcoming };
+}
+
+export async function createRoomSale(user: SessionUser, data: SaleInput) {
+  const guestName = data.guestName.trim();
+  if (!guestName) throw new Error("Nhập tên khách");
+  if (!isSaleSource(data.source)) throw new Error("Chọn nền tảng booking");
+  const origin = data.origin === "ezcloud" ? "ezcloud" : "ops";
+  if (origin === "ezcloud" && !data.pmsCode?.trim()) throw new Error("Tích ezCloud thì nhập mã PMS");
+  const room = await assertSaleWindow(data.roomId, data.checkIn, data.checkOut);
+  const today = todayVN();
+  const checkinNow = Boolean(data.checkinNow) && data.checkIn <= today;
+  const status: SaleStatus = checkinNow ? "inhouse" : "reserved";
+  const { discountKind, discountValue } = normalizeDiscount(data.discountKind, data.discountValue);
+  const quote = saleQuote({ rate: Math.max(0, data.rate), checkIn: data.checkIn, checkOut: data.checkOut, discountKind, discountValue });
+  const id = nid();
+  const now = nowISO();
+  const pmsCode = data.pmsCode?.trim() || (origin === "ops" ? `OPS-${id.replace(/-/g, "").slice(0, 8).toUpperCase()}` : "");
+  if (!pmsCode) throw new Error("Tích ezCloud thì nhập mã PMS");
+  const row = {
+    id,
+    roomId: room.id,
+    guestName,
+    guestPhone: data.guestPhone?.trim() || null,
+    origin,
+    source: data.source,
+    status,
+    checkIn: data.checkIn,
+    checkOut: data.checkOut,
+    adults: Math.max(1, data.adults || 1),
+    children: Math.max(0, data.children || 0),
+    rate: Math.max(0, data.rate),
+    discountKind,
+    discountValue,
+    deposit: Math.max(0, data.deposit || 0),
+    pmsCode,
+    notes: data.notes?.trim() || null,
+    createdAt: now,
+    updatedAt: now,
+    createdBy: user.id,
+    updatedBy: user.id,
+  };
+  const db = await getDb();
+  await db.insert(t.roomSales).values(row);
+  await syncStayFromSale(user.id, row);
+  await notify({
+    role: user.role === "manager" ? "reception" : "manager",
+    title: `Bán P.${room.number} · ${guestName}`,
+    body: `${data.checkIn} → ${data.checkOut} · ${quote.total.toLocaleString("vi-VN")}₫`,
+    link: `/sales/${id}`,
+  });
+  await audit(user.id, "room_sale", id, "create", null, row);
+  return id;
+}
+
+export async function updateRoomSale(user: SessionUser, id: string, data: SaleInput) {
+  const db = await getDb();
+  const before = (await db.select().from(t.roomSales).where(eq(t.roomSales.id, id)).limit(1))[0];
+  if (!before) throw new Error("Không tìm thấy chỗ bán");
+  if (!isActiveSaleStatus(before.status)) throw new Error("Chỗ đã đóng, không sửa");
+  const guestName = data.guestName.trim();
+  if (!guestName) throw new Error("Nhập tên khách");
+  if (!isSaleSource(data.source)) throw new Error("Chọn nền tảng booking");
+  const origin = data.origin === "ezcloud" ? "ezcloud" : "ops";
+  if (origin === "ezcloud" && !data.pmsCode?.trim() && isOpsBookingCode(before.pmsCode)) {
+    throw new Error("Tích ezCloud thì nhập mã PMS");
+  }
+  await assertSaleWindow(data.roomId, data.checkIn, data.checkOut, id);
+  const { discountKind, discountValue } = normalizeDiscount(data.discountKind, data.discountValue);
+  const pmsCode = data.pmsCode?.trim() || before.pmsCode;
+  if (origin === "ezcloud" && (!pmsCode || isOpsBookingCode(pmsCode))) {
+    throw new Error("Tích ezCloud thì nhập mã PMS");
+  }
+  const patch = {
+    roomId: data.roomId,
+    guestName,
+    guestPhone: data.guestPhone?.trim() || null,
+    origin,
+    source: data.source,
+    checkIn: data.checkIn,
+    checkOut: data.checkOut,
+    adults: Math.max(1, data.adults || 1),
+    children: Math.max(0, data.children || 0),
+    rate: Math.max(0, data.rate),
+    discountKind,
+    discountValue,
+    deposit: Math.max(0, data.deposit || 0),
+    pmsCode,
+    notes: data.notes?.trim() || null,
+    updatedAt: nowISO(),
+    updatedBy: user.id,
+  };
+  await db.update(t.roomSales).set(patch).where(eq(t.roomSales.id, id));
+  await syncStayFromSale(user.id, { ...before, ...patch });
+  await audit(user.id, "room_sale", id, "update", before, patch);
+}
+
+export async function checkinRoomSale(user: SessionUser, id: string) {
+  const db = await getDb();
+  const before = (await db.select().from(t.roomSales).where(eq(t.roomSales.id, id)).limit(1))[0];
+  if (!before) throw new Error("Không tìm thấy chỗ bán");
+  if (before.status !== "reserved") throw new Error("Chỉ nhận phòng khi đang giữ chỗ");
+  const today = todayVN();
+  if (today < before.checkIn) throw new Error("Chưa đến ngày nhận phòng");
+  await db
+    .update(t.roomSales)
+    .set({ status: "inhouse", updatedAt: nowISO(), updatedBy: user.id })
+    .where(eq(t.roomSales.id, id));
+  await syncStayFromSale(user.id, { ...before, status: "inhouse" });
+  await audit(user.id, "room_sale", id, "checkin", before, { status: "inhouse" });
+}
+
+export async function checkoutRoomSale(user: SessionUser, id: string) {
+  const db = await getDb();
+  const before = (await db.select().from(t.roomSales).where(eq(t.roomSales.id, id)).limit(1))[0];
+  if (!before) throw new Error("Không tìm thấy chỗ bán");
+  if (before.status !== "inhouse") throw new Error("Chỉ trả phòng khi khách đang ở");
+  const today = todayVN();
+  const checkOut = today < before.checkOut ? today : before.checkOut;
+  if (checkOut <= before.checkIn) throw new Error("Ngày trả không hợp lệ");
+  await db
+    .update(t.roomSales)
+    .set({ status: "departed", checkOut, updatedAt: nowISO(), updatedBy: user.id })
+    .where(eq(t.roomSales.id, id));
+  await syncStayFromSale(user.id, { ...before, status: "departed", checkOut });
+  await audit(user.id, "room_sale", id, "checkout", before, { status: "departed", checkOut });
+}
+
+export async function cancelRoomSale(user: SessionUser, id: string, asNoShow = false) {
+  const db = await getDb();
+  const before = (await db.select().from(t.roomSales).where(eq(t.roomSales.id, id)).limit(1))[0];
+  if (!before) throw new Error("Không tìm thấy chỗ bán");
+  if (!isActiveSaleStatus(before.status)) throw new Error("Chỗ đã đóng");
+  if (asNoShow && before.status !== "reserved") throw new Error("No-show chỉ áp dụng chỗ đang giữ");
+  const status: SaleStatus = asNoShow ? "no_show" : "cancelled";
+  await db
+    .update(t.roomSales)
+    .set({ status, updatedAt: nowISO(), updatedBy: user.id })
+    .where(eq(t.roomSales.id, id));
+  await syncStayFromSale(user.id, { ...before, status });
+  await audit(user.id, "room_sale", id, asNoShow ? "no_show" : "cancel", before, { status });
+}
+
+export async function setRoomTypeRates(user: SessionUser, rates: { id: string; baseRate: number; weekendRate: number }[]) {
+  if (!can(user.role, "manageRates")) throw new Error("Chỉ quản lý sửa giá phòng");
+  const db = await getDb();
+  for (const row of rates) {
+    const before = (await db.select().from(t.roomTypes).where(eq(t.roomTypes.id, row.id)).limit(1))[0];
+    if (!before) continue;
+    const next = { baseRate: Math.max(0, row.baseRate), weekendRate: Math.max(0, row.weekendRate) };
+    await db.update(t.roomTypes).set(next).where(eq(t.roomTypes.id, row.id));
+    if (before.baseRate !== next.baseRate || before.weekendRate !== next.weekendRate) {
+      await audit(user.id, "room_type", row.id, "rate", before, next);
+    }
+  }
 }
 
 export async function listStays() {

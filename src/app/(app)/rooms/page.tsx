@@ -4,7 +4,7 @@ import { getSession } from "@/lib/auth";
 import { HK_LABEL } from "@/lib/constants";
 import { can } from "@/lib/permissions";
 import { listRooms, listRoomTypes, listUsers } from "@/lib/repos";
-import { Card, Chip } from "@/components/ui";
+import { Card, Chip, TabChip } from "@/components/ui";
 import type { HkStatus } from "@/lib/types";
 
 const TONE: Record<string, "ok" | "warn" | "danger" | "teal" | "neutral"> = {
@@ -34,31 +34,31 @@ export default async function RoomsPage({
         <div>
           <h1 className="text-xl font-bold">Phòng vận hành</h1>
           <p className="text-xs text-[#5c6665]">
-            {filtered.length} phòng · trạng thái dọn / INS / OOO. Tình trạng bán phòng vẫn do PMS.
+            {filtered.length} phòng · trạng thái dọn / INS / OOO. Bán phòng nằm ở mục Bán phòng.
           </p>
         </div>
-        {can(user.role, "manageRooms") ? (
-          <Link href="/rooms/manage" className="text-sm font-semibold text-teal">
-            Quản lý
-          </Link>
-        ) : null}
+        <div className="flex flex-col items-end gap-1">
+          {can(user.role, "manageSales") ? (
+            <Link href="/sales" className="flex min-h-11 items-center text-sm font-semibold text-teal">
+              Bán phòng
+            </Link>
+          ) : null}
+          {can(user.role, "manageRooms") ? (
+            <Link href="/rooms/manage" className="flex min-h-11 items-center text-sm font-semibold text-teal">
+              Hạng phòng
+            </Link>
+          ) : null}
+        </div>
       </div>
 
-      <div className="-mx-3 flex gap-2 overflow-x-auto px-3 pb-1">
-        <Link
-          href="/rooms"
-          className={`shrink-0 rounded-full px-3 py-1 text-xs font-semibold ${!type ? "bg-teal text-white" : "bg-white text-[#5c6665]"}`}
-        >
+      <div className="tab-scroller -mx-3 px-3 pb-1">
+        <TabChip href="/rooms" active={!type}>
           Tất cả
-        </Link>
+        </TabChip>
         {types.map((item) => (
-          <Link
-            key={item.id}
-            href={`/rooms?type=${encodeURIComponent(item.name)}`}
-            className={`shrink-0 rounded-full px-3 py-1 text-xs font-semibold ${type === item.name ? "bg-teal text-white" : "bg-white text-[#5c6665]"}`}
-          >
+          <TabChip key={item.id} href={`/rooms?type=${encodeURIComponent(item.name)}`} active={type === item.name}>
             {item.name}
-          </Link>
+          </TabChip>
         ))}
       </div>
 

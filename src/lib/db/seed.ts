@@ -67,6 +67,7 @@ export async function resetOpsDemo(db: AppDb) {
   await db.delete(t.guestRequests);
   await db.delete(t.vehicles);
   await db.delete(t.stays);
+  await db.delete(t.roomSales);
   await db.delete(t.shifts);
   await db.delete(t.breakfasts);
   await db.delete(t.incidents);
@@ -87,6 +88,7 @@ export async function wipeAllLocal(db: AppDb) {
   await db.delete(t.guestRequests);
   await db.delete(t.vehicles);
   await db.delete(t.stays);
+  await db.delete(t.roomSales);
   await db.delete(t.shifts);
   await db.delete(t.breakfasts);
   await db.delete(t.incidents);
@@ -212,6 +214,8 @@ export async function seedOpsDemo(db: AppDb) {
     {
       id: "s-201",
       pmsCode: "EZ-88502",
+      origin: "ezcloud",
+      source: "booking",
       roomId: "r-105",
       guestName: "Nguyễn Thu Hà",
       guestPhone: "0933333444",
@@ -239,6 +243,8 @@ export async function seedOpsDemo(db: AppDb) {
     {
       id: "s-305",
       pmsCode: "EZ-88421",
+      origin: "ezcloud",
+      source: "agoda",
       roomId: "r-305",
       guestName: "Trần Minh Khoa",
       guestPhone: "0912345678",
@@ -266,6 +272,8 @@ export async function seedOpsDemo(db: AppDb) {
     {
       id: "s-202",
       pmsCode: "EZ-88310",
+      origin: "ezcloud",
+      source: "traveloka",
       roomId: "r-202",
       guestName: "Lê Thị Hạnh",
       guestPhone: "0987654321",
@@ -293,6 +301,8 @@ export async function seedOpsDemo(db: AppDb) {
     {
       id: "s-102",
       pmsCode: "EZ-88201",
+      origin: "ezcloud",
+      source: "ezcloud",
       roomId: "r-102",
       guestName: "Phạm Đức Anh",
       guestPhone: "0908888777",
@@ -318,6 +328,80 @@ export async function seedOpsDemo(db: AppDb) {
       updatedBy: dutyId,
     },
   ]);
+
+  if (isLocalOpsSeed()) {
+    await db.insert(t.roomSales).values([
+      {
+        id: "sale-401",
+        roomId: "r-401",
+        guestName: "Đặng Minh Tuấn",
+        guestPhone: "0901222333",
+        origin: "ops",
+        source: "walk_in",
+        status: "inhouse",
+        checkIn: today,
+        checkOut: addDaysVN(today, 2),
+        adults: 2,
+        children: 0,
+        rate: 1200000,
+        discountKind: "none",
+        discountValue: 0,
+        deposit: 500000,
+        pmsCode: null,
+        notes: "Vãng lai, nhận chiều",
+        createdAt: now,
+        updatedAt: now,
+        createdBy: dutyId,
+        updatedBy: dutyId,
+      },
+      {
+        id: "sale-508",
+        roomId: "r-508",
+        guestName: "Mai Thanh Hà",
+        guestPhone: "0918888999",
+        origin: "ops",
+        source: "phone",
+        status: "reserved",
+        checkIn: addDaysVN(today, 1),
+        checkOut: addDaysVN(today, 3),
+        adults: 2,
+        children: 1,
+        rate: 950000,
+        discountKind: "none",
+        discountValue: 0,
+        deposit: 300000,
+        pmsCode: null,
+        notes: "Gọi giữ chỗ, ETA 15:00",
+        createdAt: now,
+        updatedAt: now,
+        createdBy: dutyId,
+        updatedBy: dutyId,
+      },
+      {
+        id: "sale-506",
+        roomId: "r-506",
+        guestName: "Công ty An Phú",
+        guestPhone: "0283999000",
+        origin: "ops",
+        source: "company",
+        status: "reserved",
+        checkIn: today,
+        checkOut: addDaysVN(today, 1),
+        adults: 2,
+        children: 0,
+        rate: 2500000,
+        discountKind: "percent",
+        discountValue: 10,
+        deposit: 0,
+        pmsCode: null,
+        notes: "VIP công ty — cần hoa",
+        createdAt: now,
+        updatedAt: now,
+        createdBy: dutyId,
+        updatedBy: dutyId,
+      },
+    ]);
+  }
 
   await db.insert(t.vehicles).values({
     id: nid(),
@@ -622,6 +706,8 @@ async function remapRoomRefs(db: AppDb, fromId: string, toId: string | null) {
   await db.update(t.guestRequests).set({ roomId: toId }).where(eq(t.guestRequests.roomId, fromId));
   await db.update(t.formSubmissions).set({ roomId: toId }).where(eq(t.formSubmissions.roomId, fromId));
   await db.update(t.incidents).set({ roomId: toId }).where(eq(t.incidents.roomId, fromId));
+  if (toId) await db.update(t.roomSales).set({ roomId: toId }).where(eq(t.roomSales.roomId, fromId));
+  else await db.delete(t.roomSales).where(eq(t.roomSales.roomId, fromId));
 }
 
 export async function syncStaffUsers(db: AppDb, opts?: { resetPasswords?: boolean }) {

@@ -28,26 +28,22 @@ export default async function LoginPage({
           <h1 className="hidden text-xl font-bold md:block">Đăng nhập</h1>
           <label>
             Tài khoản
-            <input name="username" autoComplete="username" required placeholder="ngan" />
+            <input name="username" autoComplete="username" required placeholder="Tài khoản" />
           </label>
           <label>
             Mật khẩu
-            <input name="password" type="password" autoComplete="current-password" required defaultValue="123456" />
+            <input name="password" type="password" autoComplete="current-password" required />
           </label>
           {error ? <p className="text-sm font-medium text-[#c23b3b]">Sai tài khoản hoặc mật khẩu.</p> : null}
           <Btn type="submit" className="w-full">
             Đăng nhập
           </Btn>
         </form>
-        <div className="mt-5 text-center text-xs leading-5 text-cream/70 md:text-left md:text-[#6b5a52]">
-          <p className="font-semibold text-cream md:text-ink">Tài khoản demo / mật khẩu 123456</p>
-          <p>ngan · thu · tuyen · uyen · thuy · oanh · quanly</p>
-          <p className="mt-3">
-            <Link href="/tin-tuc" className="font-semibold text-cream underline decoration-cream/40 md:text-burgundy">
-              Tin tức · Top 5 khách sạn Đà Lạt gần trung tâm
-            </Link>
-          </p>
-        </div>
+        <p className="mt-5 text-center text-xs leading-5 text-cream/70 md:text-left md:text-[#6b5a52]">
+          <Link href="/tin-tuc" className="font-semibold text-cream underline decoration-cream/40 md:text-burgundy">
+            Tin tức · Top 5 khách sạn Đà Lạt gần trung tâm
+          </Link>
+        </p>
       </section>
     </main>
   );

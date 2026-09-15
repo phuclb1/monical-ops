@@ -66,6 +66,31 @@ export const STAY_STATUSES = [
 ] as const;
 export type StayStatus = (typeof STAY_STATUSES)[number];
 
+export const SALE_STATUSES = ["reserved", "inhouse", "departed", "cancelled", "no_show"] as const;
+export type SaleStatus = (typeof SALE_STATUSES)[number];
+
+export const SALE_ORIGINS = ["ops", "ezcloud"] as const;
+export type SaleOrigin = (typeof SALE_ORIGINS)[number];
+
+export const SALE_SOURCES = [
+  "walk_in",
+  "phone",
+  "company",
+  "ezcloud",
+  "booking",
+  "agoda",
+  "traveloka",
+  "expedia",
+  "airbnb",
+  "ota",
+] as const;
+export type SaleSource = (typeof SALE_SOURCES)[number];
+
+export const DISCOUNT_KINDS = ["none", "percent", "amount"] as const;
+export type DiscountKind = (typeof DISCOUNT_KINDS)[number];
+
+export const ACTIVE_SALE_STATUSES: SaleStatus[] = ["reserved", "inhouse"];
+
 export type SessionUser = {
   id: string;
   username: string;

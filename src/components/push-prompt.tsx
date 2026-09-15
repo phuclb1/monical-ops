@@ -105,11 +105,11 @@ export function PushPrompt() {
               <p className="text-xs text-[#5c6665]">Việc mới, khăn, bàn giao — kêu cả khi tắt app (PWA).</p>
             </div>
             {status === "on" ? (
-              <Btn type="button" variant="ghost" className="min-h-10 shrink-0 px-3 text-xs" onClick={disable}>
+              <Btn type="button" variant="ghost" className="min-h-12 shrink-0 px-4" onClick={disable}>
                 Tắt
               </Btn>
             ) : (
-              <Btn type="button" className="min-h-10 shrink-0 px-3 text-xs" onClick={enable} disabled={status === "busy"}>
+              <Btn type="button" className="min-h-12 shrink-0 px-4" onClick={enable} disabled={status === "busy"}>
                 Bật
               </Btn>
             )}

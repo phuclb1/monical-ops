@@ -12,6 +12,8 @@ export const PRIMARY_NAV = [
 export function extraNav(role: Role) {
   return [
     { href: "/reception", label: "Lễ tân", show: can(role, "viewReception") || role === "hk" },
+    { href: "/sales", label: "Bán phòng", show: can(role, "manageSales") },
+    { href: "/sales/rates", label: "Giá phòng", show: can(role, "manageRates") },
     { href: "/kitchen", label: "Bếp", show: can(role, "viewKitchen") },
     { href: "/shifts", label: "Ca làm việc", show: true },
     { href: "/forms", label: "Biểu mẫu", show: true },

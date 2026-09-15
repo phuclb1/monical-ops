@@ -21,7 +21,9 @@ CREATE TABLE IF NOT EXISTS room_types (
   id TEXT PRIMARY KEY,
   code TEXT NOT NULL UNIQUE,
   name TEXT NOT NULL UNIQUE,
-  sort_order INTEGER NOT NULL DEFAULT 0
+  sort_order INTEGER NOT NULL DEFAULT 0,
+  base_rate INTEGER NOT NULL DEFAULT 0,
+  weekend_rate INTEGER NOT NULL DEFAULT 0
 );
 CREATE TABLE IF NOT EXISTS rooms (
   id TEXT PRIMARY KEY,
@@ -37,9 +39,37 @@ CREATE TABLE IF NOT EXISTS rooms (
   updated_at TEXT NOT NULL,
   updated_by TEXT
 );
+CREATE TABLE IF NOT EXISTS room_sales (
+  id TEXT PRIMARY KEY,
+  room_id TEXT NOT NULL,
+  guest_name TEXT NOT NULL,
+  guest_phone TEXT,
+  origin TEXT NOT NULL DEFAULT 'ops',
+  source TEXT NOT NULL,
+  status TEXT NOT NULL,
+  check_in TEXT NOT NULL,
+  check_out TEXT NOT NULL,
+  adults INTEGER NOT NULL DEFAULT 1,
+  children INTEGER NOT NULL DEFAULT 0,
+  rate INTEGER NOT NULL DEFAULT 0,
+  discount_kind TEXT NOT NULL DEFAULT 'none',
+  discount_value INTEGER NOT NULL DEFAULT 0,
+  deposit INTEGER NOT NULL DEFAULT 0,
+  pms_code TEXT,
+  notes TEXT,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL,
+  created_by TEXT,
+  updated_by TEXT
+);
+CREATE INDEX IF NOT EXISTS room_sales_room ON room_sales (room_id);
+CREATE INDEX IF NOT EXISTS room_sales_dates ON room_sales (check_in, check_out);
+CREATE INDEX IF NOT EXISTS room_sales_status ON room_sales (status);
 CREATE TABLE IF NOT EXISTS stays (
   id TEXT PRIMARY KEY,
   pms_code TEXT NOT NULL,
+  origin TEXT NOT NULL DEFAULT 'ops',
+  source TEXT NOT NULL DEFAULT 'walk_in',
   room_id TEXT,
   guest_name TEXT NOT NULL,
   guest_phone TEXT,

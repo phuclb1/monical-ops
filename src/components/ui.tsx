@@ -1,8 +1,9 @@
 import clsx from "clsx";
+import Link from "next/link";
 import type { ReactNode } from "react";
 
 export function Card({ children, className }: { children: ReactNode; className?: string }) {
-  return <section className={clsx("card p-3", className)}>{children}</section>;
+  return <section className={clsx("card p-4", className)}>{children}</section>;
 }
 
 export function SectionTitle({ children, hint }: { children: ReactNode; hint?: string }) {
@@ -11,6 +12,22 @@ export function SectionTitle({ children, hint }: { children: ReactNode; hint?: s
       <h2 className="text-[15px] font-bold text-ink">{children}</h2>
       {hint ? <span className="text-xs text-teal">{hint}</span> : null}
     </div>
+  );
+}
+
+export function TabChip({
+  href,
+  active,
+  children,
+}: {
+  href: string;
+  active?: boolean;
+  children: ReactNode;
+}) {
+  return (
+    <Link href={href} className={clsx("tab-chip", active && "is-on")} aria-current={active ? "page" : undefined}>
+      {children}
+    </Link>
   );
 }
 
@@ -47,7 +64,7 @@ export function Btn({
     <button
       {...props}
       className={clsx(
-        "inline-flex items-center justify-center rounded-xl px-3 text-sm font-semibold disabled:opacity-50",
+        "inline-flex min-h-12 items-center justify-center rounded-xl px-4 text-sm font-semibold disabled:opacity-50",
         map[variant],
         props.className,
       )}

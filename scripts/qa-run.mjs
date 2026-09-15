@@ -18,6 +18,15 @@ const runId = process.env.QA_RUN_ID || `R-${new Date().toISOString().slice(0, 10
 const outDir = join(root, "qa", "evidence", runId);
 mkdirSync(outDir, { recursive: true });
 
+function currentShiftLabel() {
+  const hour = Number(
+    new Intl.DateTimeFormat("en-GB", { timeZone: "Asia/Ho_Chi_Minh", hour: "2-digit", hour12: false }).format(new Date()),
+  );
+  if (hour >= 6 && hour < 14) return "Ca sáng";
+  if (hour >= 14 && hour < 22) return "Ca chiều";
+  return "Ca đêm";
+}
+
 const browser = await chromium.launch({ channel: "chrome", headless: true });
 const page = await browser.newPage({
   viewport: { width: 390, height: 844 },
@@ -108,7 +117,7 @@ try {
 
   await check("TC-03", "Lễ tân đăng nhập — Today ca đang mở", async (shot) => {
     await login("tuyen");
-    await must(shot, ["Ca đang làm", "Ca đêm"]);
+    await must(shot, ["Ca đang làm", currentShiftLabel()]);
   });
 
   await check("TC-10", "Khách đang check-in (đến)", async (shot) => {
@@ -141,6 +150,28 @@ try {
     await must(shot, ["Phạm Đức Anh", "Checkout 12:00"]);
   });
 
+  await check("TC-90", "PMS khách đến — booking xong, chưa check-in", async (shot) => {
+    await go("/reception/s-201");
+    await must(shot, ["Đối chiếu ezCloudhotel PMS", "EZ-88502", "Đã nhập booking — đã xác nhận", "Xác nhận Đã check-in PMS"]);
+  });
+
+  await check("TC-16", "Bấm xác nhận check-in PMS → bắt đầu 30 phút", async (shot) => {
+    await go("/reception/s-201");
+    await page.getByRole("button", { name: /Xác nhận Đã check-in PMS/ }).click();
+    await ready();
+    await must(shot, ["Đã check-in PMS (bắt đầu 30 phút) — đã xác nhận"]);
+  });
+
+  await check("TC-91", "PMS khách đang ở — đã check-in PMS", async (shot) => {
+    await go("/reception/s-305");
+    await must(shot, ["Đối chiếu ezCloudhotel PMS", "EZ-88421", "Đã check-in PMS (bắt đầu 30 phút) — đã xác nhận"]);
+  });
+
+  await check("TC-92", "PMS khách đi — chưa checkout / hóa đơn", async (shot) => {
+    await go("/reception/s-102");
+    await must(shot, ["EZ-88201", "Xác nhận Đã check-out PMS", "Xác nhận Đã xuất hóa đơn"]);
+  });
+
   await check("TC-20", "Bảng việc: thay khăn / dọn phòng / checkout", async (shot) => {
     await go("/tasks");
     await must(shot, ["Thay 2 khăn tắm P.305", "Dọn phòng khách ở P.202", "Dọn phòng trả P.102"]);
@@ -166,6 +197,42 @@ try {
     await must(shot, ["305", "102"]);
   });
 
+  await check("TC-93", "Sơ đồ bán phòng lễ tân", async (shot) => {
+    await go("/sales");
+    await must(shot, ["Bán phòng", "Trống", "Đang ở"]);
+  });
+
+  await check("TC-100", "Lọc nguồn Ops / ezCloud + nền tảng", async (shot) => {
+    await go("/sales");
+    await must(shot, ["Ops", "ezCloud", "Booking", "Vãng lai"]);
+  });
+
+  await check("TC-94", "Chỗ bán seed P.401 / P.506", async (shot) => {
+    await go("/sales");
+    await must(shot, ["Đặng Minh Tuấn", "Công ty An Phú"]);
+  });
+
+  await check("TC-95", "Form bán phòng: giá, chiết khấu, mã PMS", async (shot) => {
+    await go("/sales/new");
+    await must(shot, ["Giá / đêm", "Chiết khấu", "Mã PMS"]);
+  });
+
+  await check("TC-99", "Form bán: nền tảng Booking / Agoda / Ops", async (shot) => {
+    await go("/sales/new");
+    await must(shot, ["Nền tảng", "Booking.com", "Agoda", "Từ ezCloud"]);
+  });
+
+  await check("TC-96", "Lễ tân không sửa giá phòng", async (shot) => {
+    await go("/sales/rates");
+    await ready();
+    if (page.url().includes("/sales/rates")) throw new Error("Lễ tân vẫn vào được /sales/rates");
+    await page.screenshot({ path: shot, fullPage: true });
+    const text = await pageText();
+    if (text.includes("Lưu giá") && page.url().includes("/sales/rates")) {
+      throw new Error("Lễ tân thấy form lưu giá");
+    }
+  });
+
   await check("TC-50", "Bàn giao gom việc / xe", async (shot) => {
     await go("/handover");
     await must(shot, ["Bàn giao"]);
@@ -173,7 +240,7 @@ try {
 
   await check("TC-70", "Checklist ca lễ tân", async (shot) => {
     await go("/shifts");
-    await must(shot, ["Ca đêm", "Đang mở"]);
+    await must(shot, [currentShiftLabel(), "Đang mở"]);
   });
 
   await logout();
@@ -210,6 +277,18 @@ try {
     await must(shot, ["Ngân", "Thu", "Tuyến"]);
   });
 
+  await check("TC-41", "Quản lý hạng phòng", async (shot) => {
+    await go("/rooms/manage");
+    await must(shot, ["Hạng phòng", "Thêm hạng"]);
+  });
+
+  await check("TC-97", "Quản lý sơ đồ bán + giá phòng", async (shot) => {
+    await go("/sales");
+    await must(shot, ["Bán phòng", "Đặng Minh Tuấn"]);
+    await go("/sales/rates");
+    await must(shot, ["Giá phòng", "Ngày thường", "Cuối tuần"]);
+  });
+
   await check("TC-05", "HK không vào trang nhân viên", async (shot) => {
     await logout();
     await login("uyen");
@@ -227,6 +306,15 @@ try {
   await check("TC-25", "HK tạo việc", async (shot) => {
     await go("/tasks/new");
     await must(shot, ["Kiểm INS"]);
+  });
+
+  await check("TC-98", "HK không vào bán phòng", async (shot) => {
+    await go("/sales");
+    await ready();
+    if (page.url().includes("/sales")) throw new Error("HK vẫn vào được /sales");
+    await must(shot, ["Thêm"]);
+    const text = await pageText();
+    if (text.includes("Bán phòng — sơ đồ")) throw new Error("HK thấy menu bán phòng");
   });
 } finally {
   await browser.close();
