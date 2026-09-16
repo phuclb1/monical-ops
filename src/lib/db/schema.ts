@@ -45,6 +45,7 @@ export const rooms = sqliteTable("rooms", {
 
 export const roomSales = sqliteTable("room_sales", {
   id: text("id").primaryKey(),
+  bookingId: text("booking_id"),
   roomId: text("room_id").notNull(),
   guestName: text("guest_name").notNull(),
   guestPhone: text("guest_phone"),

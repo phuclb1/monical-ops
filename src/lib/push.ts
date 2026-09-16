@@ -9,7 +9,7 @@ export type NotifyPush = { userId?: string | null; role?: string | null; title: 
 function vapidKeys() {
   const publicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY || process.env.VAPID_PUBLIC_KEY || "";
   const privateKey = process.env.VAPID_PRIVATE_KEY || "";
-  const subject = process.env.VAPID_SUBJECT || process.env.NEXT_PUBLIC_APP_URL || "https://ops-monical.phuclb1.workers.dev";
+  const subject = process.env.VAPID_SUBJECT || process.env.NEXT_PUBLIC_APP_URL || "https://platform.monicalhoteldalat.com";
   if (!publicKey || !privateKey) return null;
   return { subject: subject.startsWith("mailto:") || subject.startsWith("http") ? subject : `https://${subject}`, publicKey, privateKey };
 }

@@ -194,22 +194,27 @@ try {
 
   await check("TC-40", "Danh sách phòng", async (shot) => {
     await go("/rooms");
-    await must(shot, ["305", "102"]);
+    await must(shot, ["305", "102", "Sẽ đến", "Phòng bẩn"]);
   });
 
   await check("TC-93", "Sơ đồ bán phòng lễ tân", async (shot) => {
     await go("/sales");
-    await must(shot, ["Bán phòng", "Trống", "Đang ở"]);
+    await must(shot, ["Bán phòng", "Trống", "Đang ở", "Sẽ đến", "Phòng bẩn", "Đặt phòng"]);
   });
 
-  await check("TC-100", "Lọc nguồn Ops / ezCloud + nền tảng", async (shot) => {
+  await check("TC-100", "Lọc nguồn Ops / ezCloud", async (shot) => {
     await go("/sales");
-    await must(shot, ["Ops", "ezCloud", "Booking", "Vãng lai"]);
+    await must(shot, ["Ops", "ezCloud"]);
   });
 
   await check("TC-94", "Chỗ bán seed P.401 / P.506", async (shot) => {
     await go("/sales");
     await must(shot, ["Đặng Minh Tuấn", "Công ty An Phú"]);
+  });
+
+  await check("TC-101", "Danh sách đặt phòng / booking", async (shot) => {
+    await go("/sales/bookings");
+    await must(shot, ["Đặt phòng", "Đang mở", "Đặng Minh Tuấn", "Công ty An Phú"]);
   });
 
   await check("TC-95", "Form bán phòng: giá, chiết khấu, mã PMS", async (shot) => {

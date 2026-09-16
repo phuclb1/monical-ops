@@ -91,6 +91,9 @@ export default async function TodayPage() {
           <Link href="/sales" className="cta-link mt-3 w-full">
             Mở sơ đồ bán phòng
           </Link>
+          <Link href="/sales/bookings" className="mt-2 flex min-h-11 items-center justify-center text-sm font-semibold text-teal">
+            Quản lý đặt phòng
+          </Link>
         </Card>
       ) : null}
 

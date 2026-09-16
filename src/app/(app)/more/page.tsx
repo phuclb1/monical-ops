@@ -9,6 +9,7 @@ import { can } from "@/lib/permissions";
 const LINKS = [
   { href: "/reception", label: "Lễ tân — khách & đăng ký lưu trú", show: (r: Parameters<typeof can>[0]) => can(r, "viewReception") || r === "hk" },
   { href: "/sales", label: "Bán phòng — sơ đồ trống / giữ / nhận", show: (r: Parameters<typeof can>[0]) => can(r, "manageSales") },
+  { href: "/sales/bookings", label: "Đặt phòng — booking / nhiều phòng", show: (r: Parameters<typeof can>[0]) => can(r, "manageSales") },
   { href: "/sales/rates", label: "Giá phòng — ngày thường / cuối tuần", show: (r: Parameters<typeof can>[0]) => can(r, "manageRates") },
   { href: "/kitchen", label: "Bếp — ăn sáng", show: (r: Parameters<typeof can>[0]) => can(r, "viewKitchen") },
   { href: "/shifts", label: "Ca làm việc & checklist", show: () => true },

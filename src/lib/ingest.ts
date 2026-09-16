@@ -126,7 +126,10 @@ async function ingestOne(raw: IngestBooking): Promise<IngestResult> {
   const { discountKind, discountValue } = normalizeDiscount(raw.discountKind || "none", raw.discountValue || 0);
 
   let stayResult: IngestResult["stay"] = "skipped";
-  const stayRow = (await db.select().from(t.stays).where(eq(t.stays.pmsCode, pmsCode)).limit(1))[0];
+  const stayRows = await db.select().from(t.stays).where(eq(t.stays.pmsCode, pmsCode));
+  const stayRow = room
+    ? stayRows.find((row) => row.roomId === room.id) ?? stayRows.find((row) => !row.roomId)
+    : stayRows[0];
   const stayPayload = {
     pmsCode,
     origin: stayRow?.origin === "ops" ? "ops" : origin,
@@ -173,7 +176,8 @@ async function ingestOne(raw: IngestBooking): Promise<IngestResult> {
     return { pmsCode, stay: stayResult, sale: "skipped", error: "Không có số phòng — đã lưu thẻ lễ tân, chưa gán sơ đồ bán" };
   }
 
-  const saleRow = (await db.select().from(t.roomSales).where(eq(t.roomSales.pmsCode, pmsCode)).limit(1))[0];
+  const saleRows = await db.select().from(t.roomSales).where(eq(t.roomSales.pmsCode, pmsCode));
+  const saleRow = saleRows.find((row) => row.roomId === room.id);
   const clash = (await db.select().from(t.roomSales).where(eq(t.roomSales.roomId, room.id))).find(
     (sale) =>
       sale.id !== saleRow?.id &&
@@ -221,8 +225,10 @@ async function ingestOne(raw: IngestBooking): Promise<IngestResult> {
   }
 
   const saleId = nid();
+  const bookingId = saleRows.find((row) => row.bookingId)?.bookingId || saleRows[0]?.bookingId || saleRows[0]?.id || saleId;
   await db.insert(t.roomSales).values({
     id: saleId,
+    bookingId,
     ...salePayload,
     createdAt: now,
     createdBy: INGEST_ACTOR_ID,

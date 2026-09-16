@@ -40,6 +40,7 @@ CREATE TABLE IF NOT EXISTS rooms (
 );
 CREATE TABLE IF NOT EXISTS room_sales (
   id TEXT PRIMARY KEY,
+  booking_id TEXT,
   room_id TEXT NOT NULL,
   guest_name TEXT NOT NULL,
   guest_phone TEXT,
@@ -64,6 +65,7 @@ CREATE TABLE IF NOT EXISTS room_sales (
 CREATE INDEX IF NOT EXISTS room_sales_room ON room_sales (room_id);
 CREATE INDEX IF NOT EXISTS room_sales_dates ON room_sales (check_in, check_out);
 CREATE INDEX IF NOT EXISTS room_sales_status ON room_sales (status);
+CREATE INDEX IF NOT EXISTS room_sales_booking ON room_sales (booking_id);
 CREATE TABLE IF NOT EXISTS stays (
   id TEXT PRIMARY KEY,
   pms_code TEXT NOT NULL,
@@ -370,4 +372,6 @@ export const SCHEMA_PATCHES = [
   "CREATE INDEX IF NOT EXISTS checklists_room ON checklists (room_id)",
   "CREATE INDEX IF NOT EXISTS audit_logs_created ON audit_logs (created_at)",
   "CREATE INDEX IF NOT EXISTS audit_logs_entity ON audit_logs (entity, created_at)",
+  "ALTER TABLE room_sales ADD COLUMN booking_id TEXT",
+  "CREATE INDEX IF NOT EXISTS room_sales_booking ON room_sales (booking_id)",
 ];

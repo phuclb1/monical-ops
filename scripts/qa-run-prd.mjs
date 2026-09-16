@@ -5,7 +5,7 @@ import { fileURLToPath } from "node:url";
 import { chromium } from "playwright-core";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
-const base = process.env.OPS_URL || "https://ops-monical.phuclb1.workers.dev";
+const base = process.env.OPS_URL || "https://platform.monicalhoteldalat.com";
 
 function gitCommit() {
   const short = execSync("git rev-parse --short HEAD", { cwd: root }).toString().trim();
@@ -193,15 +193,20 @@ try {
 
   await checkAuthed("TC-40", "Danh sách phòng", async (shot) => {
     await go("/rooms");
-    await must(shot, ["305", "102"]);
+    await must(shot, ["305", "102", "Sẽ đến"]);
   });
 
   await checkAuthed("TC-93", "Sơ đồ bán phòng", async (shot) => {
     await go("/sales");
-    await must(shot, ["Bán phòng", "Trống"]);
+    await must(shot, ["Bán phòng", "Trống", "Sẽ đến", "Đặt phòng"]);
   });
 
   skip("TC-94", "Chỗ bán seed P.401 / P.506", "prd không seed chỗ bán demo");
+
+  await checkAuthed("TC-101", "Danh sách đặt phòng", async (shot) => {
+    await go("/sales/bookings");
+    await must(shot, ["Đặt phòng", "Đang mở"]);
+  });
 
   await checkAuthed("TC-95", "Form bán phòng: giá, chiết khấu, mã PMS", async (shot) => {
     await go("/sales/new");

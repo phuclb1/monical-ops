@@ -2,9 +2,12 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getSession } from "@/lib/auth";
 import { HK_LABEL } from "@/lib/constants";
+import { todayVN } from "@/lib/datetime";
 import { can } from "@/lib/permissions";
-import { listRooms, listRoomTypes, listUsers } from "@/lib/repos";
-import { Card, Chip, TabChip } from "@/components/ui";
+import { listRooms, listRoomTypes, listUsers, roomFocusBoard } from "@/lib/repos";
+import { isRoomFocus } from "@/lib/room-focus";
+import { RoomFocusChips } from "@/components/room-focus-chips";
+import { Card, Chip, Empty, TabChip } from "@/components/ui";
 import type { HkStatus } from "@/lib/types";
 
 const TONE: Record<string, "ok" | "warn" | "danger" | "teal" | "neutral"> = {
@@ -19,14 +22,37 @@ const TONE: Record<string, "ok" | "warn" | "danger" | "teal" | "neutral"> = {
 export default async function RoomsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ type?: string }>;
+  searchParams: Promise<{ type?: string; focus?: string }>;
 }) {
   const user = await getSession();
   if (!user) redirect("/login");
-  const { type } = await searchParams;
-  const [rooms, users, types] = await Promise.all([listRooms(), listUsers(), listRoomTypes()]);
-  const filtered = rooms.filter((room) => !type || room.type === type);
+  const { type, focus: rawFocus } = await searchParams;
+  const raw = rawFocus || "";
+  const focus = isRoomFocus(raw) ? raw : "";
+  const date = todayVN();
+  const [rooms, users, types, focusBoard] = await Promise.all([
+    listRooms(),
+    listUsers(),
+    listRoomTypes(),
+    roomFocusBoard(date),
+  ]);
+  const hits = focus ? focusBoard[focus] : [];
+  const hitByRoom = new Map(hits.map((hit) => [hit.roomId, hit]));
+  const filtered = rooms.filter((room) => {
+    if (type && room.type !== type) return false;
+    if (focus && !hitByRoom.has(room.id)) return false;
+    return true;
+  });
   const floors = [...new Set(filtered.map((room) => room.floor))].sort((a, b) => a - b);
+  const roomsHref = (extra: { type?: string; focus?: string }) => {
+    const next = new URLSearchParams();
+    const nextType = extra.type === "" ? "" : extra.type ?? type;
+    const nextFocus = extra.focus === "" ? "" : extra.focus ?? focus;
+    if (nextType) next.set("type", nextType);
+    if (nextFocus) next.set("focus", nextFocus);
+    const text = next.toString();
+    return text ? `/rooms?${text}` : "/rooms";
+  };
 
   return (
     <main className="space-y-3 px-3 py-4">
@@ -51,16 +77,20 @@ export default async function RoomsPage({
         </div>
       </div>
 
+      <RoomFocusChips path="/rooms" query={{ type }} date={date} focus={focus} counts={focusBoard.counts} />
+
       <div className="tab-scroller -mx-3 px-3 pb-1">
-        <TabChip href="/rooms" active={!type}>
-          Tất cả
+        <TabChip href={roomsHref({ type: "" })} active={!type}>
+          Tất cả hạng
         </TabChip>
         {types.map((item) => (
-          <TabChip key={item.id} href={`/rooms?type=${encodeURIComponent(item.name)}`} active={type === item.name}>
+          <TabChip key={item.id} href={roomsHref({ type: item.name })} active={type === item.name}>
             {item.name}
           </TabChip>
         ))}
       </div>
+
+      {focus && !filtered.length ? <Empty title="Không có phòng khớp bộ lọc" text="Bỏ quick filter hoặc đổi hạng phòng." /> : null}
 
       {floors.map((floor) => {
         const onFloor = filtered
@@ -72,8 +102,9 @@ export default async function RoomsPage({
             <div className="list-cards">
               {onFloor.map((room) => {
                 const who = users.find((u) => u.id === room.assignedTo && u.active);
+                const hit = hitByRoom.get(room.id);
                 return (
-                  <Link key={room.id} href={`/rooms/${room.id}`}>
+                  <Link key={room.id} href={hit?.href || `/rooms/${room.id}`}>
                     <Card className="mb-2 flex items-center justify-between">
                       <div>
                         <p className="text-lg font-bold">P.{room.number}</p>
@@ -81,6 +112,12 @@ export default async function RoomsPage({
                           {room.type}
                           {who ? ` · ${who.fullName}` : ""}
                         </p>
+                        {hit?.guestName || hit?.hint ? (
+                          <p className="mt-1 text-xs font-semibold">
+                            {hit.guestName || hit.hint}
+                            {hit.guestName && hit.hint ? ` · ${hit.hint}` : ""}
+                          </p>
+                        ) : null}
                       </div>
                       <div className="flex flex-col items-end gap-1">
                         <Chip tone={room.opsStatus === "ooo" ? "danger" : TONE[room.hkStatus] || "neutral"}>

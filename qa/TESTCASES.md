@@ -12,7 +12,7 @@ File này là sổ QA. Mỗi lần test: ghi **commit**, **pass/fail**, và **sc
 
 **PRD** (chỉ `quanly`, không seed khách/việc demo — case kịch bản local bị skip):
 
-1. App: `https://ops-monical.phuclb1.workers.dev`
+1. App: `https://platform.monicalhoteldalat.com`
 2. `npm run qa:run:prd`
 
 Sau đó copy block **Run mới nhất** từ `qa/evidence/<run-id>/manifest.json` vào bảng dưới (hoặc để agent cập nhật file này). Ghi commit:

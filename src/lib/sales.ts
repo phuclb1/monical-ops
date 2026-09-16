@@ -31,39 +31,90 @@ export function normalizeDiscount(kind: string | undefined, value: number | unde
   return { discountKind, discountValue: discountKind === "none" ? 0 : discountValue };
 }
 
-export function saleQuote(input: {
+type QuoteLineInput = {
   rate: number;
   checkIn: string;
   checkOut: string;
   discountKind?: string | null;
   discountValue?: number | null;
-}) {
-  const nights = Math.max(0, nightsBetween(input.checkIn, input.checkOut));
-  const subtotal = Math.max(0, input.rate) * nights;
-  const { discountKind, discountValue } = normalizeDiscount(input.discountKind || "none", input.discountValue || 0);
-  const discount =
-    discountKind === "percent"
-      ? Math.round(subtotal * discountValue / 100)
-      : discountKind === "amount"
-        ? discountValue
-        : 0;
-  const cut = Math.min(subtotal, Math.max(0, discount));
-  return { nights, subtotal, discount: cut, total: subtotal - cut, discountKind, discountValue };
+};
+
+function allocateAmount(weights: number[], total: number) {
+  const sum = weights.reduce((acc, value) => acc + value, 0);
+  if (total <= 0 || sum <= 0) return weights.map(() => 0);
+  const raw = weights.map((weight) => (weight / sum) * total);
+  const floors = raw.map((value) => Math.floor(value));
+  let remain = total - floors.reduce((acc, value) => acc + value, 0);
+  const order = raw
+    .map((value, index) => ({ index, frac: value - Math.floor(value) }))
+    .sort((a, b) => b.frac - a.frac || a.index - b.index);
+  const out = [...floors];
+  for (const item of order) {
+    if (remain <= 0) break;
+    out[item.index] += 1;
+    remain -= 1;
+  }
+  return out;
+}
+
+export function bookingQuote<T extends QuoteLineInput>(rooms: T[]) {
+  const lines = rooms.map((row) => {
+    const nights = Math.max(0, nightsBetween(row.checkIn, row.checkOut));
+    return { nights, subtotal: Math.max(0, row.rate) * nights };
+  });
+  const subtotal = lines.reduce((sum, line) => sum + line.subtotal, 0);
+  const first = rooms[0];
+  const { discountKind, discountValue } = normalizeDiscount(first?.discountKind || "none", first?.discountValue || 0);
+  const raw =
+    discountKind === "percent" ? Math.round(subtotal * discountValue / 100) : discountKind === "amount" ? discountValue : 0;
+  const discount = Math.min(subtotal, Math.max(0, raw));
+  const shares = allocateAmount(
+    lines.map((line) => line.subtotal),
+    discount,
+  );
+  return {
+    nights: lines[0]?.nights || 0,
+    subtotal,
+    discount,
+    total: subtotal - discount,
+    discountKind,
+    discountValue,
+    lines: lines.map((line, index) => ({
+      nights: line.nights,
+      subtotal: line.subtotal,
+      discount: shares[index] || 0,
+      total: line.subtotal - (shares[index] || 0),
+    })),
+  };
+}
+
+export function quoteLinesBySaleId<T extends QuoteLineInput & { id: string; bookingId?: string | null }>(sales: T[]) {
+  const map = new Map<string, { nights: number; subtotal: number; discount: number; total: number }>();
+  for (const { rooms } of groupByBooking(sales)) {
+    const quote = bookingQuote(rooms);
+    rooms.forEach((room, index) => map.set(room.id, quote.lines[index]));
+  }
+  return map;
+}
+
+export function saleQuote(input: QuoteLineInput) {
+  const quote = bookingQuote([input]);
+  const line = quote.lines[0] || { nights: 0, subtotal: 0, discount: 0, total: 0 };
+  return { ...line, discountKind: quote.discountKind, discountValue: quote.discountValue };
 }
 
 export function saleTotal(rate: number, checkIn: string, checkOut: string, discountKind?: string | null, discountValue?: number | null) {
   return saleQuote({ rate, checkIn, checkOut, discountKind, discountValue }).total;
 }
 
-export function nightlyNet(input: {
-  rate: number;
-  checkIn: string;
-  checkOut: string;
-  discountKind?: string | null;
-  discountValue?: number | null;
-}) {
+export function nightlyNet(input: QuoteLineInput) {
   const quote = saleQuote(input);
   return quote.nights > 0 ? Math.round(quote.total / quote.nights) : 0;
+}
+
+export function nightlyNetFromLine(line: { nights: number; total: number } | undefined) {
+  if (!line?.nights) return 0;
+  return Math.round(line.total / line.nights);
 }
 
 export function parseMoney(value: FormDataEntryValue | string | null | undefined) {
@@ -74,6 +125,10 @@ export function parseMoney(value: FormDataEntryValue | string | null | undefined
 
 export function formatVnd(value: number) {
   return `${new Intl.NumberFormat("vi-VN").format(Math.max(0, Math.round(value)))}₫`;
+}
+
+export function bookingDue(total: number, deposit: number) {
+  return Math.max(0, Math.round(total || 0) - Math.max(0, Math.round(deposit || 0)));
 }
 
 export function discountLabel(kind: string | null | undefined, value: number | null | undefined) {
@@ -88,6 +143,13 @@ export function rangesOverlap(aIn: string, aOut: string, bIn: string, bOut: stri
 
 export function occupiesNight(checkIn: string, checkOut: string, date: string) {
   return checkIn <= date && date < checkOut;
+}
+
+export function ganttSpan(checkIn: string, checkOut: string, from: string, days: number) {
+  const start = Math.max(0, nightsBetween(from, checkIn));
+  const end = Math.min(days, nightsBetween(from, checkOut));
+  if (end <= start) return null;
+  return { start, end };
 }
 
 export function isActiveSaleStatus(status: string): status is SaleStatus {
@@ -124,6 +186,43 @@ export function parseSaleSource(raw: string | null | undefined): SaleSource {
 
 export function isOpsBookingCode(code: string | null | undefined) {
   return String(code || "").toUpperCase().startsWith("OPS-");
+}
+
+export function bookingKey(sale: { id: string; bookingId?: string | null }) {
+  return sale.bookingId || sale.id;
+}
+
+export function roomMoveKind(
+  fromType: string,
+  toType: string,
+  types: { name: string; sortOrder: number; baseRate?: number | null }[],
+): "same" | "upgrade" | null {
+  if (fromType === toType) return "same";
+  const from = types.find((type) => type.name === fromType);
+  const to = types.find((type) => type.name === toType);
+  if (!from || !to) return null;
+  if (to.sortOrder < from.sortOrder) return "upgrade";
+  if ((to.baseRate || 0) > (from.baseRate || 0)) return "upgrade";
+  return null;
+}
+
+export function rollupBookingStatus(statuses: string[]): SaleStatus {
+  if (statuses.includes("inhouse")) return "inhouse";
+  if (statuses.includes("reserved")) return "reserved";
+  if (statuses.includes("departed")) return "departed";
+  if (statuses.includes("no_show")) return "no_show";
+  return "cancelled";
+}
+
+export function groupByBooking<T extends { id: string; bookingId?: string | null }>(rows: T[]) {
+  const map = new Map<string, T[]>();
+  for (const row of rows) {
+    const key = bookingKey(row);
+    const list = map.get(key) || [];
+    list.push(row);
+    map.set(key, list);
+  }
+  return [...map.entries()].map(([id, rooms]) => ({ id, rooms }));
 }
 
 export function saleStatusToStay(status: string) {

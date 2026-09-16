@@ -58,6 +58,32 @@ export function startOfWeekVN(isoDate: string) {
   return addDaysVN(isoDate, 1 - weekdayISO(isoDate));
 }
 
+export function startOfMonthVN(isoDate: string) {
+  return `${isoDate.slice(0, 7)}-01`;
+}
+
+export function addMonthsVN(isoDate: string, delta: number) {
+  const year = Number(isoDate.slice(0, 4));
+  const month = Number(isoDate.slice(5, 7));
+  const day = Number(isoDate.slice(8, 10));
+  const index = year * 12 + (month - 1) + delta;
+  const nextYear = Math.floor(index / 12);
+  const nextMonth = index % 12;
+  const last = new Date(Date.UTC(nextYear, nextMonth + 1, 0)).getUTCDate();
+  const nextDay = Math.min(day || 1, last);
+  return `${nextYear}-${String(nextMonth + 1).padStart(2, "0")}-${String(nextDay).padStart(2, "0")}`;
+}
+
+export function datesUntil(from: string, toExclusive: string) {
+  const days: string[] = [];
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(from) || !/^\d{4}-\d{2}-\d{2}$/.test(toExclusive) || toExclusive <= from) return days;
+  for (let date = from; date < toExclusive; date = addDaysVN(date, 1)) {
+    days.push(date);
+    if (days.length > 62) break;
+  }
+  return days;
+}
+
 export function weekOfVN(isoDate = todayVN()) {
   const start = startOfWeekVN(isoDate);
   return WEEKDAYS.map((day, i) => ({
@@ -84,6 +110,14 @@ export function formatDateLong(isoDate: string) {
 export function formatWeekRange(isoDate = todayVN()) {
   const days = weekOfVN(isoDate);
   return `${formatDayMonth(days[0].date)} – ${formatDayMonth(days[6].date)}/${days[6].date.slice(0, 4)}`;
+}
+
+export function formatMonthLong(isoDate: string) {
+  return new Intl.DateTimeFormat("vi-VN", {
+    timeZone: TZ,
+    month: "long",
+    year: "numeric",
+  }).format(new Date(`${startOfMonthVN(isoDate)}T12:00:00+07:00`));
 }
 
 export function nextShiftSlot(type: ShiftType, date: string) {

@@ -18,6 +18,7 @@ import {
   ScrollText,
   ConciergeBell,
   BedDouble,
+  BookMarked,
   Tag,
 } from "lucide-react";
 import clsx from "clsx";
@@ -31,6 +32,7 @@ const ICONS: Record<string, typeof CalendarDays> = {
   "/more": Menu,
   "/reception": ConciergeBell,
   "/sales": BedDouble,
+  "/sales/bookings": BookMarked,
   "/sales/rates": Tag,
   "/kitchen": ChefHat,
   "/shifts": TimerReset,

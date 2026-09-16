@@ -99,6 +99,7 @@ const FIELD_LABEL: Record<string, string> = {
   guestPhone: "Điện thoại",
   pmsCode: "Mã PMS",
   roomId: "Phòng",
+  bookingId: "Booking",
   fullName: "Họ tên",
   username: "Tài khoản",
   role: "Vai trò",

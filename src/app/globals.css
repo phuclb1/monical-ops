@@ -283,6 +283,21 @@ label {
     padding-bottom: 2rem;
   }
 
+  .page-frame > main.sales-board {
+    max-width: none;
+  }
+
+  .sales-board .tab-scroller {
+    flex-wrap: wrap;
+    overflow: visible;
+    margin-left: 0;
+    margin-right: 0;
+    padding-left: 0;
+    padding-right: 0;
+    width: 100%;
+    scroll-snap-type: none;
+  }
+
   .list-cards {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -475,4 +490,110 @@ label {
   .news-article .hotel-meta {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
+}
+
+.room-gantt-scroll {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: #fffdf8;
+}
+
+.room-gantt-head,
+.room-gantt-row {
+  display: grid;
+  min-height: 2.75rem;
+}
+
+.room-gantt-head {
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  background: #fff8ee;
+  border-bottom: 1px solid var(--line);
+}
+
+.room-gantt-floor {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  margin: 0;
+  padding: 0.35rem 0.75rem;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #8a7a72;
+  background: #f7efe4;
+}
+
+.room-gantt-label {
+  position: sticky;
+  left: 0;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 0.35rem 0.55rem;
+  background: #fffdf8;
+  border-right: 1px solid var(--line);
+}
+
+.room-gantt-head .room-gantt-label {
+  background: #fff8ee;
+}
+
+.room-gantt-row {
+  border-top: 1px solid var(--line);
+}
+
+.room-gantt-track {
+  position: relative;
+  min-height: 2.75rem;
+}
+
+.room-gantt-cells {
+  display: grid;
+  height: 100%;
+}
+
+.room-gantt-cell {
+  min-height: 2.75rem;
+  border-right: 1px solid color-mix(in srgb, var(--line) 70%, transparent);
+}
+
+.room-gantt-cell.is-weekend {
+  background: #faf4ea;
+}
+
+.room-gantt-cell.is-today {
+  background: #f7edd2;
+}
+
+.room-gantt-cell.is-ooo {
+  background: #fde8e8;
+}
+
+.room-gantt-cell.is-open:hover {
+  background: #e8f3f2;
+}
+
+.room-gantt-bar {
+  position: absolute;
+  top: 6px;
+  bottom: 6px;
+  display: flex;
+  align-items: center;
+  padding: 0 0.4rem;
+  border-radius: 8px;
+  font-size: 11px;
+  font-weight: 700;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.room-gantt.is-month .room-gantt-bar {
+  padding: 0 0.25rem;
+  font-size: 10px;
 }

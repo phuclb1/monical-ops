@@ -60,7 +60,7 @@ Lần đầu chạy sẽ tạo `data/ops.db` và seed ca hôm nay, khách P.305 
 
 Trên Chrome Android / Safari iOS: Mở trang → menu trình duyệt → **Thêm vào màn hình chính**.
 
-Live: https://ops-monical.phuclb1.workers.dev
+Live: https://platform.monicalhoteldalat.com
 
 ## Đẩy Cloudflare
 
@@ -68,7 +68,7 @@ Live: https://ops-monical.phuclb1.workers.dev
 2. Dán `database_id` vào `wrangler.jsonc`
 3. `npx wrangler d1 execute ops-monical --remote --file=drizzle/0000_init.sql`
 4. `cp .env.example .dev.vars` và đặt `SESSION_SECRET` mạnh, `INGEST_SECRET` riêng, `NEXTJS_ENV=production`
-5. `npm run deploy`
+5. `npm run deploy` — gắn custom domain `platform.monicalhoteldalat.com` (zone `monicalhoteldalat.com` phải nằm trên cùng tài khoản Cloudflare).
 
 Lần đầu đăng nhập trên Workers sẽ seed dữ liệu demo nếu bảng `rooms` còn trống.
 

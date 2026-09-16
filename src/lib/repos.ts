@@ -2,8 +2,8 @@ import { cache } from "react";
 import { and, desc, eq, like, lt, ne, or, sql } from "drizzle-orm";
 import { getDb } from "./db";
 import * as t from "./db/schema";
-import { addDaysVN, addMinutes, currentShiftType, nid, nextDate, nextShiftSlot, nowISO, shiftWindow, todayVN, weekdayISO } from "./datetime";
-import { isActiveSaleStatus, isOpsBookingCode, isSaleOrigin, isSaleSource, nightlyNet, normalizeDiscount, occupiesNight, parseSaleSource, rangesOverlap, saleQuote, saleStatusToStay } from "./sales";
+import { addDaysVN, addMinutes, currentShiftType, datesUntil, nid, nextDate, nextShiftSlot, nowISO, shiftWindow, todayVN, weekdayISO } from "./datetime";
+import { bookingDue, bookingKey, bookingQuote, catalogRate, ganttSpan, groupByBooking, isActiveSaleStatus, isOpsBookingCode, isSaleOrigin, isSaleSource, nightlyNetFromLine, normalizeDiscount, occupiesNight, parseSaleSource, quoteLinesBySaleId, rangesOverlap, rollupBookingStatus, roomMoveKind, saleStatusToStay } from "./sales";
 import { can } from "./permissions";
 import { dayOverrideId, rosterVersionOf, weekSlotId } from "./roster";
 import { ensureShiftChecklists, ensureTodayRoomTasks, loadChecklistByTask, loadChecklistsForRoom, loadChecklistsForStay, requiredPending } from "./checklist-ops";
@@ -14,6 +14,7 @@ import { floorOf, roomIdOf, slugTypeName } from "./rooms-catalog";
 import { hashPassword } from "./password";
 import { schedulePush } from "./push";
 import { insertInBatches } from "./db/batch";
+import { buildRoomFocus, isDirtyRoom } from "./room-focus";
 
 export async function audit(actorId: string, entity: string, entityId: string, action: string, before?: unknown, after?: unknown) {
   const db = await getDb();
@@ -753,7 +754,9 @@ export async function updateRoom(user: SessionUser, id: string, patch: Partial<{
 }
 
 type SaleInput = {
-  roomId: string;
+  roomId?: string;
+  roomIds?: string[];
+  bookingId?: string;
   guestName: string;
   guestPhone?: string;
   source: string;
@@ -762,6 +765,7 @@ type SaleInput = {
   adults?: number;
   children?: number;
   rate: number;
+  rates?: Record<string, number>;
   discountKind?: string;
   discountValue?: number;
   deposit?: number;
@@ -770,6 +774,12 @@ type SaleInput = {
   checkinNow?: boolean;
   origin?: string;
 };
+
+function uniqueSaleRoomIds(data: SaleInput) {
+  const ids = [...new Set([...(data.roomIds || []), data.roomId || ""].map((id) => id.trim()).filter(Boolean))];
+  if (!ids.length) throw new Error("Chọn phòng");
+  return ids;
+}
 
 async function syncStayFromSale(
   actorId: string,
@@ -787,13 +797,18 @@ async function syncStayFromSale(
     children: number;
     notes: string | null;
   },
+  previousRoomId?: string,
 ) {
   const pmsCode = sale.pmsCode?.trim();
   if (!pmsCode) return;
   const db = await getDb();
   const now = nowISO();
   const stayStatus = saleStatusToStay(sale.status);
-  const existing = (await db.select().from(t.stays).where(eq(t.stays.pmsCode, pmsCode)).limit(1))[0];
+  const matches = await db.select().from(t.stays).where(eq(t.stays.pmsCode, pmsCode));
+  const existing =
+    matches.find((row) => row.roomId === sale.roomId) ??
+    (previousRoomId ? matches.find((row) => row.roomId === previousRoomId) : undefined) ??
+    matches.find((row) => !row.roomId);
   const origin = isSaleOrigin(sale.origin) ? sale.origin : existing?.origin === "ezcloud" ? "ezcloud" : "ops";
   const payload = {
     pmsCode,
@@ -841,18 +856,19 @@ function withSaleRoom<T extends { roomId: string }>(sale: T, rooms: { id: string
   return { ...sale, room: rooms.find((room) => room.id === sale.roomId) ?? null };
 }
 
-async function overlappingSale(roomId: string, checkIn: string, checkOut: string, exceptId?: string) {
+async function overlappingSale(roomId: string, checkIn: string, checkOut: string, exceptId?: string | string[]) {
   const db = await getDb();
+  const skip = new Set(Array.isArray(exceptId) ? exceptId : exceptId ? [exceptId] : []);
   const rows = await db.select().from(t.roomSales).where(eq(t.roomSales.roomId, roomId));
   return rows.find(
     (sale) =>
-      sale.id !== exceptId &&
+      !skip.has(sale.id) &&
       isActiveSaleStatus(sale.status) &&
       rangesOverlap(checkIn, checkOut, sale.checkIn, sale.checkOut),
   );
 }
 
-async function assertSaleWindow(roomId: string, checkIn: string, checkOut: string, exceptId?: string) {
+async function assertSaleWindow(roomId: string, checkIn: string, checkOut: string, exceptId?: string | string[]) {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(checkIn) || !/^\d{4}-\d{2}-\d{2}$/.test(checkOut)) {
     throw new Error("Ngày nhận / trả không hợp lệ");
   }
@@ -878,7 +894,63 @@ export async function listRoomSales() {
 
 export async function getRoomSale(id: string) {
   const sales = await listRoomSales();
-  return sales.find((sale) => sale.id === id) ?? null;
+  const sale = sales.find((row) => row.id === id) ?? null;
+  if (!sale) return null;
+  const peers = sale.bookingId
+    ? sales
+        .filter((row) => row.bookingId === sale.bookingId && row.id !== sale.id)
+        .sort((a, b) => (a.room?.number || "").localeCompare(b.room?.number || ""))
+    : [];
+  return { ...sale, peers, bookingKey: bookingKey(sale) };
+}
+
+function toBookingView(id: string, rooms: Awaited<ReturnType<typeof listRoomSales>>) {
+  const sorted = [...rooms].sort((a, b) => (a.room?.number || "").localeCompare(b.room?.number || ""));
+  const first = sorted[0];
+  const quote = bookingQuote(sorted);
+  const checkIn = sorted.reduce((min, row) => (row.checkIn < min ? row.checkIn : min), first.checkIn);
+  const checkOut = sorted.reduce((max, row) => (row.checkOut > max ? row.checkOut : max), first.checkOut);
+  return {
+    id,
+    guestName: first.guestName,
+    guestPhone: first.guestPhone,
+    origin: first.origin,
+    source: first.source,
+    pmsCode: first.pmsCode,
+    notes: first.notes,
+    adults: first.adults,
+    children: first.children,
+    deposit: first.deposit || 0,
+    due: bookingDue(quote.total, first.deposit || 0),
+    checkIn,
+    checkOut,
+    rooms: sorted,
+    roomCount: sorted.length,
+    roomLabel: sorted.map((row) => `P.${row.room?.number || "—"}`).join(" · "),
+    status: rollupBookingStatus(sorted.map((row) => row.status)),
+    nights: quote.nights,
+    subtotal: quote.subtotal,
+    discount: quote.discount,
+    total: quote.total,
+  };
+}
+
+export async function listBookings() {
+  const sales = await listRoomSales();
+  return groupByBooking(sales)
+    .map(({ id, rooms }) => toBookingView(id, rooms))
+    .sort((a, b) => b.checkIn.localeCompare(a.checkIn) || a.guestName.localeCompare(b.guestName));
+}
+
+export async function getBooking(id: string) {
+  const sales = await listRoomSales();
+  const hit = sales.find((row) => row.id === id || row.bookingId === id);
+  if (!hit) return null;
+  const key = bookingKey(hit);
+  return toBookingView(
+    key,
+    sales.filter((row) => bookingKey(row) === key),
+  );
 }
 
 export async function salesBoard(date: string) {
@@ -898,11 +970,95 @@ export async function salesBoard(date: string) {
   const reserved = cells.filter((cell) => cell.kind === "reserved").length;
   const inhouse = cells.filter((cell) => cell.kind === "inhouse").length;
   const ooo = cells.filter((cell) => cell.kind === "ooo").length;
-  const revenue = nightSales.reduce((sum, sale) => sum + nightlyNet(sale), 0);
+  const lineById = quoteLinesBySaleId(sales.filter((sale) => isActiveSaleStatus(sale.status)));
+  const revenue = nightSales.reduce((sum, sale) => sum + nightlyNetFromLine(lineById.get(sale.id)), 0);
   const upcoming = sales
     .filter((sale) => sale.status === "reserved" && sale.checkIn > date && sale.checkIn <= addDaysVN(date, 14))
     .sort((a, b) => a.checkIn.localeCompare(b.checkIn));
   return { date, types, cells, vacant, reserved, inhouse, ooo, sold: reserved + inhouse, revenue, nightSales, upcoming };
+}
+
+export async function salesGantt(from: string, toExclusive: string) {
+  const days = datesUntil(from, toExclusive);
+  const [rooms, sales] = await Promise.all([listRooms(), listRoomSales()]);
+  const active = sales.filter(
+    (sale) => isActiveSaleStatus(sale.status) && rangesOverlap(sale.checkIn, sale.checkOut, from, toExclusive),
+  );
+  const rows = rooms
+    .slice()
+    .sort((a, b) => a.floor - b.floor || a.number.localeCompare(b.number))
+    .map((room) => {
+      const bars = active
+        .filter((sale) => sale.roomId === room.id)
+        .map((sale) => {
+          const span = ganttSpan(sale.checkIn, sale.checkOut, from, days.length);
+          return span ? { sale, ...span } : null;
+        })
+        .filter((bar): bar is { sale: (typeof active)[number]; start: number; end: number } => Boolean(bar))
+        .sort((a, b) => a.start - b.start);
+      return { room, bars };
+    });
+  const lineById = quoteLinesBySaleId(sales.filter((sale) => isActiveSaleStatus(sale.status)));
+  let soldNights = 0;
+  let revenue = 0;
+  for (const date of days) {
+    for (const sale of active) {
+      if (!occupiesNight(sale.checkIn, sale.checkOut, date)) continue;
+      soldNights += 1;
+      revenue += nightlyNetFromLine(lineById.get(sale.id));
+    }
+  }
+  const ooo = rows.filter((row) => row.room.opsStatus === "ooo").length;
+  const sellable = Math.max(0, rows.length - ooo);
+  const vacantNights = Math.max(0, sellable * days.length - soldNights);
+  return { from, to: toExclusive, days, rows, sales: active, soldNights, vacantNights, ooo, revenue, sellable };
+}
+
+export async function roomFocusBoard(date: string) {
+  const db = await getDb();
+  const [rooms, sales, stays, hkTasks, hkReqs] = await Promise.all([
+    listRooms(),
+    listRoomSales(),
+    db
+      .select({
+        id: t.stays.id,
+        roomId: t.stays.roomId,
+        guestName: t.stays.guestName,
+        status: t.stays.status,
+        arrivalDate: t.stays.arrivalDate,
+        departureDate: t.stays.departureDate,
+      })
+      .from(t.stays),
+    db
+      .select({ roomId: t.tasks.roomId, stayId: t.tasks.stayId, status: t.tasks.status })
+      .from(t.tasks)
+      .where(eq(t.tasks.kind, "housekeeping")),
+    db
+      .select({ roomId: t.guestRequests.roomId, stayId: t.guestRequests.stayId })
+      .from(t.guestRequests)
+      .where(and(eq(t.guestRequests.status, "open"), eq(t.guestRequests.kind, "housekeeping"))),
+  ]);
+  const dirtyRoomIds = new Set<string>();
+  for (const room of rooms) {
+    if (isDirtyRoom(room)) dirtyRoomIds.add(room.id);
+  }
+  const stayRoom = new Map(stays.map((stay) => [stay.id, stay.roomId]));
+  for (const task of hkTasks) {
+    if (["done", "checked", "archive"].includes(task.status)) continue;
+    if (task.roomId) dirtyRoomIds.add(task.roomId);
+    else if (task.stayId) {
+      const roomId = stayRoom.get(task.stayId);
+      if (roomId) dirtyRoomIds.add(roomId);
+    }
+  }
+  for (const req of hkReqs) {
+    if (req.roomId) dirtyRoomIds.add(req.roomId);
+    else if (req.stayId) {
+      const roomId = stayRoom.get(req.stayId);
+      if (roomId) dirtyRoomIds.add(roomId);
+    }
+  }
+  return buildRoomFocus({ date, rooms, sales, stays, dirtyRoomIds });
 }
 
 export async function createRoomSale(user: SessionUser, data: SaleInput) {
@@ -911,52 +1067,116 @@ export async function createRoomSale(user: SessionUser, data: SaleInput) {
   if (!isSaleSource(data.source)) throw new Error("Chọn nền tảng booking");
   const origin = data.origin === "ezcloud" ? "ezcloud" : "ops";
   if (origin === "ezcloud" && !data.pmsCode?.trim()) throw new Error("Tích ezCloud thì nhập mã PMS");
-  const room = await assertSaleWindow(data.roomId, data.checkIn, data.checkOut);
+  const roomIds = uniqueSaleRoomIds(data);
+  const rooms = [];
+  for (const roomId of roomIds) {
+    rooms.push(await assertSaleWindow(roomId, data.checkIn, data.checkOut));
+  }
   const today = todayVN();
   const checkinNow = Boolean(data.checkinNow) && data.checkIn <= today;
   const status: SaleStatus = checkinNow ? "inhouse" : "reserved";
   const { discountKind, discountValue } = normalizeDiscount(data.discountKind, data.discountValue);
-  const quote = saleQuote({ rate: Math.max(0, data.rate), checkIn: data.checkIn, checkOut: data.checkOut, discountKind, discountValue });
-  const id = nid();
+  const bookingId = data.bookingId?.trim() || nid();
   const now = nowISO();
-  const pmsCode = data.pmsCode?.trim() || (origin === "ops" ? `OPS-${id.replace(/-/g, "").slice(0, 8).toUpperCase()}` : "");
+  const pmsCode =
+    data.pmsCode?.trim() || (origin === "ops" ? `OPS-${bookingId.replace(/-/g, "").slice(0, 8).toUpperCase()}` : "");
   if (!pmsCode) throw new Error("Tích ezCloud thì nhập mã PMS");
-  const row = {
-    id,
-    roomId: room.id,
-    guestName,
-    guestPhone: data.guestPhone?.trim() || null,
-    origin,
-    source: data.source,
-    status,
-    checkIn: data.checkIn,
-    checkOut: data.checkOut,
-    adults: Math.max(1, data.adults || 1),
-    children: Math.max(0, data.children || 0),
-    rate: Math.max(0, data.rate),
-    discountKind,
-    discountValue,
-    deposit: Math.max(0, data.deposit || 0),
-    pmsCode,
-    notes: data.notes?.trim() || null,
-    createdAt: now,
-    updatedAt: now,
-    createdBy: user.id,
-    updatedBy: user.id,
-  };
+  const deposit = Math.max(0, data.deposit || 0);
+  const bookingTotal = bookingQuote(
+    rooms.map((room) => ({
+      rate: Math.max(0, data.rates?.[room.id] ?? data.rate),
+      checkIn: data.checkIn,
+      checkOut: data.checkOut,
+      discountKind,
+      discountValue,
+    })),
+  ).total;
   const db = await getDb();
-  await db.insert(t.roomSales).values(row);
-  await syncStayFromSale(user.id, row);
-  const dbAfter = await getDb();
-  await ensureTodayRoomTasks(dbAfter, { actorId: user.id });
+  const ids: string[] = [];
+  for (const room of rooms) {
+    const id = nid();
+    const rate = Math.max(0, data.rates?.[room.id] ?? data.rate);
+    const row = {
+      id,
+      bookingId,
+      roomId: room.id,
+      guestName,
+      guestPhone: data.guestPhone?.trim() || null,
+      origin,
+      source: data.source,
+      status,
+      checkIn: data.checkIn,
+      checkOut: data.checkOut,
+      adults: Math.max(1, data.adults || 1),
+      children: Math.max(0, data.children || 0),
+      rate,
+      discountKind,
+      discountValue,
+      deposit,
+      pmsCode,
+      notes: data.notes?.trim() || null,
+      createdAt: now,
+      updatedAt: now,
+      createdBy: user.id,
+      updatedBy: user.id,
+    };
+    await db.insert(t.roomSales).values(row);
+    await syncStayFromSale(user.id, row);
+    await audit(user.id, "room_sale", id, "create", null, row);
+    ids.push(id);
+  }
+  await ensureTodayRoomTasks(db, { actorId: user.id });
+  const roomLabel = rooms.length === 1 ? `P.${rooms[0].number}` : `${rooms.length} phòng`;
   await notify({
     role: user.role === "manager" ? "reception" : "manager",
-    title: `Bán P.${room.number} · ${guestName}`,
-    body: `${data.checkIn} → ${data.checkOut} · ${quote.total.toLocaleString("vi-VN")}₫`,
-    link: `/sales/${id}`,
+    title: `Bán ${roomLabel} · ${guestName}`,
+    body: `${data.checkIn} → ${data.checkOut} · ${bookingTotal.toLocaleString("vi-VN")}₫`,
+    link: `/sales/bookings/${bookingId}`,
   });
-  await audit(user.id, "room_sale", id, "create", null, row);
-  return id;
+  return { id: ids[0], bookingId };
+}
+
+export async function addRoomsToBooking(user: SessionUser, saleId: string, roomIds: string[]) {
+  const db = await getDb();
+  const before = (await db.select().from(t.roomSales).where(eq(t.roomSales.id, saleId)).limit(1))[0];
+  if (!before) throw new Error("Không tìm thấy chỗ bán");
+  if (!isActiveSaleStatus(before.status)) throw new Error("Chỗ đã đóng, không thêm phòng");
+  const ids = uniqueSaleRoomIds({ roomIds, guestName: before.guestName, rate: before.rate, source: before.source, checkIn: before.checkIn, checkOut: before.checkOut });
+  const members = before.bookingId
+    ? await db.select().from(t.roomSales).where(eq(t.roomSales.bookingId, before.bookingId))
+    : [before];
+  const taken = new Set(members.filter((row) => isActiveSaleStatus(row.status)).map((row) => row.roomId));
+  if (ids.some((roomId) => taken.has(roomId))) throw new Error("Phòng đã thuộc booking này");
+  const bookingId = before.bookingId || before.id;
+  if (!before.bookingId) {
+    await db.update(t.roomSales).set({ bookingId, updatedAt: nowISO(), updatedBy: user.id }).where(eq(t.roomSales.id, saleId));
+  }
+  const [types, rooms] = await Promise.all([listRoomTypes(), listRooms()]);
+  const typeByName = Object.fromEntries(types.map((type) => [type.name, type]));
+  const rates: Record<string, number> = {};
+  for (const id of ids) {
+    const room = rooms.find((row) => row.id === id);
+    rates[id] = catalogRate(typeByName[room?.type || ""], before.checkIn);
+  }
+  return createRoomSale(user, {
+    roomIds: ids,
+    bookingId,
+    guestName: before.guestName,
+    guestPhone: before.guestPhone || "",
+    source: before.source,
+    checkIn: before.checkIn,
+    checkOut: before.checkOut,
+    adults: before.adults,
+    children: before.children,
+    rate: before.rate,
+    rates,
+    discountKind: before.discountKind,
+    discountValue: before.discountValue,
+    deposit: before.deposit,
+    pmsCode: before.pmsCode || "",
+    notes: before.notes || "",
+    origin: before.origin,
+  });
 }
 
 export async function updateRoomSale(user: SessionUser, id: string, data: SaleInput) {
@@ -964,42 +1184,138 @@ export async function updateRoomSale(user: SessionUser, id: string, data: SaleIn
   const before = (await db.select().from(t.roomSales).where(eq(t.roomSales.id, id)).limit(1))[0];
   if (!before) throw new Error("Không tìm thấy chỗ bán");
   if (!isActiveSaleStatus(before.status)) throw new Error("Chỗ đã đóng, không sửa");
-  const guestName = data.guestName.trim();
-  if (!guestName) throw new Error("Nhập tên khách");
-  if (!isSaleSource(data.source)) throw new Error("Chọn nền tảng booking");
-  const origin = data.origin === "ezcloud" ? "ezcloud" : "ops";
-  if (origin === "ezcloud" && !data.pmsCode?.trim() && isOpsBookingCode(before.pmsCode)) {
-    throw new Error("Tích ezCloud thì nhập mã PMS");
+  const guestName = before.guestName;
+  const roomId = uniqueSaleRoomIds(data)[0];
+  const peers = before.bookingId
+    ? (await db.select().from(t.roomSales).where(eq(t.roomSales.bookingId, before.bookingId))).filter(
+        (row) => row.id !== id && isActiveSaleStatus(row.status),
+      )
+    : [];
+  await assertSaleWindow(roomId, data.checkIn, data.checkOut, id);
+  for (const peer of peers) {
+    await assertSaleWindow(peer.roomId, data.checkIn, data.checkOut, peer.id);
   }
-  await assertSaleWindow(data.roomId, data.checkIn, data.checkOut, id);
   const { discountKind, discountValue } = normalizeDiscount(data.discountKind, data.discountValue);
-  const pmsCode = data.pmsCode?.trim() || before.pmsCode;
-  if (origin === "ezcloud" && (!pmsCode || isOpsBookingCode(pmsCode))) {
-    throw new Error("Tích ezCloud thì nhập mã PMS");
-  }
+  const rate = Math.max(0, data.rates?.[roomId] ?? data.rate);
   const patch = {
-    roomId: data.roomId,
+    roomId,
     guestName,
-    guestPhone: data.guestPhone?.trim() || null,
-    origin,
-    source: data.source,
+    guestPhone: before.guestPhone,
+    origin: before.origin,
+    source: before.source,
     checkIn: data.checkIn,
     checkOut: data.checkOut,
-    adults: Math.max(1, data.adults || 1),
-    children: Math.max(0, data.children || 0),
-    rate: Math.max(0, data.rate),
+    adults: before.adults,
+    children: before.children,
+    rate,
     discountKind,
     discountValue,
     deposit: Math.max(0, data.deposit || 0),
-    pmsCode,
-    notes: data.notes?.trim() || null,
+    pmsCode: before.pmsCode,
+    notes: before.notes,
     updatedAt: nowISO(),
     updatedBy: user.id,
   };
   await db.update(t.roomSales).set(patch).where(eq(t.roomSales.id, id));
-  await syncStayFromSale(user.id, { ...before, ...patch });
+  await syncStayFromSale(user.id, { ...before, ...patch }, before.roomId);
+  const shared = {
+    guestName: patch.guestName,
+    guestPhone: patch.guestPhone,
+    origin: patch.origin,
+    source: patch.source,
+    checkIn: patch.checkIn,
+    checkOut: patch.checkOut,
+    discountKind: patch.discountKind,
+    discountValue: patch.discountValue,
+    deposit: patch.deposit,
+    pmsCode: patch.pmsCode,
+    notes: patch.notes,
+    updatedAt: patch.updatedAt,
+    updatedBy: patch.updatedBy,
+  };
+  for (const peer of peers) {
+    await db.update(t.roomSales).set(shared).where(eq(t.roomSales.id, peer.id));
+    await syncStayFromSale(user.id, { ...peer, ...shared });
+  }
   await ensureTodayRoomTasks(db, { actorId: user.id });
   await audit(user.id, "room_sale", id, "update", before, patch);
+}
+
+export async function updateBooking(
+  user: SessionUser,
+  bookingId: string,
+  data: {
+    assignments: { saleId: string; roomId: string }[];
+    discountKind?: string;
+    discountValue?: number;
+    deposit?: number;
+  },
+) {
+  const db = await getDb();
+  const [all, rooms, types] = await Promise.all([
+    db.select().from(t.roomSales),
+    db.select().from(t.rooms),
+    db.select().from(t.roomTypes),
+  ]);
+  const hit = all.find((row) => row.id === bookingId || row.bookingId === bookingId);
+  if (!hit) throw new Error("Không tìm thấy booking");
+  const key = bookingKey(hit);
+  const active = all.filter((row) => bookingKey(row) === key && isActiveSaleStatus(row.status));
+  if (!active.length) throw new Error("Booking đã đóng, không sửa");
+  const { discountKind, discountValue } = normalizeDiscount(data.discountKind, data.discountValue);
+  const deposit = Math.max(0, data.deposit || 0);
+  const roomById = new Map(rooms.map((room) => [room.id, room]));
+  const nextBySale = new Map(data.assignments.map((row) => [row.saleId, row.roomId]));
+  const seen = new Set<string>();
+  const now = nowISO();
+  for (const row of active) {
+    const nextRoomId = nextBySale.get(row.id) || row.roomId;
+    if (seen.has(nextRoomId)) throw new Error("Hai chỗ trong booking không được trùng số phòng");
+    seen.add(nextRoomId);
+    const current = roomById.get(row.roomId);
+    if (!current) throw new Error("Không tìm thấy phòng hiện tại");
+    const next = await assertSaleWindow(nextRoomId, row.checkIn, row.checkOut, active.map((item) => item.id));
+    const kind = roomMoveKind(current.type, next.type, types);
+    if (!kind) throw new Error(`P.${next.number} không cùng hạng và không phải nâng hạng so với ${current?.type || "phòng hiện tại"}`);
+    const nextRate =
+      kind === "upgrade"
+        ? catalogRate(types.find((type) => type.name === next.type), row.checkIn) || row.rate
+        : row.rate;
+    const patch = {
+      roomId: next.id,
+      rate: nextRate,
+      discountKind,
+      discountValue,
+      deposit,
+      updatedAt: now,
+      updatedBy: user.id,
+    };
+    await db.update(t.roomSales).set(patch).where(eq(t.roomSales.id, row.id));
+    await syncStayFromSale(user.id, { ...row, ...patch }, row.roomId);
+    await audit(user.id, "room_sale", row.id, "update", row, patch);
+  }
+  await ensureTodayRoomTasks(db, { actorId: user.id });
+  return key;
+}
+
+export async function cancelBooking(user: SessionUser, bookingId: string, asNoShow = false) {
+  const booking = await getBooking(bookingId);
+  if (!booking) throw new Error("Không tìm thấy booking");
+  const active = booking.rooms.filter((row) => isActiveSaleStatus(row.status));
+  if (!active.length) throw new Error("Booking đã đóng");
+  if (asNoShow && active.some((row) => row.status !== "reserved")) {
+    throw new Error("No-show chỉ khi mọi phòng còn giữ chỗ");
+  }
+  for (const row of active) {
+    await cancelRoomSale(user, row.id, asNoShow);
+  }
+  await notify({
+    role: user.role === "manager" ? "reception" : "manager",
+    title: `${asNoShow ? "No-show" : "Hủy"} booking · ${booking.guestName}`,
+    body: `${active.length} phòng · ${booking.roomLabel}`,
+    link: `/sales/bookings/${booking.id}`,
+  });
+  return booking.id;
 }
 
 export async function checkinRoomSale(user: SessionUser, id: string) {

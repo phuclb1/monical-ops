@@ -31,8 +31,11 @@ export default async function NewSalePage({
         <Link href={`/sales?date=${date}`} className="inline-flex min-h-11 items-center text-sm font-semibold text-teal">
           ← Sơ đồ bán phòng
         </Link>
+        <Link href="/sales/bookings" className="ml-3 inline-flex min-h-11 items-center text-sm font-semibold text-teal">
+          Đặt phòng
+        </Link>
         <h1 className="mt-2 text-xl font-bold">Bán phòng</h1>
-        <p className="text-xs text-[#5c6665]">Tích «Từ ezCloud» nếu đã nhập trên PMS. Không tích thì Ops tự cấp mã.</p>
+        <p className="text-xs text-[#5c6665]">Có thể chọn nhiều phòng cùng một booking. Danh sách đặt phòng ở mục Đặt phòng.</p>
       </div>
       {error ? <p className="text-sm text-[#c23b3b]">{error}</p> : null}
       <Card>
@@ -43,6 +46,7 @@ export default async function NewSalePage({
             types={types}
             today={today}
             showCheckinNow
+            allowMultiple
             submitLabel="Lưu chỗ bán"
             defaults={{
               roomId: selected.id,

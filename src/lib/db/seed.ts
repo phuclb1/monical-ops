@@ -333,6 +333,7 @@ export async function seedOpsDemo(db: AppDb) {
     await db.insert(t.roomSales).values([
       {
         id: "sale-401",
+        bookingId: "sale-401",
         roomId: "r-401",
         guestName: "Đặng Minh Tuấn",
         guestPhone: "0901222333",
@@ -356,6 +357,7 @@ export async function seedOpsDemo(db: AppDb) {
       },
       {
         id: "sale-508",
+        bookingId: "sale-508",
         roomId: "r-508",
         guestName: "Mai Thanh Hà",
         guestPhone: "0918888999",
@@ -379,6 +381,7 @@ export async function seedOpsDemo(db: AppDb) {
       },
       {
         id: "sale-506",
+        bookingId: "sale-506",
         roomId: "r-506",
         guestName: "Công ty An Phú",
         guestPhone: "0283999000",
