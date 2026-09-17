@@ -1,6 +1,13 @@
 import type { DepartmentCode, DiscountKind, FormCode, HkStatus, Role, SaleOrigin, SaleSource, SaleStatus, ShiftType, StayStatus, TaskPriority, TaskStatus } from "./types";
 
 export const HOTEL_NAME = process.env.NEXT_PUBLIC_HOTEL_NAME ?? "MONICAL hotel dalat";
+export const HOTEL_LETTERHEAD = process.env.NEXT_PUBLIC_HOTEL_LETTERHEAD ?? "MONICAL Hotel Dalat";
+export const HOTEL_ADDRESS =
+  process.env.NEXT_PUBLIC_HOTEL_ADDRESS ?? "48 Phan Như Thạch, Phường Xuân Hương, Đà Lạt, Lâm Đồng";
+export const HOTEL_EMAIL = process.env.NEXT_PUBLIC_HOTEL_EMAIL ?? "monicalhoteldalat.support@gmail.com";
+export const HOTEL_PHONE = process.env.NEXT_PUBLIC_HOTEL_PHONE ?? "0976 775 768";
+export const CHECK_IN_TIME = "14:00";
+export const CHECK_OUT_TIME = "12:00";
 
 export const ROLE_LABEL: Record<Role, string> = {
   reception: "Lễ tân",

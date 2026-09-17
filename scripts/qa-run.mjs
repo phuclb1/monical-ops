@@ -90,7 +90,7 @@ async function pageText() {
   const values = await page.evaluate(() =>
     [...document.querySelectorAll("input, textarea, select")].map((el) => el.value || "").join("\n"),
   );
-  return `${body}\n${values}`;
+  return `${body}\n${values}`.replace(/[\u00a0\u202f]/g, " ");
 }
 
 async function must(shot, needles) {
@@ -207,14 +207,96 @@ try {
     await must(shot, ["Ops", "ezCloud"]);
   });
 
+  await check("TC-102", "Quick filter bán phòng", async (shot) => {
+    await go("/sales");
+    await must(shot, ["Sẽ đến", "Check-in hôm nay", "Đang ở", "Trả hôm nay", "Phòng bẩn", "Mọi phòng"]);
+  });
+
+  await check("TC-103", "Lọc Sẽ đến — Mai Thanh Hà", async (shot) => {
+    await go("/sales?focus=booking");
+    await must(shot, ["Sẽ đến", "Mai Thanh Hà"]);
+  });
+
+  await check("TC-104", "Lọc Đang ở — Đặng Minh Tuấn", async (shot) => {
+    await go("/sales?focus=inhouse");
+    await must(shot, ["Đang ở", "Đặng Minh Tuấn"]);
+  });
+
+  await check("TC-117", "Lọc Check-in hôm nay — An Phú", async (shot) => {
+    await go("/sales?focus=arriving");
+    await must(shot, ["Check-in hôm nay", "Công ty An Phú"]);
+  });
+
+  await check("TC-115", "Lọc ezCloud ẩn chỗ Ops đêm nay", async (shot) => {
+    await go("/sales?origin=ezcloud");
+    await must(shot, ["ezCloud", "Không khớp bộ lọc"]);
+  });
+
+  await check("TC-105", "Gantt tuần", async (shot) => {
+    await go("/sales?view=week");
+    await must(shot, ["Tuần sơ đồ", "ĐÊM TRỐNG", "ĐÊM ĐÃ BÁN", "Booking trong khung", "Đặng Minh Tuấn", "Công ty An Phú"]);
+  });
+
+  await check("TC-106", "Gantt tháng", async (shot) => {
+    await go("/sales?view=month");
+    await must(shot, ["Tháng sơ đồ", "ĐÊM TRỐNG", "ĐÊM ĐÃ BÁN", "Booking trong khung", "Phòng"]);
+  });
+
   await check("TC-94", "Chỗ bán seed P.401 / P.506", async (shot) => {
     await go("/sales");
     await must(shot, ["Đặng Minh Tuấn", "Công ty An Phú"]);
   });
 
+  await check("TC-116", "Giữ chỗ 14 ngày — Mai Thanh Hà", async (shot) => {
+    await go("/sales");
+    await must(shot, ["Giữ chỗ 14 ngày tới", "Mai Thanh Hà"]);
+  });
+
   await check("TC-101", "Danh sách đặt phòng / booking", async (shot) => {
     await go("/sales/bookings");
-    await must(shot, ["Đặt phòng", "Đang mở", "Đặng Minh Tuấn", "Công ty An Phú"]);
+    await must(shot, ["Đặt phòng", "Đang mở", "Đặng Minh Tuấn", "Công ty An Phú", "Đoàn Minh Châu"]);
+  });
+
+  await check("TC-114", "Booking 2 phòng Đoàn Minh Châu", async (shot) => {
+    await go("/sales/bookings/bk-doan");
+    await must(shot, ["Đoàn Minh Châu", "2 phòng", "P.304", "P.404", "Chiết khấu", "Đã đặt cọc", "Còn phải thu", "Phòng trong booking"]);
+  });
+
+  await check("TC-107", "Booking An Phú — chiết khấu, chưa cọc, còn thu", async (shot) => {
+    await go("/sales/bookings/sale-506");
+    await must(shot, ["Công ty An Phú", "Chiết khấu 10%", "Chưa đặt cọc", "Còn phải thu", "2.250.000₫"]);
+  });
+
+  await check("TC-108", "Booking Đặng — đã cọc, còn phải thu", async (shot) => {
+    await go("/sales/bookings/sale-401");
+    await must(shot, ["Đặng Minh Tuấn", "Đã đặt cọc", "500.000₫", "Còn phải thu", "1.900.000₫"]);
+  });
+
+  await check("TC-110", "Sửa booking: cùng hạng / nâng hạng, không sửa khách", async (shot) => {
+    await go("/sales/bookings/sale-401");
+    await must(shot, ["Sửa booking", "Đổi số phòng cùng hạng, nâng hạng", "Không sửa thông tin khách", "Đặt cọc", "Chiết khấu", "Lưu booking"]);
+    if (await page.locator('input[name="guestName"]').count()) {
+      throw new Error("Form sửa booking vẫn có ô tên khách");
+    }
+  });
+
+  await check("TC-111", "Nút hủy booking trên chi tiết", async (shot) => {
+    await go("/sales/bookings/sale-508");
+    await must(shot, ["Mai Thanh Hà", "Hủy booking", "No-show", "In xác nhận"]);
+  });
+
+  await check("TC-118", "In phiếu xác nhận booking", async (shot) => {
+    await go("/sales/bookings/bk-doan/print");
+    await must(shot, [
+      "XÁC NHẬN ĐẶT PHÒNG",
+      "Đoàn Minh Châu",
+      "MONICAL Hotel Dalat",
+      "FAMILY",
+      "304",
+      "404",
+      "Điều khoản",
+      "In phiếu",
+    ]);
   });
 
   await check("TC-95", "Form bán phòng: giá, chiết khấu, mã PMS", async (shot) => {
@@ -225,6 +307,19 @@ try {
   await check("TC-99", "Form bán: nền tảng Booking / Agoda / Ops", async (shot) => {
     await go("/sales/new");
     await must(shot, ["Nền tảng", "Booking.com", "Agoda", "Từ ezCloud"]);
+  });
+
+  await check("TC-109", "Form bán nhiều phòng + cọc / còn thu", async (shot) => {
+    await go("/sales/new");
+    await page.locator('input[name="roomId"][type="checkbox"]').nth(1).check();
+    await ready();
+    await must(shot, [
+      "Phòng · chọn nhiều cho cùng booking",
+      "Đã chọn 2 phòng",
+      "Chiết khấu tính trên tổng booking",
+      "Chưa đặt cọc",
+      "Còn phải thu",
+    ]);
   });
 
   await check("TC-96", "Lễ tân không sửa giá phòng", async (shot) => {

@@ -65,6 +65,9 @@ export default async function BookingDetailPage({
           <div className="flex flex-col items-end gap-1">
             <Chip tone={STATUS_TONE[booking.status]}>{SALE_STATUS_LABEL[booking.status]}</Chip>
             {booking.deposit ? <Chip tone="ok">Đã cọc</Chip> : isActiveSaleStatus(booking.status) ? <Chip tone="warn">Chưa cọc</Chip> : null}
+            <Link href={`/sales/bookings/${booking.id}/print`} className="cta-link">
+              In xác nhận
+            </Link>
           </div>
         </div>
       </div>
@@ -100,6 +103,10 @@ export default async function BookingDetailPage({
         ) : null}
         {booking.notes ? <p className="mt-2 text-sm text-[#5c6665]">{booking.notes}</p> : null}
       </Card>
+
+      <Link href={`/sales/bookings/${booking.id}/print`} className="cta-link w-full">
+        In phiếu xác nhận đặt phòng
+      </Link>
 
       <Card>
         <h2 className="mb-2 font-bold">Phòng trong booking</h2>

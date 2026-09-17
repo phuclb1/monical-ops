@@ -202,6 +202,36 @@ try {
   });
 
   skip("TC-94", "Chỗ bán seed P.401 / P.506", "prd không seed chỗ bán demo");
+  skip("TC-103", "Lọc Sẽ đến — Mai Thanh Hà", "prd không seed chỗ bán demo");
+  skip("TC-104", "Lọc Đang ở — Đặng Minh Tuấn", "prd không seed chỗ bán demo");
+  skip("TC-107", "Booking An Phú — chiết khấu / cọc", "prd không seed chỗ bán demo");
+  skip("TC-108", "Booking Đặng — đã cọc", "prd không seed chỗ bán demo");
+  skip("TC-110", "Sửa booking không sửa khách", "prd không seed chỗ bán demo");
+  skip("TC-111", "Nút hủy booking", "prd không seed chỗ bán demo");
+  skip("TC-114", "Booking 2 phòng Đoàn Minh Châu", "prd không seed chỗ bán demo");
+  skip("TC-118", "In phiếu xác nhận booking", "prd không seed chỗ bán demo");
+  skip("TC-116", "Giữ chỗ 14 ngày — Mai Thanh Hà", "prd không seed chỗ bán demo");
+  skip("TC-117", "Lọc Check-in hôm nay — An Phú", "prd không seed chỗ bán demo");
+
+  await checkAuthed("TC-102", "Quick filter bán phòng", async (shot) => {
+    await go("/sales");
+    await must(shot, ["Sẽ đến", "Check-in hôm nay", "Đang ở", "Trả hôm nay", "Phòng bẩn", "Mọi phòng"]);
+  });
+
+  await checkAuthed("TC-115", "Lọc nguồn Ops / ezCloud", async (shot) => {
+    await go("/sales");
+    await must(shot, ["Ops", "ezCloud"]);
+  });
+
+  await checkAuthed("TC-105", "Gantt tuần", async (shot) => {
+    await go("/sales?view=week");
+    await must(shot, ["Tuần sơ đồ", "ĐÊM TRỐNG", "ĐÊM ĐÃ BÁN", "Booking trong khung"]);
+  });
+
+  await checkAuthed("TC-106", "Gantt tháng", async (shot) => {
+    await go("/sales?view=month");
+    await must(shot, ["Tháng sơ đồ", "ĐÊM TRỐNG", "ĐÊM ĐÃ BÁN", "Booking trong khung"]);
+  });
 
   await checkAuthed("TC-101", "Danh sách đặt phòng", async (shot) => {
     await go("/sales/bookings");
@@ -211,6 +241,15 @@ try {
   await checkAuthed("TC-95", "Form bán phòng: giá, chiết khấu, mã PMS", async (shot) => {
     await go("/sales/new");
     await must(shot, ["Giá / đêm", "Chiết khấu", "Mã PMS"]);
+  });
+
+  await checkAuthed("TC-109", "Form bán nhiều phòng + cọc / còn thu", async (shot) => {
+    await go("/sales/new");
+    const boxes = page.locator('input[name="roomId"][type="checkbox"]');
+    if ((await boxes.count()) < 2) throw new Error("Form bán không có chọn nhiều phòng");
+    await boxes.nth(1).check();
+    await ready();
+    await must(shot, ["Phòng · chọn nhiều cho cùng booking", "Đã chọn 2 phòng", "Chưa đặt cọc", "Còn phải thu"]);
   });
 
   await checkAuthed("TC-96", "Giá phòng ngày thường / cuối tuần", async (shot) => {

@@ -42,7 +42,7 @@ export function PwaBoot() {
   return (
     <>
       {install ? (
-        <div className="mx-auto max-w-md px-3 pt-[max(0.5rem,env(safe-area-inset-top))] md:hidden">
+        <div className="pwa-install mx-auto max-w-md px-3 pt-[max(0.5rem,env(safe-area-inset-top))] md:hidden">
           <div className="card flex items-center justify-between gap-2 p-2">
             <p className="text-xs font-medium">Cài MONICAL Ops lên màn hình chính</p>
             <Btn className="min-h-9 px-3 text-xs" onClick={doInstall}>

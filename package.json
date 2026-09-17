@@ -16,6 +16,7 @@
     "db:reseed-ops": "npx tsx scripts/reseed-ops.ts",
     "db:reseed-local": "npx tsx scripts/reseed-local-test.ts",
     "qa:run": "node scripts/qa-run.mjs",
+    "qa:e2e": "node scripts/qa-e2e.mjs",
     "qa:run:prd": "QA_RUN_ID=R-$(date -u +%Y%m%d)-prd node scripts/qa-run-prd.mjs"
   },
   "dependencies": {

@@ -597,3 +597,206 @@ label {
   padding: 0 0.25rem;
   font-size: 10px;
 }
+
+.booking-print {
+  padding: 1rem 1rem 2rem;
+}
+
+.print-toolbar {
+  max-width: 52rem;
+  margin: 0 auto 1rem;
+}
+
+.print-toolbar-ghost {
+  display: inline-flex;
+  min-height: 48px;
+  width: 100%;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: #fff;
+  color: var(--teal);
+  font-size: 0.875rem;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.booking-sheet {
+  max-width: 52rem;
+  margin: 0 auto;
+  padding: 1.25rem 1.1rem 2rem;
+  background: #fff;
+  color: #111;
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.booking-sheet-head {
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+  margin-bottom: 1rem;
+  padding-bottom: 0.85rem;
+  border-bottom: 1px solid #cfcfcf;
+  text-align: left;
+}
+
+.booking-sheet-logo {
+  width: 72px;
+  height: 108px;
+  flex-shrink: 0;
+  object-fit: contain;
+  background: #5c1a1b;
+  print-color-adjust: exact;
+  -webkit-print-color-adjust: exact;
+}
+
+.booking-sheet-brand {
+  min-width: 0;
+}
+
+.booking-sheet-hotel {
+  margin: 0 0 0.25rem;
+  font-size: 1.15rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+}
+
+.booking-sheet-head p {
+  margin: 0.1rem 0;
+}
+
+.booking-sheet h1 {
+  margin: 1.1rem 0 0.35rem;
+  text-align: center;
+  font-size: 1.2rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+}
+
+.booking-sheet-code {
+  text-align: center;
+  font-weight: 700;
+  margin: 0 0 1rem;
+}
+
+.booking-sheet h2 {
+  margin: 1.1rem 0 0.4rem;
+  font-size: 0.95rem;
+  font-weight: 800;
+}
+
+.booking-sheet h3 {
+  margin: 0.7rem 0 0.25rem;
+  font-size: 0.85rem;
+  font-weight: 800;
+}
+
+.booking-sheet p,
+.booking-sheet li {
+  margin: 0.35rem 0;
+}
+
+.booking-sheet ul,
+.booking-sheet ol {
+  margin: 0.2rem 0 0.5rem 1.15rem;
+}
+
+.booking-sheet-kv,
+.booking-sheet-grid,
+.booking-sheet-sum {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 0.25rem 0 0.6rem;
+  break-inside: avoid;
+}
+
+.booking-sheet-kv th,
+.booking-sheet-kv td,
+.booking-sheet-grid th,
+.booking-sheet-grid td,
+.booking-sheet-sum th,
+.booking-sheet-sum td {
+  border: 1px solid #cfcfcf;
+  padding: 0.4rem 0.5rem;
+  text-align: left;
+  vertical-align: top;
+}
+
+.booking-sheet-kv th {
+  width: 11rem;
+  font-weight: 700;
+  background: #f6f6f6;
+}
+
+.booking-sheet-grid th,
+.booking-sheet-sum th {
+  background: #f0f0f0;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.booking-sheet-num {
+  text-align: right;
+  white-space: nowrap;
+}
+
+.booking-sheet-remain-label {
+  margin: 0.6rem 0 0.15rem;
+  font-weight: 800;
+}
+
+.booking-sheet-remain {
+  margin: 0 0 0.8rem;
+}
+
+.booking-sheet-sep {
+  display: inline-block;
+  margin: 0 0.4rem;
+}
+
+body:has(.booking-print) .pwa-install {
+  display: none !important;
+}
+
+@media print {
+  @page {
+    size: A4;
+    margin: 12mm;
+  }
+
+  html,
+  body {
+    background: #fff !important;
+    min-height: 0;
+  }
+
+  .pwa-install,
+  .print-toolbar {
+    display: none !important;
+  }
+
+  .booking-print {
+    padding: 0;
+  }
+
+  .booking-sheet {
+    max-width: none;
+    padding: 0;
+    font-size: 12px;
+  }
+
+  .booking-sheet-logo {
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+
+  .booking-sheet-head {
+    break-inside: avoid;
+  }
+
+  a {
+    min-height: 0;
+  }
+}

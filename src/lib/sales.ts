@@ -127,6 +127,14 @@ export function formatVnd(value: number) {
   return `${new Intl.NumberFormat("vi-VN").format(Math.max(0, Math.round(value)))}₫`;
 }
 
+export function formatVndLetter(value: number) {
+  return `VND ${new Intl.NumberFormat("en-US").format(Math.max(0, Math.round(value)))}`;
+}
+
+export function bookingDisplayCode(booking: { pmsCode?: string | null; id: string }) {
+  return booking.pmsCode?.trim() || booking.id;
+}
+
 export function bookingDue(total: number, deposit: number) {
   return Math.max(0, Math.round(total || 0) - Math.max(0, Math.round(deposit || 0)));
 }

@@ -91,6 +91,10 @@ export default async function SaleDetailPage({
         {sale.notes ? <p className="mt-2 text-sm text-[#5c6665]">{sale.notes}</p> : null}
       </Card>
 
+      <Link href={`/sales/bookings/${sale.bookingKey}/print`} className="cta-link w-full">
+        In phiếu xác nhận đặt phòng
+      </Link>
+
       {sale.peers.length ? (
         <Card>
           <h2 className="mb-2 font-bold">Cùng booking · {group.length} phòng</h2>

@@ -9,6 +9,7 @@ File này là sổ QA. Mỗi lần test: ghi **commit**, **pass/fail**, và **sc
 1. Data: `npm run db:reseed-local`
 2. App: `http://localhost:3002`
 3. `npm run qa:run`
+4. E2E ca lễ tân + HK (ghi dữ liệu, khác smoke): `npm run qa:e2e`
 
 **PRD** (chỉ `quanly`, không seed khách/việc demo — case kịch bản local bị skip):
 
@@ -34,21 +35,21 @@ Tài khoản PRD: chỉ `quanly` / `123456`.
 
 | | |
 |---|---|
-| **Run** | `R-20260915-4` |
-| **Ngày** | 2026-09-15 22:12 +07 |
-| **Commit** | `ff9574e-dirty` |
+| **Run** | `R-20260916-2` |
+| **Ngày** | 2026-09-16 19:52 +07 |
+| **Commit** | `4881717-dirty` |
 | **Môi trường** | **local** `http://localhost:3002` |
-| **Pass** | **42 / 42** đã chạy |
+| **Pass** | **59 / 59** đã chạy |
 | **Fail** | 0 |
 | **Skip** | catalog còn skip thao tác tay / PWA (TC-06, 17, 18, 26, 31, 51, 62, 71, 80–82) |
 | **Tỷ lệ pass (đã chạy)** | **100%** |
-| **Ghi chú** | Checklist lễ tân: đầu/cuối ca + task nhận/trả theo phòng (TC-03, 13, 15, 20, 70, 72–76). Ca đêm. |
+| **Ghi chú** | Thêm case bán phòng: quick filter, Gantt tuần/tháng, booking 2 phòng, cọc/còn thu, sửa/hủy booking. Ca chiều. |
 
 PRD gần nhất: `R-20260915-prd3` · Worker `fe86b482-50aa-4ad3-886d-b0d8e5916ccd` · **19/19 = 100%** (26 skip vì PRD chỉ `quanly`, không seed khách/việc).
 
 ---
 
-## Catalog + kết quả run `R-20260915-4` (local)
+## Catalog + kết quả run `R-20260916-2` (local)
 
 Trạng thái: `pass` · `fail` · `skip` (chưa chạy vòng này).
 
@@ -56,24 +57,24 @@ Trạng thái: `pass` · `fail` · `skip` (chưa chạy vòng này).
 
 | ID | Case | Role | Kết quả | Commit | Evidence |
 |---|---|---|---|---|---|
-| TC-01 | Màn đăng nhập hiện form | khách | pass | `7849f8e-dirty` | [TC-01.png](evidence/R-20260915-1/TC-01.png) |
-| TC-02 | Sai mật khẩu hiện lỗi | khách | pass | `7849f8e-dirty` | [TC-02.png](evidence/R-20260915-1/TC-02.png) |
-| TC-03 | Lễ tân vào Today, ca đang mở + đầu ca | `tuyen` | pass | `ff9574e-dirty` | [TC-03.png](evidence/R-20260915-4/TC-03.png) |
-| TC-04 | Quản lý Today không bị bắt nút Mở ca | `quanly` | pass | `7849f8e-dirty` | [TC-04.png](evidence/R-20260915-1/TC-04.png) |
-| TC-05 | HK không vào `/staff` (về Thêm) | `uyen` | pass | `7849f8e-dirty` | [TC-05.png](evidence/R-20260915-1/TC-05.png) |
+| TC-01 | Màn đăng nhập hiện form | khách | pass | `4881717-dirty` | [TC-01.png](evidence/R-20260916-2/TC-01.png) |
+| TC-02 | Sai mật khẩu hiện lỗi | khách | pass | `4881717-dirty` | [TC-02.png](evidence/R-20260916-2/TC-02.png) |
+| TC-03 | Lễ tân vào Today, ca đang mở + đầu ca | `tuyen` | pass | `4881717-dirty` | [TC-03.png](evidence/R-20260916-2/TC-03.png) |
+| TC-04 | Quản lý Today không bị bắt nút Mở ca | `quanly` | pass | `4881717-dirty` | [TC-04.png](evidence/R-20260916-2/TC-04.png) |
+| TC-05 | HK không vào `/staff` (về Thêm) | `uyen` | pass | `4881717-dirty` | [TC-05.png](evidence/R-20260916-2/TC-05.png) |
 | TC-06 | Đăng xuất về login | tất cả | skip | — | — |
 
 ### Lễ tân — khách
 
 | ID | Case | Role | Kết quả | Commit | Evidence |
 |---|---|---|---|---|---|
-| TC-10 | Tab khách đến — Nguyễn Thu Hà P.105 | `tuyen` | pass | `7849f8e-dirty` | [TC-10.png](evidence/R-20260915-1/TC-10.png) |
-| TC-11 | Tab đang ở — Khoa + Hạnh | `tuyen` | pass | `7849f8e-dirty` | [TC-11.png](evidence/R-20260915-1/TC-11.png) |
-| TC-12 | Tab khách đi — Phạm Đức Anh P.102 | `tuyen` | pass | `7849f8e-dirty` | [TC-12.png](evidence/R-20260915-1/TC-12.png) |
-| TC-13 | Thẻ check-in: booking xong, chưa check-in PMS | `tuyen` | pass | `ff9574e-dirty` | [TC-13.png](evidence/R-20260915-4/TC-13.png) |
-| TC-14 | Gửi ô tô 51H-223.18 + timer đăng ký P.305 | `tuyen` | pass | `7849f8e-dirty` | [TC-14.png](evidence/R-20260915-1/TC-14.png) |
-| TC-15 | Checkout: thiếu hóa đơn, việc dọn phòng trả | `tuyen` | pass | `ff9574e-dirty` | [TC-15.png](evidence/R-20260915-4/TC-15.png) |
-| TC-16 | Bấm xác nhận check-in PMS → bắt đầu 30 phút | `tuyen` | pass | `7849f8e-dirty` | [TC-16.png](evidence/R-20260915-1/TC-16.png) |
+| TC-10 | Tab khách đến — Nguyễn Thu Hà P.105 | `tuyen` | pass | `4881717-dirty` | [TC-10.png](evidence/R-20260916-2/TC-10.png) |
+| TC-11 | Tab đang ở — Khoa + Hạnh | `tuyen` | pass | `4881717-dirty` | [TC-11.png](evidence/R-20260916-2/TC-11.png) |
+| TC-12 | Tab khách đi — Phạm Đức Anh P.102 | `tuyen` | pass | `4881717-dirty` | [TC-12.png](evidence/R-20260916-2/TC-12.png) |
+| TC-13 | Thẻ check-in: booking xong, chưa check-in PMS | `tuyen` | pass | `4881717-dirty` | [TC-13.png](evidence/R-20260916-2/TC-13.png) |
+| TC-14 | Gửi ô tô 51H-223.18 + timer đăng ký P.305 | `tuyen` | pass | `4881717-dirty` | [TC-14.png](evidence/R-20260916-2/TC-14.png) |
+| TC-15 | Checkout: thiếu hóa đơn, việc dọn phòng trả | `tuyen` | pass | `4881717-dirty` | [TC-15.png](evidence/R-20260916-2/TC-15.png) |
+| TC-16 | Bấm xác nhận check-in PMS → bắt đầu 30 phút | `tuyen` | pass | `4881717-dirty` | [TC-16.png](evidence/R-20260916-2/TC-16.png) |
 | TC-17 | Form ghi xe mới trên thẻ khách | `tuyen` | skip | — | — |
 | TC-18 | Gửi HK dọn phòng trả từ thẻ khách đi | `tuyen` | skip | — | — |
 
@@ -81,58 +82,73 @@ Trạng thái: `pass` · `fail` · `skip` (chưa chạy vòng này).
 
 | ID | Case | Role | Kết quả | Commit | Evidence |
 |---|---|---|---|---|---|
-| TC-90 | Khách đến: mã EZ-88502, booking đã xác nhận, nút check-in PMS | `tuyen` | pass | `7849f8e-dirty` | [TC-90.png](evidence/R-20260915-1/TC-90.png) |
-| TC-91 | Khách ở: EZ-88421, check-in PMS đã xác nhận | `tuyen` | pass | `7849f8e-dirty` | [TC-91.png](evidence/R-20260915-1/TC-91.png) |
-| TC-92 | Khách đi: EZ-88201, chưa checkout PMS / hóa đơn | `tuyen` | pass | `7849f8e-dirty` | [TC-92.png](evidence/R-20260915-1/TC-92.png) |
+| TC-90 | Khách đến: mã EZ-88502, booking đã xác nhận, nút check-in PMS | `tuyen` | pass | `4881717-dirty` | [TC-90.png](evidence/R-20260916-2/TC-90.png) |
+| TC-91 | Khách ở: EZ-88421, check-in PMS đã xác nhận | `tuyen` | pass | `4881717-dirty` | [TC-91.png](evidence/R-20260916-2/TC-91.png) |
+| TC-92 | Khách đi: EZ-88201, chưa checkout PMS / hóa đơn | `tuyen` | pass | `4881717-dirty` | [TC-92.png](evidence/R-20260916-2/TC-92.png) |
 
 ### Bán phòng / giá (ops, không thay PMS)
 
 | ID | Case | Role | Kết quả | Commit | Evidence |
 |---|---|---|---|---|---|
-| TC-93 | Sơ đồ bán phòng lễ tân | `tuyen` | pass | `7849f8e-dirty` | [TC-93.png](evidence/R-20260915-1/TC-93.png) |
-| TC-94 | Chỗ bán seed P.401 Đặng Minh Tuấn + P.506 Công ty An Phú | `tuyen` | pass | `7849f8e-dirty` | [TC-94.png](evidence/R-20260915-1/TC-94.png) |
-| TC-95 | Form bán: giá / đêm, chiết khấu, mã PMS | `tuyen` | pass | `7849f8e-dirty` | [TC-95.png](evidence/R-20260915-1/TC-95.png) |
-| TC-96 | Giá phòng ngày thường / cuối tuần | `tuyen` | pass | `7849f8e-dirty` | [TC-96.png](evidence/R-20260915-1/TC-96.png) |
-| TC-97 | Quản lý vào sơ đồ bán + giá phòng | `quanly` | pass | `7849f8e-dirty` | [TC-97.png](evidence/R-20260915-1/TC-97.png) |
-| TC-98 | HK không vào `/sales` (về Thêm) | `uyen` | pass | `7849f8e-dirty` | [TC-98.png](evidence/R-20260915-1/TC-98.png) |
-| TC-99 | Form bán: nền tảng Booking.com / Agoda / vãng lai | — | skip | — | chưa chạy |
-| TC-100 | Sơ đồ lọc Tạo trên Ops / Từ ezCloud | — | skip | — | chưa chạy |
+| TC-93 | Sơ đồ bán phòng lễ tân | `tuyen` | pass | `4881717-dirty` | [TC-93.png](evidence/R-20260916-2/TC-93.png) |
+| TC-94 | Chỗ bán seed P.401 Đặng Minh Tuấn + P.506 Công ty An Phú | `tuyen` | pass | `4881717-dirty` | [TC-94.png](evidence/R-20260916-2/TC-94.png) |
+| TC-95 | Form bán: giá / đêm, chiết khấu, mã PMS | `tuyen` | pass | `4881717-dirty` | [TC-95.png](evidence/R-20260916-2/TC-95.png) |
+| TC-96 | Giá phòng ngày thường / cuối tuần | `tuyen` | pass | `4881717-dirty` | [TC-96.png](evidence/R-20260916-2/TC-96.png) |
+| TC-97 | Quản lý vào sơ đồ bán + giá phòng | `quanly` | pass | `4881717-dirty` | [TC-97.png](evidence/R-20260916-2/TC-97.png) |
+| TC-98 | HK không vào `/sales` (về Thêm) | `uyen` | pass | `4881717-dirty` | [TC-98.png](evidence/R-20260916-2/TC-98.png) |
+| TC-99 | Form bán: nền tảng Booking.com / Agoda / vãng lai | `tuyen` | pass | `4881717-dirty` | [TC-99.png](evidence/R-20260916-2/TC-99.png) |
+| TC-100 | Sơ đồ lọc Ops / ezCloud | `tuyen` | pass | `4881717-dirty` | [TC-100.png](evidence/R-20260916-2/TC-100.png) |
+| TC-101 | Danh sách đặt phòng / booking | `tuyen` | pass | `4881717-dirty` | [TC-101.png](evidence/R-20260916-2/TC-101.png) |
+| TC-102 | Quick filter: Sẽ đến / Check-in / Đang ở / Trả / Phòng bẩn | `tuyen` | pass | `4881717-dirty` | [TC-102.png](evidence/R-20260916-2/TC-102.png) |
+| TC-103 | Lọc Sẽ đến hiện Mai Thanh Hà | `tuyen` | pass | `4881717-dirty` | [TC-103.png](evidence/R-20260916-2/TC-103.png) |
+| TC-104 | Lọc Đang ở hiện Đặng Minh Tuấn | `tuyen` | pass | `4881717-dirty` | [TC-104.png](evidence/R-20260916-2/TC-104.png) |
+| TC-105 | Gantt tuần: Đêm trống / booking trong khung | `tuyen` | pass | `4881717-dirty` | [TC-105.png](evidence/R-20260916-2/TC-105.png) |
+| TC-106 | Gantt tháng | `tuyen` | pass | `4881717-dirty` | [TC-106.png](evidence/R-20260916-2/TC-106.png) |
+| TC-107 | Booking An Phú: CK 10%, chưa cọc, còn thu 2.250.000₫ | `tuyen` | pass | `4881717-dirty` | [TC-107.png](evidence/R-20260916-2/TC-107.png) |
+| TC-108 | Booking Đặng: đã cọc 500.000₫, còn thu 1.900.000₫ | `tuyen` | pass | `4881717-dirty` | [TC-108.png](evidence/R-20260916-2/TC-108.png) |
+| TC-109 | Form bán nhiều phòng + cọc / còn phải thu | `tuyen` | pass | `4881717-dirty` | [TC-109.png](evidence/R-20260916-2/TC-109.png) |
+| TC-110 | Sửa booking: cùng hạng / nâng hạng, không sửa khách | `tuyen` | pass | `4881717-dirty` | [TC-110.png](evidence/R-20260916-2/TC-110.png) |
+| TC-111 | Chi tiết booking có Hủy booking / No-show | `tuyen` | pass | `4881717-dirty` | [TC-111.png](evidence/R-20260916-2/TC-111.png) |
+| TC-114 | Booking 2 phòng Đoàn Minh Châu P.304 + P.404 | `tuyen` | pass | `4881717-dirty` | [TC-114.png](evidence/R-20260916-2/TC-114.png) |
+| TC-115 | Lọc ezCloud ẩn chỗ Ops đêm nay | `tuyen` | pass | `4881717-dirty` | [TC-115.png](evidence/R-20260916-2/TC-115.png) |
+| TC-116 | Giữ chỗ 14 ngày — Mai Thanh Hà | `tuyen` | pass | `4881717-dirty` | [TC-116.png](evidence/R-20260916-2/TC-116.png) |
+| TC-117 | Lọc Check-in hôm nay — Công ty An Phú | `tuyen` | pass | `4881717-dirty` | [TC-117.png](evidence/R-20260916-2/TC-117.png) |
 
 ### Việc
 
 | ID | Case | Role | Kết quả | Commit | Evidence |
 |---|---|---|---|---|---|
-| TC-20 | Bảng việc: thay khăn / dọn phòng / checkout | `tuyen` | pass | `ff9574e-dirty` | [TC-20.png](evidence/R-20260915-4/TC-20.png) |
-| TC-21 | Việc «cần thêm HK» hiện với lễ tân | `tuyen` | pass | `7849f8e-dirty` | [TC-21.png](evidence/R-20260915-1/TC-21.png) |
-| TC-21b | Việc «cần thêm HK» hiện với quản lý | `quanly` | pass | `7849f8e-dirty` | [TC-21b.png](evidence/R-20260915-1/TC-21b.png) |
-| TC-22 | Tạo việc — loại lễ tân (khăn, dọn) | `tuyen` | pass | `7849f8e-dirty` | [TC-22.png](evidence/R-20260915-1/TC-22.png) |
-| TC-23 | Tạo việc — loại quản lý (đôn việc) | `quanly` | pass | `7849f8e-dirty` | [TC-23.png](evidence/R-20260915-1/TC-23.png) |
-| TC-24 | HK thấy khăn / dọn / thêm HK | `uyen` | pass | `7849f8e-dirty` | [TC-24.png](evidence/R-20260915-1/TC-24.png) |
-| TC-25 | HK tạo việc (Kiểm INS) | `uyen` | pass | `7849f8e-dirty` | [TC-25.png](evidence/R-20260915-1/TC-25.png) |
+| TC-20 | Bảng việc: thay khăn / dọn phòng / checkout | `tuyen` | pass | `4881717-dirty` | [TC-20.png](evidence/R-20260916-2/TC-20.png) |
+| TC-21 | Việc «cần thêm HK» hiện với lễ tân | `tuyen` | pass | `4881717-dirty` | [TC-21.png](evidence/R-20260916-2/TC-21.png) |
+| TC-21b | Việc «cần thêm HK» hiện với quản lý | `quanly` | pass | `4881717-dirty` | [TC-21b.png](evidence/R-20260916-2/TC-21b.png) |
+| TC-22 | Tạo việc — loại lễ tân (khăn, dọn) | `tuyen` | pass | `4881717-dirty` | [TC-22.png](evidence/R-20260916-2/TC-22.png) |
+| TC-23 | Tạo việc — loại quản lý (đôn việc) | `quanly` | pass | `4881717-dirty` | [TC-23.png](evidence/R-20260916-2/TC-23.png) |
+| TC-24 | HK thấy khăn / dọn / thêm HK | `uyen` | pass | `4881717-dirty` | [TC-24.png](evidence/R-20260916-2/TC-24.png) |
+| TC-25 | HK tạo việc (Kiểm INS) | `uyen` | pass | `4881717-dirty` | [TC-25.png](evidence/R-20260916-2/TC-25.png) |
 | TC-26 | Đổi trạng thái việc Mới → Đang làm → Xong | `uyen` | skip | — | — |
 
 ### Bếp / phòng / ca / bàn giao / nhân sự
 
 | ID | Case | Role | Kết quả | Commit | Evidence |
 |---|---|---|---|---|---|
-| TC-30 | Báo ăn sáng ngày mai (số + dị ứng P.105) | `tuyen` | pass | `7849f8e-dirty` | [TC-30.png](evidence/R-20260915-1/TC-30.png) |
+| TC-30 | Báo ăn sáng ngày mai (số + dị ứng P.105) | `tuyen` | pass | `4881717-dirty` | [TC-30.png](evidence/R-20260916-2/TC-30.png) |
 | TC-31 | Bếp bấm đã nhận số | kitchen | skip | — | chưa có user bếp local |
-| TC-40 | Danh sách phòng | `tuyen` | pass | `7849f8e-dirty` | [TC-40.png](evidence/R-20260915-1/TC-40.png) |
-| TC-41 | Quản lý hạng phòng | `quanly` | pass | `7849f8e-dirty` | [TC-41.png](evidence/R-20260915-1/TC-41.png) |
-| TC-50 | Bàn giao hiện trang gom việc | `tuyen` | pass | `7849f8e-dirty` | [TC-50.png](evidence/R-20260915-1/TC-50.png) |
+| TC-40 | Danh sách phòng | `tuyen` | pass | `4881717-dirty` | [TC-40.png](evidence/R-20260916-2/TC-40.png) |
+| TC-41 | Quản lý hạng phòng | `quanly` | pass | `4881717-dirty` | [TC-41.png](evidence/R-20260916-2/TC-41.png) |
+| TC-50 | Bàn giao hiện trang gom việc | `tuyen` | pass | `4881717-dirty` | [TC-50.png](evidence/R-20260916-2/TC-50.png) |
 | TC-51 | Tạo bàn giao từ dữ liệu tồn | `tuyen` | skip | — | — |
-| TC-60 | Staff: 3 lễ tân + 1 HK + quản lý | `quanly` | pass | `7849f8e-dirty` | [TC-60.png](evidence/R-20260915-1/TC-60.png) |
-| TC-61 | Roster tuần Ngân/Thu/Tuyến | `quanly` | pass | `7849f8e-dirty` | [TC-61.png](evidence/R-20260915-1/TC-61.png) |
+| TC-60 | Staff: 3 lễ tân + 1 HK + quản lý | `quanly` | pass | `4881717-dirty` | [TC-60.png](evidence/R-20260916-2/TC-60.png) |
+| TC-61 | Roster tuần Ngân/Thu/Tuyến | `quanly` | pass | `4881717-dirty` | [TC-61.png](evidence/R-20260916-2/TC-61.png) |
 | TC-62 | Tạo / khóa nhân viên | `quanly` | skip | — | — |
-| TC-64 | Nhật ký thao tác: ai / thêm / sửa | `quanly` | skip | — | chưa chạy vòng này |
-| TC-64b | Lễ tân không vào `/audit` | `tuyen` | skip | — | chưa chạy vòng này |
-| TC-70 | Checklist đầu ca / cuối ca đang mở | `tuyen` | pass | `ff9574e-dirty` | [TC-70.png](evidence/R-20260915-4/TC-70.png) |
+| TC-64 | Nhật ký thao tác: ai / thêm / sửa | `quanly` | pass | `4881717-dirty` | [TC-64.png](evidence/R-20260916-2/TC-64.png) |
+| TC-64b | Lễ tân không vào `/audit` | `tuyen` | pass | `4881717-dirty` | [TC-64b.png](evidence/R-20260916-2/TC-64b.png) |
+| TC-70 | Checklist đầu ca / cuối ca đang mở | `tuyen` | pass | `4881717-dirty` | [TC-70.png](evidence/R-20260916-2/TC-70.png) |
 | TC-71 | Lễ tân mở ca khi chưa có ca | `tuyen` | skip | — | data hiện đã mở ca |
-| TC-72 | Today: task nhận P.105 / trả P.102 | `tuyen` | pass | `ff9574e-dirty` | [TC-72.png](evidence/R-20260915-4/TC-72.png) |
-| TC-73 | Bảng việc có Nhận P.105, Trả P.102, Nhận P.506 | `tuyen` | pass | `ff9574e-dirty` | [TC-73.png](evidence/R-20260915-4/TC-73.png) |
-| TC-74 | Task nhận P.105: mục INS / PMS / chìa + note/ảnh | `tuyen` | pass | `ff9574e-dirty` | [TC-74.png](evidence/R-20260915-4/TC-74.png) |
-| TC-75 | Thẻ khách s-201 cùng checklist nhận phòng | `tuyen` | pass | `ff9574e-dirty` | [TC-75.png](evidence/R-20260915-4/TC-75.png) |
-| TC-76 | Chỗ bán P.506 link checklist nhận phòng | `tuyen` | pass | `ff9574e-dirty` | [TC-76.png](evidence/R-20260915-4/TC-76.png) |
+| TC-72 | Today: task nhận P.105 / trả P.102 | `tuyen` | pass | `4881717-dirty` | [TC-72.png](evidence/R-20260916-2/TC-72.png) |
+| TC-73 | Bảng việc có Nhận P.105, Trả P.102, Nhận P.506 | `tuyen` | pass | `4881717-dirty` | [TC-73.png](evidence/R-20260916-2/TC-73.png) |
+| TC-74 | Task nhận P.105: mục INS / PMS / chìa + note/ảnh | `tuyen` | pass | `4881717-dirty` | [TC-74.png](evidence/R-20260916-2/TC-74.png) |
+| TC-75 | Thẻ khách s-201 cùng checklist nhận phòng | `tuyen` | pass | `4881717-dirty` | [TC-75.png](evidence/R-20260916-2/TC-75.png) |
+| TC-76 | Chỗ bán P.506 link checklist nhận phòng | `tuyen` | pass | `4881717-dirty` | [TC-76.png](evidence/R-20260916-2/TC-76.png) |
 
 ### PWA / iPhone
 
@@ -163,8 +179,24 @@ Dùng sau `npm run db:reseed-local`.
 | TC-95 | `/sales/new` | Giá / đêm · chiết khấu · mã PMS |
 | TC-96 | `/sales/rates` login `tuyen` | Redirect về sơ đồ bán, không form Lưu giá |
 | TC-98 | login `uyen` `/sales` | Redirect Thêm, không menu bán phòng |
-| TC-99 | `/sales/new` | Nền tảng · Booking.com · Agoda · Tạo trên Ops |
-| TC-100 | `/sales` | Lọc Tất cả · Ops · ezCloud · Booking |
+| TC-99 | `/sales/new` | Nền tảng · Booking.com · Agoda · Từ ezCloud |
+| TC-100 | `/sales` | Lọc Tất cả · Ops · ezCloud |
+| TC-101 | `/sales/bookings` | Đặt phòng · Đang mở · Đặng / An Phú / Đoàn Minh Châu |
+| TC-102 | `/sales` | Quick filter Sẽ đến · Check-in hôm nay · Đang ở · Trả hôm nay · Phòng bẩn |
+| TC-103 | `/sales?focus=booking` | Mai Thanh Hà |
+| TC-104 | `/sales?focus=inhouse` | Đặng Minh Tuấn |
+| TC-105 | `/sales?view=week` | Tuần sơ đồ · Đêm trống · booking Đặng / An Phú |
+| TC-106 | `/sales?view=month` | Tháng sơ đồ · Đêm đã bán |
+| TC-107 | `/sales/bookings/sale-506` | CK 10% · Chưa đặt cọc · Còn phải thu 2.250.000₫ |
+| TC-108 | `/sales/bookings/sale-401` | Đã đặt cọc 500.000₫ · Còn phải thu 1.900.000₫ |
+| TC-109 | `/sales/new` chọn 2 phòng | Đã chọn 2 phòng · chiết khấu tổng booking · cọc / còn thu |
+| TC-110 | `/sales/bookings/sale-401` | Cùng hạng · Nâng hạng · không ô tên khách |
+| TC-111 | `/sales/bookings/sale-508` | Hủy booking · No-show · In xác nhận |
+| TC-114 | `/sales/bookings/bk-doan` | 2 phòng · P.304 · P.404 · đã cọc · còn phải thu |
+| TC-115 | `/sales?origin=ezcloud` | Không khớp bộ lọc (chỗ bán seed là Ops) |
+| TC-116 | `/sales` | Giữ chỗ 14 ngày tới · Mai Thanh Hà |
+| TC-117 | `/sales?focus=arriving` | Check-in hôm nay · Công ty An Phú |
+| TC-118 | `/sales/bookings/bk-doan/print` | Phiếu XÁC NHẬN ĐẶT PHÒNG · FAMILY 304/404 · điều khoản · In phiếu |
 | TC-20 | `/tasks` | 3 việc HK cũ **và** Nhận P.105 · Trả P.102 |
 | TC-21 | `/tasks` | Việc quản lý: *Cần thêm HK ca này — tầng 2 và 3* |
 | TC-30 | `/kitchen` | Ngày mai 7 NL · 2 TE · chay 2 · dị ứng 1 |
@@ -184,6 +216,23 @@ Dùng sau `npm run db:reseed-local`.
 ## Lịch sử run
 
 Thêm block mới **trên cùng** mỗi lần test.
+
+### E2E-20260916-3 — 2026-09-16
+
+- Commit: `4881717-dirty`
+- Env: local `http://localhost:3002`
+- Pass / Fail: **18 / 0** · **18/18 = 100%**
+- Evidence: `qa/evidence/E2E-20260916-3/`
+- Ghi chú: `npm run qa:e2e` — ca lễ tân + HK. Bán P.101 E2E Van A, checklist đầu ca, nhận phòng, giao dọn HK, HK xong việc, hủy booking (không trả cùng ngày nhận — app chặn 0 đêm).
+
+### R-20260916-2 — 2026-09-16
+
+- Commit: `4881717-dirty`
+- Env: local `http://localhost:3002`
+- Pass / Fail / Skip: **59 / 0 / 0** trong runner · catalog còn skip tay/PWA
+- Tỷ lệ: **59/59 = 100%**
+- Evidence: `qa/evidence/R-20260916-2/`
+- Ghi chú: thêm case bán phòng TC-102–111, 114–117 (quick filter, Gantt, booking 2 phòng Đoàn Minh Châu, cọc/còn thu, sửa/hủy). Ca chiều.
 
 ### R-20260915-prd3 — 2026-09-15
 

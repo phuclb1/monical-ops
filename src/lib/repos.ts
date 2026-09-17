@@ -922,6 +922,7 @@ function toBookingView(id: string, rooms: Awaited<ReturnType<typeof listRoomSale
     children: first.children,
     deposit: first.deposit || 0,
     due: bookingDue(quote.total, first.deposit || 0),
+    createdAt: sorted.reduce((min, row) => (row.createdAt < min ? row.createdAt : min), first.createdAt),
     checkIn,
     checkOut,
     rooms: sorted,

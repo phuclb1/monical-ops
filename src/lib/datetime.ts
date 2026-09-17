@@ -107,6 +107,21 @@ export function formatDateLong(isoDate: string) {
   }).format(new Date(`${isoDate}T12:00:00+07:00`));
 }
 
+export function formatDateNumeric(isoDate?: string | null) {
+  if (!isoDate) return "";
+  const d = isoDate.length > 10 ? new Date(isoDate) : new Date(`${isoDate}T12:00:00+07:00`);
+  return new Intl.DateTimeFormat("en-GB", {
+    timeZone: TZ,
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  }).format(d);
+}
+
+export function formatStayStamp(isoDate: string, time: string) {
+  return `${formatDateNumeric(isoDate)}, ${time}`;
+}
+
 export function formatWeekRange(isoDate = todayVN()) {
   const days = weekOfVN(isoDate);
   return `${formatDayMonth(days[0].date)} – ${formatDayMonth(days[6].date)}/${days[6].date.slice(0, 4)}`;
