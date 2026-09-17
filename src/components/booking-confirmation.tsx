@@ -145,6 +145,9 @@ export function BookingConfirmation({ booking }: { booking: Booking }) {
           <MoneyRow label="Tổng tiền phòng" value={quote.subtotal} />
           <MoneyRow label="Tổng cộng" value={quote.subtotal} />
           <MoneyRow label="Giảm giá" value={quote.discount} />
+          {booking.extras.map((row) => (
+            <MoneyRow key={row.id} label={row.name} value={row.amount} />
+          ))}
           <MoneyRow label="Tiền cọc" value={booking.deposit} />
         </tbody>
       </table>
@@ -152,7 +155,7 @@ export function BookingConfirmation({ booking }: { booking: Booking }) {
       <h2>Thanh toán</h2>
       <table className="booking-sheet-sum">
         <tbody>
-          <MoneyRow label="Tổng tiền" value={quote.total} />
+          <MoneyRow label="Tổng tiền" value={booking.total} />
           <MoneyRow label="Đã đặt cọc" value={booking.deposit} />
         </tbody>
       </table>

@@ -7,7 +7,7 @@ import { getSession } from "@/lib/auth";
 import { SALE_ORIGIN_LABEL, SALE_SOURCE_LABEL, SALE_STATUS_LABEL } from "@/lib/constants";
 import { formatDateLong, todayVN } from "@/lib/datetime";
 import { can } from "@/lib/permissions";
-import { getRoomSale, getRoomDayChecklists, listRooms } from "@/lib/repos";
+import { getRoomSale, getRoomDayChecklists, getBooking, listRooms } from "@/lib/repos";
 import { bookingDue, bookingQuote, discountLabel, formatVnd, isOpsBookingCode } from "@/lib/sales";
 import type { SaleOrigin, SaleSource, SaleStatus } from "@/lib/types";
 
@@ -33,7 +33,10 @@ export default async function SaleDetailPage({
   const { error } = await searchParams;
   const [sale, rooms] = await Promise.all([getRoomSale(id), listRooms()]);
   if (!sale) notFound();
-  const roomLists = sale.roomId ? await getRoomDayChecklists(sale.roomId) : [];
+  const [roomLists, booking] = await Promise.all([
+    sale.roomId ? getRoomDayChecklists(sale.roomId) : Promise.resolve([]),
+    getBooking(sale.bookingKey),
+  ]);
   const today = todayVN();
   const active = sale.status === "reserved" || sale.status === "inhouse";
   const group = [sale, ...sale.peers].sort((a, b) => (a.room?.number || "").localeCompare(b.room?.number || ""));
@@ -79,13 +82,18 @@ export default async function SaleDetailPage({
             {sale.peers.length ? " · tổng booking" : ""}
           </p>
         ) : null}
-        <p className="mt-1 text-sm">Phải thu {formatVnd(booked.total)}</p>
+        <p className="mt-1 text-sm">Phải thu {formatVnd(booking?.total ?? booked.total)}</p>
+        {booking?.extrasTotal ? (
+          <p className="mt-1 text-xs text-[#5c6665]">
+            Phòng {formatVnd(booking.roomTotal)} · dịch vụ {formatVnd(booking.extrasTotal)}
+          </p>
+        ) : null}
         {sale.deposit ? (
           <p className="mt-1 text-sm text-[#1b7a4e]">Đã đặt cọc {formatVnd(sale.deposit)}</p>
         ) : (
           <p className="mt-1 text-sm text-[#c47b12]">Chưa đặt cọc</p>
         )}
-        <p className="mt-1 text-sm font-semibold">Còn phải thu {formatVnd(bookingDue(booked.total, sale.deposit || 0))}</p>
+        <p className="mt-1 text-sm font-semibold">Còn phải thu {formatVnd(booking?.due ?? bookingDue(booked.total, sale.deposit || 0))}</p>
         {sale.guestPhone ? <p className="mt-1 text-sm">SĐT {sale.guestPhone}</p> : null}
         {sale.pmsCode ? <p className="mt-1 text-sm">{isOpsBookingCode(sale.pmsCode) ? "Mã Ops" : "PMS"} {sale.pmsCode}</p> : null}
         {sale.notes ? <p className="mt-2 text-sm text-[#5c6665]">{sale.notes}</p> : null}

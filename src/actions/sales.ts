@@ -32,6 +32,7 @@ function refresh() {
   revalidatePath("/sales");
   revalidatePath("/sales/bookings", "layout");
   revalidatePath("/sales/rates");
+  revalidatePath("/sales/extras");
   revalidatePath("/rooms");
   revalidatePath("/today");
   revalidatePath("/more");
@@ -158,6 +159,23 @@ export async function cancelSaleAction(formData: FormData) {
   if (back !== `/sales/${id}`) redirect(back);
 }
 
+export async function recordBookingPaymentAction(formData: FormData) {
+  const user = await requireSales();
+  const bookingId = String(formData.get("bookingId") || "");
+  const back = `/sales/bookings/${bookingId}`;
+  try {
+    await repo.recordBookingPayment(user, bookingId, {
+      amount: parseMoney(formData.get("amount")),
+      settle: String(formData.get("settle") || "") === "1",
+    });
+  } catch (e) {
+    fail(back, e);
+  }
+  refresh();
+  revalidatePath(back);
+  redirect(back);
+}
+
 export async function updateBookingAction(formData: FormData) {
   const user = await requireSales();
   const bookingId = String(formData.get("bookingId") || "");
@@ -172,6 +190,8 @@ export async function updateBookingAction(formData: FormData) {
       discountKind: parseDiscountKind(formData.get("discountKind")),
       discountValue: parseMoney(formData.get("discountValue")),
       deposit: parseMoney(formData.get("deposit")),
+      checkIn: String(formData.get("checkIn") || ""),
+      checkOut: String(formData.get("checkOut") || ""),
     });
   } catch (e) {
     fail(back, e);
@@ -212,4 +232,57 @@ export async function saveRoomRatesAction(formData: FormData) {
   }
   refresh();
   redirect("/sales/rates?ok=1");
+}
+
+export async function saveExtraRatesAction(formData: FormData) {
+  const user = await requireRates();
+  const ids = formData.getAll("typeId").map(String);
+  try {
+    await repo.setSaleExtraTypeRates(
+      user,
+      ids.map((id) => ({
+        id,
+        unitPrice: parseMoney(formData.get(`price-${id}`)),
+      })),
+    );
+  } catch (e) {
+    fail("/sales/extras", e);
+  }
+  refresh();
+  revalidatePath("/sales/extras");
+  redirect("/sales/extras?ok=1");
+}
+
+export async function addBookingExtraAction(formData: FormData) {
+  const user = await requireSales();
+  const bookingId = String(formData.get("bookingId") || "");
+  const back = `/sales/bookings/${bookingId}`;
+  try {
+    await repo.addBookingExtra(user, bookingId, {
+      typeId: String(formData.get("typeId") || ""),
+      name: String(formData.get("name") || ""),
+      qty: Number(formData.get("qty") || 1),
+      unitPrice: parseMoney(formData.get("unitPrice") || formData.get("amount")),
+    });
+  } catch (e) {
+    fail(back, e);
+  }
+  refresh();
+  revalidatePath(back);
+  redirect(back);
+}
+
+export async function removeBookingExtraAction(formData: FormData) {
+  const user = await requireSales();
+  const extraId = String(formData.get("id") || "");
+  const bookingId = String(formData.get("bookingId") || "");
+  const back = `/sales/bookings/${bookingId}`;
+  try {
+    await repo.removeBookingExtra(user, extraId);
+  } catch (e) {
+    fail(back, e);
+  }
+  refresh();
+  revalidatePath(back);
+  redirect(back);
 }

@@ -135,6 +135,12 @@ export function bookingDisplayCode(booking: { pmsCode?: string | null; id: strin
   return booking.pmsCode?.trim() || booking.id;
 }
 
+export function bookingPdfFilename(booking: { pmsCode?: string | null; id: string }) {
+  const raw = bookingDisplayCode(booking);
+  const safe = raw.replace(/[^\w.-]+/g, "-").replace(/^-+|-+$/g, "") || "booking";
+  return `${safe}.pdf`;
+}
+
 export function bookingDue(total: number, deposit: number) {
   return Math.max(0, Math.round(total || 0) - Math.max(0, Math.round(deposit || 0)));
 }

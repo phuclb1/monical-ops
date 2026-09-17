@@ -8,6 +8,7 @@ import * as t from "./schema";
 import type { ShiftType } from "../types";
 import { insertInBatches } from "./batch";
 import { ROOM_REMAP, ROOM_SEED, ROOM_TYPE_SEED, floorOf, roomIdOf } from "../rooms-catalog";
+import { EXTRA_TYPE_SEED } from "../extras";
 import { DEFAULT_WEEK_DUTY, ROSTER_SHIFTS, weekSlotId } from "../roster";
 
 export const STAFF_SEED = [
@@ -53,6 +54,7 @@ export async function seedIfEmpty(db: AppDb) {
   if (!existing.length) await seed(db);
   await syncStaffUsers(db);
   await syncRoomCatalog(db);
+  await syncExtraCatalog(db);
   await syncReceptionRoster(db);
   await syncTaskKinds(db);
 }
@@ -67,6 +69,7 @@ export async function resetOpsDemo(db: AppDb) {
   await db.delete(t.guestRequests);
   await db.delete(t.vehicles);
   await db.delete(t.stays);
+  await db.delete(t.saleExtras);
   await db.delete(t.roomSales);
   await db.delete(t.shifts);
   await db.delete(t.breakfasts);
@@ -88,6 +91,7 @@ export async function wipeAllLocal(db: AppDb) {
   await db.delete(t.guestRequests);
   await db.delete(t.vehicles);
   await db.delete(t.stays);
+  await db.delete(t.saleExtras);
   await db.delete(t.roomSales);
   await db.delete(t.shifts);
   await db.delete(t.breakfasts);
@@ -99,6 +103,7 @@ export async function wipeAllLocal(db: AppDb) {
   await db.delete(t.receptionDayOverrides);
   await db.delete(t.receptionWeekSlots);
   await db.delete(t.rooms);
+  await db.delete(t.saleExtraTypes);
   await db.delete(t.roomTypes);
   await db.delete(t.users);
   await db.delete(t.departments);
@@ -725,6 +730,23 @@ export async function syncRoomCatalog(db: AppDb, opts?: { prune?: boolean }) {
   for (const room of extra) {
     await remapRoomRefs(db, room.id, ROOM_REMAP[room.id] ?? null);
     await db.delete(t.rooms).where(eq(t.rooms.id, room.id));
+  }
+}
+
+export async function syncExtraCatalog(db: AppDb) {
+  const rows = await db.select().from(t.saleExtraTypes);
+  const byCode = new Map(rows.map((row) => [row.code, row]));
+  const byId = new Map(rows.map((row) => [row.id, row]));
+  for (const type of EXTRA_TYPE_SEED) {
+    const found = byCode.get(type.code) ?? byId.get(type.id);
+    if (!found) {
+      await db.insert(t.saleExtraTypes).values({ ...type, active: true });
+      continue;
+    }
+    await db
+      .update(t.saleExtraTypes)
+      .set({ name: type.name, unit: type.unit, unitLabel: type.unitLabel, sortOrder: type.sortOrder, code: type.code })
+      .where(eq(t.saleExtraTypes.id, found.id));
   }
 }
 

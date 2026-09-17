@@ -19,6 +19,8 @@ export const AUDIT_ENTITIES = [
   "guest_request",
   "roster_week",
   "roster_day",
+  "sale_extra",
+  "sale_extra_type",
 ] as const;
 
 export const AUDIT_ACTIONS = [
@@ -64,6 +66,8 @@ export const AUDIT_ENTITY_LABEL: Record<string, string> = {
   guest_request: "Yêu cầu khách",
   roster_week: "Lịch tuần",
   roster_day: "Đổi ca ngày",
+  sale_extra: "Dịch vụ booking",
+  sale_extra_type: "Giá dịch vụ",
 };
 
 export const AUDIT_ACTION_LABEL: Record<string, string> = {
@@ -129,6 +133,9 @@ const FIELD_LABEL: Record<string, string> = {
   discountKind: "Chiết khấu",
   discountValue: "Mức CK",
   deposit: "Cọc",
+  qty: "Số lượng",
+  unitPrice: "Đơn giá",
+  unit: "Đơn vị",
   formCode: "Mẫu",
   title: "Tiêu đề",
   label: "Mục",

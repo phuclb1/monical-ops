@@ -28,6 +28,9 @@ export default async function RoomRatesPage({
         <p className="text-xs text-[#5c6665]">
           Giá bảng theo hạng. Ngày thường T2–T5, cuối tuần T6–CN. Chỉ quản lý sửa. Khi bán lễ tân vẫn chọn giá / chiết khấu từng chỗ.
         </p>
+        <Link href="/sales/extras" className="mt-2 inline-flex min-h-11 items-center text-sm font-semibold text-teal">
+          Dịch vụ kèm
+        </Link>
       </div>
       {error ? <p className="text-sm text-[#c23b3b]">{error}</p> : null}
       {ok ? <p className="text-sm text-[#1b7a4e]">Đã lưu giá hạng.</p> : null}

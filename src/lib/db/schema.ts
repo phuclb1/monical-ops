@@ -320,3 +320,27 @@ export const pushSubscriptions = sqliteTable("push_subscriptions", {
   createdAt: text("created_at").notNull(),
   updatedAt: text("updated_at").notNull(),
 });
+
+export const saleExtraTypes = sqliteTable("sale_extra_types", {
+  id: text("id").primaryKey(),
+  code: text("code").notNull().unique(),
+  name: text("name").notNull(),
+  unitPrice: integer("unit_price").notNull().default(0),
+  unit: text("unit").notNull().default("once"),
+  unitLabel: text("unit_label"),
+  sortOrder: integer("sort_order").notNull().default(0),
+  active: integer("active", { mode: "boolean" }).notNull().default(true),
+});
+
+export const saleExtras = sqliteTable("sale_extras", {
+  id: text("id").primaryKey(),
+  bookingId: text("booking_id").notNull(),
+  typeId: text("type_id"),
+  kind: text("kind").notNull(),
+  name: text("name").notNull(),
+  qty: integer("qty").notNull().default(1),
+  unitPrice: integer("unit_price").notNull().default(0),
+  unit: text("unit").notNull().default("once"),
+  createdAt: text("created_at").notNull(),
+  createdBy: text("created_by"),
+});

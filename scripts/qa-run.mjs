@@ -269,7 +269,7 @@ try {
 
   await check("TC-108", "Booking Đặng — đã cọc, còn phải thu", async (shot) => {
     await go("/sales/bookings/sale-401");
-    await must(shot, ["Đặng Minh Tuấn", "Đã đặt cọc", "500.000₫", "Còn phải thu", "1.900.000₫"]);
+    await must(shot, ["Đặng Minh Tuấn", "Đã đặt cọc", "500.000₫", "Còn phải thu", "1.900.000₫", "Thanh toán", "Ghi nhận thu thêm", "Thu đủ"]);
   });
 
   await check("TC-110", "Sửa booking: cùng hạng / nâng hạng, không sửa khách", async (shot) => {
@@ -296,6 +296,7 @@ try {
       "404",
       "Điều khoản",
       "In phiếu",
+      "Tải PDF",
     ]);
   });
 

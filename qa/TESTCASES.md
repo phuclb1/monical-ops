@@ -188,7 +188,7 @@ Dùng sau `npm run db:reseed-local`.
 | TC-105 | `/sales?view=week` | Tuần sơ đồ · Đêm trống · booking Đặng / An Phú |
 | TC-106 | `/sales?view=month` | Tháng sơ đồ · Đêm đã bán |
 | TC-107 | `/sales/bookings/sale-506` | CK 10% · Chưa đặt cọc · Còn phải thu 2.250.000₫ |
-| TC-108 | `/sales/bookings/sale-401` | Đã đặt cọc 500.000₫ · Còn phải thu 1.900.000₫ |
+| TC-108 | `/sales/bookings/sale-401` | Đã đặt cọc 500.000₫ · Còn phải thu 1.900.000₫ · Thu thêm · Thu đủ |
 | TC-109 | `/sales/new` chọn 2 phòng | Đã chọn 2 phòng · chiết khấu tổng booking · cọc / còn thu |
 | TC-110 | `/sales/bookings/sale-401` | Cùng hạng · Nâng hạng · không ô tên khách |
 | TC-111 | `/sales/bookings/sale-508` | Hủy booking · No-show · In xác nhận |
@@ -196,7 +196,7 @@ Dùng sau `npm run db:reseed-local`.
 | TC-115 | `/sales?origin=ezcloud` | Không khớp bộ lọc (chỗ bán seed là Ops) |
 | TC-116 | `/sales` | Giữ chỗ 14 ngày tới · Mai Thanh Hà |
 | TC-117 | `/sales?focus=arriving` | Check-in hôm nay · Công ty An Phú |
-| TC-118 | `/sales/bookings/bk-doan/print` | Phiếu XÁC NHẬN ĐẶT PHÒNG · FAMILY 304/404 · điều khoản · In phiếu |
+| TC-118 | `/sales/bookings/bk-doan/print` | Phiếu XÁC NHẬN ĐẶT PHÒNG · FAMILY 304/404 · điều khoản · In phiếu · Tải PDF |
 | TC-20 | `/tasks` | 3 việc HK cũ **và** Nhận P.105 · Trả P.102 |
 | TC-21 | `/tasks` | Việc quản lý: *Cần thêm HK ca này — tầng 2 và 3* |
 | TC-30 | `/kitchen` | Ngày mai 7 NL · 2 TE · chay 2 · dị ứng 1 |

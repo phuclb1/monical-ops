@@ -15,6 +15,7 @@ export function extraNav(role: Role) {
     { href: "/sales", label: "Bán phòng", show: can(role, "manageSales") },
     { href: "/sales/bookings", label: "Đặt phòng", show: can(role, "manageSales") },
     { href: "/sales/rates", label: "Giá phòng", show: can(role, "manageRates") },
+    { href: "/sales/extras", label: "Dịch vụ kèm", show: can(role, "manageRates") },
     { href: "/kitchen", label: "Bếp", show: can(role, "viewKitchen") },
     { href: "/shifts", label: "Ca làm việc", show: true },
     { href: "/forms", label: "Biểu mẫu", show: true },

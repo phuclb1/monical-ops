@@ -3,7 +3,8 @@ import { and, desc, eq, like, lt, ne, or, sql } from "drizzle-orm";
 import { getDb } from "./db";
 import * as t from "./db/schema";
 import { addDaysVN, addMinutes, currentShiftType, datesUntil, nid, nextDate, nextShiftSlot, nowISO, shiftWindow, todayVN, weekdayISO } from "./datetime";
-import { bookingDue, bookingKey, bookingQuote, catalogRate, ganttSpan, groupByBooking, isActiveSaleStatus, isOpsBookingCode, isSaleOrigin, isSaleSource, nightlyNetFromLine, normalizeDiscount, occupiesNight, parseSaleSource, quoteLinesBySaleId, rangesOverlap, rollupBookingStatus, roomMoveKind, saleStatusToStay } from "./sales";
+import { bookingDue, bookingKey, bookingQuote, catalogRate, ganttSpan, groupByBooking, isActiveSaleStatus, isOpsBookingCode, isSaleOrigin, isSaleSource, nightlyNetFromLine, nightsBetween, normalizeDiscount, occupiesNight, parseSaleSource, quoteLinesBySaleId, rangesOverlap, rollupBookingStatus, roomMoveKind, saleStatusToStay } from "./sales";
+import { extraAmount } from "./extras";
 import { can } from "./permissions";
 import { dayOverrideId, rosterVersionOf, weekSlotId } from "./roster";
 import { ensureShiftChecklists, ensureTodayRoomTasks, loadChecklistByTask, loadChecklistsForRoom, loadChecklistsForStay, requiredPending } from "./checklist-ops";
@@ -910,6 +911,7 @@ function toBookingView(id: string, rooms: Awaited<ReturnType<typeof listRoomSale
   const quote = bookingQuote(sorted);
   const checkIn = sorted.reduce((min, row) => (row.checkIn < min ? row.checkIn : min), first.checkIn);
   const checkOut = sorted.reduce((max, row) => (row.checkOut > max ? row.checkOut : max), first.checkOut);
+  const nights = Math.max(quote.nights, nightsBetween(checkIn, checkOut));
   return {
     id,
     guestName: first.guestName,
@@ -929,17 +931,48 @@ function toBookingView(id: string, rooms: Awaited<ReturnType<typeof listRoomSale
     roomCount: sorted.length,
     roomLabel: sorted.map((row) => `P.${row.room?.number || "—"}`).join(" · "),
     status: rollupBookingStatus(sorted.map((row) => row.status)),
-    nights: quote.nights,
+    nights,
     subtotal: quote.subtotal,
     discount: quote.discount,
+    roomTotal: quote.total,
+    extras: [] as ReturnType<typeof decorateExtras>,
+    extrasTotal: 0,
     total: quote.total,
   };
 }
 
+function decorateExtras(rows: (typeof t.saleExtras.$inferSelect)[], nights: number) {
+  return rows
+    .map((row) => ({ ...row, amount: extraAmount(row, nights) }))
+    .sort((a, b) => a.createdAt.localeCompare(b.createdAt) || a.name.localeCompare(b.name));
+}
+
+function withBookingExtras<T extends { id: string; nights: number; roomTotal?: number; total: number; deposit: number }>(
+  view: T,
+  extras: (typeof t.saleExtras.$inferSelect)[],
+) {
+  const rows = decorateExtras(extras, view.nights);
+  const extrasTotal = rows.reduce((sum, row) => sum + row.amount, 0);
+  const roomTotal = view.roomTotal ?? view.total;
+  const total = roomTotal + extrasTotal;
+  return { ...view, extras: rows, extrasTotal, roomTotal, total, due: bookingDue(total, view.deposit) };
+}
+
+async function listSaleExtras() {
+  const db = await getDb();
+  return db.select().from(t.saleExtras);
+}
+
 export async function listBookings() {
-  const sales = await listRoomSales();
+  const [sales, extras] = await Promise.all([listRoomSales(), listSaleExtras()]);
+  const extraByBooking = new Map<string, (typeof extras)[number][]>();
+  for (const row of extras) {
+    const list = extraByBooking.get(row.bookingId) || [];
+    list.push(row);
+    extraByBooking.set(row.bookingId, list);
+  }
   return groupByBooking(sales)
-    .map(({ id, rooms }) => toBookingView(id, rooms))
+    .map(({ id, rooms }) => withBookingExtras(toBookingView(id, rooms), extraByBooking.get(id) || []))
     .sort((a, b) => b.checkIn.localeCompare(a.checkIn) || a.guestName.localeCompare(b.guestName));
 }
 
@@ -948,9 +981,13 @@ export async function getBooking(id: string) {
   const hit = sales.find((row) => row.id === id || row.bookingId === id);
   if (!hit) return null;
   const key = bookingKey(hit);
-  return toBookingView(
-    key,
-    sales.filter((row) => bookingKey(row) === key),
+  const extras = (await listSaleExtras()).filter((row) => row.bookingId === key);
+  return withBookingExtras(
+    toBookingView(
+      key,
+      sales.filter((row) => bookingKey(row) === key),
+    ),
+    extras,
   );
 }
 
@@ -1250,6 +1287,8 @@ export async function updateBooking(
     discountKind?: string;
     discountValue?: number;
     deposit?: number;
+    checkIn?: string;
+    checkOut?: string;
   },
 ) {
   const db = await getDb();
@@ -1269,22 +1308,32 @@ export async function updateBooking(
   const nextBySale = new Map(data.assignments.map((row) => [row.saleId, row.roomId]));
   const seen = new Set<string>();
   const now = nowISO();
+  const canMoveIn = active.every((row) => row.status === "reserved");
+  const currentIn = active.reduce((min, row) => (row.checkIn < min ? row.checkIn : min), active[0].checkIn);
+  const currentOut = active.reduce((max, row) => (row.checkOut > max ? row.checkOut : max), active[0].checkOut);
+  const nextIn = canMoveIn && data.checkIn ? data.checkIn : currentIn;
+  const nextOut = data.checkOut || currentOut;
+  if (nextOut <= nextIn) throw new Error("Ngày trả phải sau ngày nhận");
+  const inhouse = active.some((row) => row.status === "inhouse");
+  if (inhouse && nextOut < todayVN()) throw new Error("Ngày trả không được trước hôm nay");
   for (const row of active) {
     const nextRoomId = nextBySale.get(row.id) || row.roomId;
     if (seen.has(nextRoomId)) throw new Error("Hai chỗ trong booking không được trùng số phòng");
     seen.add(nextRoomId);
     const current = roomById.get(row.roomId);
     if (!current) throw new Error("Không tìm thấy phòng hiện tại");
-    const next = await assertSaleWindow(nextRoomId, row.checkIn, row.checkOut, active.map((item) => item.id));
+    const next = await assertSaleWindow(nextRoomId, nextIn, nextOut, active.map((item) => item.id));
     const kind = roomMoveKind(current.type, next.type, types);
     if (!kind) throw new Error(`P.${next.number} không cùng hạng và không phải nâng hạng so với ${current?.type || "phòng hiện tại"}`);
     const nextRate =
       kind === "upgrade"
-        ? catalogRate(types.find((type) => type.name === next.type), row.checkIn) || row.rate
+        ? catalogRate(types.find((type) => type.name === next.type), nextIn) || row.rate
         : row.rate;
     const patch = {
       roomId: next.id,
       rate: nextRate,
+      checkIn: nextIn,
+      checkOut: nextOut,
       discountKind,
       discountValue,
       deposit,
@@ -1297,6 +1346,36 @@ export async function updateBooking(
   }
   await ensureTodayRoomTasks(db, { actorId: user.id });
   return key;
+}
+
+export async function recordBookingPayment(
+  user: SessionUser,
+  bookingId: string,
+  data: { amount?: number; settle?: boolean },
+) {
+  const booking = await getBooking(bookingId);
+  if (!booking) throw new Error("Không tìm thấy booking");
+  const active = booking.rooms.filter((row) => isActiveSaleStatus(row.status));
+  if (!active.length) throw new Error("Booking đã đóng, không thu thêm");
+  const current = Math.max(0, Math.round(booking.deposit || 0));
+  const due = Math.max(0, Math.round(booking.due || 0));
+  let next = current;
+  if (data.settle) {
+    if (due <= 0) throw new Error("Booking đã thu đủ");
+    next = current + due;
+  } else {
+    const amount = Math.max(0, Math.round(data.amount || 0));
+    if (!amount) throw new Error("Nhập số tiền vừa thu");
+    next = current + amount;
+  }
+  const db = await getDb();
+  const now = nowISO();
+  for (const row of active) {
+    const patch = { deposit: next, updatedAt: now, updatedBy: user.id };
+    await db.update(t.roomSales).set(patch).where(eq(t.roomSales.id, row.id));
+    await audit(user.id, "room_sale", row.id, "update", { deposit: row.deposit }, patch);
+  }
+  return booking.id;
 }
 
 export async function cancelBooking(user: SessionUser, bookingId: string, asNoShow = false) {
@@ -1380,6 +1459,70 @@ export async function setRoomTypeRates(user: SessionUser, rates: { id: string; b
       await audit(user.id, "room_type", row.id, "rate", before, next);
     }
   }
+}
+
+export async function listSaleExtraTypes() {
+  const db = await getDb();
+  return (await db.select().from(t.saleExtraTypes)).sort((a, b) => a.sortOrder - b.sortOrder || a.name.localeCompare(b.name));
+}
+
+export async function setSaleExtraTypeRates(user: SessionUser, rates: { id: string; unitPrice: number }[]) {
+  if (!can(user.role, "manageRates")) throw new Error("Chỉ quản lý sửa giá dịch vụ");
+  const db = await getDb();
+  for (const row of rates) {
+    const before = (await db.select().from(t.saleExtraTypes).where(eq(t.saleExtraTypes.id, row.id)).limit(1))[0];
+    if (!before) continue;
+    const unitPrice = Math.max(0, Math.round(row.unitPrice || 0));
+    await db.update(t.saleExtraTypes).set({ unitPrice }).where(eq(t.saleExtraTypes.id, row.id));
+    if (before.unitPrice !== unitPrice) {
+      await audit(user.id, "sale_extra_type", row.id, "rate", before, { unitPrice });
+    }
+  }
+}
+
+export async function addBookingExtra(
+  user: SessionUser,
+  bookingId: string,
+  data: { typeId?: string; name?: string; qty?: number; unitPrice?: number },
+) {
+  const booking = await getBooking(bookingId);
+  if (!booking) throw new Error("Không tìm thấy booking");
+  if (!booking.rooms.some((row) => isActiveSaleStatus(row.status))) throw new Error("Booking đã đóng, không thêm dịch vụ");
+  const types = await listSaleExtraTypes();
+  const type = data.typeId ? types.find((row) => row.id === data.typeId) : undefined;
+  const name = (type?.name || data.name || "").trim();
+  if (!name) throw new Error("Nhập tên phụ thu");
+  const qty = Math.max(1, Math.round(data.qty || 1));
+  const unitPrice = Math.max(0, Math.round(type ? type.unitPrice : data.unitPrice || 0));
+  if (!type && !unitPrice) throw new Error("Nhập số tiền phụ thu");
+  const db = await getDb();
+  const row = {
+    id: nid(),
+    bookingId: booking.id,
+    typeId: type?.id || null,
+    kind: type?.code || "other",
+    name,
+    qty,
+    unitPrice,
+    unit: type?.unit || "once",
+    createdAt: nowISO(),
+    createdBy: user.id,
+  };
+  await db.insert(t.saleExtras).values(row);
+  await audit(user.id, "sale_extra", row.id, "create", undefined, row);
+  return booking.id;
+}
+
+export async function removeBookingExtra(user: SessionUser, extraId: string) {
+  const db = await getDb();
+  const before = (await db.select().from(t.saleExtras).where(eq(t.saleExtras.id, extraId)).limit(1))[0];
+  if (!before) throw new Error("Không tìm thấy dịch vụ");
+  const booking = await getBooking(before.bookingId);
+  if (!booking) throw new Error("Không tìm thấy booking");
+  if (!booking.rooms.some((row) => isActiveSaleStatus(row.status))) throw new Error("Booking đã đóng");
+  await db.delete(t.saleExtras).where(eq(t.saleExtras.id, extraId));
+  await audit(user.id, "sale_extra", extraId, "delete", before, undefined);
+  return booking.id;
 }
 
 export async function listStays() {

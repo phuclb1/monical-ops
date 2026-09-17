@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { Btn, Field } from "@/components/ui";
 import { DISCOUNT_KIND_LABEL, SALE_SOURCE_GROUPS, SALE_SOURCE_LABEL } from "@/lib/constants";
 import { bookingDue, bookingQuote, catalogRate, defaultCheckout, formatVnd, isWeekendNight, parseMoney, rangesOverlap, roomMoveKind } from "@/lib/sales";
+import { extraAmount } from "@/lib/extras";
 import { DISCOUNT_KINDS, type DiscountKind } from "@/lib/types";
 
 type Room = { id: string; number: string; type: string; floor?: number };
@@ -369,6 +370,7 @@ export function BookingForm({
   rooms,
   types,
   busy = [],
+  extras = [],
   defaults,
 }: {
   action: (formData: FormData) => void | Promise<void>;
@@ -376,21 +378,30 @@ export function BookingForm({
   rooms: { id: string; number: string; type: string; opsStatus?: string }[];
   types: { name: string; sortOrder: number; baseRate: number; weekendRate: number }[];
   busy?: { roomId: string; checkIn: string; checkOut: string }[];
+  extras?: { name: string; qty: number; unitPrice: number; unit: string }[];
   defaults: {
     bookingId: string;
     discountKind?: string;
     discountValue?: number;
     deposit?: number;
+    checkIn: string;
+    checkOut: string;
+    canEditCheckIn?: boolean;
+    canEditCheckOut?: boolean;
   };
 }) {
   const [picks, setPicks] = useState<Record<string, string>>(() =>
     Object.fromEntries(lines.map((line) => [line.saleId, line.roomId])),
   );
+  const [checkIn, setCheckIn] = useState(defaults.checkIn);
+  const [checkOut, setCheckOut] = useState(defaults.checkOut);
   const [discountKind, setDiscountKind] = useState<DiscountKind>(
     defaults.discountKind === "percent" || defaults.discountKind === "amount" ? defaults.discountKind : "none",
   );
   const [discountValue, setDiscountValue] = useState(defaults.discountValue ? String(defaults.discountValue) : "");
   const [deposit, setDeposit] = useState(defaults.deposit ? String(defaults.deposit) : "");
+  const canEditCheckIn = Boolean(defaults.canEditCheckIn);
+  const canEditCheckOut = Boolean(defaults.canEditCheckOut);
 
   function optionsFor(line: (typeof lines)[number]) {
     return rooms
@@ -398,7 +409,7 @@ export function BookingForm({
         if (room.id !== line.roomId && room.opsStatus === "ooo") return false;
         if (
           room.id !== line.roomId &&
-          busy.some((row) => row.roomId === room.id && rangesOverlap(line.checkIn, line.checkOut, row.checkIn, row.checkOut))
+          busy.some((row) => row.roomId === room.id && rangesOverlap(checkIn, checkOut, row.checkIn, row.checkOut))
         ) {
           return false;
         }
@@ -417,14 +428,14 @@ export function BookingForm({
     const room = rooms.find((item) => item.id === roomId);
     const kind = roomMoveKind(line.type, room?.type || line.type, types);
     const rate =
-      kind === "upgrade" ? catalogRate(types.find((type) => type.name === room?.type), line.checkIn) || line.rate : line.rate;
+      kind === "upgrade" ? catalogRate(types.find((type) => type.name === room?.type), checkIn) || line.rate : line.rate;
     return {
       line,
       room,
       kind,
       rate,
-      checkIn: line.checkIn,
-      checkOut: line.checkOut,
+      checkIn,
+      checkOut,
     };
   });
   const booked = bookingQuote(
@@ -440,7 +451,9 @@ export function BookingForm({
     ...row,
     quote: booked.lines[index],
   }));
-  const bookingTotal = booked.total;
+  const extraRows = extras.map((row) => ({ ...row, amount: extraAmount(row, booked.nights) }));
+  const extrasTotal = extraRows.reduce((sum, row) => sum + row.amount, 0);
+  const bookingTotal = booked.total + extrasTotal;
   const bookingDiscount = booked.discount;
   const depositAmount = parseMoney(deposit);
   const due = bookingDue(bookingTotal, depositAmount);
@@ -448,6 +461,43 @@ export function BookingForm({
   return (
     <form action={action} className="space-y-3">
       <input type="hidden" name="bookingId" value={defaults.bookingId} />
+      <div className="grid grid-cols-2 gap-2">
+        <Field label="Nhận phòng">
+          {canEditCheckIn ? (
+            <input
+              name="checkIn"
+              type="date"
+              required
+              value={checkIn}
+              onChange={(e) => {
+                const next = e.target.value;
+                setCheckIn(next);
+                if (checkOut <= next) setCheckOut(defaultCheckout(next));
+              }}
+            />
+          ) : (
+            <>
+              <input type="hidden" name="checkIn" value={checkIn} />
+              <input type="date" value={checkIn} disabled />
+            </>
+          )}
+        </Field>
+        <Field label="Trả phòng">
+          {canEditCheckOut ? (
+            <input name="checkOut" type="date" required value={checkOut} onChange={(e) => setCheckOut(e.target.value)} />
+          ) : (
+            <>
+              <input type="hidden" name="checkOut" value={checkOut} />
+              <input type="date" value={checkOut} disabled />
+            </>
+          )}
+        </Field>
+      </div>
+      {canEditCheckIn ? (
+        <p className="text-xs text-[#5c6665]">Khách chưa nhận — đổi ngày nhận / trả. Tính lại số đêm và tiền phòng.</p>
+      ) : canEditCheckOut ? (
+        <p className="text-xs text-[#5c6665]">Khách đang ở — chỉ đổi ngày trả. Đêm thêm tính theo giá phòng hiện tại.</p>
+      ) : null}
       {lines.map((line) => {
         const options = optionsFor(line);
         const same = options.filter((room) => roomMoveKind(line.type, room.type, types) === "same");
@@ -503,9 +553,10 @@ export function BookingForm({
           />
         </Field>
       </div>
-      <Field label="Đặt cọc (₫)">
+      <Field label="Đặt cọc — tổng đã thu (₫)">
         <input name="deposit" inputMode="numeric" value={deposit} onChange={(e) => setDeposit(e.target.value)} placeholder="0" />
       </Field>
+      <p className="text-xs text-[#5c6665]">Đây là tổng đã thu, không phải số tiền lần này. Thu thêm / thu đủ dùng ô Thanh toán phía trên.</p>
       <div className="rounded-xl bg-sand px-3 py-2 text-sm">
         <ul className="space-y-1">
           {quotes.map((row) => (
@@ -523,6 +574,15 @@ export function BookingForm({
               <span>−{formatVnd(bookingDiscount)}</span>
             </li>
           ) : null}
+          {extraRows.map((row) => (
+            <li key={`${row.name}-${row.qty}-${row.unitPrice}`} className="flex justify-between gap-2">
+              <span>
+                {row.name}
+                {row.unit === "night" ? ` · ${row.qty} × ${booked.nights} đêm` : row.unit === "kg" ? ` · ${row.qty} kg` : ""}
+              </span>
+              <span>{formatVnd(row.amount)}</span>
+            </li>
+          ))}
           <li className="flex justify-between gap-2">
             <span>Phải thu</span>
             <span>{formatVnd(bookingTotal)}</span>

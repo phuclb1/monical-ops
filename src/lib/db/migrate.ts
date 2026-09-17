@@ -303,6 +303,29 @@ CREATE TABLE IF NOT EXISTS push_subscriptions (
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL
 );
+CREATE TABLE IF NOT EXISTS sale_extra_types (
+  id TEXT PRIMARY KEY,
+  code TEXT NOT NULL UNIQUE,
+  name TEXT NOT NULL,
+  unit_price INTEGER NOT NULL DEFAULT 0,
+  unit TEXT NOT NULL DEFAULT 'once',
+  unit_label TEXT,
+  sort_order INTEGER NOT NULL DEFAULT 0,
+  active INTEGER NOT NULL DEFAULT 1
+);
+CREATE TABLE IF NOT EXISTS sale_extras (
+  id TEXT PRIMARY KEY,
+  booking_id TEXT NOT NULL,
+  type_id TEXT,
+  kind TEXT NOT NULL,
+  name TEXT NOT NULL,
+  qty INTEGER NOT NULL DEFAULT 1,
+  unit_price INTEGER NOT NULL DEFAULT 0,
+  unit TEXT NOT NULL DEFAULT 'once',
+  created_at TEXT NOT NULL,
+  created_by TEXT
+);
+CREATE INDEX IF NOT EXISTS sale_extras_booking ON sale_extras (booking_id);
 `;
 
 export const SCHEMA_PATCHES = [
@@ -374,4 +397,27 @@ export const SCHEMA_PATCHES = [
   "CREATE INDEX IF NOT EXISTS audit_logs_entity ON audit_logs (entity, created_at)",
   "ALTER TABLE room_sales ADD COLUMN booking_id TEXT",
   "CREATE INDEX IF NOT EXISTS room_sales_booking ON room_sales (booking_id)",
+  `CREATE TABLE IF NOT EXISTS sale_extra_types (
+  id TEXT PRIMARY KEY,
+  code TEXT NOT NULL UNIQUE,
+  name TEXT NOT NULL,
+  unit_price INTEGER NOT NULL DEFAULT 0,
+  unit TEXT NOT NULL DEFAULT 'once',
+  unit_label TEXT,
+  sort_order INTEGER NOT NULL DEFAULT 0,
+  active INTEGER NOT NULL DEFAULT 1
+)`,
+  `CREATE TABLE IF NOT EXISTS sale_extras (
+  id TEXT PRIMARY KEY,
+  booking_id TEXT NOT NULL,
+  type_id TEXT,
+  kind TEXT NOT NULL,
+  name TEXT NOT NULL,
+  qty INTEGER NOT NULL DEFAULT 1,
+  unit_price INTEGER NOT NULL DEFAULT 0,
+  unit TEXT NOT NULL DEFAULT 'once',
+  created_at TEXT NOT NULL,
+  created_by TEXT
+)`,
+  "CREATE INDEX IF NOT EXISTS sale_extras_booking ON sale_extras (booking_id)",
 ];

@@ -20,6 +20,7 @@ import {
   BedDouble,
   BookMarked,
   Tag,
+  Sparkles,
 } from "lucide-react";
 import clsx from "clsx";
 import { PRIMARY_NAV } from "@/lib/nav";
@@ -34,6 +35,7 @@ const ICONS: Record<string, typeof CalendarDays> = {
   "/sales": BedDouble,
   "/sales/bookings": BookMarked,
   "/sales/rates": Tag,
+  "/sales/extras": Sparkles,
   "/kitchen": ChefHat,
   "/shifts": TimerReset,
   "/forms": FileText,

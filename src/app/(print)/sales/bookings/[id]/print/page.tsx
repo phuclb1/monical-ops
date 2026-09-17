@@ -1,10 +1,19 @@
-import Link from "next/link";
+import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
 import { BookingConfirmation } from "@/components/booking-confirmation";
-import { PrintButton } from "@/components/print-button";
+import { PrintToolbar } from "@/components/print-toolbar";
 import { getSession } from "@/lib/auth";
+import { HOTEL_LETTERHEAD } from "@/lib/constants";
 import { can } from "@/lib/permissions";
 import { getBooking } from "@/lib/repos";
+import { bookingPdfFilename } from "@/lib/sales";
+
+export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
+  const { id } = await params;
+  const booking = await getBooking(id);
+  if (!booking) return { title: HOTEL_LETTERHEAD };
+  return { title: bookingPdfFilename(booking).replace(/\.pdf$/i, "") };
+}
 
 export default async function BookingPrintPage({ params }: { params: Promise<{ id: string }> }) {
   const user = await getSession();
@@ -13,20 +22,12 @@ export default async function BookingPrintPage({ params }: { params: Promise<{ i
   const { id } = await params;
   const booking = await getBooking(id);
   if (!booking) notFound();
+  const pdfName = bookingPdfFilename(booking);
+  const fileBaseName = pdfName.replace(/\.pdf$/i, "");
 
   return (
     <main className="booking-print">
-      <div className="print-toolbar">
-        <Link href={`/sales/bookings/${booking.id}`} className="inline-flex min-h-11 items-center text-sm font-semibold text-teal">
-          ← Đặt phòng
-        </Link>
-        <div className="mt-3 grid grid-cols-2 gap-2">
-          <PrintButton />
-          <Link href={`/sales/bookings/${booking.id}`} className="print-toolbar-ghost">
-            Đóng
-          </Link>
-        </div>
-      </div>
+      <PrintToolbar backHref={`/sales/bookings/${booking.id}`} filename={pdfName} fileBaseName={fileBaseName} />
       <BookingConfirmation booking={booking} />
     </main>
   );

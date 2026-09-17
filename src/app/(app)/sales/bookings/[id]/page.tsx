@@ -2,12 +2,15 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { addRoomsToBookingAction, cancelBookingAction, cancelSaleAction, checkinSaleAction, checkoutSaleAction, updateBookingAction } from "@/actions/sales";
 import { AddBookingRoomsForm, BookingForm } from "@/components/sale-form";
+import { BookingExtrasPanel } from "@/components/booking-extras";
+import { BookingPaymentPanel } from "@/components/booking-payment";
 import { Btn, Card, Chip } from "@/components/ui";
 import { getSession } from "@/lib/auth";
 import { SALE_ORIGIN_LABEL, SALE_SOURCE_LABEL, SALE_STATUS_LABEL } from "@/lib/constants";
 import { formatDateLong, todayVN } from "@/lib/datetime";
+import { extraDetail } from "@/lib/extras";
 import { can } from "@/lib/permissions";
-import { getBooking, listRooms, listRoomSales, listRoomTypes } from "@/lib/repos";
+import { getBooking, listRooms, listRoomSales, listRoomTypes, listSaleExtraTypes } from "@/lib/repos";
 import { bookingQuote, discountLabel, formatVnd, isActiveSaleStatus, isOpsBookingCode } from "@/lib/sales";
 import type { SaleOrigin, SaleSource, SaleStatus } from "@/lib/types";
 
@@ -31,7 +34,13 @@ export default async function BookingDetailPage({
   if (!can(user.role, "manageSales")) redirect("/more");
   const { id } = await params;
   const { error } = await searchParams;
-  const [booking, rooms, types, sales] = await Promise.all([getBooking(id), listRooms(), listRoomTypes(), listRoomSales()]);
+  const [booking, rooms, types, sales, extraTypes] = await Promise.all([
+    getBooking(id),
+    listRooms(),
+    listRoomTypes(),
+    listRoomSales(),
+    listSaleExtraTypes(),
+  ]);
   if (!booking) notFound();
   const today = todayVN();
   const taken = new Set(booking.rooms.map((row) => row.roomId));
@@ -87,6 +96,17 @@ export default async function BookingDetailPage({
           </p>
         ) : null}
         <p className="mt-1 text-sm">Phải thu {formatVnd(booking.total)}</p>
+        {booking.extrasTotal ? (
+          <p className="mt-1 text-sm">
+            Phòng {formatVnd(booking.roomTotal)} · dịch vụ {formatVnd(booking.extrasTotal)}
+          </p>
+        ) : null}
+        {booking.extras.map((row) => (
+          <p key={row.id} className="mt-1 text-xs text-[#5c6665]">
+            {row.name}
+            {extraDetail(row, booking.nights) ? ` · ${extraDetail(row, booking.nights)}` : ""} · {formatVnd(row.amount)}
+          </p>
+        ))}
         {booking.deposit ? (
           <p className="mt-1 text-sm text-[#1b7a4e]">Đã đặt cọc {formatVnd(booking.deposit)}</p>
         ) : (
@@ -103,6 +123,13 @@ export default async function BookingDetailPage({
         ) : null}
         {booking.notes ? <p className="mt-2 text-sm text-[#5c6665]">{booking.notes}</p> : null}
       </Card>
+
+      {firstActive ? (
+        <Card>
+          <h2 className="mb-2 font-bold">Thanh toán</h2>
+          <BookingPaymentPanel bookingId={booking.id} deposit={booking.deposit} due={booking.due} />
+        </Card>
+      ) : null}
 
       <Link href={`/sales/bookings/${booking.id}/print`} className="cta-link w-full">
         In phiếu xác nhận đặt phòng
@@ -134,7 +161,7 @@ export default async function BookingDetailPage({
                         <input type="hidden" name="id" value={row.id} />
                         <input type="hidden" name="back" value={back} />
                         <Btn type="submit" className="w-full" disabled={today < row.checkIn}>
-                          Nhận
+                          {booking.due ? "Nhận · còn thu" : "Nhận"}
                         </Btn>
                       </form>
                     ) : (
@@ -161,6 +188,21 @@ export default async function BookingDetailPage({
         </div>
       </Card>
 
+      {firstActive ? (
+        <Card>
+          <h2 className="mb-2 font-bold">Dịch vụ / phụ thu</h2>
+          <p className="mb-2 text-xs text-[#5c6665]">
+            Phụ thu người lớn, trẻ em, thêm đệm tính theo đêm. Giặt sấy 50k/kg. Phụ thu khác nhập tên và số tiền.
+          </p>
+          <BookingExtrasPanel
+            bookingId={booking.id}
+            nights={booking.nights}
+            types={extraTypes.filter((row) => row.active)}
+            extras={booking.extras}
+          />
+        </Card>
+      ) : null}
+
       {firstActive && extraRooms.length ? (
         <Card>
           <h2 className="mb-2 font-bold">Thêm phòng vào booking</h2>
@@ -172,7 +214,7 @@ export default async function BookingDetailPage({
       {firstActive ? (
         <Card>
           <h2 className="mb-2 font-bold">Sửa booking</h2>
-          <p className="mb-2 text-xs text-[#5c6665]">Đổi số phòng cùng hạng, nâng hạng, cọc và chiết khấu. Không sửa thông tin khách.</p>
+          <p className="mb-2 text-xs text-[#5c6665]">Đổi số phòng cùng hạng, nâng hạng, ngày lưu trú, tổng đã thu và chiết khấu. Không sửa thông tin khách. Muốn ghi nhận lần thu mới thì dùng ô Thanh toán phía trên.</p>
           <BookingForm
             action={updateBookingAction}
             lines={activeRooms.map((row) => ({
@@ -187,11 +229,16 @@ export default async function BookingDetailPage({
             rooms={rooms}
             types={types}
             busy={busy}
+            extras={booking.extras}
             defaults={{
               bookingId: booking.id,
               discountKind: firstActive.discountKind,
               discountValue: firstActive.discountValue,
               deposit: booking.deposit,
+              checkIn: booking.checkIn,
+              checkOut: booking.checkOut,
+              canEditCheckIn: activeRooms.every((row) => row.status === "reserved"),
+              canEditCheckOut: true,
             }}
           />
         </Card>
