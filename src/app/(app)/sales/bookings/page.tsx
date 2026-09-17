@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { Btn, Card, Chip, Empty, Field, TabChip } from "@/components/ui";
 import { getSession } from "@/lib/auth";
 import { SALE_ORIGIN_LABEL, SALE_SOURCE_LABEL, SALE_STATUS_LABEL } from "@/lib/constants";
-import { formatDateLong } from "@/lib/datetime";
+import { formatDateLong, formatDateNumeric } from "@/lib/datetime";
 import { can } from "@/lib/permissions";
 import { listBookings } from "@/lib/repos";
 import { formatVnd, isOpsBookingCode } from "@/lib/sales";
@@ -58,13 +58,13 @@ export default async function BookingsPage({
   });
 
   return (
-    <main className="space-y-3 px-3 py-4">
-      <div className="flex items-start justify-between gap-3">
+    <main className="booking-desk space-y-3 px-3 py-4 md:space-y-4">
+      <div className="flex items-start justify-between gap-3 md:items-center">
         <div>
           <h1 className="text-xl font-bold">Đặt phòng</h1>
-          <p className="text-xs text-[#5c6665]">Quản lý booking: khách, nhiều phòng, mã PMS. Sơ đồ phòng nằm ở Bán phòng.</p>
+          <p className="text-xs text-[#5c6665] md:text-sm">Quản lý booking: khách, nhiều phòng, mã PMS. Sơ đồ phòng nằm ở Bán phòng.</p>
         </div>
-        <div className="flex flex-col items-end gap-1">
+        <div className="flex flex-col items-end gap-1 md:flex-row md:items-center md:gap-3">
           <Link href="/sales/new" className="cta-link">
             Đặt mới
           </Link>
@@ -74,12 +74,14 @@ export default async function BookingsPage({
         </div>
       </div>
 
-      <form className="card p-3">
-        <Field label="Tìm khách / phòng / mã">
-          <input name="q" defaultValue={rawQ || ""} placeholder="Tên khách, P.101, OPS-…" />
-        </Field>
+      <form className="card p-3 md:flex md:items-end md:gap-3 md:p-4">
+        <div className="md:min-w-0 md:flex-1">
+          <Field label="Tìm khách / phòng / mã">
+            <input name="q" defaultValue={rawQ || ""} placeholder="Tên khách, P.101, Bk-1/09…" />
+          </Field>
+        </div>
         {tab !== "open" ? <input type="hidden" name="tab" value={tab} /> : null}
-        <Btn type="submit" variant="ghost" className="mt-2 w-full">
+        <Btn type="submit" variant="ghost" className="mt-2 w-full md:mt-0 md:w-auto md:px-6">
           Tìm
         </Btn>
       </form>
@@ -93,38 +95,88 @@ export default async function BookingsPage({
       </div>
 
       {rows.length ? (
-        rows.map((row) => (
-          <Link key={row.id} href={`/sales/bookings/${row.id}`} className="block">
-            <Card className="mb-2 min-h-16">
-              <div className="flex items-start justify-between gap-2">
+        <>
+          <div className="booking-list-cards space-y-2">
+            {rows.map((row) => (
+              <Link key={row.id} href={`/sales/bookings/${row.id}`} className="block">
+                <Card className="min-h-16">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <p className="font-bold">{row.guestName}</p>
+                      <p className="text-xs text-[#5c6665]">
+                        {row.roomCount} phòng · {row.roomLabel}
+                      </p>
+                      <p className="mt-1 text-xs text-[#5c6665]">
+                        {formatDateLong(row.checkIn)} → {formatDateLong(row.checkOut)} · {SALE_SOURCE_LABEL[row.source as SaleSource] || row.source} · {SALE_ORIGIN_LABEL[(row.origin as SaleOrigin) || "ops"]}
+                      </p>
+                      {row.pmsCode ? (
+                        <p className="mt-1 text-xs text-[#5c6665]">
+                          {isOpsBookingCode(row.pmsCode) ? "Mã Ops" : "PMS"} {row.pmsCode}
+                        </p>
+                      ) : null}
+                    </div>
+                    <div className="flex flex-col items-end gap-1">
+                      <Chip tone={STATUS_TONE[row.status]}>{SALE_STATUS_LABEL[row.status]}</Chip>
+                      {row.deposit ? (
+                        <Chip tone="ok">Đã cọc {formatVnd(row.deposit)}</Chip>
+                      ) : row.status === "reserved" || row.status === "inhouse" ? (
+                        <Chip tone="warn">Chưa cọc</Chip>
+                      ) : null}
+                      <span className="text-xs text-[#5c6665]">Phải thu {formatVnd(row.total)}</span>
+                      <span className="text-xs font-semibold">Còn {formatVnd(row.due)}</span>
+                    </div>
+                  </div>
+                </Card>
+              </Link>
+            ))}
+          </div>
+
+          <div className="booking-list-table">
+            <div className="booking-list-head">
+              <span>Khách</span>
+              <span>Phòng</span>
+              <span>Ngày</span>
+              <span>Nguồn</span>
+              <span>Trạng thái</span>
+              <span className="booking-list-money">Còn thu</span>
+            </div>
+            {rows.map((row) => (
+              <Link key={row.id} href={`/sales/bookings/${row.id}`} className="booking-list-row">
                 <div className="min-w-0">
-                  <p className="font-bold">{row.guestName}</p>
-                  <p className="text-xs text-[#5c6665]">
-                    {row.roomCount} phòng · {row.roomLabel}
-                  </p>
-                  <p className="mt-1 text-xs text-[#5c6665]">
-                    {formatDateLong(row.checkIn)} → {formatDateLong(row.checkOut)} · {SALE_SOURCE_LABEL[row.source as SaleSource] || row.source} · {SALE_ORIGIN_LABEL[(row.origin as SaleOrigin) || "ops"]}
-                  </p>
+                  <p className="truncate font-bold">{row.guestName}</p>
                   {row.pmsCode ? (
-                    <p className="mt-1 text-xs text-[#5c6665]">
-                      {isOpsBookingCode(row.pmsCode) ? "Mã Ops" : "PMS"} {row.pmsCode}
+                    <p className="truncate text-xs text-[#5c6665]">
+                      {isOpsBookingCode(row.pmsCode) ? "Ops" : "PMS"} {row.pmsCode}
                     </p>
                   ) : null}
                 </div>
-                <div className="flex flex-col items-end gap-1">
+                <div className="min-w-0">
+                  <p className="font-semibold">{row.roomCount} phòng</p>
+                  <p className="truncate text-xs text-[#5c6665]">{row.roomLabel}</p>
+                </div>
+                <div>
+                  <p>
+                    {formatDateNumeric(row.checkIn)} → {formatDateNumeric(row.checkOut)}
+                  </p>
+                  <p className="text-xs text-[#5c6665]">{row.nights} đêm</p>
+                </div>
+                <p className="text-sm">{SALE_SOURCE_LABEL[row.source as SaleSource] || row.source}</p>
+                <div className="flex flex-col items-start gap-1">
                   <Chip tone={STATUS_TONE[row.status]}>{SALE_STATUS_LABEL[row.status]}</Chip>
                   {row.deposit ? (
-                    <Chip tone="ok">Đã cọc {formatVnd(row.deposit)}</Chip>
+                    <Chip tone="ok">Đã cọc</Chip>
                   ) : row.status === "reserved" || row.status === "inhouse" ? (
                     <Chip tone="warn">Chưa cọc</Chip>
                   ) : null}
-                  <span className="text-xs text-[#5c6665]">Phải thu {formatVnd(row.total)}</span>
-                  <span className="text-xs font-semibold">Còn {formatVnd(row.due)}</span>
                 </div>
-              </div>
-            </Card>
-          </Link>
-        ))
+                <div className="booking-list-money">
+                  <p className="whitespace-nowrap text-xs text-[#5c6665]">{formatVnd(row.total)}</p>
+                  <p className="whitespace-nowrap font-bold">{formatVnd(row.due)}</p>
+                </div>
+              </Link>
+            ))}
+          </div>
+        </>
       ) : (
         <Empty title="Không có booking khớp" text={q ? "Đổi từ khóa hoặc tab." : "Bấm Đặt mới để tạo booking."} />
       )}

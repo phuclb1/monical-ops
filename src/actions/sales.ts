@@ -42,23 +42,36 @@ function saleFromForm(formData: FormData) {
   const roomIds = [...new Set(formData.getAll("roomId").map(String).filter(Boolean))];
   const fallbackRate = parseMoney(formData.get("rate"));
   const rates: Record<string, number> = {};
+  const dates: Record<string, { checkIn: string; checkOut: string }> = {};
+  const breakfasts: Record<string, boolean> = {};
   for (const key of formData.keys()) {
     if (!key.startsWith("rate-")) continue;
     const roomId = key.slice(5);
     if (roomId) rates[roomId] = parseMoney(formData.get(key));
   }
+  const fallbackIn = String(formData.get("checkIn") || "");
+  const fallbackOut = String(formData.get("checkOut") || "");
   for (const id of roomIds) {
     if (!rates[id]) rates[id] = parseMoney(formData.get(`rate-${id}`)) || fallbackRate;
+    dates[id] = {
+      checkIn: String(formData.get(`checkIn-${id}`) || fallbackIn),
+      checkOut: String(formData.get(`checkOut-${id}`) || fallbackOut),
+    };
+    breakfasts[id] = formData.getAll(`breakfast-${id}`).length
+      ? formData.getAll(`breakfast-${id}`).map(String).includes("1")
+      : true;
   }
   return {
     roomId: roomIds[0] || "",
     roomIds,
     rates,
+    dates,
+    breakfasts,
     guestName: String(formData.get("guestName") || ""),
     guestPhone: String(formData.get("guestPhone") || ""),
     source: String(formData.get("source") || "walk_in"),
-    checkIn: String(formData.get("checkIn") || ""),
-    checkOut: String(formData.get("checkOut") || ""),
+    checkIn: dates[roomIds[0] || ""]?.checkIn || fallbackIn,
+    checkOut: dates[roomIds[0] || ""]?.checkOut || fallbackOut,
     adults: Number(formData.get("adults") || 1),
     children: Number(formData.get("children") || 0),
     rate: rates[roomIds[0] || ""] || fallbackRate,
@@ -115,6 +128,34 @@ export async function updateSaleAction(formData: FormData) {
   }
   refresh();
   revalidatePath(`/sales/${id}`);
+}
+
+export async function checkinBookingAction(formData: FormData) {
+  const user = await requireSales();
+  const bookingId = String(formData.get("bookingId") || "");
+  const back = `/sales/bookings/${bookingId}`;
+  try {
+    await repo.checkinBooking(user, bookingId);
+  } catch (e) {
+    fail(back, e);
+  }
+  refresh();
+  revalidatePath(back);
+  redirect(back);
+}
+
+export async function checkoutBookingAction(formData: FormData) {
+  const user = await requireSales();
+  const bookingId = String(formData.get("bookingId") || "");
+  const back = `/sales/bookings/${bookingId}`;
+  try {
+    await repo.checkoutBooking(user, bookingId);
+  } catch (e) {
+    fail(back, e);
+  }
+  refresh();
+  revalidatePath(back);
+  redirect(back);
 }
 
 export async function checkinSaleAction(formData: FormData) {
@@ -183,13 +224,38 @@ export async function updateBookingAction(formData: FormData) {
   const assignments = formData.getAll("saleId").map((saleId) => ({
     saleId: String(saleId),
     roomId: String(formData.get(`room-${saleId}`) || ""),
+    checkIn: String(formData.get(`checkIn-${saleId}`) || ""),
+    checkOut: String(formData.get(`checkOut-${saleId}`) || ""),
+    breakfast: formData.getAll(`breakfast-${saleId}`).map(String).includes("1"),
   }));
   try {
     await repo.updateBooking(user, bookingId, {
       assignments,
+      guestName: String(formData.get("guestName") || ""),
+      guestPhone: String(formData.get("guestPhone") || ""),
+      source: String(formData.get("source") || ""),
+      adults: Number(formData.get("adults") || 1),
+      children: Number(formData.get("children") || 0),
       discountKind: parseDiscountKind(formData.get("discountKind")),
       discountValue: parseMoney(formData.get("discountValue")),
       deposit: parseMoney(formData.get("deposit")),
+      notes: String(formData.get("notes") || ""),
+    });
+  } catch (e) {
+    fail(back, e);
+  }
+  refresh();
+  revalidatePath(back);
+  redirect(back);
+}
+
+export async function moveGanttSaleAction(formData: FormData) {
+  const user = await requireSales();
+  const back = actionBack(formData, "/sales");
+  try {
+    await repo.moveGanttSale(user, {
+      saleId: String(formData.get("saleId") || ""),
+      roomId: String(formData.get("roomId") || ""),
       checkIn: String(formData.get("checkIn") || ""),
       checkOut: String(formData.get("checkOut") || ""),
     });
@@ -197,7 +263,6 @@ export async function updateBookingAction(formData: FormData) {
     fail(back, e);
   }
   refresh();
-  revalidatePath(back);
   redirect(back);
 }
 

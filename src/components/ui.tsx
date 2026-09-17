@@ -6,6 +6,28 @@ export function Card({ children, className }: { children: ReactNode; className?:
   return <section className={clsx("card p-4", className)}>{children}</section>;
 }
 
+export function Fold({
+  title,
+  hint,
+  children,
+  defaultOpen,
+}: {
+  title: string;
+  hint?: string;
+  children: ReactNode;
+  defaultOpen?: boolean;
+}) {
+  return (
+    <details className="card p-4" open={defaultOpen}>
+      <summary className="fold-summary flex min-h-11 cursor-pointer items-center justify-between gap-2 font-bold">
+        <span>{title}</span>
+        {hint ? <span className="text-xs font-semibold text-[#5c6665]">{hint}</span> : null}
+      </summary>
+      <div className="mt-3">{children}</div>
+    </details>
+  );
+}
+
 export function SectionTitle({ children, hint }: { children: ReactNode; hint?: string }) {
   return (
     <div className="mb-2 flex items-end justify-between">

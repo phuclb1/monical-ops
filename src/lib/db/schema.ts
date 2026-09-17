@@ -60,6 +60,7 @@ export const roomSales = sqliteTable("room_sales", {
   discountKind: text("discount_kind").notNull().default("none"),
   discountValue: integer("discount_value").notNull().default(0),
   deposit: integer("deposit").notNull().default(0),
+  breakfast: integer("breakfast", { mode: "boolean" }).notNull().default(true),
   pmsCode: text("pms_code"),
   notes: text("notes"),
   createdAt: text("created_at").notNull(),

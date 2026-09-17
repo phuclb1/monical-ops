@@ -457,6 +457,31 @@ export async function seedOpsDemo(db: AppDb) {
         updatedBy: dutyId,
       },
     ]);
+    const seededSales = await db.select().from(t.roomSales);
+    if (seededSales.length) {
+      await db.insert(t.auditLogs).values(
+        seededSales.map((row) => ({
+          id: `audit-${row.id}-create`,
+          entity: "room_sale",
+          entityId: row.id,
+          action: "create",
+          actorId: row.createdBy || dutyId,
+          beforeJson: null,
+          afterJson: JSON.stringify(row),
+          createdAt: row.createdAt,
+        })),
+      );
+      await db.insert(t.auditLogs).values({
+        id: "audit-sale-401-phone",
+        entity: "room_sale",
+        entityId: "sale-401",
+        action: "update",
+        actorId: dutyId,
+        beforeJson: JSON.stringify({ guestPhone: "0901111222" }),
+        afterJson: JSON.stringify({ guestPhone: "0901222333" }),
+        createdAt: addMinutes(now, 18),
+      });
+    }
   }
 
   await db.insert(t.vehicles).values({

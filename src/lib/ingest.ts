@@ -212,6 +212,7 @@ async function ingestOne(raw: IngestBooking): Promise<IngestResult> {
     discountKind,
     discountValue,
     deposit: Math.max(0, raw.deposit ?? saleRow?.deposit ?? 0),
+    breakfast: raw.breakfast ?? saleRow?.breakfast ?? true,
     pmsCode,
     notes: raw.notes?.trim() || saleRow?.notes || null,
     updatedAt: now,

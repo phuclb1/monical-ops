@@ -90,6 +90,8 @@ export const SALE_ORIGIN_LABEL: Record<SaleOrigin, string> = {
 export const SALE_SOURCE_LABEL: Record<SaleSource, string> = {
   walk_in: "Vãng lai",
   phone: "Điện thoại",
+  zalo: "Zalo",
+  facebook: "Facebook",
   company: "Công ty / đoàn",
   ezcloud: "ezCloud / web KS",
   booking: "Booking.com",
@@ -101,7 +103,7 @@ export const SALE_SOURCE_LABEL: Record<SaleSource, string> = {
 };
 
 export const SALE_SOURCE_GROUPS: { label: string; values: SaleSource[] }[] = [
-  { label: "Trực tiếp", values: ["walk_in", "phone", "company", "ezcloud"] },
+  { label: "Trực tiếp", values: ["walk_in", "phone", "zalo", "facebook", "company", "ezcloud"] },
   { label: "OTA", values: ["booking", "agoda", "traveloka", "expedia", "airbnb", "ota"] },
 ];
 

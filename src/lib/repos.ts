@@ -1,9 +1,11 @@
 import { cache } from "react";
-import { and, desc, eq, like, lt, ne, or, sql } from "drizzle-orm";
+import { and, desc, eq, inArray, like, lt, ne, or, sql } from "drizzle-orm";
+import { auditChanges, collapseAuditBurst } from "./audit-view";
 import { getDb } from "./db";
 import * as t from "./db/schema";
 import { addDaysVN, addMinutes, currentShiftType, datesUntil, nid, nextDate, nextShiftSlot, nowISO, shiftWindow, todayVN, weekdayISO } from "./datetime";
-import { bookingDue, bookingKey, bookingQuote, catalogRate, ganttSpan, groupByBooking, isActiveSaleStatus, isOpsBookingCode, isSaleOrigin, isSaleSource, nightlyNetFromLine, nightsBetween, normalizeDiscount, occupiesNight, parseSaleSource, quoteLinesBySaleId, rangesOverlap, rollupBookingStatus, roomMoveKind, saleStatusToStay } from "./sales";
+import { bookingDue, bookingKey, bookingQuote, catalogRate, ganttSpan, groupByBooking, isActiveSaleStatus, isSaleOrigin, isSaleSource, nightlyNetFromLine, nightsBetween, normalizeDiscount, occupiesNight, parseSaleSource, quoteLinesBySaleId, rangesOverlap, rollupBookingStatus, roomMoveKind, saleStatusToStay } from "./sales";
+import { nextOpsBookingCode, rekeyLegacyOpsBookingCodes } from "./db/ops-codes";
 import { extraAmount } from "./extras";
 import { can } from "./permissions";
 import { dayOverrideId, rosterVersionOf, weekSlotId } from "./roster";
@@ -767,6 +769,8 @@ type SaleInput = {
   children?: number;
   rate: number;
   rates?: Record<string, number>;
+  dates?: Record<string, { checkIn: string; checkOut: string }>;
+  breakfasts?: Record<string, boolean>;
   discountKind?: string;
   discountValue?: number;
   deposit?: number;
@@ -775,6 +779,14 @@ type SaleInput = {
   checkinNow?: boolean;
   origin?: string;
 };
+
+function saleLineWindow(data: SaleInput, roomId: string) {
+  const checkIn = data.dates?.[roomId]?.checkIn || data.checkIn;
+  const checkOut = data.dates?.[roomId]?.checkOut || data.checkOut;
+  const breakfast = data.breakfasts?.[roomId] ?? true;
+  const rate = Math.max(0, data.rates?.[roomId] ?? data.rate);
+  return { checkIn, checkOut, breakfast, rate };
+}
 
 function uniqueSaleRoomIds(data: SaleInput) {
   const ids = [...new Set([...(data.roomIds || []), data.roomId || ""].map((id) => id.trim()).filter(Boolean))];
@@ -796,6 +808,7 @@ async function syncStayFromSale(
     checkOut: string;
     adults: number;
     children: number;
+    breakfast?: boolean;
     notes: string | null;
   },
   previousRoomId?: string,
@@ -823,6 +836,7 @@ async function syncStayFromSale(
     departureDate: sale.checkOut,
     adults: sale.adults,
     children: sale.children,
+    breakfast: sale.breakfast !== false,
     notes: sale.notes || existing?.notes || null,
     updatedAt: now,
     updatedBy: actorId,
@@ -838,7 +852,7 @@ async function syncStayFromSale(
   await db.insert(t.stays).values({
     id,
     ...payload,
-    breakfast: true,
+    breakfast: sale.breakfast !== false,
     pmsBookingOk: true,
     pmsCheckinOk: stayStatus === "inhouse" || stayStatus === "departed",
     pmsCheckoutOk: stayStatus === "departed",
@@ -887,6 +901,7 @@ async function assertSaleWindow(roomId: string, checkIn: string, checkOut: strin
 
 export async function listRoomSales() {
   const db = await getDb();
+  await rekeyLegacyOpsBookingCodes(db);
   const [sales, rooms] = await Promise.all([db.select().from(t.roomSales), db.select().from(t.rooms)]);
   return sales
     .map((sale) => withSaleRoom(sale, rooms))
@@ -930,6 +945,7 @@ function toBookingView(id: string, rooms: Awaited<ReturnType<typeof listRoomSale
     rooms: sorted,
     roomCount: sorted.length,
     roomLabel: sorted.map((row) => `P.${row.room?.number || "—"}`).join(" · "),
+    typeLabel: [...new Set(sorted.map((row) => row.room?.type || "—"))].join(" · "),
     status: rollupBookingStatus(sorted.map((row) => row.status)),
     nights,
     subtotal: quote.subtotal,
@@ -989,6 +1005,70 @@ export async function getBooking(id: string) {
     ),
     extras,
   );
+}
+
+export async function listBookingLogs(bookingId: string) {
+  const booking = await getBooking(bookingId);
+  if (!booking) return [];
+  const ids = [...new Set([booking.id, ...booking.rooms.map((row) => row.id), ...booking.extras.map((row) => row.id)])];
+  const db = await getDb();
+  const rows = ids.length
+    ? await db
+        .select({
+          id: t.auditLogs.id,
+          entity: t.auditLogs.entity,
+          entityId: t.auditLogs.entityId,
+          action: t.auditLogs.action,
+          actorId: t.auditLogs.actorId,
+          beforeJson: t.auditLogs.beforeJson,
+          afterJson: t.auditLogs.afterJson,
+          createdAt: t.auditLogs.createdAt,
+          actorName: t.users.fullName,
+        })
+        .from(t.auditLogs)
+        .leftJoin(t.users, eq(t.auditLogs.actorId, t.users.id))
+        .where(inArray(t.auditLogs.entityId, ids))
+        .orderBy(desc(t.auditLogs.createdAt))
+        .limit(80)
+    : [];
+  const mapped = rows.map((row) => ({
+    id: row.id,
+    entity: row.entity,
+    entityId: row.entityId,
+    action: row.action,
+    actorId: row.actorId,
+    actorName: row.actorName,
+    createdAt: row.createdAt,
+    before: parseAuditJson(row.beforeJson),
+    after: parseAuditJson(row.afterJson),
+  }));
+  const hasCreate = mapped.some((row) => row.action === "create");
+  if (!hasCreate) {
+    const first = [...booking.rooms].sort((a, b) => a.createdAt.localeCompare(b.createdAt))[0];
+    if (first?.createdBy) {
+      const creator = (await listUsers()).find((person) => person.id === first.createdBy);
+      mapped.push({
+        id: `created-${booking.id}`,
+        entity: "room_sale",
+        entityId: first.id,
+        action: "create",
+        actorId: first.createdBy,
+        actorName: creator?.fullName || null,
+        createdAt: first.createdAt,
+        before: null,
+        after: {
+          guestName: first.guestName,
+          guestPhone: first.guestPhone,
+          source: first.source,
+          adults: first.adults,
+          children: first.children,
+          bookingId: booking.id,
+        },
+      });
+      mapped.sort((a, b) => b.createdAt.localeCompare(a.createdAt) || b.id.localeCompare(a.id));
+    }
+  }
+  return collapseAuditBurst(mapped);
 }
 
 export async function salesBoard(date: string) {
@@ -1106,51 +1186,52 @@ export async function createRoomSale(user: SessionUser, data: SaleInput) {
   const origin = data.origin === "ezcloud" ? "ezcloud" : "ops";
   if (origin === "ezcloud" && !data.pmsCode?.trim()) throw new Error("Tích ezCloud thì nhập mã PMS");
   const roomIds = uniqueSaleRoomIds(data);
+  const lines = roomIds.map((roomId) => ({ roomId, ...saleLineWindow(data, roomId) }));
   const rooms = [];
-  for (const roomId of roomIds) {
-    rooms.push(await assertSaleWindow(roomId, data.checkIn, data.checkOut));
+  for (const line of lines) {
+    rooms.push({ room: await assertSaleWindow(line.roomId, line.checkIn, line.checkOut), ...line });
   }
   const today = todayVN();
-  const checkinNow = Boolean(data.checkinNow) && data.checkIn <= today;
-  const status: SaleStatus = checkinNow ? "inhouse" : "reserved";
   const { discountKind, discountValue } = normalizeDiscount(data.discountKind, data.discountValue);
   const bookingId = data.bookingId?.trim() || nid();
   const now = nowISO();
+  const db = await getDb();
   const pmsCode =
-    data.pmsCode?.trim() || (origin === "ops" ? `OPS-${bookingId.replace(/-/g, "").slice(0, 8).toUpperCase()}` : "");
+    data.pmsCode?.trim() || (origin === "ops" ? await nextOpsBookingCode(db, now) : "");
   if (!pmsCode) throw new Error("Tích ezCloud thì nhập mã PMS");
   const deposit = Math.max(0, data.deposit || 0);
   const bookingTotal = bookingQuote(
-    rooms.map((room) => ({
-      rate: Math.max(0, data.rates?.[room.id] ?? data.rate),
-      checkIn: data.checkIn,
-      checkOut: data.checkOut,
+    rooms.map((row) => ({
+      rate: row.rate,
+      checkIn: row.checkIn,
+      checkOut: row.checkOut,
+      breakfast: row.breakfast,
       discountKind,
       discountValue,
     })),
   ).total;
-  const db = await getDb();
   const ids: string[] = [];
-  for (const room of rooms) {
+  for (const row of rooms) {
     const id = nid();
-    const rate = Math.max(0, data.rates?.[room.id] ?? data.rate);
-    const row = {
+    const status: SaleStatus = Boolean(data.checkinNow) && row.checkIn <= today ? "inhouse" : "reserved";
+    const record = {
       id,
       bookingId,
-      roomId: room.id,
+      roomId: row.room.id,
       guestName,
       guestPhone: data.guestPhone?.trim() || null,
       origin,
       source: data.source,
       status,
-      checkIn: data.checkIn,
-      checkOut: data.checkOut,
+      checkIn: row.checkIn,
+      checkOut: row.checkOut,
       adults: Math.max(1, data.adults || 1),
       children: Math.max(0, data.children || 0),
-      rate,
+      rate: row.rate,
       discountKind,
       discountValue,
       deposit,
+      breakfast: row.breakfast,
       pmsCode,
       notes: data.notes?.trim() || null,
       createdAt: now,
@@ -1158,17 +1239,19 @@ export async function createRoomSale(user: SessionUser, data: SaleInput) {
       createdBy: user.id,
       updatedBy: user.id,
     };
-    await db.insert(t.roomSales).values(row);
-    await syncStayFromSale(user.id, row);
-    await audit(user.id, "room_sale", id, "create", null, row);
+    await db.insert(t.roomSales).values(record);
+    await syncStayFromSale(user.id, record);
+    await audit(user.id, "room_sale", id, "create", null, record);
     ids.push(id);
   }
   await ensureTodayRoomTasks(db, { actorId: user.id });
-  const roomLabel = rooms.length === 1 ? `P.${rooms[0].number}` : `${rooms.length} phòng`;
+  const roomLabel = rooms.length === 1 ? `P.${rooms[0].room.number}` : `${rooms.length} phòng`;
+  const spanIn = rooms.reduce((min, row) => (row.checkIn < min ? row.checkIn : min), rooms[0].checkIn);
+  const spanOut = rooms.reduce((max, row) => (row.checkOut > max ? row.checkOut : max), rooms[0].checkOut);
   await notify({
     role: user.role === "manager" ? "reception" : "manager",
     title: `Bán ${roomLabel} · ${guestName}`,
-    body: `${data.checkIn} → ${data.checkOut} · ${bookingTotal.toLocaleString("vi-VN")}₫`,
+    body: `${spanIn} → ${spanOut} · ${bookingTotal.toLocaleString("vi-VN")}₫`,
     link: `/sales/bookings/${bookingId}`,
   });
   return { id: ids[0], bookingId };
@@ -1208,6 +1291,7 @@ export async function addRoomsToBooking(user: SessionUser, saleId: string, roomI
     children: before.children,
     rate: before.rate,
     rates,
+    breakfasts: Object.fromEntries(ids.map((id) => [id, before.breakfast !== false])),
     discountKind: before.discountKind,
     discountValue: before.discountValue,
     deposit: before.deposit,
@@ -1230,11 +1314,9 @@ export async function updateRoomSale(user: SessionUser, id: string, data: SaleIn
       )
     : [];
   await assertSaleWindow(roomId, data.checkIn, data.checkOut, id);
-  for (const peer of peers) {
-    await assertSaleWindow(peer.roomId, data.checkIn, data.checkOut, peer.id);
-  }
   const { discountKind, discountValue } = normalizeDiscount(data.discountKind, data.discountValue);
   const rate = Math.max(0, data.rates?.[roomId] ?? data.rate);
+  const breakfast = data.breakfasts?.[roomId] ?? before.breakfast !== false;
   const patch = {
     roomId,
     guestName,
@@ -1249,6 +1331,7 @@ export async function updateRoomSale(user: SessionUser, id: string, data: SaleIn
     discountKind,
     discountValue,
     deposit: Math.max(0, data.deposit || 0),
+    breakfast,
     pmsCode: before.pmsCode,
     notes: before.notes,
     updatedAt: nowISO(),
@@ -1261,8 +1344,6 @@ export async function updateRoomSale(user: SessionUser, id: string, data: SaleIn
     guestPhone: patch.guestPhone,
     origin: patch.origin,
     source: patch.source,
-    checkIn: patch.checkIn,
-    checkOut: patch.checkOut,
     discountKind: patch.discountKind,
     discountValue: patch.discountValue,
     deposit: patch.deposit,
@@ -1283,12 +1364,16 @@ export async function updateBooking(
   user: SessionUser,
   bookingId: string,
   data: {
-    assignments: { saleId: string; roomId: string }[];
+    assignments: { saleId: string; roomId: string; checkIn?: string; checkOut?: string; breakfast?: boolean }[];
+    guestName?: string;
+    guestPhone?: string;
+    source?: string;
+    adults?: number;
+    children?: number;
     discountKind?: string;
     discountValue?: number;
     deposit?: number;
-    checkIn?: string;
-    checkOut?: string;
+    notes?: string;
   },
 ) {
   const db = await getDb();
@@ -1302,26 +1387,32 @@ export async function updateBooking(
   const key = bookingKey(hit);
   const active = all.filter((row) => bookingKey(row) === key && isActiveSaleStatus(row.status));
   if (!active.length) throw new Error("Booking đã đóng, không sửa");
+  const guestName = data.guestName !== undefined ? data.guestName.trim() : hit.guestName;
+  if (!guestName) throw new Error("Nhập tên khách");
+  if (data.source !== undefined && data.source !== "" && !isSaleSource(data.source)) throw new Error("Chọn nền tảng booking");
+  const source = data.source && isSaleSource(data.source) ? data.source : hit.source;
+  const guestPhone = data.guestPhone !== undefined ? data.guestPhone.trim() || null : hit.guestPhone;
+  const adults = Math.max(1, data.adults ?? hit.adults ?? 1);
+  const children = Math.max(0, data.children ?? hit.children ?? 0);
   const { discountKind, discountValue } = normalizeDiscount(data.discountKind, data.discountValue);
   const deposit = Math.max(0, data.deposit || 0);
+  const notes = data.notes !== undefined ? data.notes.trim() || null : undefined;
   const roomById = new Map(rooms.map((room) => [room.id, room]));
-  const nextBySale = new Map(data.assignments.map((row) => [row.saleId, row.roomId]));
+  const nextBySale = new Map(data.assignments.map((row) => [row.saleId, row]));
   const seen = new Set<string>();
   const now = nowISO();
-  const canMoveIn = active.every((row) => row.status === "reserved");
-  const currentIn = active.reduce((min, row) => (row.checkIn < min ? row.checkIn : min), active[0].checkIn);
-  const currentOut = active.reduce((max, row) => (row.checkOut > max ? row.checkOut : max), active[0].checkOut);
-  const nextIn = canMoveIn && data.checkIn ? data.checkIn : currentIn;
-  const nextOut = data.checkOut || currentOut;
-  if (nextOut <= nextIn) throw new Error("Ngày trả phải sau ngày nhận");
-  const inhouse = active.some((row) => row.status === "inhouse");
-  if (inhouse && nextOut < todayVN()) throw new Error("Ngày trả không được trước hôm nay");
+  const today = todayVN();
   for (const row of active) {
-    const nextRoomId = nextBySale.get(row.id) || row.roomId;
+    const assignment = nextBySale.get(row.id);
+    const nextRoomId = assignment?.roomId || row.roomId;
     if (seen.has(nextRoomId)) throw new Error("Hai chỗ trong booking không được trùng số phòng");
     seen.add(nextRoomId);
     const current = roomById.get(row.roomId);
     if (!current) throw new Error("Không tìm thấy phòng hiện tại");
+    const nextIn = row.status === "reserved" && assignment?.checkIn ? assignment.checkIn : row.checkIn;
+    const nextOut = assignment?.checkOut || row.checkOut;
+    if (nextOut <= nextIn) throw new Error("Ngày trả phải sau ngày nhận");
+    if (row.status === "inhouse" && nextOut < today) throw new Error("Ngày trả không được trước hôm nay");
     const next = await assertSaleWindow(nextRoomId, nextIn, nextOut, active.map((item) => item.id));
     const kind = roomMoveKind(current.type, next.type, types);
     if (!kind) throw new Error(`P.${next.number} không cùng hạng và không phải nâng hạng so với ${current?.type || "phòng hiện tại"}`);
@@ -1331,21 +1422,76 @@ export async function updateBooking(
         : row.rate;
     const patch = {
       roomId: next.id,
+      guestName,
+      guestPhone,
+      source,
+      adults,
+      children,
       rate: nextRate,
       checkIn: nextIn,
       checkOut: nextOut,
+      breakfast: assignment?.breakfast ?? row.breakfast !== false,
       discountKind,
       discountValue,
       deposit,
+      ...(notes !== undefined ? { notes } : {}),
       updatedAt: now,
       updatedBy: user.id,
     };
+    const after = { ...row, ...patch };
     await db.update(t.roomSales).set(patch).where(eq(t.roomSales.id, row.id));
-    await syncStayFromSale(user.id, { ...row, ...patch }, row.roomId);
-    await audit(user.id, "room_sale", row.id, "update", row, patch);
+    await syncStayFromSale(user.id, after, row.roomId);
+    if (auditChanges(row, after).length) {
+      await audit(user.id, "room_sale", row.id, "update", row, after);
+    }
   }
   await ensureTodayRoomTasks(db, { actorId: user.id });
   return key;
+}
+
+export async function moveGanttSale(
+  user: SessionUser,
+  data: { saleId: string; roomId: string; checkIn: string; checkOut: string },
+) {
+  const db = await getDb();
+  const [all, rooms, types] = await Promise.all([
+    db.select().from(t.roomSales),
+    db.select().from(t.rooms),
+    db.select().from(t.roomTypes),
+  ]);
+  const before = all.find((row) => row.id === data.saleId);
+  if (!before) throw new Error("Không tìm thấy chỗ bán");
+  if (!isActiveSaleStatus(before.status)) throw new Error("Chỗ đã đóng, không kéo trên sơ đồ");
+  const current = rooms.find((room) => room.id === before.roomId);
+  if (!current) throw new Error("Không tìm thấy phòng hiện tại");
+  const today = todayVN();
+  const checkIn = data.checkIn;
+  const checkOut = data.checkOut;
+  if (before.status === "inhouse" && checkIn !== before.checkIn) {
+    throw new Error("Khách đang ở — không đổi ngày nhận. Kéo sang phòng trống cùng ngày.");
+  }
+  if (before.status === "inhouse" && checkOut < today) throw new Error("Ngày trả không được trước hôm nay");
+  const next = await assertSaleWindow(data.roomId, checkIn, checkOut, before.id);
+  const kind = roomMoveKind(current.type, next.type, types);
+  if (!kind) {
+    throw new Error(`P.${next.number} không cùng hạng và không phải nâng hạng so với ${current.type}`);
+  }
+  const nextRate =
+    kind === "upgrade" ? catalogRate(types.find((type) => type.name === next.type), checkIn) || before.rate : before.rate;
+  const now = nowISO();
+  const patch = {
+    roomId: next.id,
+    rate: nextRate,
+    checkIn,
+    checkOut,
+    updatedAt: now,
+    updatedBy: user.id,
+  };
+  await db.update(t.roomSales).set(patch).where(eq(t.roomSales.id, before.id));
+  await syncStayFromSale(user.id, { ...before, ...patch }, before.roomId);
+  await ensureTodayRoomTasks(db, { actorId: user.id });
+  await audit(user.id, "room_sale", before.id, "update", before, patch);
+  return bookingKey(before);
 }
 
 export async function recordBookingPayment(
@@ -1359,13 +1505,12 @@ export async function recordBookingPayment(
   if (!active.length) throw new Error("Booking đã đóng, không thu thêm");
   const current = Math.max(0, Math.round(booking.deposit || 0));
   const due = Math.max(0, Math.round(booking.due || 0));
+  const amount = Math.max(0, Math.round(data.amount || 0));
   let next = current;
-  if (data.settle) {
+  if (data.settle || !amount) {
     if (due <= 0) throw new Error("Booking đã thu đủ");
     next = current + due;
   } else {
-    const amount = Math.max(0, Math.round(data.amount || 0));
-    if (!amount) throw new Error("Nhập số tiền vừa thu");
     next = current + amount;
   }
   const db = await getDb();
@@ -1429,6 +1574,24 @@ export async function checkoutRoomSale(user: SessionUser, id: string) {
   await syncStayFromSale(user.id, { ...before, status: "departed", checkOut });
   await ensureTodayRoomTasks(db, { actorId: user.id });
   await audit(user.id, "room_sale", id, "checkout", before, { status: "departed", checkOut });
+}
+
+export async function checkinBooking(user: SessionUser, bookingId: string) {
+  const booking = await getBooking(bookingId);
+  if (!booking) throw new Error("Không tìm thấy booking");
+  const ready = booking.rooms.filter((row) => row.status === "reserved" && todayVN() >= row.checkIn);
+  if (!ready.length) throw new Error("Chưa đến ngày nhận, hoặc không còn phòng giữ chỗ");
+  for (const row of ready) await checkinRoomSale(user, row.id);
+  return booking.id;
+}
+
+export async function checkoutBooking(user: SessionUser, bookingId: string) {
+  const booking = await getBooking(bookingId);
+  if (!booking) throw new Error("Không tìm thấy booking");
+  const staying = booking.rooms.filter((row) => row.status === "inhouse");
+  if (!staying.length) throw new Error("Không có phòng đang ở");
+  for (const row of staying) await checkoutRoomSale(user, row.id);
+  return booking.id;
 }
 
 export async function cancelRoomSale(user: SessionUser, id: string, asNoShow = false) {

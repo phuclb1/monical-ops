@@ -3,25 +3,14 @@ import { redirect } from "next/navigation";
 import { Btn, Card, Chip, Empty, Field, Stat, TabChip } from "@/components/ui";
 import { getSession } from "@/lib/auth";
 import { SALE_SOURCE_LABEL, SALE_STATUS_LABEL } from "@/lib/constants";
-import {
-  addDaysVN,
-  addMonthsVN,
-  formatDateLong,
-  formatMonthLong,
-  formatWeekRange,
-  nextDate,
-  prevDate,
-  startOfMonthVN,
-  startOfWeekVN,
-  todayVN,
-} from "@/lib/datetime";
+import { addDaysVN, addMonthsVN, formatDayMonth, formatMonthLong, startOfMonthVN, todayVN } from "@/lib/datetime";
 import { can } from "@/lib/permissions";
-import { salesBoard, salesGantt, roomFocusBoard } from "@/lib/repos";
+import { salesGantt, roomFocusBoard, listRoomTypes } from "@/lib/repos";
 import { formatVnd, groupByBooking, isSaleOrigin } from "@/lib/sales";
 import { isRoomFocus } from "@/lib/room-focus";
 import { RoomFocusChips } from "@/components/room-focus-chips";
 import { RoomGantt } from "@/components/room-gantt";
-import type { SaleOrigin, SaleSource, SaleStatus } from "@/lib/types";
+import type { SaleSource, SaleStatus } from "@/lib/types";
 
 const KIND_LABEL: Record<string, string> = {
   vacant: "Trống",
@@ -38,15 +27,17 @@ const TILE: Record<string, string> = {
 };
 
 const VIEWS = [
-  { id: "day", label: "Ngày" },
-  { id: "week", label: "Tuần" },
-  { id: "month", label: "Tháng" },
+  { id: "7", label: "7 ngày" },
+  { id: "15", label: "15 ngày" },
+  { id: "month", label: "1 tháng" },
 ] as const;
 
 type SalesView = (typeof VIEWS)[number]["id"];
 
-function isSalesView(value: string): value is SalesView {
-  return VIEWS.some((view) => view.id === value);
+function parseView(value: string): SalesView {
+  if (value === "15") return "15";
+  if (value === "month") return "month";
+  return "7";
 }
 
 function FilterChip({
@@ -65,6 +56,15 @@ function FilterChip({
   );
 }
 
+function viewWindow(view: SalesView, date: string) {
+  if (view === "month") {
+    const from = startOfMonthVN(date);
+    return { from, to: addMonthsVN(from, 1), prev: addMonthsVN(from, -1), next: addMonthsVN(from, 1) };
+  }
+  const span = view === "15" ? 15 : 7;
+  return { from: date, to: addDaysVN(date, span), prev: addDaysVN(date, -span), next: addDaysVN(date, span) };
+}
+
 export default async function SalesPage({
   searchParams,
 }: {
@@ -79,37 +79,11 @@ export default async function SalesPage({
   const origin = isSaleOrigin(rawOrigin || "") ? rawOrigin : "";
   const raw = rawFocus || "";
   const focus = isRoomFocus(raw) ? raw : "";
-  const view: SalesView = isSalesView(rawView || "") ? (rawView as SalesView) : "day";
-  const from = view === "week" ? startOfWeekVN(date) : view === "month" ? startOfMonthVN(date) : date;
-  const to = view === "week" ? addDaysVN(from, 7) : view === "month" ? addMonthsVN(from, 1) : nextDate(date);
-  const prev = view === "week" ? addDaysVN(from, -7) : view === "month" ? addMonthsVN(from, -1) : prevDate(date);
-  const next = view === "week" ? addDaysVN(from, 7) : view === "month" ? addMonthsVN(from, 1) : nextDate(date);
-  const [board, focusBoard, gantt] = await Promise.all([
-    salesBoard(date),
-    roomFocusBoard(date),
-    view === "day" ? Promise.resolve(null) : salesGantt(from, to),
-  ]);
+  const view = parseView(rawView || "");
+  const { from, to, prev, next } = viewWindow(view, date);
+  const [focusBoard, gantt, types] = await Promise.all([roomFocusBoard(date), salesGantt(from, to), listRoomTypes()]);
   const hits = focus ? focusBoard[focus] : [];
   const hitByRoom = new Map(hits.map((hit) => [hit.roomId, hit]));
-  const floors = [...new Set(board.cells.map((cell) => cell.room.floor))].sort((a, b) => a - b);
-  const shownCells = focus ? board.cells.filter((cell) => hitByRoom.has(cell.room.id)) : board.cells;
-  const nightSales = board.nightSales.filter((sale) => {
-    if (origin && sale.origin !== origin) return false;
-    if (focus && !hitByRoom.has(sale.roomId)) return false;
-    return true;
-  });
-  const upcoming = board.upcoming.filter((sale) => {
-    if (origin && sale.origin !== origin) return false;
-    if (focus === "booking") return hitByRoom.has(sale.roomId);
-    if (focus) return false;
-    return true;
-  });
-  const nightBookings = groupByBooking(nightSales).map(({ id, rooms }) => ({
-    id,
-    rooms,
-    guestName: rooms[0]?.guestName || "",
-    status: rooms.some((row) => row.status === "inhouse") ? "inhouse" : "reserved",
-  }));
   const rangeSales = (gantt?.sales || []).filter((sale) => {
     if (origin && sale.origin !== origin) return false;
     if (focus && !hitByRoom.has(sale.roomId)) return false;
@@ -127,28 +101,26 @@ export default async function SalesPage({
       ...row,
       bars: origin ? row.bars.filter((bar) => bar.sale.origin === origin) : row.bars,
     }));
-  const upcomingBookings = groupByBooking(upcoming);
-  const listBookings = view === "day" ? nightBookings : rangeBookings;
   const salesHref = (extra: Record<string, string | undefined>) => {
     const nextQuery = new URLSearchParams();
     nextQuery.set("date", extra.date ?? date);
     const nextOrigin = extra.origin === "" ? "" : extra.origin ?? origin;
     const nextFocus = extra.focus === "" ? "" : extra.focus ?? focus;
-    const nextView = extra.view === "" ? "day" : extra.view ?? view;
+    const nextView = extra.view === "" ? "7" : extra.view ?? view;
     if (nextOrigin) nextQuery.set("origin", nextOrigin);
     if (nextFocus) nextQuery.set("focus", nextFocus);
-    if (nextView && nextView !== "day") nextQuery.set("view", nextView);
+    if (nextView && nextView !== "7") nextQuery.set("view", nextView);
     return `/sales?${nextQuery.toString()}`;
   };
-  const rangeLabel =
-    view === "week" ? `Tuần ${formatWeekRange(date)}` : view === "month" ? formatMonthLong(date) : formatDateLong(date);
+  const lastDay = addDaysVN(to, -1);
+  const rangeLabel = view === "month" ? formatMonthLong(date) : `${formatDayMonth(from)} – ${formatDayMonth(lastDay)}`;
 
   return (
     <main className="sales-board space-y-3 px-3 py-4 md:space-y-4">
       <div className="flex items-start justify-between gap-3 md:items-center">
         <div>
-          <h1 className="text-xl font-bold">Bán phòng</h1>
-          <p className="text-xs text-[#5c6665] md:text-sm">Sơ đồ ngày, Gantt tuần / tháng. Quản lý booking ở Đặt phòng.</p>
+          <h1 className="text-xl font-bold">Sơ đồ phòng</h1>
+          <p className="text-xs text-[#5c6665] md:text-sm">Gantt 7 ngày, 15 ngày hoặc 1 tháng. Quản lý booking ở Đặt phòng.</p>
         </div>
         <div className="flex flex-col items-end gap-1 md:flex-row md:items-center md:gap-3">
           <Link href={`/sales/new?date=${date}`} className="cta-link">
@@ -181,7 +153,7 @@ export default async function SalesPage({
               ←
             </Link>
             <div className="min-w-0 flex-1">
-              <Field label={view === "month" ? "Tháng sơ đồ" : view === "week" ? "Tuần sơ đồ" : "Ngày sơ đồ"}>
+              <Field label={view === "month" ? "Tháng sơ đồ" : view === "15" ? "15 ngày sơ đồ" : "7 ngày sơ đồ"}>
                 <input type="date" name="date" defaultValue={date} />
               </Field>
             </div>
@@ -191,7 +163,7 @@ export default async function SalesPage({
           </div>
           {origin ? <input type="hidden" name="origin" value={origin} /> : null}
           {focus ? <input type="hidden" name="focus" value={focus} /> : null}
-          {view !== "day" ? <input type="hidden" name="view" value={view} /> : null}
+          {view !== "7" ? <input type="hidden" name="view" value={view} /> : null}
           <Btn type="submit" variant="ghost" className="w-full md:w-auto md:px-6">
             Xem
           </Btn>
@@ -199,27 +171,17 @@ export default async function SalesPage({
         <p className="mt-2 text-xs font-semibold text-[#5c6665] md:mt-0 md:pb-3 md:text-sm">{rangeLabel}</p>
       </Card>
 
-      {view === "day" ? (
-        <div className="grid grid-cols-2 gap-2 md:grid-cols-5 md:gap-3">
-          <Stat label="Trống" value={board.vacant} tone="text-[#1b7a4e]" />
-          <Stat label="Đã bán" value={board.sold} />
-          <Stat label="Đang ở" value={board.inhouse} tone="text-teal" />
-          <Stat label="OOO" value={board.ooo} tone="text-[#c23b3b]" />
-          <Stat label="Doanh thu đêm" value={formatVnd(board.revenue)} />
-        </div>
-      ) : (
-        <div className="grid grid-cols-2 gap-2 md:grid-cols-4 md:gap-3">
-          <Stat label="Đêm trống" value={gantt?.vacantNights ?? 0} tone="text-[#1b7a4e]" />
-          <Stat label="Đêm đã bán" value={gantt?.soldNights ?? 0} />
-          <Stat label="OOO" value={gantt?.ooo ?? 0} tone="text-[#c23b3b]" />
-          <Stat label="Doanh thu khung" value={formatVnd(gantt?.revenue ?? 0)} />
-        </div>
-      )}
+      <div className="grid grid-cols-2 gap-2 md:grid-cols-4 md:gap-3">
+        <Stat label="Đêm trống" value={gantt?.vacantNights ?? 0} tone="text-[#1b7a4e]" />
+        <Stat label="Đêm đã bán" value={gantt?.soldNights ?? 0} />
+        <Stat label="OOO" value={gantt?.ooo ?? 0} tone="text-[#c23b3b]" />
+        <Stat label="Doanh thu khung" value={formatVnd(gantt?.revenue ?? 0)} />
+      </div>
 
       <div className="space-y-2 md:rounded-2xl md:border md:border-line md:bg-white/70 md:p-3">
         <RoomFocusChips
           path="/sales"
-          query={{ date, origin, view: view === "day" ? undefined : view }}
+          query={{ date, origin, view: view === "7" ? undefined : view }}
           date={date}
           focus={focus}
           counts={focusBoard.counts}
@@ -239,121 +201,51 @@ export default async function SalesPage({
               Tất cả
             </FilterChip>
             <FilterChip href={salesHref({ origin: "ops" })} active={origin === "ops"}>
-              Ops
+              Trực tiếp
             </FilterChip>
             <FilterChip href={salesHref({ origin: "ezcloud" })} active={origin === "ezcloud"}>
-              ezCloud
+              OTA
             </FilterChip>
           </div>
         </div>
       </div>
 
-      {view !== "day" && gantt ? (
-        <div className="space-y-3">
-          {ganttRows.length ? (
-            <RoomGantt days={gantt.days} today={today} rows={ganttRows} compact={view === "month"} />
-          ) : (
-            <Empty title="Không có phòng khớp bộ lọc" text="Bỏ quick filter để xem Gantt." />
-          )}
-          <Card>
-            <h2 className="mb-2 font-bold">Booking trong khung</h2>
-            {listBookings.length ? (
-              <div className="space-y-2">
-                {listBookings.map((row) => (
-                  <Link key={row.id} href={`/sales/bookings/${row.id}`} className="flex min-h-14 items-center justify-between gap-2 rounded-xl bg-sand px-3 py-2.5">
-                    <div className="min-w-0">
-                      <p className="truncate font-semibold">
-                        {row.guestName} · {row.rooms.length} phòng
-                      </p>
-                      <p className="truncate text-xs text-[#5c6665]">
-                        {row.rooms[0].checkIn} → {row.rooms[0].checkOut} · {row.rooms.map((sale) => `P.${sale.room?.number}`).join(" · ")}
-                      </p>
-                    </div>
-                    <Chip tone={row.status === "inhouse" ? "ok" : "gold"}>{SALE_STATUS_LABEL[row.status as SaleStatus]}</Chip>
-                  </Link>
-                ))}
-              </div>
-            ) : (
-              <Empty title="Chưa có booking trong khung" text="Bấm ô trống trên Gantt để bán." />
-            )}
-          </Card>
-        </div>
-      ) : (
-        <div className="space-y-3 md:grid md:grid-cols-[minmax(0,1fr)_20rem] md:items-start md:gap-4 lg:grid-cols-[minmax(0,1fr)_22rem] xl:grid-cols-[minmax(0,1fr)_24rem]">
-          <div className="space-y-3">
-            {floors.map((floor) => {
-              const onFloor = shownCells.filter((cell) => cell.room.floor === floor);
-              if (!onFloor.length) return null;
-              return (
-                <section key={floor} className="space-y-2 md:rounded-2xl md:border md:border-line md:bg-white/80 md:p-3">
-                  <h2 className="text-sm font-bold text-[#5c6665]">Tầng {floor}</h2>
-                  <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 md:grid-cols-6 lg:grid-cols-8">
-                    {onFloor.map((cell) => {
-                      const hit = hitByRoom.get(cell.room.id);
-                      const href = cell.sale
-                        ? `/sales/${cell.sale.id}`
-                        : hit?.href
-                          ? hit.href
-                          : cell.kind === "ooo"
-                            ? `/rooms/${cell.room.id}`
-                            : `/sales/new?room=${cell.room.id}&date=${date}`;
-                      return (
-                        <Link key={cell.room.id} href={href} className={`flex min-h-[5.75rem] flex-col justify-between rounded-2xl border px-3 py-3 md:min-h-[6.5rem] ${TILE[cell.kind]}`}>
-                          <p className="text-base font-bold">P.{cell.room.number}</p>
-                          <p className="truncate text-xs text-[#5c6665]">{cell.room.type}</p>
-                          <p className="truncate text-xs font-semibold">
-                            {hit?.guestName || cell.sale?.guestName || (cell.kind === "ooo" ? "Ngừng bán" : hit?.hint || "Trống — bán")}
-                          </p>
-                          {hit?.hint ? <p className="truncate text-[11px] text-[#8a7a72]">{hit.hint}</p> : null}
-                        </Link>
-                      );
-                    })}
+      <div className="space-y-3">
+        {ganttRows.length ? (
+          <RoomGantt
+            days={gantt.days}
+            today={today}
+            rows={ganttRows}
+            compact={view === "month"}
+            types={types}
+            back={salesHref({})}
+          />
+        ) : (
+          <Empty title="Không có phòng khớp bộ lọc" text="Bỏ quick filter để xem Gantt." />
+        )}
+        <Card>
+          <h2 className="mb-2 font-bold">Booking trong khung</h2>
+          {rangeBookings.length ? (
+            <div className="space-y-2">
+              {rangeBookings.map((row) => (
+                <Link key={row.id} href={`/sales/bookings/${row.id}`} className="flex min-h-14 items-center justify-between gap-2 rounded-xl bg-sand px-3 py-2.5">
+                  <div className="min-w-0">
+                    <p className="truncate font-semibold">
+                      {row.guestName} · {row.rooms.length} phòng
+                    </p>
+                    <p className="truncate text-xs text-[#5c6665]">
+                      {row.rooms[0].checkIn} → {row.rooms[0].checkOut} · {row.rooms.map((sale) => `P.${sale.room?.number}`).join(" · ")} · {SALE_SOURCE_LABEL[row.rooms[0].source as SaleSource] || row.rooms[0].source}
+                    </p>
                   </div>
-                </section>
-              );
-            })}
-            {focus && !shownCells.length ? <Empty title="Không có phòng khớp bộ lọc" text="Bỏ quick filter để xem hết sơ đồ." /> : null}
-          </div>
-
-          <aside className="space-y-3 md:sticky md:top-[4.75rem]">
-            <Card>
-              <h2 className="mb-2 font-bold">Đêm {formatDateLong(date)}</h2>
-              {nightBookings.length ? (
-                <div className="space-y-2">
-                  {nightBookings.map((row) => (
-                    <Link key={row.id} href={`/sales/bookings/${row.id}`} className="flex min-h-14 items-center justify-between gap-2 rounded-xl bg-sand px-3 py-2.5">
-                      <div className="min-w-0">
-                        <p className="truncate font-semibold">
-                          {row.guestName} · {row.rooms.length} phòng
-                        </p>
-                        <p className="truncate text-xs text-[#5c6665]">
-                          {row.rooms.map((sale) => `P.${sale.room?.number}`).join(" · ")} · {SALE_SOURCE_LABEL[row.rooms[0].source as SaleSource] || row.rooms[0].source}
-                        </p>
-                      </div>
-                      <Chip tone={row.status === "inhouse" ? "ok" : "gold"}>{SALE_STATUS_LABEL[row.status as SaleStatus]}</Chip>
-                    </Link>
-                  ))}
-                </div>
-              ) : (
-                <Empty title={board.nightSales.length ? "Không khớp bộ lọc" : "Chưa bán đêm này"} text={board.nightSales.length ? "Bỏ lọc nguồn để xem hết chỗ bán." : "Bấm phòng trống trên sơ đồ để bán."} />
-              )}
-            </Card>
-
-            {upcomingBookings.length ? (
-              <Card>
-                <h2 className="mb-2 font-bold">Giữ chỗ 14 ngày tới</h2>
-                <div className="space-y-1">
-                  {upcomingBookings.map(({ id, rooms }) => (
-                    <Link key={id} href={`/sales/bookings/${id}`} className="block min-h-11 rounded-lg px-1 py-1.5 text-sm hover:bg-sand">
-                      {rooms[0].checkIn} · {rooms.map((sale) => `P.${sale.room?.number}`).join(", ")} · {rooms[0].guestName}
-                    </Link>
-                  ))}
-                </div>
-              </Card>
-            ) : null}
-          </aside>
-        </div>
-      )}
+                  <Chip tone={row.status === "inhouse" ? "ok" : "gold"}>{SALE_STATUS_LABEL[row.status as SaleStatus]}</Chip>
+                </Link>
+              ))}
+            </div>
+          ) : (
+            <Empty title={gantt.sales.length ? "Không khớp bộ lọc" : "Chưa có booking trong khung"} text={gantt.sales.length ? "Bỏ lọc nguồn để xem hết chỗ bán." : "Bấm ô trống trên Gantt để bán."} />
+          )}
+        </Card>
+      </div>
     </main>
   );
 }

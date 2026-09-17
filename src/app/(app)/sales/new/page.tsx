@@ -2,7 +2,6 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createSaleAction } from "@/actions/sales";
 import { SaleForm } from "@/components/sale-form";
-import { Card } from "@/components/ui";
 import { getSession } from "@/lib/auth";
 import { catalogRate, defaultCheckout } from "@/lib/sales";
 import { todayVN } from "@/lib/datetime";
@@ -26,40 +25,42 @@ export default async function NewSalePage({
   const selectedType = types.find((type) => type.name === selected?.type);
 
   return (
-    <main className="space-y-3 px-3 py-4">
-      <div>
-        <Link href={`/sales?date=${date}`} className="inline-flex min-h-11 items-center text-sm font-semibold text-teal">
-          ← Sơ đồ bán phòng
-        </Link>
-        <Link href="/sales/bookings" className="ml-3 inline-flex min-h-11 items-center text-sm font-semibold text-teal">
-          Đặt phòng
-        </Link>
-        <h1 className="mt-2 text-xl font-bold">Bán phòng</h1>
-        <p className="text-xs text-[#5c6665]">Có thể chọn nhiều phòng cùng một booking. Danh sách đặt phòng ở mục Đặt phòng.</p>
+    <main className="booking-desk space-y-3 px-3 py-4 md:space-y-4">
+      <div className="flex items-start justify-between gap-3 md:items-center">
+        <div>
+          <div className="flex flex-wrap items-center gap-x-3">
+            <Link href={`/sales?date=${date}`} className="inline-flex min-h-11 items-center text-sm font-semibold text-teal">
+              ← Sơ đồ bán phòng
+            </Link>
+            <Link href="/sales/bookings" className="inline-flex min-h-11 items-center text-sm font-semibold text-teal">
+              Đặt phòng
+            </Link>
+          </div>
+          <h1 className="mt-1 text-xl font-bold">Đặt phòng</h1>
+          <p className="text-xs text-[#5c6665] md:text-sm">Chọn hạng / phòng, ngày từng phòng, ăn sáng và chiết khấu theo booking. Khách chỉ thấy hạng phòng trên phiếu in.</p>
+        </div>
       </div>
       {error ? <p className="text-sm text-[#c23b3b]">{error}</p> : null}
-      <Card>
-        {selected ? (
-          <SaleForm
-            action={createSaleAction}
-            rooms={sellable}
-            types={types}
-            today={today}
-            showCheckinNow
-            allowMultiple
-            submitLabel="Lưu chỗ bán"
-            defaults={{
-              roomId: selected.id,
-              checkIn: date,
-              checkOut: defaultCheckout(date),
-              rate: catalogRate(selectedType, date),
-              date,
-            }}
-          />
-        ) : (
-          <p className="text-sm">Không còn phòng bán được.</p>
-        )}
-      </Card>
+      {selected ? (
+        <SaleForm
+          action={createSaleAction}
+          rooms={sellable}
+          types={types}
+          today={today}
+          showCheckinNow
+          allowMultiple
+          submitLabel="Lưu đặt phòng"
+          defaults={{
+            roomId: selected.id,
+            checkIn: date,
+            checkOut: defaultCheckout(date),
+            rate: catalogRate(selectedType, date),
+            date,
+          }}
+        />
+      ) : (
+        <p className="text-sm">Không còn phòng bán được.</p>
+      )}
     </main>
   );
 }

@@ -1,16 +1,24 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
-import { addRoomsToBookingAction, cancelBookingAction, cancelSaleAction, checkinSaleAction, checkoutSaleAction, updateBookingAction } from "@/actions/sales";
+import {
+  addRoomsToBookingAction,
+  cancelBookingAction,
+  checkinBookingAction,
+  checkoutBookingAction,
+  updateBookingAction,
+} from "@/actions/sales";
 import { AddBookingRoomsForm, BookingForm } from "@/components/sale-form";
 import { BookingExtrasPanel } from "@/components/booking-extras";
 import { BookingPaymentPanel } from "@/components/booking-payment";
-import { Btn, Card, Chip } from "@/components/ui";
+import { BookingRoomList } from "@/components/booking-room-list";
+import { BookingLog } from "@/components/booking-log";
+import { Btn, Card, Chip, Fold } from "@/components/ui";
 import { getSession } from "@/lib/auth";
 import { SALE_ORIGIN_LABEL, SALE_SOURCE_LABEL, SALE_STATUS_LABEL } from "@/lib/constants";
 import { formatDateLong, todayVN } from "@/lib/datetime";
 import { extraDetail } from "@/lib/extras";
 import { can } from "@/lib/permissions";
-import { getBooking, listRooms, listRoomSales, listRoomTypes, listSaleExtraTypes } from "@/lib/repos";
+import { getBooking, listBookingLogs, listRooms, listRoomSales, listRoomTypes, listSaleExtraTypes } from "@/lib/repos";
 import { bookingQuote, discountLabel, formatVnd, isActiveSaleStatus, isOpsBookingCode } from "@/lib/sales";
 import type { SaleOrigin, SaleSource, SaleStatus } from "@/lib/types";
 
@@ -34,12 +42,13 @@ export default async function BookingDetailPage({
   if (!can(user.role, "manageSales")) redirect("/more");
   const { id } = await params;
   const { error } = await searchParams;
-  const [booking, rooms, types, sales, extraTypes] = await Promise.all([
+  const [booking, rooms, types, sales, extraTypes, logs] = await Promise.all([
     getBooking(id),
     listRooms(),
     listRoomTypes(),
     listRoomSales(),
     listSaleExtraTypes(),
+    listBookingLogs(id),
   ]);
   if (!booking) notFound();
   const today = todayVN();
@@ -49,18 +58,29 @@ export default async function BookingDetailPage({
   const firstActive = activeRooms[0];
   const booked = bookingQuote(booking.rooms);
   const canNoShow = Boolean(activeRooms.length) && activeRooms.every((row) => row.status === "reserved");
-  const back = `/sales/bookings/${booking.id}`;
+  const readyIn = activeRooms.filter((row) => row.status === "reserved" && today >= row.checkIn);
+  const staying = activeRooms.filter((row) => row.status === "inhouse");
   const activeIds = new Set(activeRooms.map((row) => row.id));
   const busy = sales
     .filter((row) => isActiveSaleStatus(row.status) && !activeIds.has(row.id))
     .map((row) => ({ roomId: row.roomId, checkIn: row.checkIn, checkOut: row.checkOut }));
 
   return (
-    <main className="space-y-3 px-3 py-4">
+    <main className="booking-desk space-y-3 px-3 py-4 md:space-y-4">
       <div>
-        <Link href="/sales/bookings" className="inline-flex min-h-11 items-center text-sm font-semibold text-teal">
-          ← Đặt phòng
-        </Link>
+        <div className="flex items-center justify-between gap-3">
+          <Link href="/sales/bookings" className="inline-flex min-h-11 items-center text-sm font-semibold text-teal">
+            ← Đặt phòng
+          </Link>
+          <div className="flex items-center gap-3">
+            <Link href={`/sales/bookings/${booking.id}/print`} className="inline-flex min-h-11 items-center text-sm font-semibold text-teal">
+              In xác nhận
+            </Link>
+            <Link href={`/sales?date=${booking.checkIn}`} className="inline-flex min-h-11 items-center text-sm font-semibold text-teal">
+              Sơ đồ
+            </Link>
+          </div>
+        </div>
         <div className="mt-2 flex items-start justify-between gap-3">
           <div>
             <h1 className="text-xl font-bold">{booking.guestName}</h1>
@@ -74,201 +94,181 @@ export default async function BookingDetailPage({
           <div className="flex flex-col items-end gap-1">
             <Chip tone={STATUS_TONE[booking.status]}>{SALE_STATUS_LABEL[booking.status]}</Chip>
             {booking.deposit ? <Chip tone="ok">Đã cọc</Chip> : isActiveSaleStatus(booking.status) ? <Chip tone="warn">Chưa cọc</Chip> : null}
-            <Link href={`/sales/bookings/${booking.id}/print`} className="cta-link">
-              In xác nhận
-            </Link>
           </div>
         </div>
       </div>
       {error ? <p className="text-sm text-[#c23b3b]">{error}</p> : null}
 
-      <Card>
-        <p className="text-sm">
-          {formatDateLong(booking.checkIn)} → {formatDateLong(booking.checkOut)} · {booking.nights} đêm
-        </p>
-        <p className="mt-1 text-sm">
-          {booking.adults} NL{booking.children ? ` · ${booking.children} TE` : ""} · tạm tính {formatVnd(booking.subtotal)}
-        </p>
-        {firstActive?.discountKind && firstActive.discountKind !== "none" ? (
-          <p className="mt-1 text-sm text-[#1b7a4e]">
-            Chiết khấu {discountLabel(firstActive.discountKind, firstActive.discountValue)}
-            {booking.discount ? ` −${formatVnd(booking.discount)}` : ""}
-          </p>
-        ) : null}
-        <p className="mt-1 text-sm">Phải thu {formatVnd(booking.total)}</p>
-        {booking.extrasTotal ? (
-          <p className="mt-1 text-sm">
-            Phòng {formatVnd(booking.roomTotal)} · dịch vụ {formatVnd(booking.extrasTotal)}
-          </p>
-        ) : null}
-        {booking.extras.map((row) => (
-          <p key={row.id} className="mt-1 text-xs text-[#5c6665]">
-            {row.name}
-            {extraDetail(row, booking.nights) ? ` · ${extraDetail(row, booking.nights)}` : ""} · {formatVnd(row.amount)}
-          </p>
-        ))}
-        {booking.deposit ? (
-          <p className="mt-1 text-sm text-[#1b7a4e]">Đã đặt cọc {formatVnd(booking.deposit)}</p>
-        ) : (
-          <p className="mt-1 text-sm text-[#c47b12]">Chưa đặt cọc</p>
-        )}
-        <p className="mt-1 text-sm font-semibold">
-          Còn phải thu {formatVnd(booking.due)}
-        </p>
-        {booking.guestPhone ? <p className="mt-1 text-sm">SĐT {booking.guestPhone}</p> : null}
-        {booking.pmsCode ? (
-          <p className="mt-1 text-sm">
-            {isOpsBookingCode(booking.pmsCode) ? "Mã Ops" : "PMS"} {booking.pmsCode}
-          </p>
-        ) : null}
-        {booking.notes ? <p className="mt-2 text-sm text-[#5c6665]">{booking.notes}</p> : null}
-      </Card>
-
-      {firstActive ? (
-        <Card>
-          <h2 className="mb-2 font-bold">Thanh toán</h2>
-          <BookingPaymentPanel bookingId={booking.id} deposit={booking.deposit} due={booking.due} />
-        </Card>
-      ) : null}
-
-      <Link href={`/sales/bookings/${booking.id}/print`} className="cta-link w-full">
-        In phiếu xác nhận đặt phòng
-      </Link>
-
-      <Card>
-        <h2 className="mb-2 font-bold">Phòng trong booking</h2>
-        <div className="space-y-2">
-          {booking.rooms.map((row, index) => {
-            const quote = booked.lines[index];
-            const active = isActiveSaleStatus(row.status);
-            return (
-              <div key={row.id} className="rounded-xl bg-sand px-3 py-3">
-                <Link href={`/sales/${row.id}`} className="flex min-h-11 items-start justify-between gap-2">
-                  <div>
-                    <p className="font-semibold">
-                      P.{row.room?.number || "—"} · {row.room?.type}
-                    </p>
-                    <p className="text-xs text-[#5c6665]">
-                      {formatVnd(row.rate)}/đêm · {quote.nights} đêm · {formatVnd(quote.total)}
-                    </p>
-                  </div>
-                  <Chip tone={STATUS_TONE[row.status as SaleStatus]}>{SALE_STATUS_LABEL[row.status as SaleStatus]}</Chip>
-                </Link>
-                {active ? (
-                  <div className="mt-2 grid grid-cols-2 gap-2">
-                    {row.status === "reserved" ? (
-                      <form action={checkinSaleAction}>
-                        <input type="hidden" name="id" value={row.id} />
-                        <input type="hidden" name="back" value={back} />
-                        <Btn type="submit" className="w-full" disabled={today < row.checkIn}>
-                          {booking.due ? "Nhận · còn thu" : "Nhận"}
-                        </Btn>
-                      </form>
-                    ) : (
-                      <form action={checkoutSaleAction}>
-                        <input type="hidden" name="id" value={row.id} />
-                        <input type="hidden" name="back" value={back} />
-                        <Btn type="submit" className="w-full">
-                          Trả
-                        </Btn>
-                      </form>
-                    )}
-                    <form action={cancelSaleAction}>
-                      <input type="hidden" name="id" value={row.id} />
-                      <input type="hidden" name="back" value={back} />
-                      <Btn type="submit" variant="ghost" className="w-full">
-                        Hủy phòng
-                      </Btn>
-                    </form>
-                  </div>
+      <div className="booking-desk-grid space-y-3 md:space-y-0">
+        <aside className="booking-desk-side space-y-3">
+          <Card>
+            <p className="text-sm">
+              {formatDateLong(booking.checkIn)} → {formatDateLong(booking.checkOut)} · {booking.nights} đêm
+            </p>
+            <p className="mt-1 text-sm">
+              {booking.adults} NL{booking.children ? ` · ${booking.children} TE` : ""} · tạm tính {formatVnd(booking.subtotal)}
+            </p>
+            {firstActive?.discountKind && firstActive.discountKind !== "none" ? (
+              <p className="mt-1 text-sm text-[#1b7a4e]">
+                Chiết khấu {discountLabel(firstActive.discountKind, firstActive.discountValue)}
+                {booking.discount ? ` −${formatVnd(booking.discount)}` : ""}
+              </p>
+            ) : null}
+            <p className="mt-1 text-sm">Phải thu {formatVnd(booking.total)}</p>
+            {booking.extrasTotal ? (
+              <p className="mt-1 text-sm">
+                Phòng {formatVnd(booking.roomTotal)} · dịch vụ {formatVnd(booking.extrasTotal)}
+              </p>
+            ) : null}
+            {booking.extras.map((row) => (
+              <p key={row.id} className="mt-1 text-xs text-[#5c6665]">
+                {row.name}
+                {extraDetail(row, booking.nights) ? ` · ${extraDetail(row, booking.nights)}` : ""} · {formatVnd(row.amount)}
+              </p>
+            ))}
+            {booking.deposit ? (
+              <p className="mt-1 text-sm text-[#1b7a4e]">Đã đặt cọc {formatVnd(booking.deposit)}</p>
+            ) : (
+              <p className="mt-1 text-sm text-[#c47b12]">Chưa đặt cọc</p>
+            )}
+            <p className="mt-1 text-sm font-semibold">Còn phải thu {formatVnd(booking.due)}</p>
+            {booking.guestPhone ? <p className="mt-1 text-sm">SĐT {booking.guestPhone}</p> : null}
+            {booking.pmsCode ? (
+              <p className="mt-1 text-sm">
+                {isOpsBookingCode(booking.pmsCode) ? "Mã Ops" : "PMS"} {booking.pmsCode}
+              </p>
+            ) : null}
+            {booking.notes ? <p className="mt-2 text-sm text-[#5c6665]">{booking.notes}</p> : null}
+            {firstActive ? (
+              <div className="mt-3 border-t border-line pt-3">
+                <p className="mb-2 text-xs font-semibold text-[#5c6665]">Thanh toán</p>
+                <BookingPaymentPanel bookingId={booking.id} deposit={booking.deposit} due={booking.due} />
+              </div>
+            ) : null}
+            {readyIn.length || staying.length ? (
+              <div className="mt-3 space-y-2 border-t border-line pt-3">
+                {readyIn.length ? (
+                  <form action={checkinBookingAction}>
+                    <input type="hidden" name="bookingId" value={booking.id} />
+                    <Btn type="submit" className="w-full">
+                      {booking.due ? "Nhận · còn thu" : readyIn.length > 1 ? `Nhận ${readyIn.length} phòng` : "Nhận"}
+                    </Btn>
+                  </form>
+                ) : null}
+                {staying.length ? (
+                  <form action={checkoutBookingAction}>
+                    <input type="hidden" name="bookingId" value={booking.id} />
+                    <Btn type="submit" className="w-full">
+                      {staying.length > 1 ? `Trả ${staying.length} phòng` : "Trả"}
+                    </Btn>
+                  </form>
                 ) : null}
               </div>
-            );
-          })}
+            ) : null}
+          </Card>
+
+          {firstActive ? (
+            <div className="flex items-center justify-between gap-3 px-1">
+              <form action={cancelBookingAction}>
+                <input type="hidden" name="bookingId" value={booking.id} />
+                <button type="submit" className="inline-flex min-h-11 items-center text-sm font-semibold text-[#5c6665]">
+                  Hủy booking
+                </button>
+              </form>
+              {canNoShow ? (
+                <form action={cancelBookingAction}>
+                  <input type="hidden" name="bookingId" value={booking.id} />
+                  <input type="hidden" name="asNoShow" value="1" />
+                  <button type="submit" className="inline-flex min-h-11 items-center text-sm font-semibold text-[#c23b3b]">
+                    No-show
+                  </button>
+                </form>
+              ) : null}
+            </div>
+          ) : null}
+        </aside>
+
+        <div className="booking-desk-main space-y-3">
+          <Card>
+            <h2 className="mb-1 font-bold">Phòng trong booking</h2>
+            <BookingRoomList
+              rooms={booking.rooms}
+              quotes={booked.lines}
+              totals={{
+                roomTotal: booking.roomTotal,
+                discount: booking.discount,
+                extrasTotal: booking.extrasTotal,
+                total: booking.total,
+                deposit: booking.deposit,
+                due: booking.due,
+              }}
+            />
+          </Card>
+
+          <Card>
+            <h2 className="mb-1 font-bold">Nhật ký</h2>
+            <p className="mb-3 text-xs text-[#5c6665]">Ai tạo, ai sửa, sửa gì, lúc nào.</p>
+            <BookingLog
+              rows={logs}
+              rooms={Object.fromEntries(rooms.map((room) => [room.id, room.number]))}
+            />
+          </Card>
+
+          {firstActive ? (
+            <Fold title="Dịch vụ / phụ thu" hint={booking.extras.length ? `${booking.extras.length}` : undefined}>
+              <BookingExtrasPanel
+                bookingId={booking.id}
+                nights={booking.nights}
+                types={extraTypes.filter((row) => row.active)}
+                extras={booking.extras}
+              />
+            </Fold>
+          ) : null}
+
+          {firstActive && extraRooms.length ? (
+            <Fold title="Thêm phòng">
+              <p className="mb-2 text-xs text-[#5c6665]">Giữ nguyên khách, ngày, nền tảng. Giá theo bảng hạng phòng thêm.</p>
+              <AddBookingRoomsForm action={addRoomsToBookingAction} rooms={extraRooms} saleId={firstActive.id} />
+            </Fold>
+          ) : null}
+
+          {firstActive ? (
+            <Fold title="Sửa booking">
+              <p className="mb-2 text-xs text-[#5c6665]">Sửa tên, SĐT, số khách, kênh. Đổi số phòng cùng hạng hoặc nâng hạng. Ngày và ăn sáng theo từng phòng. Chiết khấu theo tổng booking.</p>
+              <BookingForm
+                action={updateBookingAction}
+                lines={activeRooms.map((row) => ({
+                  saleId: row.id,
+                  roomId: row.roomId,
+                  number: row.room?.number || "—",
+                  type: row.room?.type || "",
+                  rate: row.rate,
+                  checkIn: row.checkIn,
+                  checkOut: row.checkOut,
+                  breakfast: row.breakfast !== false,
+                  status: row.status,
+                }))}
+                rooms={rooms}
+                types={types}
+                busy={busy}
+                extras={booking.extras}
+                defaults={{
+                  bookingId: booking.id,
+                  guestName: booking.guestName,
+                  guestPhone: booking.guestPhone || "",
+                  source: booking.source,
+                  adults: booking.adults,
+                  children: booking.children,
+                  discountKind: firstActive.discountKind,
+                  discountValue: firstActive.discountValue,
+                  deposit: booking.deposit,
+                  notes: booking.notes || "",
+                }}
+              />
+            </Fold>
+          ) : null}
         </div>
-      </Card>
-
-      {firstActive ? (
-        <Card>
-          <h2 className="mb-2 font-bold">Dịch vụ / phụ thu</h2>
-          <p className="mb-2 text-xs text-[#5c6665]">
-            Phụ thu người lớn, trẻ em, thêm đệm tính theo đêm. Giặt sấy 50k/kg. Phụ thu khác nhập tên và số tiền.
-          </p>
-          <BookingExtrasPanel
-            bookingId={booking.id}
-            nights={booking.nights}
-            types={extraTypes.filter((row) => row.active)}
-            extras={booking.extras}
-          />
-        </Card>
-      ) : null}
-
-      {firstActive && extraRooms.length ? (
-        <Card>
-          <h2 className="mb-2 font-bold">Thêm phòng vào booking</h2>
-          <p className="mb-2 text-xs text-[#5c6665]">Giữ nguyên khách, ngày, nền tảng. Giá theo bảng hạng phòng thêm.</p>
-          <AddBookingRoomsForm action={addRoomsToBookingAction} rooms={extraRooms} saleId={firstActive.id} />
-        </Card>
-      ) : null}
-
-      {firstActive ? (
-        <Card>
-          <h2 className="mb-2 font-bold">Sửa booking</h2>
-          <p className="mb-2 text-xs text-[#5c6665]">Đổi số phòng cùng hạng, nâng hạng, ngày lưu trú, tổng đã thu và chiết khấu. Không sửa thông tin khách. Muốn ghi nhận lần thu mới thì dùng ô Thanh toán phía trên.</p>
-          <BookingForm
-            action={updateBookingAction}
-            lines={activeRooms.map((row) => ({
-              saleId: row.id,
-              roomId: row.roomId,
-              number: row.room?.number || "—",
-              type: row.room?.type || "",
-              rate: row.rate,
-              checkIn: row.checkIn,
-              checkOut: row.checkOut,
-            }))}
-            rooms={rooms}
-            types={types}
-            busy={busy}
-            extras={booking.extras}
-            defaults={{
-              bookingId: booking.id,
-              discountKind: firstActive.discountKind,
-              discountValue: firstActive.discountValue,
-              deposit: booking.deposit,
-              checkIn: booking.checkIn,
-              checkOut: booking.checkOut,
-              canEditCheckIn: activeRooms.every((row) => row.status === "reserved"),
-              canEditCheckOut: true,
-            }}
-          />
-        </Card>
-      ) : null}
-
-      {firstActive ? (
-        <div className="grid grid-cols-2 gap-2">
-          <form action={cancelBookingAction}>
-            <input type="hidden" name="bookingId" value={booking.id} />
-            <Btn type="submit" variant="ghost" className="w-full">
-              Hủy booking
-            </Btn>
-          </form>
-          {canNoShow ? (
-            <form action={cancelBookingAction}>
-              <input type="hidden" name="bookingId" value={booking.id} />
-              <input type="hidden" name="asNoShow" value="1" />
-              <Btn type="submit" variant="danger" className="w-full">
-                No-show
-              </Btn>
-            </form>
-          ) : (
-            <span />
-          )}
-        </div>
-      ) : null}
-
-      <Link href={`/sales?date=${booking.checkIn}`} className="cta-link w-full">
-        Xem sơ đồ ngày nhận
-      </Link>
+      </div>
     </main>
   );
 }

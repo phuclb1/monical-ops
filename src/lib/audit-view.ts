@@ -1,3 +1,4 @@
+import { DISCOUNT_KIND_LABEL, SALE_ORIGIN_LABEL, SALE_SOURCE_LABEL, SALE_STATUS_LABEL } from "./constants";
 import { TZ } from "./datetime";
 
 export const INGEST_ACTOR_ID = "ingest-agent";
@@ -21,6 +22,7 @@ export const AUDIT_ENTITIES = [
   "roster_day",
   "sale_extra",
   "sale_extra_type",
+  "booking",
 ] as const;
 
 export const AUDIT_ACTIONS = [
@@ -68,6 +70,7 @@ export const AUDIT_ENTITY_LABEL: Record<string, string> = {
   roster_day: "Đổi ca ngày",
   sale_extra: "Dịch vụ booking",
   sale_extra_type: "Giá dịch vụ",
+  booking: "Booking",
 };
 
 export const AUDIT_ACTION_LABEL: Record<string, string> = {
@@ -133,6 +136,7 @@ const FIELD_LABEL: Record<string, string> = {
   discountKind: "Chiết khấu",
   discountValue: "Mức CK",
   deposit: "Cọc",
+  breakfast: "Ăn sáng",
   qty: "Số lượng",
   unitPrice: "Đơn giá",
   unit: "Đơn vị",
@@ -163,6 +167,7 @@ const SKIP_FIELDS = new Set([
   "closedBy",
   "acceptedAt",
   "zaloMessage",
+  "bookingId",
 ]);
 
 export type AuditChange = {
@@ -178,10 +183,23 @@ function asRecord(value: unknown): Record<string, unknown> | null {
   return value as Record<string, unknown>;
 }
 
-export function formatAuditValue(value: unknown): string {
+const ENUM_LABEL: Record<string, Record<string, string>> = {
+  source: SALE_SOURCE_LABEL,
+  origin: SALE_ORIGIN_LABEL,
+  status: SALE_STATUS_LABEL,
+  discountKind: DISCOUNT_KIND_LABEL,
+};
+
+const MONEY_FIELDS = new Set(["deposit", "rate", "discountValue", "unitPrice"]);
+
+export function formatAuditValue(value: unknown, key?: string): string {
   if (value === null || value === undefined || value === "") return "—";
+  if (key && typeof value === "string" && ENUM_LABEL[key]?.[value]) return ENUM_LABEL[key][value];
   if (typeof value === "boolean") return value ? "Có" : "Không";
-  if (typeof value === "number") return String(value);
+  if (typeof value === "number") {
+    if (key && MONEY_FIELDS.has(key)) return `${value.toLocaleString("vi-VN")}₫`;
+    return String(value);
+  }
   if (typeof value === "string") {
     if (value.startsWith("data:image")) return "(ảnh)";
     if (value.length > 160) return `${value.slice(0, 157)}…`;
@@ -210,7 +228,10 @@ export function auditChanges(before: unknown, after: unknown): AuditChange[] {
       },
     ];
   }
-  const keys = new Set([...Object.keys(prev ?? {}), ...Object.keys(next ?? {})]);
+  const prevKeys = Object.keys(prev ?? {});
+  const nextKeys = Object.keys(next ?? {});
+  const patchOnly = Boolean(prev && next && nextKeys.length > 0 && nextKeys.length < prevKeys.length);
+  const keys = new Set(patchOnly ? nextKeys : [...prevKeys, ...nextKeys]);
   const rows: AuditChange[] = [];
   for (const key of keys) {
     if (SKIP_FIELDS.has(key)) continue;
@@ -220,8 +241,8 @@ export function auditChanges(before: unknown, after: unknown): AuditChange[] {
     rows.push({
       key,
       label: FIELD_LABEL[key] || key,
-      before: formatAuditValue(left),
-      after: formatAuditValue(right),
+      before: formatAuditValue(left, key),
+      after: formatAuditValue(right, key),
       kind: left === undefined ? "add" : right === undefined ? "remove" : "change",
     });
   }
@@ -251,8 +272,13 @@ export function auditHref(entity: string, entityId: string, before: unknown, aft
       return `/tasks/${entityId}`;
     case "stay":
       return `/reception/${entityId}`;
-    case "room_sale":
-      return `/sales/${entityId}`;
+    case "room_sale": {
+      const bookingId = typeof row.bookingId === "string" && row.bookingId ? row.bookingId : entityId;
+      return `/sales/bookings/${bookingId}`;
+    }
+    case "booking":
+    case "sale_extra":
+      return typeof row.bookingId === "string" && row.bookingId ? `/sales/bookings/${row.bookingId}` : `/sales/bookings/${entityId}`;
     case "room":
       return `/rooms/${entityId}`;
     case "room_type":
@@ -304,4 +330,56 @@ export function actionTone(action: string): "ok" | "warn" | "danger" | "gold" | 
   if (action === "update" || action === "save" || action === "status" || action === "rate" || action === "rename") return "teal";
   if (action === "skip" || action === "no_show" || action === "undo") return "warn";
   return "neutral";
+}
+
+export const BOOKING_LOG_ACTION_LABEL: Record<string, string> = {
+  create: "Tạo",
+  update: "Sửa",
+  delete: "Xóa",
+  checkin: "Nhận phòng",
+  checkout: "Trả phòng",
+  cancel: "Hủy",
+  no_show: "No-show",
+  ingest: "Đồng bộ PMS",
+};
+
+export type AuditLogView = {
+  id: string;
+  entity: string;
+  entityId: string;
+  action: string;
+  actorId: string;
+  actorName: string | null;
+  createdAt: string;
+  before: unknown;
+  after: unknown;
+};
+
+export type BookingLogRow = AuditLogView & { changes: AuditChange[] };
+
+export function collapseAuditBurst(rows: AuditLogView[]): BookingLogRow[] {
+  const out: BookingLogRow[] = [];
+  for (const row of rows) {
+    const changes = auditChanges(row.before, row.after);
+    const last = out[out.length - 1];
+    const close =
+      last &&
+      last.actorId === row.actorId &&
+      last.action === row.action &&
+      last.entity === row.entity &&
+      Math.abs(new Date(last.createdAt).getTime() - new Date(row.createdAt).getTime()) < 400;
+    if (close) {
+      const seen = new Set(last.changes.map((change) => `${change.key}|${change.before}|${change.after}`));
+      for (const change of changes) {
+        const stamp = `${change.key}|${change.before}|${change.after}`;
+        if (!seen.has(stamp)) {
+          last.changes.push(change);
+          seen.add(stamp);
+        }
+      }
+      continue;
+    }
+    out.push({ ...row, changes });
+  }
+  return out;
 }

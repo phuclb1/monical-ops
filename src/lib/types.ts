@@ -75,6 +75,8 @@ export type SaleOrigin = (typeof SALE_ORIGINS)[number];
 export const SALE_SOURCES = [
   "walk_in",
   "phone",
+  "zalo",
+  "facebook",
   "company",
   "ezcloud",
   "booking",

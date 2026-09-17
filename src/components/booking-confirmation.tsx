@@ -21,6 +21,21 @@ function MoneyRow({ label, value }: { label: string; value: number }) {
   );
 }
 
+function SheetHead() {
+  return (
+    <header className="booking-sheet-head">
+      <img src="/logo.png" alt="MONICAL hotel dalat" className="booking-sheet-logo" />
+      <div className="booking-sheet-brand">
+        <p className="booking-sheet-hotel">{HOTEL_LETTERHEAD}</p>
+        <p>Địa chỉ: {HOTEL_ADDRESS}</p>
+        <p>
+          Email: {HOTEL_EMAIL} — ĐT: {HOTEL_PHONE}
+        </p>
+      </div>
+    </header>
+  );
+}
+
 export function BookingConfirmation({ booking }: { booking: Booking }) {
   const quote = bookingQuote(booking.rooms);
   const nights = Math.max(0, nightsBetween(booking.checkIn, booking.checkOut));
@@ -32,16 +47,8 @@ export function BookingConfirmation({ booking }: { booking: Booking }) {
 
   return (
     <article className="booking-sheet">
-      <header className="booking-sheet-head">
-        <img src="/logo.png" alt="MONICAL hotel dalat" className="booking-sheet-logo" />
-        <div className="booking-sheet-brand">
-          <p className="booking-sheet-hotel">{HOTEL_LETTERHEAD}</p>
-          <p>Địa chỉ: {HOTEL_ADDRESS}</p>
-          <p>
-            Email: {HOTEL_EMAIL} — ĐT: {HOTEL_PHONE}
-          </p>
-        </div>
-      </header>
+      <section className="booking-sheet-page">
+        <SheetHead />
 
       <h1>XÁC NHẬN ĐẶT PHÒNG</h1>
       <p className="booking-sheet-code">MÃ ĐẶT PHÒNG: {code}</p>
@@ -118,7 +125,7 @@ export function BookingConfirmation({ booking }: { booking: Booking }) {
               <tr key={row.id}>
                 <td>
                   <div>{row.room?.type || "—"}</div>
-                  <div>{row.room?.number || "—"}</div>
+                  {row.breakfast === false ? <div>Không gồm ăn sáng</div> : <div>Gồm ăn sáng</div>}
                 </td>
                 <td>{formatStayStamp(row.checkIn, CHECK_IN_TIME)}</td>
                 <td>{formatStayStamp(row.checkOut, CHECK_OUT_TIME)}</td>
@@ -143,7 +150,6 @@ export function BookingConfirmation({ booking }: { booking: Booking }) {
         </thead>
         <tbody>
           <MoneyRow label="Tổng tiền phòng" value={quote.subtotal} />
-          <MoneyRow label="Tổng cộng" value={quote.subtotal} />
           <MoneyRow label="Giảm giá" value={quote.discount} />
           {booking.extras.map((row) => (
             <MoneyRow key={row.id} label={row.name} value={row.amount} />
@@ -163,13 +169,11 @@ export function BookingConfirmation({ booking }: { booking: Booking }) {
       <p className="booking-sheet-remain">
         Số tiền còn lại phải thanh toán <strong>{formatVndLetter(booking.due)}</strong>
       </p>
+      </section>
 
-      <h2>Đặt và thanh toán bởi</h2>
-      <p>
-        <strong>{guest}</strong>
-      </p>
-
-      <h2>Điều khoản &amp; Chính sách</h2>
+      <section className="booking-sheet-page">
+        <SheetHead />
+        <h2>Điều khoản &amp; Chính sách</h2>
       <h3>I. Thời gian nhận phòng và trả phòng</h3>
       <p>Giờ nhận phòng: 14h00 (lễ, tết: 15h00) — Giờ trả phòng: 12:00.</p>
       <ul>
@@ -220,6 +224,7 @@ export function BookingConfirmation({ booking }: { booking: Booking }) {
         Trong trường hợp quý khách hàng có thêm yêu cầu xin gửi mail tới địa chỉ: {HOTEL_EMAIL}
       </p>
       <p>Cảm ơn bạn đã sử dụng dịch vụ của chúng tôi!</p>
+      </section>
     </article>
   );
 }

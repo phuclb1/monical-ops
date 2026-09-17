@@ -1,6 +1,7 @@
 import { drizzle, type LibSQLDatabase } from "drizzle-orm/libsql";
 import * as schema from "./schema";
 import { SCHEMA_PATCHES, SCHEMA_SQL } from "./migrate";
+import { rekeyLegacyOpsBookingCodes } from "./ops-codes";
 import { seedIfEmpty } from "./seed";
 
 export type AppDb = LibSQLDatabase<typeof schema>;
@@ -71,6 +72,7 @@ async function prepareD1(db: AppDb) {
     }
   }
   await applyPatches(db);
+  await rekeyLegacyOpsBookingCodes(db);
   await seedIfEmpty(db);
 }
 
@@ -94,6 +96,7 @@ async function prepareLocal(db: AppDb) {
     }
   }
   await applyPatches(db);
+  await rekeyLegacyOpsBookingCodes(db);
   await seedIfEmpty(db);
 }
 

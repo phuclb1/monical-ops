@@ -35,9 +35,21 @@ type QuoteLineInput = {
   rate: number;
   checkIn: string;
   checkOut: string;
+  breakfast?: boolean | null;
   discountKind?: string | null;
   discountValue?: number | null;
 };
+
+export const BREAKFAST_NIGHT_DEDUCT = 100_000;
+
+export function breakfastOffAmount(nights: number, breakfast?: boolean | null) {
+  if (breakfast !== false) return 0;
+  return BREAKFAST_NIGHT_DEDUCT * Math.max(0, nights);
+}
+
+export function nightlyCharge(rate: number, breakfast?: boolean | null) {
+  return Math.max(0, Math.round(rate || 0) - (breakfast === false ? BREAKFAST_NIGHT_DEDUCT : 0));
+}
 
 function allocateAmount(weights: number[], total: number) {
   const sum = weights.reduce((acc, value) => acc + value, 0);
@@ -60,7 +72,10 @@ function allocateAmount(weights: number[], total: number) {
 export function bookingQuote<T extends QuoteLineInput>(rooms: T[]) {
   const lines = rooms.map((row) => {
     const nights = Math.max(0, nightsBetween(row.checkIn, row.checkOut));
-    return { nights, subtotal: Math.max(0, row.rate) * nights };
+    const breakfast = row.breakfast !== false;
+    const breakfastOff = breakfastOffAmount(nights, breakfast);
+    const subtotal = Math.max(0, Math.round(row.rate || 0) * nights - breakfastOff);
+    return { nights, breakfast, breakfastOff, subtotal };
   });
   const subtotal = lines.reduce((sum, line) => sum + line.subtotal, 0);
   const first = rooms[0];
@@ -73,7 +88,7 @@ export function bookingQuote<T extends QuoteLineInput>(rooms: T[]) {
     discount,
   );
   return {
-    nights: lines[0]?.nights || 0,
+    nights: lines.reduce((max, line) => Math.max(max, line.nights), 0),
     subtotal,
     discount,
     total: subtotal - discount,
@@ -81,6 +96,8 @@ export function bookingQuote<T extends QuoteLineInput>(rooms: T[]) {
     discountValue,
     lines: lines.map((line, index) => ({
       nights: line.nights,
+      breakfast: line.breakfast,
+      breakfastOff: line.breakfastOff,
       subtotal: line.subtotal,
       discount: shares[index] || 0,
       total: line.subtotal - (shares[index] || 0),
@@ -191,15 +208,31 @@ export function parseSaleSource(raw: string | null | undefined): SaleSource {
   if (compact.includes("airbnb")) return "airbnb";
   if (compact.includes("booking")) return "booking";
   if (compact.includes("ezcloud") || compact.includes("websitekhachsan")) return "ezcloud";
+  if (compact.includes("zalo")) return "zalo";
+  if (compact.includes("facebook") || compact === "fb") return "facebook";
   if (compact.includes("walk") || compact.includes("vanglai") || compact.includes("walkin")) return "walk_in";
   if (compact.includes("phone") || compact.includes("dienthoai")) return "phone";
   if (compact.includes("company") || compact.includes("congty") || compact.includes("corporate") || compact.includes("doan")) return "company";
-  if (compact.includes("ota") || compact.includes("tiktok") || compact.includes("facebook") || compact.includes("zalo")) return "ota";
+  if (compact.includes("ota") || compact.includes("tiktok")) return "ota";
   return "ota";
 }
 
+export function formatOpsBookingCode(seq: number, month: number | string) {
+  const mm = String(month).padStart(2, "0");
+  return `Bk-${Math.max(1, Math.round(seq))}/${mm}`;
+}
+
+export function parseOpsBookingCode(code: string | null | undefined) {
+  const match = String(code || "").trim().match(/^Bk-(\d+)\/(\d{1,2})$/i);
+  if (!match) return null;
+  return { seq: Number(match[1]), month: Number(match[2]) };
+}
+
 export function isOpsBookingCode(code: string | null | undefined) {
-  return String(code || "").toUpperCase().startsWith("OPS-");
+  const value = String(code || "").trim();
+  if (!value) return false;
+  if (/^OPS-/i.test(value)) return true;
+  return Boolean(parseOpsBookingCode(value));
 }
 
 export function bookingKey(sale: { id: string; bookingId?: string | null }) {

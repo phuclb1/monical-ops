@@ -107,7 +107,7 @@ Trạng thái: `pass` · `fail` · `skip` (chưa chạy vòng này).
 | TC-107 | Booking An Phú: CK 10%, chưa cọc, còn thu 2.250.000₫ | `tuyen` | pass | `4881717-dirty` | [TC-107.png](evidence/R-20260916-2/TC-107.png) |
 | TC-108 | Booking Đặng: đã cọc 500.000₫, còn thu 1.900.000₫ | `tuyen` | pass | `4881717-dirty` | [TC-108.png](evidence/R-20260916-2/TC-108.png) |
 | TC-109 | Form bán nhiều phòng + cọc / còn phải thu | `tuyen` | pass | `4881717-dirty` | [TC-109.png](evidence/R-20260916-2/TC-109.png) |
-| TC-110 | Sửa booking: cùng hạng / nâng hạng, không sửa khách | `tuyen` | pass | `4881717-dirty` | [TC-110.png](evidence/R-20260916-2/TC-110.png) |
+| TC-110 | Sửa booking: thông tin khách + nhật ký | `tuyen` | pass | `4881717-dirty` | [TC-110.png](evidence/R-20260916-2/TC-110.png) |
 | TC-111 | Chi tiết booking có Hủy booking / No-show | `tuyen` | pass | `4881717-dirty` | [TC-111.png](evidence/R-20260916-2/TC-111.png) |
 | TC-114 | Booking 2 phòng Đoàn Minh Châu P.304 + P.404 | `tuyen` | pass | `4881717-dirty` | [TC-114.png](evidence/R-20260916-2/TC-114.png) |
 | TC-115 | Lọc ezCloud ẩn chỗ Ops đêm nay | `tuyen` | pass | `4881717-dirty` | [TC-115.png](evidence/R-20260916-2/TC-115.png) |
@@ -188,15 +188,15 @@ Dùng sau `npm run db:reseed-local`.
 | TC-105 | `/sales?view=week` | Tuần sơ đồ · Đêm trống · booking Đặng / An Phú |
 | TC-106 | `/sales?view=month` | Tháng sơ đồ · Đêm đã bán |
 | TC-107 | `/sales/bookings/sale-506` | CK 10% · Chưa đặt cọc · Còn phải thu 2.250.000₫ |
-| TC-108 | `/sales/bookings/sale-401` | Đã đặt cọc 500.000₫ · Còn phải thu 1.900.000₫ · Thu thêm · Thu đủ |
+| TC-108 | `/sales/bookings/sale-401` | Đã đặt cọc 500.000₫ · Còn phải thu 1.900.000₫ · Thanh toán · Thu đủ |
 | TC-109 | `/sales/new` chọn 2 phòng | Đã chọn 2 phòng · chiết khấu tổng booking · cọc / còn thu |
-| TC-110 | `/sales/bookings/sale-401` | Cùng hạng · Nâng hạng · không ô tên khách |
+| TC-110 | `/sales/bookings/sale-401` | Cùng hạng · Nâng hạng · Họ tên · SĐT · Nhật ký Tạo |
 | TC-111 | `/sales/bookings/sale-508` | Hủy booking · No-show · In xác nhận |
 | TC-114 | `/sales/bookings/bk-doan` | 2 phòng · P.304 · P.404 · đã cọc · còn phải thu |
 | TC-115 | `/sales?origin=ezcloud` | Không khớp bộ lọc (chỗ bán seed là Ops) |
 | TC-116 | `/sales` | Giữ chỗ 14 ngày tới · Mai Thanh Hà |
 | TC-117 | `/sales?focus=arriving` | Check-in hôm nay · Công ty An Phú |
-| TC-118 | `/sales/bookings/bk-doan/print` | Phiếu XÁC NHẬN ĐẶT PHÒNG · FAMILY 304/404 · điều khoản · In phiếu · Tải PDF |
+| TC-118 | `/sales/bookings/bk-doan/print` | Phiếu XÁC NHẬN ĐẶT PHÒNG · FAMILY · hạng phòng · điều khoản · In phiếu · Tải PDF |
 | TC-20 | `/tasks` | 3 việc HK cũ **và** Nhận P.105 · Trả P.102 |
 | TC-21 | `/tasks` | Việc quản lý: *Cần thêm HK ca này — tầng 2 và 3* |
 | TC-30 | `/kitchen` | Ngày mai 7 NL · 2 TE · chay 2 · dị ứng 1 |

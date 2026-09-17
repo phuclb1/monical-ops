@@ -199,12 +199,12 @@ try {
 
   await check("TC-93", "Sơ đồ bán phòng lễ tân", async (shot) => {
     await go("/sales");
-    await must(shot, ["Bán phòng", "Trống", "Đang ở", "Sẽ đến", "Phòng bẩn", "Đặt phòng"]);
+    await must(shot, ["Sơ đồ phòng", "Trống", "Đang ở", "Sẽ đến", "Phòng bẩn", "Đặt phòng"]);
   });
 
-  await check("TC-100", "Lọc nguồn Ops / ezCloud", async (shot) => {
+  await check("TC-100", "Lọc nguồn Trực tiếp / OTA", async (shot) => {
     await go("/sales");
-    await must(shot, ["Ops", "ezCloud"]);
+    await must(shot, ["Trực tiếp", "OTA"]);
   });
 
   await check("TC-102", "Quick filter bán phòng", async (shot) => {
@@ -227,14 +227,16 @@ try {
     await must(shot, ["Check-in hôm nay", "Công ty An Phú"]);
   });
 
-  await check("TC-115", "Lọc ezCloud ẩn chỗ Ops đêm nay", async (shot) => {
+  await check("TC-115", "Lọc OTA ẩn chỗ trực tiếp", async (shot) => {
     await go("/sales?origin=ezcloud");
-    await must(shot, ["ezCloud", "Không khớp bộ lọc"]);
+    await must(shot, ["OTA", "Không khớp bộ lọc"]);
   });
 
-  await check("TC-105", "Gantt tuần", async (shot) => {
-    await go("/sales?view=week");
-    await must(shot, ["Tuần sơ đồ", "ĐÊM TRỐNG", "ĐÊM ĐÃ BÁN", "Booking trong khung", "Đặng Minh Tuấn", "Công ty An Phú"]);
+  await check("TC-105", "Gantt 7 / 15 ngày", async (shot) => {
+    await go("/sales");
+    await must(shot, ["7 ngày sơ đồ", "ĐÊM TRỐNG", "ĐÊM ĐÃ BÁN", "Booking trong khung", "Đặng Minh Tuấn", "Công ty An Phú"]);
+    await go("/sales?view=15");
+    await must(shot, ["15 ngày sơ đồ", "ĐÊM TRỐNG", "ĐÊM ĐÃ BÁN"]);
   });
 
   await check("TC-106", "Gantt tháng", async (shot) => {
@@ -247,9 +249,9 @@ try {
     await must(shot, ["Đặng Minh Tuấn", "Công ty An Phú"]);
   });
 
-  await check("TC-116", "Giữ chỗ 14 ngày — Mai Thanh Hà", async (shot) => {
+  await check("TC-116", "Booking Mai Thanh Hà trên sơ đồ", async (shot) => {
     await go("/sales");
-    await must(shot, ["Giữ chỗ 14 ngày tới", "Mai Thanh Hà"]);
+    await must(shot, ["Mai Thanh Hà", "Booking trong khung"]);
   });
 
   await check("TC-101", "Danh sách đặt phòng / booking", async (shot) => {
@@ -269,14 +271,17 @@ try {
 
   await check("TC-108", "Booking Đặng — đã cọc, còn phải thu", async (shot) => {
     await go("/sales/bookings/sale-401");
-    await must(shot, ["Đặng Minh Tuấn", "Đã đặt cọc", "500.000₫", "Còn phải thu", "1.900.000₫", "Thanh toán", "Ghi nhận thu thêm", "Thu đủ"]);
+    await must(shot, ["Đặng Minh Tuấn", "Đã đặt cọc", "500.000₫", "Còn phải thu", "1.900.000₫", "Thanh toán", "Thu đủ"]);
   });
 
-  await check("TC-110", "Sửa booking: cùng hạng / nâng hạng, không sửa khách", async (shot) => {
+  await check("TC-110", "Sửa booking: thông tin khách + nhật ký", async (shot) => {
     await go("/sales/bookings/sale-401");
-    await must(shot, ["Sửa booking", "Đổi số phòng cùng hạng, nâng hạng", "Không sửa thông tin khách", "Đặt cọc", "Chiết khấu", "Lưu booking"]);
-    if (await page.locator('input[name="guestName"]').count()) {
-      throw new Error("Form sửa booking vẫn có ô tên khách");
+    await must(shot, ["Nhật ký", "Tạo", "Đặng Minh Tuấn"]);
+    await page.locator("summary", { hasText: "Sửa booking" }).click();
+    await ready();
+    await must(shot, ["Sửa booking", "Họ tên", "SĐT", "Người lớn", "Đổi số phòng cùng hạng hoặc nâng hạng", "Đặt cọc", "Chiết khấu", "Lưu booking"]);
+    if (!(await page.locator('input[name="guestName"]').count())) {
+      throw new Error("Form sửa booking thiếu ô tên khách");
     }
   });
 
@@ -292,8 +297,7 @@ try {
       "Đoàn Minh Châu",
       "MONICAL Hotel Dalat",
       "FAMILY",
-      "304",
-      "404",
+      "Gồm ăn sáng",
       "Điều khoản",
       "In phiếu",
       "Tải PDF",
@@ -315,7 +319,7 @@ try {
     await page.locator('input[name="roomId"][type="checkbox"]').nth(1).check();
     await ready();
     await must(shot, [
-      "Phòng · chọn nhiều cho cùng booking",
+      "Hạng phòng · chọn 1 hoặc nhiều phòng",
       "Đã chọn 2 phòng",
       "Chiết khấu tính trên tổng booking",
       "Chưa đặt cọc",
@@ -428,7 +432,7 @@ try {
 
   await check("TC-97", "Quản lý sơ đồ bán + giá phòng", async (shot) => {
     await go("/sales");
-    await must(shot, ["Bán phòng", "Đặng Minh Tuấn"]);
+    await must(shot, ["Sơ đồ phòng", "Đặng Minh Tuấn"]);
     await go("/sales/rates");
     await must(shot, ["Giá phòng", "Ngày thường", "Cuối tuần"]);
   });

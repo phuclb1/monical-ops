@@ -55,6 +55,7 @@ CREATE TABLE IF NOT EXISTS room_sales (
   discount_kind TEXT NOT NULL DEFAULT 'none',
   discount_value INTEGER NOT NULL DEFAULT 0,
   deposit INTEGER NOT NULL DEFAULT 0,
+  breakfast INTEGER NOT NULL DEFAULT 1,
   pms_code TEXT,
   notes TEXT,
   created_at TEXT NOT NULL,
@@ -420,4 +421,5 @@ export const SCHEMA_PATCHES = [
   created_by TEXT
 )`,
   "CREATE INDEX IF NOT EXISTS sale_extras_booking ON sale_extras (booking_id)",
+  "ALTER TABLE room_sales ADD COLUMN breakfast INTEGER NOT NULL DEFAULT 1",
 ];
