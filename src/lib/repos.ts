@@ -773,6 +773,7 @@ type SaleInput = {
   breakfasts?: Record<string, boolean>;
   discountKind?: string;
   discountValue?: number;
+  discounts?: Record<string, { kind?: string; value?: number }>;
   deposit?: number;
   pmsCode?: string;
   notes?: string;
@@ -785,7 +786,11 @@ function saleLineWindow(data: SaleInput, roomId: string) {
   const checkOut = data.dates?.[roomId]?.checkOut || data.checkOut;
   const breakfast = data.breakfasts?.[roomId] ?? true;
   const rate = Math.max(0, data.rates?.[roomId] ?? data.rate);
-  return { checkIn, checkOut, breakfast, rate };
+  const { discountKind, discountValue } = normalizeDiscount(
+    data.discounts?.[roomId]?.kind ?? data.discountKind,
+    data.discounts?.[roomId]?.value ?? data.discountValue,
+  );
+  return { checkIn, checkOut, breakfast, rate, discountKind, discountValue };
 }
 
 function uniqueSaleRoomIds(data: SaleInput) {
@@ -950,6 +955,7 @@ function toBookingView(id: string, rooms: Awaited<ReturnType<typeof listRoomSale
     nights,
     subtotal: quote.subtotal,
     discount: quote.discount,
+    breakfastOff: quote.breakfastOff,
     roomTotal: quote.total,
     extras: [] as ReturnType<typeof decorateExtras>,
     extrasTotal: 0,
@@ -1192,7 +1198,6 @@ export async function createRoomSale(user: SessionUser, data: SaleInput) {
     rooms.push({ room: await assertSaleWindow(line.roomId, line.checkIn, line.checkOut), ...line });
   }
   const today = todayVN();
-  const { discountKind, discountValue } = normalizeDiscount(data.discountKind, data.discountValue);
   const bookingId = data.bookingId?.trim() || nid();
   const now = nowISO();
   const db = await getDb();
@@ -1206,8 +1211,8 @@ export async function createRoomSale(user: SessionUser, data: SaleInput) {
       checkIn: row.checkIn,
       checkOut: row.checkOut,
       breakfast: row.breakfast,
-      discountKind,
-      discountValue,
+      discountKind: row.discountKind,
+      discountValue: row.discountValue,
     })),
   ).total;
   const ids: string[] = [];
@@ -1228,8 +1233,8 @@ export async function createRoomSale(user: SessionUser, data: SaleInput) {
       adults: Math.max(1, data.adults || 1),
       children: Math.max(0, data.children || 0),
       rate: row.rate,
-      discountKind,
-      discountValue,
+      discountKind: row.discountKind,
+      discountValue: row.discountValue,
       deposit,
       breakfast: row.breakfast,
       pmsCode,
@@ -1292,8 +1297,7 @@ export async function addRoomsToBooking(user: SessionUser, saleId: string, roomI
     rate: before.rate,
     rates,
     breakfasts: Object.fromEntries(ids.map((id) => [id, before.breakfast !== false])),
-    discountKind: before.discountKind,
-    discountValue: before.discountValue,
+    discounts: Object.fromEntries(ids.map((id) => [id, { kind: "none", value: 0 }])),
     deposit: before.deposit,
     pmsCode: before.pmsCode || "",
     notes: before.notes || "",
@@ -1344,8 +1348,6 @@ export async function updateRoomSale(user: SessionUser, id: string, data: SaleIn
     guestPhone: patch.guestPhone,
     origin: patch.origin,
     source: patch.source,
-    discountKind: patch.discountKind,
-    discountValue: patch.discountValue,
     deposit: patch.deposit,
     pmsCode: patch.pmsCode,
     notes: patch.notes,
@@ -1364,7 +1366,7 @@ export async function updateBooking(
   user: SessionUser,
   bookingId: string,
   data: {
-    assignments: { saleId: string; roomId: string; checkIn?: string; checkOut?: string; breakfast?: boolean }[];
+    assignments: { saleId: string; roomId: string; checkIn?: string; checkOut?: string; breakfast?: boolean; discountKind?: string; discountValue?: number }[];
     guestName?: string;
     guestPhone?: string;
     source?: string;
@@ -1394,7 +1396,6 @@ export async function updateBooking(
   const guestPhone = data.guestPhone !== undefined ? data.guestPhone.trim() || null : hit.guestPhone;
   const adults = Math.max(1, data.adults ?? hit.adults ?? 1);
   const children = Math.max(0, data.children ?? hit.children ?? 0);
-  const { discountKind, discountValue } = normalizeDiscount(data.discountKind, data.discountValue);
   const deposit = Math.max(0, data.deposit || 0);
   const notes = data.notes !== undefined ? data.notes.trim() || null : undefined;
   const roomById = new Map(rooms.map((room) => [room.id, room]));
@@ -1420,6 +1421,10 @@ export async function updateBooking(
       kind === "upgrade"
         ? catalogRate(types.find((type) => type.name === next.type), nextIn) || row.rate
         : row.rate;
+    const { discountKind, discountValue } = normalizeDiscount(
+      assignment?.discountKind ?? row.discountKind,
+      assignment?.discountValue ?? row.discountValue,
+    );
     const patch = {
       roomId: next.id,
       guestName,

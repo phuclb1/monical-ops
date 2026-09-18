@@ -37,7 +37,7 @@ export default async function NewSalePage({
             </Link>
           </div>
           <h1 className="mt-1 text-xl font-bold">Đặt phòng</h1>
-          <p className="text-xs text-[#5c6665] md:text-sm">Chọn hạng / phòng, ngày từng phòng, ăn sáng và chiết khấu theo booking. Khách chỉ thấy hạng phòng trên phiếu in.</p>
+          <p className="text-xs text-[#5c6665] md:text-sm">Chọn hạng / phòng, ngày, ăn sáng và chiết khấu từng phòng. Khách chỉ thấy hạng phòng trên phiếu in.</p>
         </div>
       </div>
       {error ? <p className="text-sm text-[#c23b3b]">{error}</p> : null}

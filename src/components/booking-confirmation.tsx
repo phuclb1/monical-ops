@@ -133,7 +133,11 @@ export function BookingConfirmation({ booking }: { booking: Booking }) {
                 <td>
                   {row.adults}/{row.children}
                 </td>
-                <td className="booking-sheet-num">{formatVndLetter(row.rate)}</td>
+                <td className="booking-sheet-num">
+                  {formatVndLetter(row.rate)}
+                  {line?.breakfastOff ? <div>Không ăn sáng −{formatVndLetter(line.breakfastOff)}</div> : null}
+                  {line?.discount ? <div>Chiết khấu −{formatVndLetter(line.discount)}</div> : null}
+                </td>
               </tr>
             );
           })}
@@ -149,8 +153,9 @@ export function BookingConfirmation({ booking }: { booking: Booking }) {
           </tr>
         </thead>
         <tbody>
-          <MoneyRow label="Tổng tiền phòng" value={quote.subtotal} />
-          <MoneyRow label="Giảm giá" value={quote.discount} />
+          <MoneyRow label="Tổng tiền phòng" value={quote.subtotal + quote.breakfastOff} />
+          {quote.breakfastOff ? <MoneyRow label="Không ăn sáng" value={quote.breakfastOff} /> : null}
+          {quote.discount ? <MoneyRow label="Giảm giá" value={quote.discount} /> : null}
           {booking.extras.map((row) => (
             <MoneyRow key={row.id} label={row.name} value={row.amount} />
           ))}

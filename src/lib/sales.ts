@@ -24,7 +24,7 @@ export function parseDiscountKind(value: FormDataEntryValue | string | null | un
   return "none";
 }
 
-export function normalizeDiscount(kind: string | undefined, value: number | undefined) {
+export function normalizeDiscount(kind: string | null | undefined, value: number | null | undefined) {
   const discountKind = parseDiscountKind(kind);
   const discountValue = Math.max(0, Math.round(value || 0));
   if (discountKind === "percent" && discountValue > 100) throw new Error("Chiết khấu tối đa 100%");
@@ -51,22 +51,11 @@ export function nightlyCharge(rate: number, breakfast?: boolean | null) {
   return Math.max(0, Math.round(rate || 0) - (breakfast === false ? BREAKFAST_NIGHT_DEDUCT : 0));
 }
 
-function allocateAmount(weights: number[], total: number) {
-  const sum = weights.reduce((acc, value) => acc + value, 0);
-  if (total <= 0 || sum <= 0) return weights.map(() => 0);
-  const raw = weights.map((weight) => (weight / sum) * total);
-  const floors = raw.map((value) => Math.floor(value));
-  let remain = total - floors.reduce((acc, value) => acc + value, 0);
-  const order = raw
-    .map((value, index) => ({ index, frac: value - Math.floor(value) }))
-    .sort((a, b) => b.frac - a.frac || a.index - b.index);
-  const out = [...floors];
-  for (const item of order) {
-    if (remain <= 0) break;
-    out[item.index] += 1;
-    remain -= 1;
-  }
-  return out;
+function lineDiscount(subtotal: number, kind: string | null | undefined, value: number | null | undefined) {
+  const { discountKind, discountValue } = normalizeDiscount(kind ?? undefined, value ?? undefined);
+  if (discountKind === "percent") return Math.round(subtotal * discountValue / 100);
+  if (discountKind === "amount") return discountValue;
+  return 0;
 }
 
 export function bookingQuote<T extends QuoteLineInput>(rooms: T[]) {
@@ -74,39 +63,40 @@ export function bookingQuote<T extends QuoteLineInput>(rooms: T[]) {
     const nights = Math.max(0, nightsBetween(row.checkIn, row.checkOut));
     const breakfast = row.breakfast !== false;
     const breakfastOff = breakfastOffAmount(nights, breakfast);
-    const subtotal = Math.max(0, Math.round(row.rate || 0) * nights - breakfastOff);
-    return { nights, breakfast, breakfastOff, subtotal };
+    const gross = Math.max(0, Math.round(row.rate || 0) * nights);
+    const subtotal = Math.max(0, gross - breakfastOff);
+    const { discountKind, discountValue } = normalizeDiscount(row.discountKind, row.discountValue);
+    const discount = Math.min(subtotal, Math.max(0, lineDiscount(subtotal, discountKind, discountValue)));
+    return { nights, breakfast, breakfastOff, gross, subtotal, discount, total: subtotal - discount, discountKind, discountValue };
   });
   const subtotal = lines.reduce((sum, line) => sum + line.subtotal, 0);
-  const first = rooms[0];
-  const { discountKind, discountValue } = normalizeDiscount(first?.discountKind || "none", first?.discountValue || 0);
-  const raw =
-    discountKind === "percent" ? Math.round(subtotal * discountValue / 100) : discountKind === "amount" ? discountValue : 0;
-  const discount = Math.min(subtotal, Math.max(0, raw));
-  const shares = allocateAmount(
-    lines.map((line) => line.subtotal),
-    discount,
-  );
+  const discount = lines.reduce((sum, line) => sum + line.discount, 0);
+  const breakfastOff = lines.reduce((sum, line) => sum + line.breakfastOff, 0);
+  const firstCk = lines.find((line) => line.discountKind !== "none") || lines[0];
   return {
     nights: lines.reduce((max, line) => Math.max(max, line.nights), 0),
     subtotal,
     discount,
+    breakfastOff,
     total: subtotal - discount,
-    discountKind,
-    discountValue,
-    lines: lines.map((line, index) => ({
+    discountKind: firstCk?.discountKind || "none",
+    discountValue: firstCk?.discountValue || 0,
+    lines: lines.map((line) => ({
       nights: line.nights,
       breakfast: line.breakfast,
       breakfastOff: line.breakfastOff,
+      gross: line.gross,
       subtotal: line.subtotal,
-      discount: shares[index] || 0,
-      total: line.subtotal - (shares[index] || 0),
+      discount: line.discount,
+      total: line.total,
+      discountKind: line.discountKind,
+      discountValue: line.discountValue,
     })),
   };
 }
 
 export function quoteLinesBySaleId<T extends QuoteLineInput & { id: string; bookingId?: string | null }>(sales: T[]) {
-  const map = new Map<string, { nights: number; subtotal: number; discount: number; total: number }>();
+  const map = new Map<string, ReturnType<typeof bookingQuote>["lines"][number]>();
   for (const { rooms } of groupByBooking(sales)) {
     const quote = bookingQuote(rooms);
     rooms.forEach((room, index) => map.set(room.id, quote.lines[index]));

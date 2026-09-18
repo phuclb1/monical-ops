@@ -189,7 +189,7 @@ Dùng sau `npm run db:reseed-local`.
 | TC-106 | `/sales?view=month` | Tháng sơ đồ · Đêm đã bán |
 | TC-107 | `/sales/bookings/sale-506` | CK 10% · Chưa đặt cọc · Còn phải thu 2.250.000₫ |
 | TC-108 | `/sales/bookings/sale-401` | Đã đặt cọc 500.000₫ · Còn phải thu 1.900.000₫ · Thanh toán · Thu đủ |
-| TC-109 | `/sales/new` chọn 2 phòng | Đã chọn 2 phòng · chiết khấu tổng booking · cọc / còn thu |
+| TC-109 | `/sales/new` chọn 2 phòng | Đã chọn 2 phòng · chiết khấu từng phòng · cọc / còn thu |
 | TC-110 | `/sales/bookings/sale-401` | Cùng hạng · Nâng hạng · Họ tên · SĐT · Nhật ký Tạo |
 | TC-111 | `/sales/bookings/sale-508` | Hủy booking · No-show · In xác nhận |
 | TC-114 | `/sales/bookings/bk-doan` | 2 phòng · P.304 · P.404 · đã cọc · còn phải thu |

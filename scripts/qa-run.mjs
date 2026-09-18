@@ -321,10 +321,16 @@ try {
     await must(shot, [
       "Hạng phòng · chọn 1 hoặc nhiều phòng",
       "Đã chọn 2 phòng",
-      "Chiết khấu tính trên tổng booking",
+      "Chiết khấu",
       "Chưa đặt cọc",
       "Còn phải thu",
     ]);
+    const breakfast = page.locator('input[name^="breakfast-"][type="checkbox"]').first();
+    if (await breakfast.count()) {
+      await breakfast.uncheck();
+      await ready();
+      await must(shot, ["Không ăn sáng", "100.000₫"]);
+    }
   });
 
   await check("TC-96", "Lễ tân không sửa giá phòng", async (shot) => {

@@ -33,6 +33,7 @@ type QuoteLine = {
   discount: number;
   total: number;
   breakfastOff?: number;
+  gross?: number;
 };
 
 function roomView(row: RoomRow, quote?: QuoteLine) {
@@ -47,18 +48,26 @@ function Totals({
   totals: {
     roomTotal: number;
     discount: number;
+    breakfastOff?: number;
     extrasTotal: number;
     total: number;
     deposit: number;
     due: number;
   };
 }) {
+  const breakfastOff = totals.breakfastOff || 0;
   return (
     <ul className="booking-sum">
       <li>
         <span>Tổng tiền phòng</span>
-        <span>{formatVnd(totals.roomTotal + totals.discount)}</span>
+        <span>{formatVnd(totals.roomTotal + totals.discount + breakfastOff)}</span>
       </li>
+      {breakfastOff ? (
+        <li className="is-bf-off">
+          <span>Không ăn sáng</span>
+          <span>−{formatVnd(breakfastOff)}</span>
+        </li>
+      ) : null}
       {totals.discount ? (
         <li className="is-off">
           <span>Giảm giá</span>
@@ -97,6 +106,7 @@ export function BookingRoomList({
   totals: {
     roomTotal: number;
     discount: number;
+    breakfastOff?: number;
     extrasTotal: number;
     total: number;
     deposit: number;
@@ -128,17 +138,14 @@ export function BookingRoomList({
                 </div>
               </div>
               <div className="booking-room-money">
-                <p className="booking-room-rate">{formatVnd(row.rate)}</p>
+                <p className="booking-room-rate">{formatVnd(row.rate)}/đêm</p>
+                {quote?.breakfastOff ? (
+                  <p className="booking-room-bf-cut">Không ăn sáng −{formatVnd(quote.breakfastOff)}</p>
+                ) : null}
                 {quote?.discount ? (
-                  <>
-                    {ck ? <Chip tone="gold">{ck}</Chip> : null}
-                    <p className="booking-room-off">
-                      <span className="booking-room-cut">{formatVnd(quote.subtotal)}</span>
-                      <br />−{formatVnd(quote.discount)}
-                    </p>
-                  </>
-                ) : quote?.breakfastOff ? (
-                  <p className="booking-room-off">−{formatVnd(quote.breakfastOff)}</p>
+                  <p className="booking-room-off">
+                    Chiết khấu{ck ? ` ${ck}` : ""} −{formatVnd(quote.discount)}
+                  </p>
                 ) : null}
                 <p className="booking-room-total">{formatVnd(quote?.total ?? 0)}</p>
               </div>
@@ -162,7 +169,7 @@ export function BookingRoomList({
           </thead>
           <tbody>
             {rooms.map((row, index) => {
-              const { breakfast, quote } = roomView(row, quotes[index]);
+              const { breakfast, ck, quote } = roomView(row, quotes[index]);
               return (
                 <tr key={row.id}>
                   <td>
@@ -178,9 +185,16 @@ export function BookingRoomList({
                   <td className="is-num booking-room-nights">{quote?.nights ?? 0}</td>
                   <td>
                     <span className={breakfast ? "booking-room-bf" : "booking-room-bf is-off"}>{breakfast ? "✓ Có" : "Không"}</span>
-                    {quote?.breakfastOff ? <p className="booking-room-off">−{formatVnd(quote.breakfastOff)}</p> : null}
+                    {quote?.breakfastOff ? <p className="booking-room-bf-cut">−{formatVnd(quote.breakfastOff)}</p> : null}
                   </td>
-                  <td className="is-num">{formatVnd(row.rate)}</td>
+                  <td className="is-num">
+                    {formatVnd(row.rate)}
+                    {quote?.discount ? (
+                      <p className="booking-room-off">
+                        Chiết khấu{ck ? ` ${ck}` : ""} −{formatVnd(quote.discount)}
+                      </p>
+                    ) : null}
+                  </td>
                   <td className="is-num booking-room-total">{formatVnd(quote?.total ?? 0)}</td>
                   <td>
                     <Chip tone={STATUS_TONE[row.status as SaleStatus]}>{SALE_STATUS_LABEL[row.status as SaleStatus]}</Chip>

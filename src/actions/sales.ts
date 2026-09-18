@@ -44,6 +44,7 @@ function saleFromForm(formData: FormData) {
   const rates: Record<string, number> = {};
   const dates: Record<string, { checkIn: string; checkOut: string }> = {};
   const breakfasts: Record<string, boolean> = {};
+  const discounts: Record<string, { kind: string; value: number }> = {};
   for (const key of formData.keys()) {
     if (!key.startsWith("rate-")) continue;
     const roomId = key.slice(5);
@@ -60,6 +61,10 @@ function saleFromForm(formData: FormData) {
     breakfasts[id] = formData.getAll(`breakfast-${id}`).length
       ? formData.getAll(`breakfast-${id}`).map(String).includes("1")
       : true;
+    discounts[id] = {
+      kind: parseDiscountKind(formData.get(`discountKind-${id}`) || formData.get("discountKind")),
+      value: parseMoney(formData.get(`discountValue-${id}`) ?? formData.get("discountValue")),
+    };
   }
   return {
     roomId: roomIds[0] || "",
@@ -67,6 +72,7 @@ function saleFromForm(formData: FormData) {
     rates,
     dates,
     breakfasts,
+    discounts,
     guestName: String(formData.get("guestName") || ""),
     guestPhone: String(formData.get("guestPhone") || ""),
     source: String(formData.get("source") || "walk_in"),
@@ -227,6 +233,8 @@ export async function updateBookingAction(formData: FormData) {
     checkIn: String(formData.get(`checkIn-${saleId}`) || ""),
     checkOut: String(formData.get(`checkOut-${saleId}`) || ""),
     breakfast: formData.getAll(`breakfast-${saleId}`).map(String).includes("1"),
+    discountKind: parseDiscountKind(formData.get(`discountKind-${saleId}`)),
+    discountValue: parseMoney(formData.get(`discountValue-${saleId}`)),
   }));
   try {
     await repo.updateBooking(user, bookingId, {
@@ -236,8 +244,6 @@ export async function updateBookingAction(formData: FormData) {
       source: String(formData.get("source") || ""),
       adults: Number(formData.get("adults") || 1),
       children: Number(formData.get("children") || 0),
-      discountKind: parseDiscountKind(formData.get("discountKind")),
-      discountValue: parseMoney(formData.get("discountValue")),
       deposit: parseMoney(formData.get("deposit")),
       notes: String(formData.get("notes") || ""),
     });

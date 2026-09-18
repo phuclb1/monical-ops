@@ -19,7 +19,7 @@ import { formatDateLong, todayVN } from "@/lib/datetime";
 import { extraDetail } from "@/lib/extras";
 import { can } from "@/lib/permissions";
 import { getBooking, listBookingLogs, listRooms, listRoomSales, listRoomTypes, listSaleExtraTypes } from "@/lib/repos";
-import { bookingQuote, discountLabel, formatVnd, isActiveSaleStatus, isOpsBookingCode } from "@/lib/sales";
+import { bookingQuote, formatVnd, isActiveSaleStatus, isOpsBookingCode } from "@/lib/sales";
 import type { SaleOrigin, SaleSource, SaleStatus } from "@/lib/types";
 
 const STATUS_TONE: Record<SaleStatus, "ok" | "warn" | "danger" | "gold" | "neutral"> = {
@@ -108,11 +108,11 @@ export default async function BookingDetailPage({
             <p className="mt-1 text-sm">
               {booking.adults} NL{booking.children ? ` · ${booking.children} TE` : ""} · tạm tính {formatVnd(booking.subtotal)}
             </p>
-            {firstActive?.discountKind && firstActive.discountKind !== "none" ? (
-              <p className="mt-1 text-sm text-[#1b7a4e]">
-                Chiết khấu {discountLabel(firstActive.discountKind, firstActive.discountValue)}
-                {booking.discount ? ` −${formatVnd(booking.discount)}` : ""}
-              </p>
+            {booking.breakfastOff ? (
+              <p className="mt-1 text-sm text-[#c47b12]">Không ăn sáng −{formatVnd(booking.breakfastOff)}</p>
+            ) : null}
+            {booking.discount ? (
+              <p className="mt-1 text-sm text-[#1b7a4e]">Chiết khấu −{formatVnd(booking.discount)}</p>
             ) : null}
             <p className="mt-1 text-sm">Phải thu {formatVnd(booking.total)}</p>
             {booking.extrasTotal ? (
@@ -197,6 +197,7 @@ export default async function BookingDetailPage({
               totals={{
                 roomTotal: booking.roomTotal,
                 discount: booking.discount,
+                breakfastOff: booking.breakfastOff,
                 extrasTotal: booking.extrasTotal,
                 total: booking.total,
                 deposit: booking.deposit,
@@ -234,7 +235,7 @@ export default async function BookingDetailPage({
 
           {firstActive ? (
             <Fold title="Sửa booking">
-              <p className="mb-2 text-xs text-[#5c6665]">Sửa tên, SĐT, số khách, kênh. Đổi số phòng cùng hạng hoặc nâng hạng. Ngày và ăn sáng theo từng phòng. Chiết khấu theo tổng booking.</p>
+              <p className="mb-2 text-xs text-[#5c6665]">Sửa tên, SĐT, số khách, kênh. Đổi số phòng cùng hạng hoặc nâng hạng. Ngày, ăn sáng và chiết khấu theo từng phòng.</p>
               <BookingForm
                 action={updateBookingAction}
                 lines={activeRooms.map((row) => ({
@@ -246,6 +247,8 @@ export default async function BookingDetailPage({
                   checkIn: row.checkIn,
                   checkOut: row.checkOut,
                   breakfast: row.breakfast !== false,
+                  discountKind: row.discountKind,
+                  discountValue: row.discountValue,
                   status: row.status,
                 }))}
                 rooms={rooms}
@@ -259,8 +262,6 @@ export default async function BookingDetailPage({
                   source: booking.source,
                   adults: booking.adults,
                   children: booking.children,
-                  discountKind: firstActive.discountKind,
-                  discountValue: firstActive.discountValue,
                   deposit: booking.deposit,
                   notes: booking.notes || "",
                 }}

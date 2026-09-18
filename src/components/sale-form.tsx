@@ -21,6 +21,54 @@ import { DISCOUNT_KINDS, type DiscountKind } from "@/lib/types";
 type Room = { id: string; number: string; type: string; floor?: number };
 type RoomType = { name: string; sortOrder: number; baseRate: number; weekendRate: number };
 type StayDates = { checkIn: string; checkOut: string };
+type DiscountState = { kind: DiscountKind; value: string };
+
+function emptyDiscount(): DiscountState {
+  return { kind: "none", value: "" };
+}
+
+function parseDiscountState(kind?: string | null, value?: number | null): DiscountState {
+  if (kind === "percent" || kind === "amount") return { kind, value: value ? String(value) : "" };
+  return emptyDiscount();
+}
+
+function RoomDiscountFields({
+  namePrefix,
+  discount,
+  onChange,
+}: {
+  namePrefix: string;
+  discount: DiscountState;
+  onChange: (next: DiscountState) => void;
+}) {
+  return (
+    <div className="sale-room-ck grid grid-cols-2 gap-2">
+      <Field label="Chiết khấu">
+        <select
+          name={`discountKind-${namePrefix}`}
+          value={discount.kind}
+          onChange={(e) => onChange({ ...discount, kind: e.target.value as DiscountKind, value: e.target.value === "none" ? "" : discount.value })}
+        >
+          {DISCOUNT_KINDS.map((kind) => (
+            <option key={kind} value={kind}>
+              {DISCOUNT_KIND_LABEL[kind]}
+            </option>
+          ))}
+        </select>
+      </Field>
+      <Field label={discount.kind === "percent" ? "Mức %" : "Số tiền (₫)"}>
+        <input
+          name={`discountValue-${namePrefix}`}
+          inputMode="numeric"
+          value={discount.kind === "none" ? "" : discount.value}
+          disabled={discount.kind === "none"}
+          onChange={(e) => onChange({ ...discount, value: e.target.value })}
+          placeholder={discount.kind === "percent" ? "10" : "0"}
+        />
+      </Field>
+    </div>
+  );
+}
 
 function groupRoomsByType(rooms: Room[], types: RoomType[]) {
   const order = new Map(types.map((type, index) => [type.name, type.sortOrder || index]));
@@ -85,10 +133,9 @@ export function SaleForm({
     const next = catalogRate(typeByName[room?.type || ""], defaults.checkIn);
     return initialId ? { [initialId]: String(defaults.rate ?? next ?? "") } : {};
   });
-  const [discountKind, setDiscountKind] = useState<DiscountKind>(
-    defaults.discountKind === "percent" || defaults.discountKind === "amount" ? defaults.discountKind : "none",
+  const [discounts, setDiscounts] = useState<Record<string, DiscountState>>(() =>
+    initialId ? { [initialId]: parseDiscountState(defaults.discountKind, defaults.discountValue) } : {},
   );
-  const [discountValue, setDiscountValue] = useState(defaults.discountValue ? String(defaults.discountValue) : "");
   const [deposit, setDeposit] = useState(defaults.deposit ? String(defaults.deposit) : "");
   const [fromEz, setFromEz] = useState(defaults.origin === "ezcloud");
   const selectedRooms = rooms.filter((room) => roomIds.includes(room.id));
@@ -100,14 +147,13 @@ export function SaleForm({
       checkIn: stay.checkIn,
       checkOut: stay.checkOut,
       breakfast: breakfast[room.id] !== false,
-      discountKind,
-      discountValue: parseMoney(discountValue),
+      discountKind: discounts[room.id]?.kind || "none",
+      discountValue: parseMoney(discounts[room.id]?.value),
     };
   });
   const booked = bookingQuote(quoteInputs);
   const quotes = quoteInputs.map((row, index) => ({ ...row, quote: booked.lines[index] }));
   const bookingTotal = booked.total;
-  const bookingDiscount = booked.discount;
   const depositAmount = parseMoney(deposit);
   const due = bookingDue(bookingTotal, depositAmount);
   const filteredRooms = useMemo(() => {
@@ -143,6 +189,7 @@ export function SaleForm({
         const checkIn = defaults.checkIn;
         setStay(id, { checkIn, checkOut: defaultCheckout(checkIn) });
         setBreakfast((prevBreakfast) => ({ ...prevBreakfast, [id]: true }));
+        setDiscounts((prev) => ({ ...prev, [id]: prev[id] || emptyDiscount() }));
         const value = catalogFor(id, checkIn);
         if (value) setRoomRate(id, String(value));
       }
@@ -231,11 +278,13 @@ export function SaleForm({
             <span>Phòng</span>
             <span>Ngày</span>
             <span>Giá / đêm</span>
+            <span>Chiết khấu</span>
           </div>
-          {selectedRooms.map((room) => {
+          {selectedRooms.map((room, index) => {
             const stay = dates[room.id] || { checkIn: defaults.checkIn, checkOut: defaults.checkOut };
             const eats = breakfast[room.id] !== false;
             const catalog = catalogFor(room.id, stay.checkIn);
+            const roomQuote = quotes[index]?.quote;
             return (
               <div key={room.id} className="sale-room rounded-xl border border-line p-3">
                 <p className="font-bold">
@@ -278,7 +327,13 @@ export function SaleForm({
                   />
                   <span>Ăn sáng</span>
                 </label>
-                <div>
+                {!eats ? (
+                  <p className="sale-room-hint sale-room-bf-off text-xs text-[#c47b12]">
+                    Không ăn sáng: trừ {formatVnd(BREAKFAST_NIGHT_DEDUCT)}/đêm
+                    {roomQuote?.breakfastOff ? ` · −${formatVnd(roomQuote.breakfastOff)}` : ""}
+                  </p>
+                ) : null}
+                <div className="sale-room-rate">
                   <Field label="Giá / đêm (₫)">
                     <input
                       name={`rate-${room.id}`}
@@ -288,16 +343,19 @@ export function SaleForm({
                       placeholder="800000"
                     />
                   </Field>
-                  {!eats ? (
-                    <p className="sale-room-hint text-xs text-[#c47b12]">Không ăn sáng: trừ {formatVnd(BREAKFAST_NIGHT_DEDUCT)}/đêm trước chiết khấu</p>
-                  ) : catalog ? (
+                  {eats && catalog ? (
                     <p className="sale-room-hint text-xs text-[#5c6665]">
                       Giá bảng {isWeekendNight(stay.checkIn) ? "cuối tuần" : "ngày thường"}: {formatVnd(catalog)}
                     </p>
-                  ) : (
+                  ) : eats ? (
                     <p className="sale-room-hint text-xs text-[#5c6665]">Chưa có giá bảng — nhập giá bán.</p>
-                  )}
+                  ) : null}
                 </div>
+                <RoomDiscountFields
+                  namePrefix={room.id}
+                  discount={discounts[room.id] || emptyDiscount()}
+                  onChange={(next) => setDiscounts((prev) => ({ ...prev, [room.id]: next }))}
+                />
               </div>
             );
           })}
@@ -306,28 +364,6 @@ export function SaleForm({
       </div>
 
       <div className="sale-form-side card p-4">
-      <div className="grid grid-cols-2 gap-2">
-        <Field label="Chiết khấu · tổng booking">
-          <select name="discountKind" value={discountKind} onChange={(e) => setDiscountKind(e.target.value as DiscountKind)}>
-            {DISCOUNT_KINDS.map((kind) => (
-              <option key={kind} value={kind}>
-                {DISCOUNT_KIND_LABEL[kind]}
-              </option>
-            ))}
-          </select>
-        </Field>
-        <Field label={discountKind === "percent" ? "Mức %" : "Số tiền (₫)"}>
-          <input
-            name="discountValue"
-            inputMode="numeric"
-            value={discountKind === "none" ? "" : discountValue}
-            disabled={discountKind === "none"}
-            onChange={(e) => setDiscountValue(e.target.value)}
-            placeholder={discountKind === "percent" ? "10" : "0"}
-          />
-        </Field>
-      </div>
-      <p className="text-xs text-[#5c6665]">Chiết khấu tính trên tổng booking, sau khi trừ không ăn sáng.</p>
       <Field label="Đặt cọc (₫)">
         <input name="deposit" inputMode="numeric" value={deposit} onChange={(e) => setDeposit(e.target.value)} placeholder="0" />
       </Field>
@@ -340,7 +376,7 @@ export function SaleForm({
                   <span>
                     {row.room.type} · {row.quote.nights} đêm × {formatVnd(row.rate)}
                   </span>
-                  <span>{formatVnd(row.quote.subtotal + row.quote.breakfastOff)}</span>
+                  <span>{formatVnd(row.quote.gross ?? row.quote.subtotal + row.quote.breakfastOff)}</span>
                 </div>
                 {row.quote.breakfastOff ? (
                   <div className="flex justify-between gap-2 text-xs text-[#c47b12]">
@@ -348,14 +384,14 @@ export function SaleForm({
                     <span>−{formatVnd(row.quote.breakfastOff)}</span>
                   </div>
                 ) : null}
+                {row.quote.discount || row.discountKind !== "none" ? (
+                  <div className="flex justify-between gap-2 text-xs text-[#1b7a4e]">
+                    <span>Chiết khấu{row.discountKind === "percent" ? ` ${row.discountValue}%` : ""}</span>
+                    <span>−{formatVnd(row.quote.discount)}</span>
+                  </div>
+                ) : null}
               </li>
             ))}
-            {bookingDiscount ? (
-              <li className="flex justify-between gap-2 text-[#1b7a4e]">
-                <span>Chiết khấu{discountKind === "percent" ? ` ${parseMoney(discountValue)}%` : ""} · tổng booking</span>
-                <span>−{formatVnd(bookingDiscount)}</span>
-              </li>
-            ) : null}
             <li className="flex justify-between gap-2">
               <span>{quotes.length > 1 ? `Phải thu ${quotes.length} phòng` : "Phải thu"}</span>
               <span>{formatVnd(bookingTotal)}</span>
@@ -437,6 +473,8 @@ export function BookingForm({
     checkIn: string;
     checkOut: string;
     breakfast?: boolean;
+    discountKind?: string;
+    discountValue?: number;
     status?: string;
   }[];
   rooms: { id: string; number: string; type: string; opsStatus?: string }[];
@@ -450,8 +488,6 @@ export function BookingForm({
     source?: string;
     adults?: number;
     children?: number;
-    discountKind?: string;
-    discountValue?: number;
     deposit?: number;
     notes?: string;
   };
@@ -465,10 +501,9 @@ export function BookingForm({
   const [breakfast, setBreakfast] = useState<Record<string, boolean>>(() =>
     Object.fromEntries(lines.map((line) => [line.saleId, line.breakfast !== false])),
   );
-  const [discountKind, setDiscountKind] = useState<DiscountKind>(
-    defaults.discountKind === "percent" || defaults.discountKind === "amount" ? defaults.discountKind : "none",
+  const [discounts, setDiscounts] = useState<Record<string, DiscountState>>(() =>
+    Object.fromEntries(lines.map((line) => [line.saleId, parseDiscountState(line.discountKind, line.discountValue)])),
   );
-  const [discountValue, setDiscountValue] = useState(defaults.discountValue ? String(defaults.discountValue) : "");
   const [deposit, setDeposit] = useState(defaults.deposit ? String(defaults.deposit) : "");
 
   function stayOf(saleId: string, fallback: StayDates) {
@@ -511,6 +546,8 @@ export function BookingForm({
       checkIn: stay.checkIn,
       checkOut: stay.checkOut,
       breakfast: breakfast[line.saleId] !== false,
+      discountKind: discounts[line.saleId]?.kind || "none",
+      discountValue: parseMoney(discounts[line.saleId]?.value),
     };
   });
   const booked = bookingQuote(
@@ -519,8 +556,8 @@ export function BookingForm({
       checkIn: row.checkIn,
       checkOut: row.checkOut,
       breakfast: row.breakfast,
-      discountKind,
-      discountValue: parseMoney(discountValue),
+      discountKind: row.discountKind,
+      discountValue: row.discountValue,
     })),
   );
   const quotes = quoteInputs.map((row, index) => ({
@@ -530,7 +567,6 @@ export function BookingForm({
   const extraRows = extras.map((row) => ({ ...row, amount: extraAmount(row, booked.nights) }));
   const extrasTotal = extraRows.reduce((sum, row) => sum + row.amount, 0);
   const bookingTotal = booked.total + extrasTotal;
-  const bookingDiscount = booked.discount;
   const depositAmount = parseMoney(deposit);
   const due = bookingDue(bookingTotal, depositAmount);
 
@@ -565,7 +601,7 @@ export function BookingForm({
           <input name="children" type="number" min={0} defaultValue={defaults.children ?? 0} />
         </Field>
       </div>
-      {lines.map((line) => {
+      {lines.map((line, index) => {
         const options = optionsFor(line);
         const same = options.filter((room) => roomMoveKind(line.type, room.type, types) === "same");
         const upgrades = options.filter((room) => roomMoveKind(line.type, room.type, types) === "upgrade");
@@ -573,6 +609,7 @@ export function BookingForm({
         const stay = stayOf(line.saleId, { checkIn: line.checkIn, checkOut: line.checkOut });
         const canEditCheckIn = line.status !== "inhouse";
         const eats = breakfast[line.saleId] !== false;
+        const roomQuote = quotes[index]?.quote;
         return (
           <div key={line.saleId} className="space-y-2 rounded-xl border border-line p-3">
             <input type="hidden" name="saleId" value={line.saleId} />
@@ -651,37 +688,27 @@ export function BookingForm({
               />
               <span>Ăn sáng</span>
             </label>
+            {!eats ? (
+              <p className="text-xs text-[#c47b12]">
+                Không ăn sáng: trừ {formatVnd(BREAKFAST_NIGHT_DEDUCT)}/đêm
+                {roomQuote?.breakfastOff ? ` · −${formatVnd(roomQuote.breakfastOff)}` : ""}
+              </p>
+            ) : null}
+            <RoomDiscountFields
+              namePrefix={line.saleId}
+              discount={discounts[line.saleId] || emptyDiscount()}
+              onChange={(next) => setDiscounts((prev) => ({ ...prev, [line.saleId]: next }))}
+            />
           </div>
         );
       })}
-      <div className="grid grid-cols-2 gap-2">
-        <Field label="Chiết khấu">
-          <select name="discountKind" value={discountKind} onChange={(e) => setDiscountKind(e.target.value as DiscountKind)}>
-            {DISCOUNT_KINDS.map((kind) => (
-              <option key={kind} value={kind}>
-                {DISCOUNT_KIND_LABEL[kind]}
-              </option>
-            ))}
-          </select>
-        </Field>
-        <Field label={discountKind === "percent" ? "Mức %" : "Số tiền (₫)"}>
-          <input
-            name="discountValue"
-            inputMode="numeric"
-            value={discountKind === "none" ? "" : discountValue}
-            disabled={discountKind === "none"}
-            onChange={(e) => setDiscountValue(e.target.value)}
-            placeholder={discountKind === "percent" ? "10" : "0"}
-          />
-        </Field>
-      </div>
       <Field label="Đặt cọc — tổng đã thu (₫)">
         <input name="deposit" inputMode="numeric" value={deposit} onChange={(e) => setDeposit(e.target.value)} placeholder="0" />
       </Field>
       <Field label="Ghi chú">
         <textarea name="notes" rows={2} defaultValue={defaults.notes || ""} placeholder="Giờ đến, giường, xe đón..." />
       </Field>
-      <p className="text-xs text-[#5c6665]">Sửa tên, SĐT, số khách, kênh. Đổi số phòng cùng hạng hoặc nâng hạng. Ngày và ăn sáng theo từng phòng. Chiết khấu theo tổng booking.</p>
+      <p className="text-xs text-[#5c6665]">Sửa tên, SĐT, số khách, kênh. Đổi số phòng cùng hạng hoặc nâng hạng. Ngày, ăn sáng và chiết khấu theo từng phòng.</p>
       <div className="rounded-xl bg-sand px-3 py-2 text-sm">
         <ul className="space-y-1">
           {quotes.map((row) => (
@@ -691,19 +718,22 @@ export function BookingForm({
                   {row.room?.type || row.line.type}
                   {row.kind === "upgrade" ? ` · nâng` : ""} · {row.quote.nights} đêm
                 </span>
-                <span>{formatVnd(row.quote.subtotal)}</span>
+                <span>{formatVnd(row.quote.gross ?? row.quote.subtotal + row.quote.breakfastOff)}</span>
               </div>
               {row.quote.breakfastOff ? (
-                <div className="text-xs text-[#c47b12]">Không ăn sáng −{formatVnd(row.quote.breakfastOff)}</div>
+                <div className="flex justify-between gap-2 text-xs text-[#c47b12]">
+                  <span>Không ăn sáng</span>
+                  <span>−{formatVnd(row.quote.breakfastOff)}</span>
+                </div>
+              ) : null}
+              {row.quote.discount || row.discountKind !== "none" ? (
+                <div className="flex justify-between gap-2 text-xs text-[#1b7a4e]">
+                  <span>Chiết khấu{row.discountKind === "percent" ? ` ${row.discountValue}%` : ""}</span>
+                  <span>−{formatVnd(row.quote.discount)}</span>
+                </div>
               ) : null}
             </li>
           ))}
-          {bookingDiscount ? (
-            <li className="flex justify-between gap-2 text-[#1b7a4e]">
-              <span>Chiết khấu{discountKind === "percent" ? ` ${parseMoney(discountValue)}%` : ""}{quotes.length > 1 ? " · tổng booking" : ""}</span>
-              <span>−{formatVnd(bookingDiscount)}</span>
-            </li>
-          ) : null}
           {extraRows.map((row) => (
             <li key={`${row.name}-${row.qty}-${row.unitPrice}`} className="flex justify-between gap-2">
               <span>

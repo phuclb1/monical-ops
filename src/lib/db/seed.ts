@@ -57,6 +57,24 @@ export async function seedIfEmpty(db: AppDb) {
   await syncExtraCatalog(db);
   await syncReceptionRoster(db);
   await syncTaskKinds(db);
+  await syncDemoPerRoomDiscount(db);
+}
+
+async function syncDemoPerRoomDiscount(db: AppDb) {
+  const rows = await db.select().from(t.roomSales).where(inArray(t.roomSales.id, ["sale-304", "sale-404"]));
+  if (!rows.length) return;
+  for (const row of rows) {
+    const notes = row.notes?.includes("tổng booking") ? "Đoàn 2 phòng" : row.notes;
+    const clearCk = row.id === "sale-404" && row.discountKind === "amount" && row.discountValue === 200000;
+    if (!clearCk && notes === row.notes) continue;
+    await db
+      .update(t.roomSales)
+      .set({
+        ...(clearCk ? { discountKind: "none" as const, discountValue: 0 } : {}),
+        notes,
+      })
+      .where(eq(t.roomSales.id, row.id));
+  }
 }
 
 export async function resetOpsDemo(db: AppDb) {
@@ -426,7 +444,7 @@ export async function seedOpsDemo(db: AppDb) {
         discountValue: 200000,
         deposit: 1000000,
         pmsCode: null,
-        notes: "Đoàn 2 phòng, chiết khấu trên tổng booking",
+        notes: "Đoàn 2 phòng",
         createdAt: now,
         updatedAt: now,
         createdBy: dutyId,
@@ -446,11 +464,11 @@ export async function seedOpsDemo(db: AppDb) {
         adults: 4,
         children: 1,
         rate: 1200000,
-        discountKind: "amount",
-        discountValue: 200000,
+        discountKind: "none",
+        discountValue: 0,
         deposit: 1000000,
         pmsCode: null,
-        notes: "Đoàn 2 phòng, chiết khấu trên tổng booking",
+        notes: "Đoàn 2 phòng",
         createdAt: now,
         updatedAt: now,
         createdBy: dutyId,

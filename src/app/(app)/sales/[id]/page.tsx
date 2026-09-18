@@ -76,10 +76,12 @@ export default async function SaleDetailPage({
         <p className="mt-1 text-sm">
           {formatVnd(sale.rate)}/đêm · tạm tính {formatVnd(quote.subtotal)}
         </p>
-        {booked.discount ? (
+        {quote.breakfastOff ? (
+          <p className="mt-1 text-sm text-[#c47b12]">Không ăn sáng −{formatVnd(quote.breakfastOff)}</p>
+        ) : null}
+        {quote.discount ? (
           <p className="mt-1 text-sm text-[#1b7a4e]">
-            Chiết khấu {discountLabel(sale.discountKind, sale.discountValue)} −{formatVnd(booked.discount)}
-            {sale.peers.length ? " · tổng booking" : ""}
+            Chiết khấu {discountLabel(sale.discountKind, sale.discountValue)} −{formatVnd(quote.discount)}
           </p>
         ) : null}
         <p className="mt-1 text-sm">Phải thu {formatVnd(booking?.total ?? booked.total)}</p>
