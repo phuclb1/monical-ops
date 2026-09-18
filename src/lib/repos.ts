@@ -48,6 +48,39 @@ export async function notify(input: { userId?: string | null; role?: string | nu
   await schedulePush(input);
 }
 
+function visibleNotifications(user: SessionUser) {
+  return or(
+    eq(t.notifications.userId, user.id),
+    and(sql`${t.notifications.userId} is null`, eq(t.notifications.role, user.role)),
+    and(sql`${t.notifications.userId} is null`, sql`${t.notifications.role} is null`),
+  );
+}
+
+async function bookingCreatedBy(bookingId: string, fallback?: string | null) {
+  const db = await getDb();
+  const rows = await db
+    .select({ createdBy: t.roomSales.createdBy, createdAt: t.roomSales.createdAt })
+    .from(t.roomSales)
+    .where(or(eq(t.roomSales.id, bookingId), eq(t.roomSales.bookingId, bookingId)));
+  const first = [...rows].sort((a, b) => a.createdAt.localeCompare(b.createdAt))[0];
+  return first?.createdBy || fallback || null;
+}
+
+async function notifyBookingChange(input: {
+  actor: SessionUser;
+  bookingId: string;
+  createdBy?: string | null;
+  title: string;
+  body: string;
+}) {
+  const payload = { title: input.title, body: input.body, link: `/sales/bookings/${input.bookingId}` };
+  await notify({ ...payload, role: "manager" });
+  if (!input.createdBy) return;
+  const creator = (await listUsers()).find((person) => person.id === input.createdBy);
+  if (creator?.role !== "reception") return;
+  await notify({ ...payload, userId: creator.id });
+}
+
 export const listUsers = cache(async () => {
   const db = await getDb();
   return db
@@ -230,15 +263,11 @@ export const getDashboard = cache(async (user: SessionUser) => {
     await db.select().from(t.breakfasts).where(eq(t.breakfasts.date, addDay(today, 1))).limit(1)
   )[0];
   const handover = await pendingHandover();
-  const unread = await db
-    .select()
+  const unreadRows = await db
+    .select({ n: sql<number>`count(*)` })
     .from(t.notifications)
-    .where(
-      and(
-        eq(t.notifications.read, false),
-        or(eq(t.notifications.userId, user.id), eq(t.notifications.role, user.role)),
-      ),
-    );
+    .where(and(visibleNotifications(user), eq(t.notifications.read, false)));
+  const unreadCount = Number(unreadRows[0]?.n ?? 0);
 
   if (shift) await ensureShiftChecklists(db, shift, { actorId: user.id });
   await ensureTodayRoomTasks(db, { actorId: user.id });
@@ -251,7 +280,7 @@ export const getDashboard = cache(async (user: SessionUser) => {
     rooms,
     stays,
     breakfast,
-    unread: unread.length,
+    unread: unreadCount,
     nowTasks: tasks.filter((x) => ["new", "accepted", "in_progress", "blocked"].includes(x.status)),
     overdueTasks: tasks.filter((x) => x.dueAt && new Date(x.dueAt).getTime() < now && !["done", "checked"].includes(x.status)),
     arriving: stays.filter((s) => s.status === "arriving" && s.arrivalDate === today),
@@ -1032,6 +1061,7 @@ export async function listBookings() {
     extraByBooking.set(row.bookingId, list);
   }
   return groupByBooking(sales)
+    .filter(({ id }) => !id.startsWith("seq-hold-"))
     .map(({ id, rooms }) => withBookingExtras(toBookingView(id, rooms), extraByBooking.get(id) || []))
     .sort((a, b) => b.checkIn.localeCompare(a.checkIn) || a.guestName.localeCompare(b.guestName));
 }
@@ -1236,9 +1266,20 @@ export async function createRoomSale(user: SessionUser, data: SaleInput) {
     rooms.push({ room: await assertSaleWindow(line.roomId, line.checkIn, line.checkOut), ...line });
   }
   const today = todayVN();
-  const bookingId = data.bookingId?.trim() || nid();
+  const requestedBookingId = data.bookingId?.trim() || "";
+  const bookingId = requestedBookingId || nid();
   const now = nowISO();
   const db = await getDb();
+  const existing = requestedBookingId
+    ? (
+        await db
+          .select({ createdBy: t.roomSales.createdBy })
+          .from(t.roomSales)
+          .where(or(eq(t.roomSales.id, requestedBookingId), eq(t.roomSales.bookingId, requestedBookingId)))
+          .limit(1)
+      )[0]
+    : undefined;
+  const createdBy = existing?.createdBy || user.id;
   const pmsCode =
     data.pmsCode?.trim() || (origin === "ops" ? await nextOpsBookingCode(db, now) : "");
   if (!pmsCode) throw new Error("Tích ezCloud thì nhập mã PMS");
@@ -1295,11 +1336,12 @@ export async function createRoomSale(user: SessionUser, data: SaleInput) {
   const roomLabel = rooms.length === 1 ? `P.${rooms[0].room.number}` : `${rooms.length} phòng`;
   const spanIn = rooms.reduce((min, row) => (row.checkIn < min ? row.checkIn : min), rooms[0].checkIn);
   const spanOut = rooms.reduce((max, row) => (row.checkOut > max ? row.checkOut : max), rooms[0].checkOut);
-  await notify({
-    role: user.role === "manager" ? "reception" : "manager",
-    title: `Bán ${roomLabel} · ${guestName}`,
-    body: `${spanIn} → ${spanOut} · ${bookingTotal.toLocaleString("vi-VN")}₫`,
-    link: `/sales/bookings/${bookingId}`,
+  await notifyBookingChange({
+    actor: user,
+    bookingId,
+    createdBy,
+    title: `${existing ? "Thêm phòng" : "Đặt phòng"} · ${guestName}`,
+    body: `${user.fullName} · ${roomLabel} · ${spanIn} → ${spanOut} · ${bookingTotal.toLocaleString("vi-VN")}₫`,
   });
   return { id: ids[0], bookingId };
 }
@@ -1411,6 +1453,14 @@ export async function updateRoomSale(user: SessionUser, id: string, data: SaleIn
   }
   await ensureTodayRoomTasks(db, { actorId: user.id });
   await audit(user.id, "room_sale", id, "update", before, patch);
+  const bookingId = before.bookingId || before.id;
+  await notifyBookingChange({
+    actor: user,
+    bookingId,
+    createdBy: await bookingCreatedBy(bookingId, before.createdBy),
+    title: `Sửa booking · ${guestName}`,
+    body: `${user.fullName} · ${before.checkIn} → ${data.checkOut}`,
+  });
 }
 
 export async function updateBooking(
@@ -1526,6 +1576,13 @@ export async function updateBooking(
     }
   }
   await ensureTodayRoomTasks(db, { actorId: user.id });
+  await notifyBookingChange({
+    actor: user,
+    bookingId: key,
+    createdBy: [...active].sort((a, b) => a.createdAt.localeCompare(b.createdAt))[0]?.createdBy,
+    title: `Sửa booking · ${guestName}`,
+    body: `${user.fullName} · ${active.length} phòng`,
+  });
   return key;
 }
 
@@ -1571,7 +1628,15 @@ export async function moveGanttSale(
   await syncStayFromSale(user.id, { ...before, ...patch }, before.roomId);
   await ensureTodayRoomTasks(db, { actorId: user.id });
   await audit(user.id, "room_sale", before.id, "update", before, patch);
-  return bookingKey(before);
+  const bookingId = bookingKey(before);
+  await notifyBookingChange({
+    actor: user,
+    bookingId,
+    createdBy: await bookingCreatedBy(bookingId, before.createdBy),
+    title: `Sửa booking · ${before.guestName}`,
+    body: `${user.fullName} · ${checkIn} → ${checkOut}`,
+  });
+  return bookingId;
 }
 
 export async function recordBookingPayment(
@@ -1619,13 +1684,15 @@ export async function cancelBooking(user: SessionUser, bookingId: string, asNoSh
     throw new Error("No-show chỉ khi mọi phòng còn giữ chỗ");
   }
   for (const row of active) {
-    await cancelRoomSale(user, row.id, asNoShow);
+    await cancelRoomSale(user, row.id, asNoShow, { silent: true });
   }
-  await notify({
-    role: user.role === "manager" ? "reception" : "manager",
-    title: `${asNoShow ? "No-show" : "Hủy"} booking · ${booking.guestName}`,
-    body: `${active.length} phòng · ${booking.roomLabel}`,
-    link: `/sales/bookings/${booking.id}`,
+  const createdBy = [...booking.rooms].sort((a, b) => a.createdAt.localeCompare(b.createdAt))[0]?.createdBy;
+  await notifyBookingChange({
+    actor: user,
+    bookingId: booking.id,
+    createdBy,
+    title: `${asNoShow ? "No-show" : "Hủy booking"} · ${booking.guestName}`,
+    body: `${user.fullName} · ${active.length} phòng · ${booking.roomLabel}`,
   });
   return booking.id;
 }
@@ -1681,7 +1748,7 @@ export async function checkoutBooking(user: SessionUser, bookingId: string) {
   return booking.id;
 }
 
-export async function cancelRoomSale(user: SessionUser, id: string, asNoShow = false) {
+export async function cancelRoomSale(user: SessionUser, id: string, asNoShow = false, opts?: { silent?: boolean }) {
   const db = await getDb();
   const before = (await db.select().from(t.roomSales).where(eq(t.roomSales.id, id)).limit(1))[0];
   if (!before) throw new Error("Không tìm thấy chỗ bán");
@@ -1695,6 +1762,15 @@ export async function cancelRoomSale(user: SessionUser, id: string, asNoShow = f
   await syncStayFromSale(user.id, { ...before, status });
   await ensureTodayRoomTasks(db, { actorId: user.id });
   await audit(user.id, "room_sale", id, asNoShow ? "no_show" : "cancel", before, { status });
+  if (opts?.silent) return;
+  const bookingId = before.bookingId || before.id;
+  await notifyBookingChange({
+    actor: user,
+    bookingId,
+    createdBy: await bookingCreatedBy(bookingId, before.createdBy),
+    title: `${asNoShow ? "No-show" : "Hủy phòng"} · ${before.guestName}`,
+    body: `${user.fullName}`,
+  });
 }
 
 export async function setRoomTypeRates(user: SessionUser, rates: { id: string; baseRate: number; weekendRate: number }[]) {
@@ -2177,7 +2253,7 @@ export async function listNotifications(user: SessionUser) {
   return db
     .select()
     .from(t.notifications)
-    .where(or(eq(t.notifications.userId, user.id), eq(t.notifications.role, user.role), sql`${t.notifications.userId} is null`))
+    .where(visibleNotifications(user))
     .orderBy(desc(t.notifications.createdAt));
 }
 
@@ -2186,12 +2262,7 @@ export const countUnreadNotifications = cache(async (user: SessionUser) => {
   const rows = await db
     .select({ n: sql<number>`count(*)` })
     .from(t.notifications)
-    .where(
-      and(
-        or(eq(t.notifications.userId, user.id), eq(t.notifications.role, user.role), sql`${t.notifications.userId} is null`),
-        eq(t.notifications.read, false),
-      ),
-    );
+    .where(and(visibleNotifications(user), eq(t.notifications.read, false)));
   return Number(rows[0]?.n ?? 0);
 });
 
@@ -2249,9 +2320,20 @@ export async function listAuditLogs(filter?: { entity?: string; action?: string;
   };
 }
 
-export async function markNotifRead(id: string) {
+export async function markNotifRead(user: SessionUser, id: string) {
   const db = await getDb();
-  await db.update(t.notifications).set({ read: true }).where(eq(t.notifications.id, id));
+  await db
+    .update(t.notifications)
+    .set({ read: true })
+    .where(and(eq(t.notifications.id, id), visibleNotifications(user)));
+}
+
+export async function markAllNotifRead(user: SessionUser) {
+  const db = await getDb();
+  await db
+    .update(t.notifications)
+    .set({ read: true })
+    .where(and(eq(t.notifications.read, false), visibleNotifications(user)));
 }
 
 export async function searchOps(q: string) {

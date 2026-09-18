@@ -120,6 +120,14 @@ Trạng thái: `pass` · `fail` · `skip` (chưa chạy vòng này).
 | TC-121 | Chủ sở hữu xem thông tin khách theo kỳ | `chusohuu` | skip | — | — |
 | TC-122 | Chủ sở hữu không vào `/today` (về `/owner`) | `chusohuu` | skip | — | — |
 
+### Thông báo booking
+
+| ID | Case | Role | Kết quả | Commit | Evidence |
+|---|---|---|---|---|---|
+| TC-130 | Lễ tân chỉ thấy đặt/sửa/hủy booking do mình tạo | `tuyen` | skip | — | — |
+| TC-131 | Quản lý thấy mọi đặt/sửa/hủy booking | `quanly` | skip | — | — |
+| TC-132 | HK không thấy noti booking | `uyen` | skip | — | — |
+
 ### Việc
 
 | ID | Case | Role | Kết quả | Commit | Evidence |
@@ -209,11 +217,14 @@ Dùng sau `npm run db:reseed-local`.
 | TC-120 | login `chusohuu` `/owner` | Doanh thu · Tháng / Quý / Năm · Doanh thu ghi nhận · chỉ xem |
 | TC-121 | login `chusohuu` `/owner/guests` | Thông tin khách · người lớn / trẻ em · SĐT · phòng · ngày |
 | TC-122 | login `chusohuu` `/today` | Redirect `/owner`, không vào vận hành |
+| TC-130 | login `tuyen` `/notifications` | Đặt phòng Đặng Minh Tuấn · không thấy Mai Thanh Hà / sửa An Phú / HK |
+| TC-131 | login `quanly` `/notifications` | Mọi thêm/sửa/hủy · Đặng Minh Tuấn · Mai Thanh Hà · Sửa An Phú |
+| TC-132 | login `uyen` `/notifications` | Thay khăn P.305 · không thấy Đặt phòng |
 | TC-20 | `/tasks` | 3 việc HK cũ **và** Nhận P.105 · Trả P.102 |
 | TC-21 | `/tasks` | Việc quản lý: *Cần thêm HK ca này — tầng 2 và 3* |
 | TC-30 | `/kitchen` + `/kitchen/forecast` | Báo cáo suất theo booking · Hôm nay / Ngày mai / 7 ngày · dự báo dị ứng hải sản |
 | TC-03 | login `tuyen` `/today` | Ca đang làm · Đầu ca / cuối ca · Nhận P.105 |
-| TC-04 | login `quanly` `/today` | Có ca đang chạy **hoặc** «Ca lễ tân chưa mở» — **không** nút bắt buộc «Mở ca hiện tại» |
+| TC-04 | login `quanly` → doanh thu · tab Đặt phòng / Bếp / Việc · `/today` | Có ca đang chạy **hoặc** «Ca lễ tân chưa mở» — **không** nút bắt buộc «Mở ca hiện tại» |
 | TC-70 | `/shifts` | Đầu ca · Cuối ca · ca hiện tại Đang mở. Không checklist HK/bếp |
 | TC-72 | `/today` | Nhận P.105 · Trả P.102 |
 | TC-73 | `/tasks` | Nhận P.105 · Trả P.102 · Nhận P.506 Công ty An Phú |

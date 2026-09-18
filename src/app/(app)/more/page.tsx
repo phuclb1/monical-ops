@@ -6,6 +6,12 @@ import { getSession } from "@/lib/auth";
 import { ROLE_LABEL } from "@/lib/constants";
 import { can } from "@/lib/permissions";
 
+const MANAGER_OPS = [
+  { href: "/today", label: "Hôm nay — ca / nhận trả" },
+  { href: "/rooms", label: "Phòng — HK / OOO" },
+  { href: "/handover", label: "Bàn giao ca" },
+];
+
 const LINKS = [
   { href: "/reception", label: "Lễ tân — khách & đăng ký lưu trú", show: (r: Parameters<typeof can>[0]) => can(r, "viewReception") || r === "hk" },
   { href: "/sales", label: "Bán phòng — sơ đồ trống / giữ / nhận", show: (r: Parameters<typeof can>[0]) => can(r, "manageSales") },
@@ -35,7 +41,10 @@ export default async function MorePage() {
         <p className="text-sm text-[#5c6665]">{ROLE_LABEL[user.role]}</p>
       </Card>
       <div className="list-cards">
-      {LINKS.filter((l) => l.show(user.role)).map((l) => (
+      {[
+        ...(user.role === "manager" ? MANAGER_OPS : []),
+        ...LINKS.filter((l) => l.show(user.role)),
+      ].map((l) => (
         <Link key={l.href} href={l.href} className="card mb-2 flex min-h-16 items-center p-4 font-semibold md:mb-0">
           {l.label}
         </Link>

@@ -228,6 +228,17 @@ export function formatDateTime(iso?: string | null) {
   }).format(new Date(iso));
 }
 
+export function formatRelativeTime(iso?: string | null) {
+  if (!iso) return "—";
+  const diff = Date.now() - new Date(iso).getTime();
+  const mins = Math.round(diff / 60_000);
+  if (mins < 1) return "Vừa xong";
+  if (mins < 60) return `${mins} phút trước`;
+  const hours = Math.round(mins / 60);
+  if (hours < 24) return `${hours} giờ trước`;
+  return formatDateTime(iso);
+}
+
 export function formatDate(isoDate?: string | null) {
   if (!isoDate) return "—";
   const d = isoDate.length > 10 ? new Date(isoDate) : new Date(`${isoDate}T12:00:00+07:00`);

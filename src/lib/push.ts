@@ -82,7 +82,12 @@ async function sendPushForNotify(input: NotifyPush) {
   if (!vapid) return;
   const rows = await subscriptionsFor(input);
   if (!rows.length) return;
-  const data = { title: input.title, body: input.body, url: input.link || "/notifications" };
+  const data = {
+    title: input.title,
+    body: input.body,
+    url: input.link || "/notifications",
+    tag: input.link || "ops-booking",
+  };
   for (const row of rows) {
     try {
       const subscription = {

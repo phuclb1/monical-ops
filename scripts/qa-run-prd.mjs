@@ -124,6 +124,7 @@ try {
   await check("TC-04", "Quản lý Today — không bắt mở ca", async (shot) => {
     await login("quanly");
     signedIn = true;
+    await go("/today");
     const text = await page.locator("body").innerText();
     await page.screenshot({ path: shot, fullPage: true });
     if (text.includes("Mở ca hiện tại") && !text.includes("Ca đang làm") && !text.includes("Ca lễ tân chưa mở")) {
@@ -150,12 +151,14 @@ try {
   skip("TC-74", "Task nhận P.105 có checklist", "prd không seed kịch bản khách");
   skip("TC-75", "Thẻ khách P.105 cùng checklist nhận", "prd không seed kịch bản khách");
   skip("TC-76", "Chỗ bán P.506 có checklist nhận phòng", "prd không seed chỗ bán demo");
+  skip("TC-130", "Lễ tân chỉ thấy booking mình tạo", "prd không có tài khoản lễ tân / seed noti");
   skip("TC-20", "Bảng việc: thay khăn / dọn phòng / checkout", "prd không seed việc demo");
   skip("TC-21", "Việc «cần thêm HK» hiện với lễ tân", "prd không có lễ tân / việc demo");
   skip("TC-21b", "Quản lý thấy việc thêm HK", "prd không seed việc demo");
   skip("TC-24", "HK thấy khăn / dọn / thêm HK", "prd không có user HK");
   skip("TC-25", "HK tạo việc", "prd không có user HK");
   skip("TC-98", "HK không vào bán phòng", "prd không có user HK");
+  skip("TC-132", "HK không thấy noti booking", "prd không có user HK");
   skip("TC-30", "Báo ăn sáng ngày mai (số + dị ứng P.105)", "prd không seed số ăn sáng demo");
 
   async function checkAuthed(id, title, fn) {
@@ -258,6 +261,11 @@ try {
       "Tiền chuyển khoản",
       "Tiền mặt",
     ]);
+  });
+
+  await checkAuthed("TC-131", "Quản lý vào thông báo booking", async (shot) => {
+    await go("/notifications");
+    await must(shot, ["Thông báo", "Mọi thêm, sửa, hủy booking đều hiện ở đây"]);
   });
 
   await checkAuthed("TC-95", "Form bán phòng: giá, chiết khấu, mã PMS", async (shot) => {
@@ -366,7 +374,12 @@ try {
     await go("/today");
     const text = await pageText();
     await page.screenshot({ path: shot, fullPage: true });
-    if (!text.includes("Thông báo điện thoại") && !text.includes("Thêm vào Màn hình chính") && !text.includes("Bật")) {
+    if (
+      !text.includes("Thông báo điện thoại") &&
+      !text.includes("Thông báo đẩy") &&
+      !text.includes("Thêm vào Màn hình chính") &&
+      !text.includes("Bật")
+    ) {
       throw new Error("Không thấy UI push");
     }
   });

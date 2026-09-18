@@ -9,13 +9,23 @@ export const PRIMARY_NAV = [
   { href: "/more", label: "Thêm" },
 ] as const;
 
+export const MANAGER_NAV = [
+  { href: "/reports/sales", label: "Doanh thu" },
+  { href: "/sales/bookings", label: "Đặt phòng" },
+  { href: "/kitchen", label: "Bếp" },
+  { href: "/tasks", label: "Việc" },
+  { href: "/more", label: "Thêm" },
+] as const;
+
 export const OWNER_NAV = [
   { href: "/owner", label: "Doanh thu" },
   { href: "/owner/guests", label: "Khách" },
 ] as const;
 
 export function homePath(role: Role) {
-  return role === "owner" ? "/owner" : "/today";
+  if (role === "owner") return "/owner";
+  if (role === "manager") return "/reports/sales";
+  return "/today";
 }
 
 export function isOwnerPath(pathname: string) {

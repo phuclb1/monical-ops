@@ -1,39 +1,43 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
-import { readNotifAction } from "@/actions/ops";
-import { Card } from "@/components/ui";
+import { readAllNotifAction } from "@/actions/ops";
+import { NotificationList } from "@/components/notification-list";
+import { PushPrompt } from "@/components/push-prompt";
+import { Empty } from "@/components/ui";
 import { getSession } from "@/lib/auth";
-import { formatDateTime } from "@/lib/datetime";
 import { listNotifications } from "@/lib/repos";
+
+function hintFor(role: string) {
+  if (role === "manager") return "Mọi thêm, sửa, hủy booking đều hiện ở đây.";
+  if (role === "reception") return "Chỉ hiện thêm, sửa, hủy booking do bạn tạo.";
+  return null;
+}
 
 export default async function NotificationsPage() {
   const user = await getSession();
   if (!user) redirect("/login");
   const rows = await listNotifications(user);
+  const unread = rows.filter((n) => !n.read).length;
+  const hint = hintFor(user.role);
 
   return (
     <main className="space-y-3 px-3 py-4">
-      <h1 className="text-xl font-bold">Thông báo</h1>
-      {rows.map((n) => (
-        <Card key={n.id} className={n.read ? "opacity-70" : ""}>
-          <p className="font-semibold">{n.title}</p>
-          <p className="text-sm">{n.body}</p>
-          <p className="text-[11px] text-[#6b7372]">{formatDateTime(n.createdAt)}</p>
-          <div className="mt-2 flex gap-2">
-            {n.link ? (
-              <Link href={n.link} className="text-sm font-semibold text-teal">
-                Mở
-              </Link>
-            ) : null}
-            {!n.read ? (
-              <form action={readNotifAction}>
-                <input type="hidden" name="id" value={n.id} />
-                <button className="text-sm font-semibold">Đã đọc</button>
-              </form>
-            ) : null}
-          </div>
-        </Card>
-      ))}
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <h1 className="text-xl font-bold">Thông báo</h1>
+          {hint ? <p className="mt-1 text-sm text-[#5c6665]">{hint}</p> : null}
+        </div>
+        {unread ? (
+          <form action={readAllNotifAction}>
+            <button className="text-sm font-semibold text-teal">Đọc hết · {unread}</button>
+          </form>
+        ) : null}
+      </div>
+      <PushPrompt variant="panel" />
+      {rows.length === 0 ? (
+        <Empty title="Chưa có thông báo" text="Khi có đặt, sửa hoặc hủy booking, thông báo sẽ hiện theo quyền của bạn." />
+      ) : (
+        <NotificationList rows={rows} />
+      )}
     </main>
   );
 }

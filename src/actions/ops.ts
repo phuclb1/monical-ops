@@ -312,7 +312,22 @@ export async function approveIncidentAction(formData: FormData) {
 }
 
 export async function readNotifAction(formData: FormData) {
-  await requireSession();
-  await repo.markNotifRead(String(formData.get("id")));
+  const user = await requireSession();
+  await repo.markNotifRead(user, String(formData.get("id")));
+  refresh(["/notifications", "/today"]);
+}
+
+export async function openNotifAction(formData: FormData) {
+  const user = await requireSession();
+  const id = String(formData.get("id") || "");
+  const link = String(formData.get("link") || "/notifications");
+  if (id) await repo.markNotifRead(user, id);
+  refresh(["/notifications", "/today"]);
+  if (link.startsWith("/") && !link.startsWith("//")) redirect(link);
+}
+
+export async function readAllNotifAction() {
+  const user = await requireSession();
+  await repo.markAllNotifRead(user);
   refresh(["/notifications", "/today"]);
 }

@@ -743,7 +743,7 @@ export async function seedOpsDemo(db: AppDb) {
     updatedAt: now,
   });
 
-  await db.insert(t.notifications).values([
+  const notifs: (typeof t.notifications.$inferInsert)[] = [
     {
       id: nid(),
       userId: "u-uyen",
@@ -784,7 +784,62 @@ export async function seedOpsDemo(db: AppDb) {
       read: false,
       createdAt: addMinutes(now, -3),
     },
-  ]);
+  ];
+  if (isLocalOpsSeed()) {
+    notifs.push(
+      {
+        id: nid(),
+        userId: null,
+        role: "manager",
+        title: "Đặt phòng · Đặng Minh Tuấn",
+        body: "Tuyến Lễ tân ca tối · P.401",
+        link: "/sales/bookings/sale-401",
+        read: false,
+        createdAt: addMinutes(now, -12),
+      },
+      {
+        id: nid(),
+        userId: "u-tuyen",
+        role: null,
+        title: "Đặt phòng · Đặng Minh Tuấn",
+        body: "Tuyến Lễ tân ca tối · P.401",
+        link: "/sales/bookings/sale-401",
+        read: false,
+        createdAt: addMinutes(now, -12),
+      },
+      {
+        id: nid(),
+        userId: null,
+        role: "manager",
+        title: "Đặt phòng · Mai Thanh Hà",
+        body: "Ngân Lễ tân ca sáng · P.508",
+        link: "/sales/bookings/sale-508",
+        read: false,
+        createdAt: addMinutes(now, -9),
+      },
+      {
+        id: nid(),
+        userId: "u-ngan",
+        role: null,
+        title: "Đặt phòng · Mai Thanh Hà",
+        body: "Ngân Lễ tân ca sáng · P.508",
+        link: "/sales/bookings/sale-508",
+        read: false,
+        createdAt: addMinutes(now, -9),
+      },
+      {
+        id: nid(),
+        userId: null,
+        role: "manager",
+        title: "Sửa booking · Công ty An Phú",
+        body: "Minh Quản lý · 1 phòng",
+        link: "/sales/bookings/sale-506",
+        read: false,
+        createdAt: addMinutes(now, -5),
+      },
+    );
+  }
+  await db.insert(t.notifications).values(notifs);
 }
 
 export async function syncReceptionRoster(db: AppDb) {

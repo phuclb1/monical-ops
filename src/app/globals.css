@@ -1626,6 +1626,59 @@ body:has(.booking-print) .pwa-install {
   }
 }
 
+.notif-list {
+  display: grid;
+  gap: 0.7rem;
+}
+
+.notif-card {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  overflow: hidden;
+  box-shadow: 0 1px 0 rgba(28, 43, 42, 0.04);
+}
+
+.notif-card.is-unread {
+  background: #fff;
+  border-color: #e8c9a0;
+  box-shadow: 0 8px 18px rgba(92, 26, 27, 0.07);
+}
+
+.notif-card.is-read {
+  opacity: 0.78;
+}
+
+.notif-card-hit {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  width: 100%;
+  padding: 0.95rem 1rem 0.95rem 0.9rem;
+  text-align: left;
+  color: inherit;
+  font: inherit;
+  text-decoration: none;
+  background: none;
+  border: 0;
+  border-radius: 0;
+  min-height: 76px;
+  box-shadow: none;
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+.notif-card.is-unread .notif-card-hit {
+  box-shadow: inset 3px 0 0 var(--burgundy);
+}
+
+@media (min-width: 768px) {
+  .notif-list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.85rem;
+  }
+}
+
 @media print {
   body:has(.breakfast-report) {
     background: #fff !important;

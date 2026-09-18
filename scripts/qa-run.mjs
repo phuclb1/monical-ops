@@ -419,10 +419,21 @@ try {
     await must(shot, ["Công ty An Phú", "Nhận phòng P.506"]);
   });
 
+  await check("TC-130", "Lễ tân chỉ thấy booking mình tạo", async (shot) => {
+    await go("/notifications");
+    await must(shot, ["Thông báo", "Đặt phòng · Đặng Minh Tuấn", "Chỉ hiện thêm, sửa, hủy booking do bạn tạo"]);
+    const text = await pageText();
+    if (text.includes("Đặt phòng · Mai Thanh Hà")) throw new Error("Lễ tân thấy booking người khác tạo");
+    if (text.includes("Sửa booking · Công ty An Phú")) throw new Error("Lễ tân thấy noti quản lý");
+    if (text.includes("Thay khăn P.305")) throw new Error("Lễ tân thấy noti HK");
+  });
+
   await logout();
 
   await check("TC-04", "Quản lý Today — không bắt mở ca", async (shot) => {
     await login("quanly");
+    await must(shot, ["Doanh thu", "Đặt phòng", "Bếp", "Việc", "Thêm"]);
+    await go("/today");
     const text = await page.locator("body").innerText();
     if (text.includes("Mở ca hiện tại") && !text.includes("Ca đang làm")) {
       throw new Error("Quản lý vẫn bị màn bắt mở ca");
@@ -486,6 +497,19 @@ try {
     ]);
   });
 
+  await check("TC-131", "Quản lý thấy mọi thêm/sửa booking", async (shot) => {
+    await go("/notifications");
+    await must(shot, [
+      "Thông báo",
+      "Mọi thêm, sửa, hủy booking đều hiện ở đây",
+      "Đặt phòng · Đặng Minh Tuấn",
+      "Đặt phòng · Mai Thanh Hà",
+      "Sửa booking · Công ty An Phú",
+    ]);
+    const text = await pageText();
+    if (text.includes("Thay khăn P.305")) throw new Error("Quản lý thấy noti HK");
+  });
+
   await check("TC-120", "Chủ sở hữu vào doanh thu tháng/quý/năm", async (shot) => {
     await logout();
     await login("chusohuu");
@@ -531,6 +555,14 @@ try {
     await must(shot, ["Thêm"]);
     const text = await pageText();
     if (text.includes("Bán phòng — sơ đồ")) throw new Error("HK thấy menu bán phòng");
+  });
+
+  await check("TC-132", "HK không thấy noti booking", async (shot) => {
+    await go("/notifications");
+    await must(shot, ["Thông báo", "Thay khăn P.305"]);
+    const text = await pageText();
+    if (text.includes("Đặt phòng · Đặng Minh Tuấn")) throw new Error("HK thấy noti booking");
+    if (text.includes("Sửa booking · Công ty An Phú")) throw new Error("HK thấy noti booking");
   });
 } finally {
   await browser.close();

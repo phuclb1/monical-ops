@@ -38,6 +38,7 @@ function refresh() {
   revalidatePath("/more");
   revalidatePath("/reports");
   revalidatePath("/reports/sales");
+  revalidatePath("/notifications");
 }
 
 function saleFromForm(formData: FormData) {

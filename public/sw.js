@@ -1,4 +1,4 @@
-const CACHE = "ops-monical-v4";
+const CACHE = "ops-monical-v5";
 const SHELL = ["/", "/today", "/login", "/offline.html", "/logo.png", "/icon-192.png", "/icon-512.png", "/manifest.webmanifest"];
 
 self.addEventListener("install", (event) => {
@@ -33,10 +33,13 @@ self.addEventListener("fetch", (event) => {
 });
 
 self.addEventListener("push", (event) => {
-  let data = { title: "MONICAL Ops", body: "Có thông báo mới", url: "/notifications" };
+  let data = { title: "MONICAL Ops", body: "Có thông báo mới", url: "/notifications", tag: "ops-booking" };
   try {
     const parsed = event.data?.json();
-    if (parsed && typeof parsed === "object") data = { ...data, ...parsed };
+    if (parsed && typeof parsed === "object") {
+      const nested = parsed.data && typeof parsed.data === "object" ? parsed.data : parsed;
+      data = { ...data, ...nested };
+    }
   } catch {
     const text = event.data?.text();
     if (text) data.body = text;
@@ -46,6 +49,9 @@ self.addEventListener("push", (event) => {
       body: data.body,
       icon: "/icon-192.png",
       badge: "/icon-192.png",
+      tag: data.tag || data.url || "ops-booking",
+      renotify: true,
+      vibrate: [80, 40, 80],
       data: { url: data.url || "/notifications" },
     }),
   );

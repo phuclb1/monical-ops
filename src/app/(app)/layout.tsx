@@ -4,7 +4,7 @@ import Link from "next/link";
 import { Bell } from "lucide-react";
 import { getSession } from "@/lib/auth";
 import { ROLE_LABEL } from "@/lib/constants";
-import { extraNav, OWNER_NAV, PRIMARY_NAV } from "@/lib/nav";
+import { extraNav, MANAGER_NAV, OWNER_NAV, PRIMARY_NAV } from "@/lib/nav";
 import { BottomNav, SideNav } from "@/components/app-nav";
 import { Logo } from "@/components/logo";
 import { PushPrompt } from "@/components/push-prompt";
@@ -17,7 +17,8 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
   const owner = user.role === "owner";
   const unread = owner ? 0 : await countUnreadNotifications(user);
   const extras = extraNav(user.role);
-  const navItems = owner ? OWNER_NAV : PRIMARY_NAV;
+  const sideItems = owner ? OWNER_NAV : PRIMARY_NAV;
+  const bottomItems = owner ? OWNER_NAV : user.role === "manager" ? MANAGER_NAV : PRIMARY_NAV;
 
   return (
     <div className="md:flex md:min-h-dvh">
@@ -35,7 +36,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
           <p className="text-sm font-bold">{user.fullName}</p>
           <p className="text-xs text-[#6b5a52]">{ROLE_LABEL[user.role]}</p>
         </div>
-        <SideNav extras={extras} items={navItems} />
+        <SideNav extras={extras} items={sideItems} />
         <form action={logoutAction} className="border-t border-line p-3">
           <button className="w-full rounded-xl border border-line bg-white py-2.5 text-sm font-semibold">Đăng xuất</button>
         </form>
@@ -72,9 +73,9 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
             </Link>
           )}
         </header>
-        {owner ? null : <PushPrompt />}
+        {owner ? null : <PushPrompt variant="banner" />}
         <div className="page-frame">{children}</div>
-        <BottomNav items={navItems} />
+        <BottomNav items={bottomItems} />
       </div>
     </div>
   );
