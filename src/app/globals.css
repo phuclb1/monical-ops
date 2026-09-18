@@ -1070,6 +1070,7 @@ label {
   bottom: 6px;
   display: flex;
   align-items: center;
+  gap: 0.2rem;
   padding: 0 0.3rem;
   border-radius: 8px;
   font-size: 11px;
@@ -1109,6 +1110,7 @@ label {
   z-index: 60;
   display: flex;
   align-items: center;
+  gap: 0.2rem;
   padding: 0 0.5rem;
   border-radius: 8px;
   font-size: 11px;
@@ -1163,90 +1165,96 @@ label {
 .booking-sheet {
   max-width: 52rem;
   margin: 0 auto;
-  padding: 1.25rem 1.1rem 2rem;
+  padding: 0.65rem 0.85rem 1.4rem;
   background: #fff;
   color: #111;
-  font-size: 13px;
-  line-height: 1.55;
+  font-size: 12px;
+  line-height: 1.4;
 }
 
 .booking-sheet-head {
   display: flex;
   align-items: center;
-  gap: 0.9rem;
-  margin-bottom: 1rem;
-  padding-bottom: 0.85rem;
-  border-bottom: 1px solid #cfcfcf;
-  text-align: left;
+  gap: 0.7rem;
+  margin-bottom: 0.55rem;
+  padding-bottom: 0.45rem;
+  border-bottom: 2px solid #222;
+  text-align: center;
 }
 
 .booking-sheet-logo {
-  width: 72px;
-  height: 108px;
+  width: 52px;
+  height: 72px;
   flex-shrink: 0;
   object-fit: contain;
-  background: #5c1a1b;
   print-color-adjust: exact;
   -webkit-print-color-adjust: exact;
 }
 
 .booking-sheet-brand {
   min-width: 0;
+  flex: 1;
 }
 
 .booking-sheet-hotel {
-  margin: 0 0 0.25rem;
-  font-size: 1.15rem;
+  margin: 0 0 0.15rem;
+  font-size: 1.05rem;
   font-weight: 800;
-  letter-spacing: 0.02em;
+  letter-spacing: 0.06em;
 }
 
 .booking-sheet-head p {
-  margin: 0.1rem 0;
+  margin: 0;
+  font-size: 11px;
+  line-height: 1.35;
 }
 
 .booking-sheet h1 {
-  margin: 1.1rem 0 0.35rem;
+  margin: 0.55rem 0 0.45rem;
   text-align: center;
   font-size: 1.2rem;
   font-weight: 800;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.08em;
 }
 
 .booking-sheet-code {
   text-align: center;
   font-weight: 700;
-  margin: 0 0 1rem;
+  margin: 0 0 0.45rem;
+  font-size: 12px;
 }
 
 .booking-sheet h2 {
-  margin: 1.1rem 0 0.4rem;
-  font-size: 0.95rem;
+  margin: 0.65rem 0 0.2rem;
+  font-size: 0.78rem;
   font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: none;
 }
 
 .booking-sheet h3 {
-  margin: 0.7rem 0 0.25rem;
-  font-size: 0.85rem;
+  margin: 0.5rem 0 0.15rem;
+  font-size: 0.78rem;
   font-weight: 800;
 }
 
 .booking-sheet p,
 .booking-sheet li {
-  margin: 0.35rem 0;
+  margin: 0.2rem 0;
 }
 
 .booking-sheet ul,
 .booking-sheet ol {
-  margin: 0.2rem 0 0.5rem 1.15rem;
+  margin: 0.15rem 0 0.35rem 1.1rem;
 }
 
 .booking-sheet-kv,
 .booking-sheet-grid,
-.booking-sheet-sum {
+.booking-sheet-sum,
+.booking-sheet-info {
   width: 100%;
   border-collapse: collapse;
-  margin: 0.25rem 0 0.6rem;
+  margin: 0.15rem 0 0.35rem;
   break-inside: avoid;
 }
 
@@ -1255,29 +1263,74 @@ label {
 .booking-sheet-grid th,
 .booking-sheet-grid td,
 .booking-sheet-sum th,
-.booking-sheet-sum td {
-  border: 1px solid #cfcfcf;
-  padding: 0.4rem 0.5rem;
+.booking-sheet-sum td,
+.booking-sheet-info th,
+.booking-sheet-info td {
+  border: 1px solid #222;
+  padding: 0.28rem 0.4rem;
   text-align: left;
-  vertical-align: top;
+  vertical-align: middle;
 }
 
-.booking-sheet-kv th {
-  width: 11rem;
+.booking-sheet-kv th,
+.booking-sheet-info th,
+.booking-sheet-sum th,
+.booking-sheet-grid th {
+  width: auto;
   font-weight: 700;
-  background: #f6f6f6;
+  background: #f3eee4;
 }
 
-.booking-sheet-grid th,
-.booking-sheet-sum th {
-  background: #f0f0f0;
+.booking-sheet-info th {
+  width: 16%;
+  white-space: nowrap;
+}
+
+.booking-sheet-info td {
+  width: 34%;
+}
+
+.booking-sheet-grid th {
   font-size: 11px;
   font-weight: 800;
+  text-align: center;
+}
+
+.booking-sheet-grid td {
+  text-align: center;
 }
 
 .booking-sheet-num {
-  text-align: right;
+  text-align: right !important;
   white-space: nowrap;
+}
+
+.booking-sheet-grid tr.is-total td {
+  font-weight: 800;
+  background: #f3eee4;
+  text-align: right;
+}
+
+.booking-sheet-sum tr.is-strong th,
+.booking-sheet-sum tr.is-strong td {
+  font-weight: 800;
+  background: #efe6d6;
+}
+
+.booking-sheet-pay {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.55rem;
+  align-items: start;
+}
+
+.booking-sheet-pay .booking-sheet-kv,
+.booking-sheet-pay .booking-sheet-sum {
+  margin: 0;
+}
+
+.booking-sheet-pay .booking-sheet-kv th {
+  width: 8.2rem;
 }
 
 .booking-sheet-remain-label {
@@ -1311,7 +1364,7 @@ body:has(.booking-print) .pwa-install {
 @media print {
   @page {
     size: A4;
-    margin: 12mm;
+    margin: 10mm;
   }
 
   html,
@@ -1332,10 +1385,12 @@ body:has(.booking-print) .pwa-install {
   .booking-sheet {
     max-width: none;
     padding: 0;
-    font-size: 12px;
+    font-size: 11px;
   }
 
   .booking-sheet-logo {
+    width: 48px;
+    height: 66px;
     print-color-adjust: exact;
     -webkit-print-color-adjust: exact;
   }

@@ -133,6 +133,8 @@ const FIELD_LABEL: Record<string, string> = {
   origin: "Xuất xứ",
   adults: "NL",
   children: "TE",
+  cars: "Ô tô",
+  bikes: "Xe máy",
   discountKind: "Chiết khấu",
   discountValue: "Mức CK",
   deposit: "Cọc",

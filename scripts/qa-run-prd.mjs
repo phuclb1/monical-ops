@@ -227,9 +227,11 @@ try {
 
   await checkAuthed("TC-105", "Gantt 7 / 15 ngày", async (shot) => {
     await go("/sales");
-    await must(shot, ["7 ngày sơ đồ", "ĐÊM TRỐNG", "ĐÊM ĐÃ BÁN", "Booking trong khung"]);
+    await must(shot, ["7 ngày sơ đồ", "Theo tầng", "Theo hạng phòng", "ĐÊM TRỐNG", "ĐÊM ĐÃ BÁN", "Booking trong khung"]);
     await go("/sales?view=15");
     await must(shot, ["15 ngày sơ đồ", "ĐÊM TRỐNG"]);
+    await go("/sales?group=type");
+    await must(shot, ["Theo hạng phòng", "VIP", "FAMILY"]);
   });
 
   await checkAuthed("TC-106", "Gantt tháng", async (shot) => {
@@ -260,7 +262,7 @@ try {
 
   await checkAuthed("TC-95", "Form bán phòng: giá, chiết khấu, mã PMS", async (shot) => {
     await go("/sales/new");
-    await must(shot, ["Giá / đêm", "Chiết khấu", "Mã PMS"]);
+    await must(shot, ["Giá / đêm", "Chiết khấu", "Mã PMS", "Ô tô", "Xe máy"]);
   });
 
   await checkAuthed("TC-109", "Form bán nhiều phòng + cọc / còn thu", async (shot) => {
@@ -269,7 +271,7 @@ try {
     if ((await boxes.count()) < 2) throw new Error("Form bán không có chọn nhiều phòng");
     await boxes.nth(1).check();
     await ready();
-    await must(shot, ["Hạng phòng · chọn 1 hoặc nhiều phòng", "Đã chọn 2 phòng", "Chưa đặt cọc", "Còn phải thu"]);
+    await must(shot, ["Hạng phòng · chọn 1 hoặc nhiều phòng", "Đã chọn 2 phòng", "Chưa đặt cọc", "Còn phải thu", "Ô tô", "Xe máy"]);
   });
 
   await checkAuthed("TC-96", "Giá thường / lễ tết / sức chứa trên hạng phòng", async (shot) => {

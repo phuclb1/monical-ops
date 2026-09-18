@@ -19,7 +19,7 @@ import { formatDateLong, todayVN } from "@/lib/datetime";
 import { extraDetail } from "@/lib/extras";
 import { can } from "@/lib/permissions";
 import { getBooking, listBookingLogs, listRooms, listRoomSales, listRoomTypes, listSaleExtraTypes } from "@/lib/repos";
-import { bookingQuote, formatVnd, isActiveSaleStatus, isOpsBookingCode, paidNote } from "@/lib/sales";
+import { bookingQuote, formatVnd, isActiveSaleStatus, isOpsBookingCode, paidNote, parkingLabel } from "@/lib/sales";
 import type { SaleOrigin, SaleSource, SaleStatus } from "@/lib/types";
 
 const STATUS_TONE: Record<SaleStatus, "ok" | "warn" | "danger" | "gold" | "neutral"> = {
@@ -106,7 +106,8 @@ export default async function BookingDetailPage({
               {formatDateLong(booking.checkIn)} → {formatDateLong(booking.checkOut)} · {booking.nights} đêm
             </p>
             <p className="mt-1 text-sm">
-              {booking.adults} NL{booking.children ? ` · ${booking.children} TE` : ""} · tạm tính {formatVnd(booking.subtotal)}
+              {booking.adults} NL{booking.children ? ` · ${booking.children} TE` : ""}
+              {parkingLabel(booking.cars, booking.bikes) !== "—" ? ` · ${parkingLabel(booking.cars, booking.bikes)}` : ""} · tạm tính {formatVnd(booking.subtotal)}
             </p>
             {booking.breakfastOff ? (
               <p className="mt-1 text-sm text-[#c47b12]">Không ăn sáng −{formatVnd(booking.breakfastOff)}</p>
@@ -271,6 +272,8 @@ export default async function BookingDetailPage({
                   source: booking.source,
                   adults: booking.adults,
                   children: booking.children,
+                  cars: booking.cars,
+                  bikes: booking.bikes,
                   deposit: booking.deposit,
                   cashPaid: booking.cashPaid,
                   transferPaid: booking.transferPaid,

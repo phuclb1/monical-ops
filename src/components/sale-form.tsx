@@ -115,6 +115,8 @@ export function SaleForm({
     checkOut: string;
     adults?: number;
     children?: number;
+    cars?: number;
+    bikes?: number;
     rate?: number;
     discountKind?: string;
     discountValue?: number;
@@ -448,6 +450,14 @@ export function SaleForm({
           <input name="children" type="number" min={0} defaultValue={defaults.children ?? 0} />
         </Field>
       </div>
+      <div className="grid grid-cols-2 gap-2">
+        <Field label="Ô tô">
+          <input name="cars" type="number" min={0} defaultValue={defaults.cars ?? 0} />
+        </Field>
+        <Field label="Xe máy">
+          <input name="bikes" type="number" min={0} defaultValue={defaults.bikes ?? 0} />
+        </Field>
+      </div>
       <Field label={fromEz ? "Mã PMS ezCloud" : "Mã PMS (nếu có)"}>
         <input
           name="pmsCode"
@@ -507,6 +517,8 @@ export function BookingForm({
     source?: string;
     adults?: number;
     children?: number;
+    cars?: number;
+    bikes?: number;
     deposit?: number;
     cashPaid?: number;
     transferPaid?: number;
@@ -623,6 +635,14 @@ export function BookingForm({
         </Field>
         <Field label="Trẻ em">
           <input name="children" type="number" min={0} defaultValue={defaults.children ?? 0} />
+        </Field>
+      </div>
+      <div className="grid grid-cols-2 gap-2">
+        <Field label="Ô tô">
+          <input name="cars" type="number" min={0} defaultValue={defaults.cars ?? 0} />
+        </Field>
+        <Field label="Xe máy">
+          <input name="bikes" type="number" min={0} defaultValue={defaults.bikes ?? 0} />
         </Field>
       </div>
       {lines.map((line, index) => {

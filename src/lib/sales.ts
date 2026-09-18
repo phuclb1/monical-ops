@@ -156,6 +156,13 @@ export function formatVndLetter(value: number) {
   return `VND ${new Intl.NumberFormat("en-US").format(Math.max(0, Math.round(value)))}`;
 }
 
+export function parkingLabel(cars?: number | null, bikes?: number | null) {
+  const parts: string[] = [];
+  if (cars) parts.push(`${cars} ô tô`);
+  if (bikes) parts.push(`${bikes} xe máy`);
+  return parts.join(" · ") || "—";
+}
+
 export function bookingDisplayCode(booking: { pmsCode?: string | null; id: string }) {
   return booking.pmsCode?.trim() || booking.id;
 }

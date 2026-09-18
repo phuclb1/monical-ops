@@ -6,6 +6,10 @@ export const HOTEL_ADDRESS =
   process.env.NEXT_PUBLIC_HOTEL_ADDRESS ?? "48 Phan Như Thạch, Phường Xuân Hương, Đà Lạt, Lâm Đồng";
 export const HOTEL_EMAIL = process.env.NEXT_PUBLIC_HOTEL_EMAIL ?? "monicalhoteldalat.support@gmail.com";
 export const HOTEL_PHONE = process.env.NEXT_PUBLIC_HOTEL_PHONE ?? "0976 775 768";
+export const HOTEL_WEBSITE = process.env.NEXT_PUBLIC_HOTEL_WEBSITE ?? "https://monicalhoteldalat.com";
+export const HOTEL_BANK_HOLDER = process.env.NEXT_PUBLIC_HOTEL_BANK_HOLDER ?? "BÙI HÀ AN";
+export const HOTEL_BANK_NUMBER = process.env.NEXT_PUBLIC_HOTEL_BANK_NUMBER ?? "681779339";
+export const HOTEL_BANK_NAME = process.env.NEXT_PUBLIC_HOTEL_BANK_NAME ?? "Ngân Hàng VIB";
 export const CHECK_IN_TIME = "14:00";
 export const CHECK_OUT_TIME = "12:00";
 

@@ -8,6 +8,7 @@ import { can } from "@/lib/permissions";
 import { salesGantt, roomFocusBoard, listRoomTypes } from "@/lib/repos";
 import { formatVnd, groupByBooking, isSaleOrigin } from "@/lib/sales";
 import { isRoomFocus } from "@/lib/room-focus";
+import { ParkingIcons } from "@/components/parking-icons";
 import { RoomFocusChips } from "@/components/room-focus-chips";
 import { RoomGantt } from "@/components/room-gantt";
 import type { SaleSource, SaleStatus } from "@/lib/types";
@@ -32,12 +33,22 @@ const VIEWS = [
   { id: "month", label: "1 tháng" },
 ] as const;
 
+const GROUPS = [
+  { id: "floor", label: "Theo tầng" },
+  { id: "type", label: "Theo hạng phòng" },
+] as const;
+
 type SalesView = (typeof VIEWS)[number]["id"];
+type SalesGroup = (typeof GROUPS)[number]["id"];
 
 function parseView(value: string): SalesView {
   if (value === "15") return "15";
   if (value === "month") return "month";
   return "7";
+}
+
+function parseGroup(value: string): SalesGroup {
+  return value === "type" ? "type" : "floor";
 }
 
 function FilterChip({
@@ -73,14 +84,15 @@ function defaultGanttDate(view: SalesView, today: string) {
 export default async function SalesPage({
   searchParams,
 }: {
-  searchParams: Promise<{ date?: string; error?: string; origin?: string; focus?: string; view?: string }>;
+  searchParams: Promise<{ date?: string; error?: string; origin?: string; focus?: string; view?: string; group?: string }>;
 }) {
   const user = await getSession();
   if (!user) redirect("/login");
   if (!can(user.role, "manageSales")) redirect("/more");
-  const { date: rawDate, error, origin: rawOrigin, focus: rawFocus, view: rawView } = await searchParams;
+  const { date: rawDate, error, origin: rawOrigin, focus: rawFocus, view: rawView, group: rawGroup } = await searchParams;
   const today = todayVN();
   const view = parseView(rawView || "");
+  const group = parseGroup(rawGroup || "");
   const hasDate = Boolean(rawDate && /^\d{4}-\d{2}-\d{2}$/.test(rawDate));
   const date = hasDate ? rawDate! : defaultGanttDate(view, today);
   const focusDate = hasDate ? date : today;
@@ -117,9 +129,11 @@ export default async function SalesPage({
     if (nextDate !== defaultGanttDate(parseView(nextView), today)) nextQuery.set("date", nextDate);
     const nextOrigin = extra.origin === "" ? "" : extra.origin ?? origin;
     const nextFocus = extra.focus === "" ? "" : extra.focus ?? focus;
+    const nextGroup = extra.group === "" ? "floor" : extra.group ?? group;
     if (nextOrigin) nextQuery.set("origin", nextOrigin);
     if (nextFocus) nextQuery.set("focus", nextFocus);
     if (nextView && nextView !== "7") nextQuery.set("view", nextView);
+    if (nextGroup && nextGroup !== "floor") nextQuery.set("group", nextGroup);
     const text = nextQuery.toString();
     return text ? `/sales?${text}` : "/sales";
   };
@@ -156,6 +170,13 @@ export default async function SalesPage({
           </FilterChip>
         ))}
       </div>
+      <div className="flex flex-wrap gap-2">
+        {GROUPS.map((item) => (
+          <FilterChip key={item.id} href={salesHref({ group: item.id })} active={group === item.id}>
+            {item.label}
+          </FilterChip>
+        ))}
+      </div>
 
       <Card className="md:flex md:items-end md:justify-between md:gap-4">
         <form className="space-y-3 md:flex md:flex-1 md:items-end md:gap-3 md:space-y-0">
@@ -175,6 +196,7 @@ export default async function SalesPage({
           {origin ? <input type="hidden" name="origin" value={origin} /> : null}
           {focus ? <input type="hidden" name="focus" value={focus} /> : null}
           {view !== "7" ? <input type="hidden" name="view" value={view} /> : null}
+          {group !== "floor" ? <input type="hidden" name="group" value={group} /> : null}
           <Btn type="submit" variant="ghost" className="w-full md:w-auto md:px-6">
             Xem
           </Btn>
@@ -192,7 +214,7 @@ export default async function SalesPage({
       <div className="space-y-2 md:rounded-2xl md:border md:border-line md:bg-white/70 md:p-3">
         <RoomFocusChips
           path="/sales"
-          query={{ date: hasDate ? date : undefined, origin, view: view === "7" ? undefined : view }}
+          query={{ date: hasDate ? date : undefined, origin, view: view === "7" ? undefined : view, group: group === "floor" ? undefined : group }}
           date={focusDate}
           focus={focus}
           counts={focusBoard.counts}
@@ -230,6 +252,7 @@ export default async function SalesPage({
             compact={view === "month"}
             types={types}
             back={salesHref({})}
+            group={group}
           />
         ) : (
           <Empty title="Không có phòng khớp bộ lọc" text="Bỏ quick filter để xem Gantt." />
@@ -241,8 +264,11 @@ export default async function SalesPage({
               {rangeBookings.map((row) => (
                 <Link key={row.id} href={`/sales/bookings/${row.id}`} className="flex min-h-14 items-center justify-between gap-2 rounded-xl bg-sand px-3 py-2.5">
                   <div className="min-w-0">
-                    <p className="truncate font-semibold">
-                      {row.guestName} · {row.rooms.length} phòng
+                    <p className="flex min-w-0 items-center gap-1.5">
+                      <span className="truncate font-semibold">
+                        {row.guestName} · {row.rooms.length} phòng
+                      </span>
+                      <ParkingIcons cars={row.rooms[0].cars} bikes={row.rooms[0].bikes} size={14} />
                     </p>
                     <p className="truncate text-xs text-[#5c6665]">
                       {row.rooms[0].checkIn} → {row.rooms[0].checkOut} · {row.rooms.map((sale) => `P.${sale.room?.number}`).join(" · ")} · {SALE_SOURCE_LABEL[row.rooms[0].source as SaleSource] || row.rooms[0].source}

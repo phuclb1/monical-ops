@@ -3,9 +3,10 @@
 import { useRouter } from "next/navigation";
 import { useRef, useState, useTransition, type PointerEvent as ReactPointerEvent } from "react";
 import { moveGanttSaleAction } from "@/actions/sales";
+import { ParkingIcons } from "@/components/parking-icons";
 import { Btn } from "@/components/ui";
 import { WEEKDAYS, addDaysVN, formatDateNumeric, weekdayISO } from "@/lib/datetime";
-import { bookingKey, bookingQuote, catalogRate, formatVnd, nightsBetween, roomMoveKind } from "@/lib/sales";
+import { bookingKey, bookingQuote, catalogRate, formatVnd, nightsBetween, parkingLabel, roomMoveKind } from "@/lib/sales";
 
 const BAR: Record<string, string> = {
   reserved: "bg-[#fff1d2] text-[#8a6a22] ring-1 ring-[#e8c9a0]",
@@ -26,7 +27,14 @@ type GanttSale = {
   breakfast?: boolean | null;
   discountKind?: string | null;
   discountValue?: number | null;
+  cars?: number | null;
+  bikes?: number | null;
 };
+
+function saleTitle(sale: GanttSale) {
+  const parking = parkingLabel(sale.cars, sale.bikes);
+  return `${sale.guestName} · ${sale.checkIn} → ${sale.checkOut}${parking !== "—" ? ` · ${parking}` : ""} — kéo để đổi phòng / ngày`;
+}
 
 type GanttRow = {
   room: { id: string; number: string; type: string; floor: number; opsStatus: string };
@@ -34,6 +42,33 @@ type GanttRow = {
 };
 
 type RoomType = { name: string; sortOrder: number; baseRate: number; weekendRate: number };
+type GanttGroup = "floor" | "type";
+
+function ganttSections(rows: GanttRow[], types: RoomType[], group: GanttGroup) {
+  if (group === "type") {
+    const order = new Map(types.map((type, index) => [type.name, type.sortOrder || index]));
+    const buckets = new Map<string, GanttRow[]>();
+    for (const row of rows) {
+      const key = row.room.type || "—";
+      const list = buckets.get(key) || [];
+      list.push(row);
+      buckets.set(key, list);
+    }
+    return [...buckets.entries()]
+      .sort((a, b) => (order.get(a[0]) ?? 999) - (order.get(b[0]) ?? 999) || a[0].localeCompare(b[0]))
+      .map(([label, items]) => ({
+        key: label,
+        label,
+        rows: items.slice().sort((a, b) => a.room.number.localeCompare(b.room.number)),
+      }));
+  }
+  const floors = [...new Set(rows.map((row) => row.room.floor))].sort((a, b) => a - b);
+  return floors.map((floor) => ({
+    key: `floor-${floor}`,
+    label: `Tầng ${floor}`,
+    rows: rows.filter((row) => row.room.floor === floor),
+  }));
+}
 
 type Hover = { roomId: string; start: number };
 
@@ -92,6 +127,7 @@ export function RoomGantt({
   compact,
   types,
   back,
+  group = "floor",
 }: {
   days: string[];
   today: string;
@@ -99,6 +135,7 @@ export function RoomGantt({
   compact?: boolean;
   types: RoomType[];
   back: string;
+  group?: GanttGroup;
 }) {
   const router = useRouter();
   const rootRef = useRef<HTMLDivElement>(null);
@@ -106,7 +143,7 @@ export function RoomGantt({
   const [confirm, setConfirm] = useState<ConfirmState | null>(null);
   const [notice, setNotice] = useState("");
   const [pending, startTransition] = useTransition();
-  const floors = [...new Set(rows.map((row) => row.room.floor))].sort((a, b) => a - b);
+  const sections = ganttSections(rows, types, group);
   const columns = `4.75rem repeat(${days.length}, minmax(${compact ? "1.85rem" : "2.85rem"}, 1fr))`;
   const cellMin = compact ? "1.85rem" : "2.85rem";
 
@@ -242,13 +279,12 @@ export function RoomGantt({
           })}
         </div>
 
-        {floors.map((floor) => {
-          const onFloor = rows.filter((row) => row.room.floor === floor);
-          if (!onFloor.length) return null;
+        {sections.map((section) => {
+          if (!section.rows.length) return null;
           return (
-            <section key={floor}>
-              <p className="room-gantt-floor">Tầng {floor}</p>
-              {onFloor.map((row) => {
+            <section key={section.key}>
+              <p className="room-gantt-floor">{section.label}</p>
+              {section.rows.map((row) => {
                 const occupied = new Set<number>();
                 for (const bar of row.bars) {
                   for (let i = bar.nightStart; i < bar.nightEnd; i += 1) occupied.add(i);
@@ -265,7 +301,9 @@ export function RoomGantt({
                   <div key={row.room.id} className="room-gantt-row" style={{ gridTemplateColumns: columns }}>
                     <div className="room-gantt-label">
                       <p className="text-sm font-bold leading-tight">P.{row.room.number}</p>
-                      <p className="truncate text-[10px] text-[#8a7a72]">{row.room.type}</p>
+                      <p className="truncate text-[10px] text-[#8a7a72]">
+                        {group === "type" ? `Tầng ${row.room.floor}` : row.room.type}
+                      </p>
                     </div>
                     <div className="room-gantt-track" data-gantt-track data-room-id={row.room.id} style={{ gridColumn: `2 / span ${days.length}` }}>
                       <div className="room-gantt-cells" style={{ gridTemplateColumns: `repeat(${days.length}, minmax(0, 1fr))` }}>
@@ -306,14 +344,15 @@ export function RoomGantt({
                               left: `calc(${(bar.start / days.length) * 100}% + 1px)`,
                               width: `calc(${(span / days.length) * 100}% - 2px)`,
                             }}
-                            title={`${bar.sale.guestName} · ${bar.sale.checkIn} → ${bar.sale.checkOut} — kéo để đổi phòng / ngày`}
+                            title={saleTitle(bar.sale)}
                             onPointerDown={(event) => onBarDown(event, bar.sale, row.room.id, bar.nightStart, bar.start, bar.end)}
                             onPointerMove={onBarMove}
                             onPointerUp={onBarUp}
                             onPointerCancel={() => setDrag(null)}
                             disabled={pending}
                           >
-                            <span className="truncate">{bar.sale.guestName}</span>
+                            <span className="min-w-0 truncate">{bar.sale.guestName}</span>
+                            <ParkingIcons cars={bar.sale.cars} bikes={bar.sale.bikes} size={compact ? 10 : 12} />
                           </button>
                         );
                       })}
@@ -336,7 +375,8 @@ export function RoomGantt({
             top: drag.y - drag.height / 2,
           }}
         >
-          <span className="truncate">{drag.sale.guestName}</span>
+          <span className="min-w-0 truncate">{drag.sale.guestName}</span>
+          <ParkingIcons cars={drag.sale.cars} bikes={drag.sale.bikes} />
         </div>
       ) : null}
 

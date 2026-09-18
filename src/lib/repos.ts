@@ -784,6 +784,8 @@ type SaleInput = {
   checkOut: string;
   adults?: number;
   children?: number;
+  cars?: number;
+  bikes?: number;
   rate: number;
   rates?: Record<string, number>;
   dates?: Record<string, { checkIn: string; checkOut: string }>;
@@ -974,6 +976,8 @@ function toBookingView(id: string, rooms: Awaited<ReturnType<typeof listRoomSale
     notes: first.notes,
     adults: first.adults,
     children: first.children,
+    cars: first.cars || 0,
+    bikes: first.bikes || 0,
     deposit: paid.deposit,
     cashPaid: paid.cashPaid,
     transferPaid: paid.transferPaid,
@@ -1266,6 +1270,8 @@ export async function createRoomSale(user: SessionUser, data: SaleInput) {
       checkOut: row.checkOut,
       adults: Math.max(1, data.adults || 1),
       children: Math.max(0, data.children || 0),
+      cars: Math.max(0, data.cars || 0),
+      bikes: Math.max(0, data.bikes || 0),
       rate: row.rate,
       discountKind: row.discountKind,
       discountValue: row.discountValue,
@@ -1330,6 +1336,8 @@ export async function addRoomsToBooking(user: SessionUser, saleId: string, roomI
     checkOut: before.checkOut,
     adults: before.adults,
     children: before.children,
+    cars: before.cars,
+    bikes: before.bikes,
     rate: before.rate,
     rates,
     breakfasts: Object.fromEntries(ids.map((id) => [id, before.breakfast !== false])),
@@ -1415,6 +1423,8 @@ export async function updateBooking(
     source?: string;
     adults?: number;
     children?: number;
+    cars?: number;
+    bikes?: number;
     discountKind?: string;
     discountValue?: number;
     deposit?: number;
@@ -1442,6 +1452,8 @@ export async function updateBooking(
   const guestPhone = data.guestPhone !== undefined ? data.guestPhone.trim() || null : hit.guestPhone;
   const adults = Math.max(1, data.adults ?? hit.adults ?? 1);
   const children = Math.max(0, data.children ?? hit.children ?? 0);
+  const cars = Math.max(0, data.cars ?? hit.cars ?? 0);
+  const bikes = Math.max(0, data.bikes ?? hit.bikes ?? 0);
   const paid = paymentOf(
     {
       guestName,
@@ -1491,6 +1503,8 @@ export async function updateBooking(
       source,
       adults,
       children,
+      cars,
+      bikes,
       rate: nextRate,
       checkIn: nextIn,
       checkOut: nextOut,

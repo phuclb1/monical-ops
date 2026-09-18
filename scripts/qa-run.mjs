@@ -236,9 +236,11 @@ try {
 
   await check("TC-105", "Gantt 7 / 15 ngày", async (shot) => {
     await go("/sales");
-    await must(shot, ["7 ngày sơ đồ", "ĐÊM TRỐNG", "ĐÊM ĐÃ BÁN", "Booking trong khung", "Đặng Minh Tuấn", "Công ty An Phú"]);
+    await must(shot, ["7 ngày sơ đồ", "Theo tầng", "Theo hạng phòng", "Tầng", "ĐÊM TRỐNG", "ĐÊM ĐÃ BÁN", "Booking trong khung", "Đặng Minh Tuấn", "Công ty An Phú"]);
     await go("/sales?view=15");
     await must(shot, ["15 ngày sơ đồ", "ĐÊM TRỐNG", "ĐÊM ĐÃ BÁN"]);
+    await go("/sales?group=type");
+    await must(shot, ["Theo hạng phòng", "VIP", "FAMILY", "DELUXE", "Tầng"]);
   });
 
   await check("TC-106", "Gantt tháng", async (shot) => {
@@ -281,7 +283,19 @@ try {
     await must(shot, ["Nhật ký", "Tạo", "Đặng Minh Tuấn"]);
     await page.locator("summary", { hasText: "Sửa booking" }).click();
     await ready();
-    await must(shot, ["Sửa booking", "Họ tên", "SĐT", "Người lớn", "Đổi số phòng cùng hạng hoặc nâng hạng", "Đặt cọc", "Chiết khấu", "Lưu booking", "Hình thức"]);
+    await must(shot, [
+      "Sửa booking",
+      "Họ tên",
+      "SĐT",
+      "Người lớn",
+      "Ô tô",
+      "Xe máy",
+      "Đổi số phòng cùng hạng hoặc nâng hạng",
+      "Đặt cọc",
+      "Chiết khấu",
+      "Lưu booking",
+      "Hình thức",
+    ]);
     if (!(await page.locator('input[name="guestName"]').count())) {
       throw new Error("Form sửa booking thiếu ô tên khách");
     }
@@ -299,8 +313,12 @@ try {
       "Đoàn Minh Châu",
       "MONICAL Hotel Dalat",
       "FAMILY",
-      "Gồm ăn sáng",
-      "Điều khoản",
+      "THÔNG TIN CHUNG",
+      "Xe",
+      "CHI TIẾT ĐẶT PHÒNG",
+      "Tổng tiền sau chiết khấu",
+      "Còn phải thanh toán",
+      "ĐIỀU KHOẢN",
       "In phiếu",
       "Tải PDF",
     ]);
@@ -319,7 +337,7 @@ try {
 
   await check("TC-95", "Form bán phòng: giá, chiết khấu, mã PMS", async (shot) => {
     await go("/sales/new");
-    await must(shot, ["Giá / đêm", "Chiết khấu", "Mã PMS"]);
+    await must(shot, ["Giá / đêm", "Chiết khấu", "Mã PMS", "Ô tô", "Xe máy"]);
   });
 
   await check("TC-99", "Form bán: nền tảng Booking / Agoda / Ops", async (shot) => {
@@ -337,6 +355,8 @@ try {
       "Chiết khấu",
       "Chưa đặt cọc",
       "Còn phải thu",
+      "Ô tô",
+      "Xe máy",
     ]);
   });
 

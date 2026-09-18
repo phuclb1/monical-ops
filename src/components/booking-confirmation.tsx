@@ -2,34 +2,42 @@ import {
   CHECK_IN_TIME,
   CHECK_OUT_TIME,
   HOTEL_ADDRESS,
+  HOTEL_BANK_HOLDER,
+  HOTEL_BANK_NAME,
+  HOTEL_BANK_NUMBER,
   HOTEL_EMAIL,
   HOTEL_LETTERHEAD,
   HOTEL_PHONE,
+  HOTEL_WEBSITE,
+  SALE_SOURCE_LABEL,
 } from "@/lib/constants";
 import { formatDateNumeric, formatStayStamp } from "@/lib/datetime";
-import { bookingDisplayCode, bookingQuote, formatVndLetter, nightsBetween } from "@/lib/sales";
+import { bookingDisplayCode, bookingQuote, formatVndLetter, parkingLabel } from "@/lib/sales";
+import type { SaleSource } from "@/lib/types";
 import type { getBooking } from "@/lib/repos";
 
 type Booking = NonNullable<Awaited<ReturnType<typeof getBooking>>>;
 
-function MoneyRow({ label, value, strong }: { label: string; value: number; strong?: boolean }) {
-  return (
-    <tr className={strong ? "is-strong" : undefined}>
-      <td>{label}</td>
-      <td className="booking-sheet-num">{formatVndLetter(value)}</td>
-    </tr>
-  );
+function money(value: number) {
+  return new Intl.NumberFormat("en-US").format(Math.max(0, Math.round(value)));
+}
+
+function pax(adults: number, children: number) {
+  return children ? `${adults} NL / ${children} TE` : `${adults} NL`;
 }
 
 function SheetHead() {
+  const site = HOTEL_WEBSITE.replace(/^https?:\/\//, "");
   return (
     <header className="booking-sheet-head">
       <img src="/logo.png" alt="MONICAL hotel dalat" className="booking-sheet-logo" />
       <div className="booking-sheet-brand">
-        <p className="booking-sheet-hotel">{HOTEL_LETTERHEAD}</p>
+        <p className="booking-sheet-hotel">{HOTEL_LETTERHEAD.toUpperCase()}</p>
+        <p>Địa chỉ: {HOTEL_ADDRESS}</p>
         <p>
-          {HOTEL_ADDRESS} · {HOTEL_PHONE} · {HOTEL_EMAIL}
+          SĐT: {HOTEL_PHONE} · Email: {HOTEL_EMAIL}
         </p>
+        {site ? <p>Website: {site}</p> : null}
       </div>
     </header>
   );
@@ -37,12 +45,11 @@ function SheetHead() {
 
 export function BookingConfirmation({ booking }: { booking: Booking }) {
   const quote = bookingQuote(booking.rooms);
-  const nights = Math.max(0, nightsBetween(booking.checkIn, booking.checkOut));
   const code = bookingDisplayCode(booking);
   const guest = booking.guestName.toUpperCase();
-  const bookedOn = formatDateNumeric(booking.createdAt);
   const arrive = formatStayStamp(booking.checkIn, CHECK_IN_TIME);
   const depart = formatStayStamp(booking.checkOut, CHECK_OUT_TIME);
+  const source = SALE_SOURCE_LABEL[booking.source as SaleSource] || booking.source || "—";
   const gross = quote.subtotal + quote.breakfastOff + (booking.extrasTotal || 0);
   const afterDiscount = booking.total;
 
@@ -52,53 +59,52 @@ export function BookingConfirmation({ booking }: { booking: Booking }) {
         <SheetHead />
 
         <h1>XÁC NHẬN ĐẶT PHÒNG</h1>
-        <p className="booking-sheet-code">MÃ ĐẶT PHÒNG: {code}</p>
-
         <p>
-          Kính gửi <strong>{guest}</strong>. Cảm ơn quý khách đã lựa chọn Monical — yêu cầu đặt phòng đã được{" "}
-          <strong>XÁC NHẬN</strong>.
+          Lời chào nồng nhiệt từ {HOTEL_LETTERHEAD}! Chúng tôi chân thành cảm ơn Quý khách đã lựa chọn Monical là một
+          phần của chuyến ghé thăm Đà Lạt!
+        </p>
+        <p>
+          {HOTEL_LETTERHEAD} rất vui được xác nhận đặt phòng của Quý khách như sau:
         </p>
 
-        <h2>Thông tin đặt phòng</h2>
-        <table className="booking-sheet-kv">
+        <h2>THÔNG TIN CHUNG</h2>
+        <table className="booking-sheet-info">
           <tbody>
-            <tr>
-              <th>Ngày đặt</th>
-              <td>{bookedOn || "—"}</td>
-            </tr>
-            <tr>
-              <th>Ngày đến</th>
-              <td>{arrive}</td>
-            </tr>
-            <tr>
-              <th>Ngày đi</th>
-              <td>{depart}</td>
-            </tr>
-            <tr>
-              <th>Số đêm</th>
-              <td>{nights}</td>
-            </tr>
             <tr>
               <th>Khách</th>
               <td>{guest}</td>
+              <th>Nguồn</th>
+              <td>{source}</td>
             </tr>
             <tr>
-              <th>Điện thoại</th>
+              <th>SĐT / Tel</th>
               <td>{booking.guestPhone || ""}</td>
+              <th>Số xác nhận</th>
+              <td>{code}</td>
+            </tr>
+            <tr>
+              <th>Ghi chú / Notes</th>
+              <td colSpan={3}>{booking.notes || ""}</td>
+            </tr>
+            <tr>
+              <th>Xe</th>
+              <td colSpan={3}>{parkingLabel(booking.cars, booking.bikes)}</td>
             </tr>
           </tbody>
         </table>
 
-        <h2>Thông tin phòng</h2>
+        <h2>CHI TIẾT ĐẶT PHÒNG</h2>
         <table className="booking-sheet-grid">
           <thead>
             <tr>
               <th>Hạng phòng</th>
-              <th>Ngày vào</th>
-              <th>Ngày ra</th>
+              <th>Ngày đến</th>
+              <th>Ngày đi</th>
+              <th>Khách</th>
               <th>Số đêm</th>
-              <th>NL/TE</th>
-              <th>Giá / đêm</th>
+              <th>Giá/đêm</th>
+              <th>Giảm giá</th>
+              <th>Thành tiền</th>
             </tr>
           </thead>
           <tbody>
@@ -107,34 +113,77 @@ export function BookingConfirmation({ booking }: { booking: Booking }) {
               return (
                 <tr key={row.id}>
                   <td>{row.room?.type || "—"}</td>
-                  <td>{formatStayStamp(row.checkIn, CHECK_IN_TIME)}</td>
-                  <td>{formatStayStamp(row.checkOut, CHECK_OUT_TIME)}</td>
+                  <td>{formatDateNumeric(row.checkIn)}</td>
+                  <td>{formatDateNumeric(row.checkOut)}</td>
+                  <td>{pax(row.adults, row.children)}</td>
                   <td>{line?.nights ?? 0}</td>
-                  <td>
-                    {row.adults}/{row.children}
-                  </td>
-                  <td className="booking-sheet-num">{formatVndLetter(row.rate)}</td>
+                  <td className="booking-sheet-num">{money(row.rate)}</td>
+                  <td className="booking-sheet-num">{line?.discount ? money(line.discount) : "—"}</td>
+                  <td className="booking-sheet-num">{money(line?.total ?? 0)}</td>
                 </tr>
               );
             })}
+            {booking.extras.map((row) => (
+              <tr key={row.id}>
+                <td colSpan={7}>{row.name}</td>
+                <td className="booking-sheet-num">{money(row.amount)}</td>
+              </tr>
+            ))}
+            <tr className="is-total">
+              <td colSpan={7}>TỔNG CỘNG</td>
+              <td className="booking-sheet-num">{money(afterDiscount)}</td>
+            </tr>
           </tbody>
         </table>
 
-        <h2>Tổng tiền</h2>
-        <table className="booking-sheet-sum">
-          <tbody>
-            <MoneyRow label="Tổng tiền" value={gross} />
-            <MoneyRow label="Chiết khấu" value={quote.discount} />
-            <MoneyRow label="Tổng tiền sau chiết khấu" value={afterDiscount} />
-            <MoneyRow label="Đặt cọc" value={booking.deposit} />
-            <MoneyRow label="Còn phải thanh toán" value={booking.due} strong />
-          </tbody>
-        </table>
+        <h2>THANH TOÁN</h2>
+        <div className="booking-sheet-pay">
+          <table className="booking-sheet-kv">
+            <tbody>
+              <tr>
+                <th>Chủ tài khoản</th>
+                <td>{HOTEL_BANK_HOLDER || "—"}</td>
+              </tr>
+              <tr>
+                <th>Số tài khoản</th>
+                <td>{HOTEL_BANK_NUMBER || "—"}</td>
+              </tr>
+              <tr>
+                <th>Ngân hàng</th>
+                <td>{HOTEL_BANK_NAME || "—"}</td>
+              </tr>
+            </tbody>
+          </table>
+          <table className="booking-sheet-sum">
+            <tbody>
+              <tr>
+                <th>Tổng tiền</th>
+                <td className="booking-sheet-num">{formatVndLetter(gross)}</td>
+              </tr>
+              <tr>
+                <th>Chiết khấu</th>
+                <td className="booking-sheet-num">{formatVndLetter(quote.discount)}</td>
+              </tr>
+              <tr>
+                <th>Tổng tiền sau chiết khấu</th>
+                <td className="booking-sheet-num">{formatVndLetter(afterDiscount)}</td>
+              </tr>
+              <tr>
+                <th>Đặt cọc</th>
+                <td className="booking-sheet-num">{formatVndLetter(booking.deposit)}</td>
+              </tr>
+              <tr className="is-strong">
+                <th>Còn phải thanh toán</th>
+                <td className="booking-sheet-num">{formatVndLetter(booking.due)}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
       </section>
 
       <section className="booking-sheet-page">
         <SheetHead />
-        <h2>Điều khoản &amp; Chính sách</h2>
+        <h2>ĐIỀU KHOẢN &amp; CHÍNH SÁCH</h2>
         <h3>I. Thời gian nhận phòng và trả phòng</h3>
         <p>Giờ nhận phòng: 14h00 (lễ, tết: 15h00) — Giờ trả phòng: 12:00.</p>
         <ul>

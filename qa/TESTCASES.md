@@ -182,7 +182,7 @@ Dùng sau `npm run db:reseed-local`.
 | TC-92 | `/reception/s-102` | EZ-88201 · nút checkout PMS + xuất hóa đơn |
 | TC-93 | `/sales` | Sơ đồ trống / giữ / nhận |
 | TC-94 | `/sales` | Đặng Minh Tuấn P.401 · Công ty An Phú P.506 |
-| TC-95 | `/sales/new` | Giá / đêm · chiết khấu · mã PMS |
+| TC-95 | `/sales/new` | Giá / đêm · chiết khấu · mã PMS · Ô tô · Xe máy |
 | TC-96 | `/sales/rates` login `tuyen` | Redirect về sơ đồ bán, không form Lưu giá |
 | TC-97 | `/rooms/manage` login `quanly` | Giá thường · Giá lễ tết · Sức chứa tối đa |
 | TC-98 | login `uyen` `/sales` | Redirect Thêm, không menu bán phòng |
@@ -192,18 +192,18 @@ Dùng sau `npm run db:reseed-local`.
 | TC-102 | `/sales` | Quick filter Sẽ đến · Check-in hôm nay · Đang ở · Trả hôm nay · Phòng bẩn |
 | TC-103 | `/sales?focus=booking` | Mai Thanh Hà |
 | TC-104 | `/sales?focus=inhouse` | Đặng Minh Tuấn |
-| TC-105 | `/sales` | Gantt từ hôm qua · 7 ngày · Đêm trống · booking Đặng / An Phú |
+| TC-105 | `/sales` + `/sales?group=type` | Gantt từ hôm qua · 7 ngày · Theo tầng / Theo hạng phòng · Đêm trống · booking Đặng / An Phú |
 | TC-106 | `/sales?view=month` | Tháng sơ đồ · Đêm đã bán |
 | TC-107 | `/sales/bookings/sale-506` | CK 10% · Chưa đặt cọc · Còn phải thu 2.250.000₫ |
 | TC-108 | `/sales/bookings/sale-401` | Đã đặt cọc 500.000₫ · Còn phải thu 1.900.000₫ · Thanh toán · Thu đủ |
-| TC-109 | `/sales/new` chọn 2 phòng | Đã chọn 2 phòng · chiết khấu từng phòng · cọc / còn thu |
-| TC-110 | `/sales/bookings/sale-401` | Cùng hạng · Nâng hạng · Họ tên · SĐT · Nhật ký Tạo |
+| TC-109 | `/sales/new` chọn 2 phòng | Đã chọn 2 phòng · chiết khấu từng phòng · cọc / còn thu · Ô tô · Xe máy |
+| TC-110 | `/sales/bookings/sale-401` | Cùng hạng · Nâng hạng · Họ tên · SĐT · Ô tô · Xe máy · Nhật ký Tạo |
 | TC-111 | `/sales/bookings/sale-508` | Hủy booking · No-show · In xác nhận |
 | TC-114 | `/sales/bookings/bk-doan` | 2 phòng · P.304 · P.404 · đã cọc · còn phải thu |
 | TC-115 | `/sales?origin=ezcloud` | Không khớp bộ lọc (chỗ bán seed là Ops) |
 | TC-116 | `/sales` | Giữ chỗ 14 ngày tới · Mai Thanh Hà |
 | TC-117 | `/sales?focus=arriving` | Check-in hôm nay · Công ty An Phú |
-| TC-118 | `/sales/bookings/bk-doan/print` | Phiếu XÁC NHẬN ĐẶT PHÒNG · FAMILY · hạng phòng · điều khoản · In phiếu · Tải PDF |
+| TC-118 | `/sales/bookings/bk-doan/print` | Phiếu XÁC NHẬN ĐẶT PHÒNG · FAMILY · Xe · tổng tiền / chiết khấu / đặt cọc / còn thanh toán · điều khoản trang 2 · In phiếu · Tải PDF |
 | TC-119 | login `quanly` `/reports/sales` | Doanh thu bán phòng · Tháng / Quý / Năm · Đã đặt cọc · Phải thu · ghi nhận · CK · tiền mặt |
 | TC-119b | login `tuyen` `/reports/sales` | Redirect Thêm, không vào báo cáo doanh thu |
 | TC-120 | login `chusohuu` `/owner` | Doanh thu · Tháng / Quý / Năm · Doanh thu ghi nhận · chỉ xem |

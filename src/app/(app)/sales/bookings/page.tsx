@@ -48,14 +48,16 @@ export default async function BookingsPage({
     done: bookings.filter((row) => row.status === "departed" || row.status === "cancelled" || row.status === "no_show").length,
     all: bookings.length,
   };
-  const rows = bookings.filter((row) => {
-    if (tab === "open" && row.status !== "reserved" && row.status !== "inhouse") return false;
-    if (tab === "reserved" && row.status !== "reserved") return false;
-    if (tab === "inhouse" && row.status !== "inhouse") return false;
-    if (tab === "done" && row.status !== "departed" && row.status !== "cancelled" && row.status !== "no_show") return false;
-    if (q && !`${row.guestName} ${row.pmsCode || ""} ${row.roomLabel}`.toLowerCase().includes(q)) return false;
-    return true;
-  });
+  const rows = bookings
+    .filter((row) => {
+      if (tab === "open" && row.status !== "reserved" && row.status !== "inhouse") return false;
+      if (tab === "reserved" && row.status !== "reserved") return false;
+      if (tab === "inhouse" && row.status !== "inhouse") return false;
+      if (tab === "done" && row.status !== "departed" && row.status !== "cancelled" && row.status !== "no_show") return false;
+      if (q && !`${row.guestName} ${row.pmsCode || ""} ${row.roomLabel}`.toLowerCase().includes(q)) return false;
+      return true;
+    })
+    .sort((a, b) => b.createdAt.localeCompare(a.createdAt) || b.id.localeCompare(a.id));
 
   return (
     <main className="booking-desk space-y-3 px-3 py-4 md:space-y-4">
