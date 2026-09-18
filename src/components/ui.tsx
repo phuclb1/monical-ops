@@ -120,6 +120,47 @@ export function Field({
   );
 }
 
+export function PayMethodField({
+  name = "paymentMethod",
+  value,
+  onChange,
+}: {
+  name?: string;
+  value?: "cash" | "transfer";
+  onChange?: (value: "cash" | "transfer") => void;
+}) {
+  const current = value || "transfer";
+  return (
+    <fieldset>
+      <legend className="mb-1.5 block text-xs font-semibold text-[#5c6665]">Hình thức</legend>
+      <div className="grid grid-cols-2 gap-2">
+        <label className="min-h-11 rounded-xl border border-line bg-white px-3 text-sm font-semibold">
+          <input
+            type="radio"
+            name={name}
+            value="transfer"
+            {...(onChange
+              ? { checked: current === "transfer", onChange: () => onChange("transfer") }
+              : { defaultChecked: current === "transfer" })}
+          />
+          Chuyển khoản
+        </label>
+        <label className="min-h-11 rounded-xl border border-line bg-white px-3 text-sm font-semibold">
+          <input
+            type="radio"
+            name={name}
+            value="cash"
+            {...(onChange
+              ? { checked: current === "cash", onChange: () => onChange("cash") }
+              : { defaultChecked: current === "cash" })}
+          />
+          Tiền mặt
+        </label>
+      </div>
+    </fieldset>
+  );
+}
+
 export function Stat({ label, value, tone }: { label: string; value: number | string; tone?: string }) {
   return (
     <div className="card flex flex-col gap-1 p-3">

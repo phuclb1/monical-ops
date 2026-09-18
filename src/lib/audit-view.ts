@@ -136,6 +136,8 @@ const FIELD_LABEL: Record<string, string> = {
   discountKind: "Chiết khấu",
   discountValue: "Mức CK",
   deposit: "Cọc",
+  cashPaid: "Tiền mặt",
+  transferPaid: "Chuyển khoản",
   breakfast: "Ăn sáng",
   qty: "Số lượng",
   unitPrice: "Đơn giá",
@@ -190,7 +192,7 @@ const ENUM_LABEL: Record<string, Record<string, string>> = {
   discountKind: DISCOUNT_KIND_LABEL,
 };
 
-const MONEY_FIELDS = new Set(["deposit", "rate", "discountValue", "unitPrice"]);
+const MONEY_FIELDS = new Set(["deposit", "cashPaid", "transferPaid", "rate", "discountValue", "unitPrice"]);
 
 export function formatAuditValue(value: unknown, key?: string): string {
   if (value === null || value === undefined || value === "") return "—";

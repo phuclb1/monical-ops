@@ -422,6 +422,12 @@ label {
   font-weight: 800;
 }
 
+.revenue-stats {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.65rem;
+}
+
 .booking-log {
   margin: 0;
   padding: 0;
@@ -494,6 +500,10 @@ label {
     padding-right: 0;
     width: 100%;
     scroll-snap-type: none;
+  }
+
+  .revenue-stats {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
   .list-cards {
@@ -985,7 +995,7 @@ label {
   bottom: 6px;
   display: flex;
   align-items: center;
-  padding: 0 0.4rem;
+  padding: 0 0.3rem;
   border-radius: 8px;
   font-size: 11px;
   font-weight: 700;

@@ -12,6 +12,7 @@ const LINKS = [
   { href: "/sales/bookings", label: "Đặt phòng — booking / nhiều phòng", show: (r: Parameters<typeof can>[0]) => can(r, "manageSales") },
   { href: "/sales/rates", label: "Giá phòng — ngày thường / cuối tuần", show: (r: Parameters<typeof can>[0]) => can(r, "manageRates") },
   { href: "/sales/extras", label: "Dịch vụ kèm — phụ thu / giặt sấy / đệm", show: (r: Parameters<typeof can>[0]) => can(r, "manageRates") },
+  { href: "/reports/sales", label: "Doanh thu bán phòng — tháng / quý / năm", show: (r: Parameters<typeof can>[0]) => can(r, "viewSalesRevenue") },
   { href: "/kitchen", label: "Bếp — ăn sáng", show: (r: Parameters<typeof can>[0]) => can(r, "viewKitchen") },
   { href: "/shifts", label: "Ca làm việc & checklist", show: () => true },
   { href: "/forms", label: "Biểu mẫu điện tử", show: () => true },

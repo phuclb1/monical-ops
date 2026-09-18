@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Btn, Field } from "@/components/ui";
+import { Btn, Field, PayMethodField } from "@/components/ui";
 import { DISCOUNT_KIND_LABEL, SALE_SOURCE_GROUPS, SALE_SOURCE_LABEL } from "@/lib/constants";
 import {
   BREAKFAST_NIGHT_DEDUCT,
@@ -11,7 +11,9 @@ import {
   defaultCheckout,
   formatVnd,
   isWeekendNight,
+  paidNote,
   parseMoney,
+  parseDiscountValue,
   rangesOverlap,
   roomMoveKind,
 } from "@/lib/sales";
@@ -28,6 +30,7 @@ function emptyDiscount(): DiscountState {
 }
 
 function parseDiscountState(kind?: string | null, value?: number | null): DiscountState {
+  if (kind === "percent" && (value || 0) > 100) return { kind: "amount", value: value ? String(value) : "" };
   if (kind === "percent" || kind === "amount") return { kind, value: value ? String(value) : "" };
   return emptyDiscount();
 }
@@ -47,7 +50,12 @@ function RoomDiscountFields({
         <select
           name={`discountKind-${namePrefix}`}
           value={discount.kind}
-          onChange={(e) => onChange({ ...discount, kind: e.target.value as DiscountKind, value: e.target.value === "none" ? "" : discount.value })}
+          onChange={(e) =>
+            onChange({
+              kind: e.target.value as DiscountKind,
+              value: e.target.value === discount.kind ? discount.value : "",
+            })
+          }
         >
           {DISCOUNT_KINDS.map((kind) => (
             <option key={kind} value={kind}>
@@ -137,6 +145,7 @@ export function SaleForm({
     initialId ? { [initialId]: parseDiscountState(defaults.discountKind, defaults.discountValue) } : {},
   );
   const [deposit, setDeposit] = useState(defaults.deposit ? String(defaults.deposit) : "");
+  const [payMethod, setPayMethod] = useState<"cash" | "transfer">("transfer");
   const [fromEz, setFromEz] = useState(defaults.origin === "ezcloud");
   const selectedRooms = rooms.filter((room) => roomIds.includes(room.id));
   const quoteInputs = selectedRooms.map((room) => {
@@ -148,7 +157,7 @@ export function SaleForm({
       checkOut: stay.checkOut,
       breakfast: breakfast[room.id] !== false,
       discountKind: discounts[room.id]?.kind || "none",
-      discountValue: parseMoney(discounts[room.id]?.value),
+      discountValue: parseDiscountValue(discounts[room.id]?.kind, discounts[room.id]?.value),
     };
   });
   const booked = bookingQuote(quoteInputs);
@@ -367,6 +376,7 @@ export function SaleForm({
       <Field label="Đặt cọc (₫)">
         <input name="deposit" inputMode="numeric" value={deposit} onChange={(e) => setDeposit(e.target.value)} placeholder="0" />
       </Field>
+      {depositAmount ? <PayMethodField value={payMethod} onChange={setPayMethod} /> : <input type="hidden" name="paymentMethod" value={payMethod} />}
       <div className="rounded-xl bg-sand px-3 py-2 text-sm">
         {selectedRooms.length && quotes.every((row) => row.quote.nights > 0) ? (
           <ul className="space-y-1">
@@ -398,7 +408,7 @@ export function SaleForm({
             </li>
             {depositAmount ? (
               <li className="flex justify-between gap-2 text-[#1b7a4e]">
-                <span>Đã đặt cọc</span>
+                <span>Đã đặt cọc · {payMethod === "cash" ? "tiền mặt" : "chuyển khoản"}</span>
                 <span>−{formatVnd(depositAmount)}</span>
               </li>
             ) : (
@@ -489,6 +499,8 @@ export function BookingForm({
     adults?: number;
     children?: number;
     deposit?: number;
+    cashPaid?: number;
+    transferPaid?: number;
     notes?: string;
   };
 }) {
@@ -505,6 +517,9 @@ export function BookingForm({
     Object.fromEntries(lines.map((line) => [line.saleId, parseDiscountState(line.discountKind, line.discountValue)])),
   );
   const [deposit, setDeposit] = useState(defaults.deposit ? String(defaults.deposit) : "");
+  const [payMethod, setPayMethod] = useState<"cash" | "transfer">(
+    (defaults.cashPaid || 0) > (defaults.transferPaid || 0) ? "cash" : "transfer",
+  );
 
   function stayOf(saleId: string, fallback: StayDates) {
     return dates[saleId] || fallback;
@@ -547,7 +562,7 @@ export function BookingForm({
       checkOut: stay.checkOut,
       breakfast: breakfast[line.saleId] !== false,
       discountKind: discounts[line.saleId]?.kind || "none",
-      discountValue: parseMoney(discounts[line.saleId]?.value),
+      discountValue: parseDiscountValue(discounts[line.saleId]?.kind, discounts[line.saleId]?.value),
     };
   });
   const booked = bookingQuote(
@@ -705,6 +720,7 @@ export function BookingForm({
       <Field label="Đặt cọc — tổng đã thu (₫)">
         <input name="deposit" inputMode="numeric" value={deposit} onChange={(e) => setDeposit(e.target.value)} placeholder="0" />
       </Field>
+      <PayMethodField value={payMethod} onChange={setPayMethod} />
       <Field label="Ghi chú">
         <textarea name="notes" rows={2} defaultValue={defaults.notes || ""} placeholder="Giờ đến, giường, xe đón..." />
       </Field>
@@ -749,7 +765,7 @@ export function BookingForm({
           </li>
           {depositAmount ? (
             <li className="flex justify-between gap-2 text-[#1b7a4e]">
-              <span>Đã đặt cọc</span>
+              <span>Đã đặt cọc{paidNote(defaults) ? ` · ${paidNote(defaults)}` : payMethod === "cash" ? " · tiền mặt" : " · chuyển khoản"}</span>
               <span>−{formatVnd(depositAmount)}</span>
             </li>
           ) : (

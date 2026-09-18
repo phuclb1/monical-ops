@@ -19,6 +19,7 @@ export const CAN = {
   acceptHandover: ALL,
   closeShift: ALL,
   viewReports: ["manager", "accounting", "reception"] as Role[],
+  viewSalesRevenue: ["manager"] as Role[],
   viewPayments: ["accounting", "manager", "reception"] as Role[],
   viewGuestPii: ["reception", "hk", "manager"] as Role[],
   manageProcess: ["manager"] as Role[],

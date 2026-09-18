@@ -240,6 +240,22 @@ try {
     await must(shot, ["Đặt phòng", "Đang mở"]);
   });
 
+  await checkAuthed("TC-119", "Báo cáo doanh thu bán phòng", async (shot) => {
+    await go("/reports/sales");
+    await must(shot, [
+      "Doanh thu bán phòng",
+      "Tháng",
+      "Quý",
+      "Năm",
+      "Doanh thu booking",
+      "Đã đặt cọc",
+      "Phải thu",
+      "Doanh thu ghi nhận",
+      "Tiền chuyển khoản",
+      "Tiền mặt",
+    ]);
+  });
+
   await checkAuthed("TC-95", "Form bán phòng: giá, chiết khấu, mã PMS", async (shot) => {
     await go("/sales/new");
     await must(shot, ["Giá / đêm", "Chiết khấu", "Mã PMS"]);

@@ -113,6 +113,9 @@ Trạng thái: `pass` · `fail` · `skip` (chưa chạy vòng này).
 | TC-115 | Lọc ezCloud ẩn chỗ Ops đêm nay | `tuyen` | pass | `4881717-dirty` | [TC-115.png](evidence/R-20260916-2/TC-115.png) |
 | TC-116 | Giữ chỗ 14 ngày — Mai Thanh Hà | `tuyen` | pass | `4881717-dirty` | [TC-116.png](evidence/R-20260916-2/TC-116.png) |
 | TC-117 | Lọc Check-in hôm nay — Công ty An Phú | `tuyen` | pass | `4881717-dirty` | [TC-117.png](evidence/R-20260916-2/TC-117.png) |
+| TC-118 | In phiếu xác nhận booking Đoàn Minh Châu | `tuyen` | skip | — | — |
+| TC-119 | Báo cáo doanh thu phòng: tháng/quý/năm, cọc, phải thu, ghi nhận, CK/tiền mặt | `quanly` | skip | — | — |
+| TC-119b | Lễ tân không vào `/reports/sales` (về Thêm) | `tuyen` | skip | — | — |
 
 ### Việc
 
@@ -185,7 +188,7 @@ Dùng sau `npm run db:reseed-local`.
 | TC-102 | `/sales` | Quick filter Sẽ đến · Check-in hôm nay · Đang ở · Trả hôm nay · Phòng bẩn |
 | TC-103 | `/sales?focus=booking` | Mai Thanh Hà |
 | TC-104 | `/sales?focus=inhouse` | Đặng Minh Tuấn |
-| TC-105 | `/sales?view=week` | Tuần sơ đồ · Đêm trống · booking Đặng / An Phú |
+| TC-105 | `/sales` | Gantt từ hôm qua · 7 ngày · Đêm trống · booking Đặng / An Phú |
 | TC-106 | `/sales?view=month` | Tháng sơ đồ · Đêm đã bán |
 | TC-107 | `/sales/bookings/sale-506` | CK 10% · Chưa đặt cọc · Còn phải thu 2.250.000₫ |
 | TC-108 | `/sales/bookings/sale-401` | Đã đặt cọc 500.000₫ · Còn phải thu 1.900.000₫ · Thanh toán · Thu đủ |
@@ -197,6 +200,8 @@ Dùng sau `npm run db:reseed-local`.
 | TC-116 | `/sales` | Giữ chỗ 14 ngày tới · Mai Thanh Hà |
 | TC-117 | `/sales?focus=arriving` | Check-in hôm nay · Công ty An Phú |
 | TC-118 | `/sales/bookings/bk-doan/print` | Phiếu XÁC NHẬN ĐẶT PHÒNG · FAMILY · hạng phòng · điều khoản · In phiếu · Tải PDF |
+| TC-119 | login `quanly` `/reports/sales` | Doanh thu bán phòng · Tháng / Quý / Năm · Đã đặt cọc · Phải thu · ghi nhận · CK · tiền mặt |
+| TC-119b | login `tuyen` `/reports/sales` | Redirect Thêm, không vào báo cáo doanh thu |
 | TC-20 | `/tasks` | 3 việc HK cũ **và** Nhận P.105 · Trả P.102 |
 | TC-21 | `/tasks` | Việc quản lý: *Cần thêm HK ca này — tầng 2 và 3* |
 | TC-30 | `/kitchen` | Ngày mai 7 NL · 2 TE · chay 2 · dị ứng 1 |

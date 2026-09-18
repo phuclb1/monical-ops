@@ -4,7 +4,7 @@ import * as t from "./db/schema";
 import { nid, nowISO } from "./datetime";
 import { audit } from "./repos";
 import { ensureTodayRoomTasks } from "./checklist-ops";
-import { catalogRate, isActiveSaleStatus, normalizeDiscount, parseSaleSource, rangesOverlap } from "./sales";
+import { catalogRate, isActiveSaleStatus, normalizeDiscount, parseSaleSource, rangesOverlap, applyPaidAmount, salePaid } from "./sales";
 import type { SaleOrigin, SaleStatus, StayStatus } from "./types";
 import { SALE_STATUSES, STAY_STATUSES } from "./types";
 
@@ -211,7 +211,7 @@ async function ingestOne(raw: IngestBooking): Promise<IngestResult> {
     rate: Math.max(0, raw.rate ?? saleRow?.rate ?? catalogRate(roomType ?? undefined, raw.arrivalDate)),
     discountKind,
     discountValue,
-    deposit: Math.max(0, raw.deposit ?? saleRow?.deposit ?? 0),
+    ...applyPaidAmount(salePaid(saleRow || {}), Math.max(0, raw.deposit ?? saleRow?.deposit ?? 0), "transfer"),
     breakfast: raw.breakfast ?? saleRow?.breakfast ?? true,
     pmsCode,
     notes: raw.notes?.trim() || saleRow?.notes || null,

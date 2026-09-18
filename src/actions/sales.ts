@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 import { requireSession } from "@/lib/auth";
 import { can } from "@/lib/permissions";
 import * as repo from "@/lib/repos";
-import { parseDiscountKind, parseMoney } from "@/lib/sales";
+import { parseDiscountKind, parseDiscountValue, parseMoney, parsePaymentMethod } from "@/lib/sales";
 
 async function requireSales() {
   const user = await requireSession();
@@ -36,6 +36,8 @@ function refresh() {
   revalidatePath("/rooms");
   revalidatePath("/today");
   revalidatePath("/more");
+  revalidatePath("/reports");
+  revalidatePath("/reports/sales");
 }
 
 function saleFromForm(formData: FormData) {
@@ -63,7 +65,10 @@ function saleFromForm(formData: FormData) {
       : true;
     discounts[id] = {
       kind: parseDiscountKind(formData.get(`discountKind-${id}`) || formData.get("discountKind")),
-      value: parseMoney(formData.get(`discountValue-${id}`) ?? formData.get("discountValue")),
+      value: parseDiscountValue(
+        formData.get(`discountKind-${id}`) || formData.get("discountKind"),
+        formData.get(`discountValue-${id}`) ?? formData.get("discountValue"),
+      ),
     };
   }
   return {
@@ -84,6 +89,7 @@ function saleFromForm(formData: FormData) {
     discountKind: parseDiscountKind(formData.get("discountKind")),
     discountValue: parseMoney(formData.get("discountValue")),
     deposit: parseMoney(formData.get("deposit")),
+    paymentMethod: parsePaymentMethod(formData.get("paymentMethod")),
     pmsCode: String(formData.get("pmsCode") || ""),
     notes: String(formData.get("notes") || ""),
     checkinNow: String(formData.get("checkinNow") || "") === "1",
@@ -214,6 +220,7 @@ export async function recordBookingPaymentAction(formData: FormData) {
     await repo.recordBookingPayment(user, bookingId, {
       amount: parseMoney(formData.get("amount")),
       settle: String(formData.get("settle") || "") === "1",
+      paymentMethod: parsePaymentMethod(formData.get("paymentMethod")),
     });
   } catch (e) {
     fail(back, e);
@@ -234,7 +241,7 @@ export async function updateBookingAction(formData: FormData) {
     checkOut: String(formData.get(`checkOut-${saleId}`) || ""),
     breakfast: formData.getAll(`breakfast-${saleId}`).map(String).includes("1"),
     discountKind: parseDiscountKind(formData.get(`discountKind-${saleId}`)),
-    discountValue: parseMoney(formData.get(`discountValue-${saleId}`)),
+    discountValue: parseDiscountValue(formData.get(`discountKind-${saleId}`), formData.get(`discountValue-${saleId}`)),
   }));
   try {
     await repo.updateBooking(user, bookingId, {
@@ -245,6 +252,7 @@ export async function updateBookingAction(formData: FormData) {
       adults: Number(formData.get("adults") || 1),
       children: Number(formData.get("children") || 0),
       deposit: parseMoney(formData.get("deposit")),
+      paymentMethod: parsePaymentMethod(formData.get("paymentMethod")),
       notes: String(formData.get("notes") || ""),
     });
   } catch (e) {

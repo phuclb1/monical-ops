@@ -57,7 +57,21 @@ export async function seedIfEmpty(db: AppDb) {
   await syncExtraCatalog(db);
   await syncReceptionRoster(db);
   await syncTaskKinds(db);
+  await syncLegacyRoomDiscounts(db);
   await syncDemoPerRoomDiscount(db);
+  await syncSalePaymentSplit(db);
+}
+
+async function syncLegacyRoomDiscounts(db: AppDb) {
+  try {
+    const rows = await db.select({ id: t.roomSales.id, discountKind: t.roomSales.discountKind, discountValue: t.roomSales.discountValue }).from(t.roomSales);
+    for (const row of rows) {
+      if (row.discountKind !== "percent" || row.discountValue <= 100) continue;
+      await db.update(t.roomSales).set({ discountKind: "amount" }).where(eq(t.roomSales.id, row.id));
+    }
+  } catch {
+    // discount columns may still be missing on a half-patched DB
+  }
 }
 
 async function syncDemoPerRoomDiscount(db: AppDb) {
@@ -74,6 +88,23 @@ async function syncDemoPerRoomDiscount(db: AppDb) {
         notes,
       })
       .where(eq(t.roomSales.id, row.id));
+  }
+}
+
+async function syncSalePaymentSplit(db: AppDb) {
+  try {
+    const rows = await db.select({
+      id: t.roomSales.id,
+      deposit: t.roomSales.deposit,
+      cashPaid: t.roomSales.cashPaid,
+      transferPaid: t.roomSales.transferPaid,
+    }).from(t.roomSales);
+    for (const row of rows) {
+      if (row.deposit <= 0 || row.cashPaid + row.transferPaid > 0) continue;
+      await db.update(t.roomSales).set({ transferPaid: row.deposit }).where(eq(t.roomSales.id, row.id));
+    }
+  } catch {
+    // payment columns may still be missing on a half-patched DB
   }
 }
 
@@ -371,6 +402,8 @@ export async function seedOpsDemo(db: AppDb) {
         discountKind: "none",
         discountValue: 0,
         deposit: 500000,
+        cashPaid: 500000,
+        transferPaid: 0,
         pmsCode: null,
         notes: "Vãng lai, nhận chiều",
         createdAt: now,
@@ -395,6 +428,8 @@ export async function seedOpsDemo(db: AppDb) {
         discountKind: "none",
         discountValue: 0,
         deposit: 300000,
+        cashPaid: 0,
+        transferPaid: 300000,
         pmsCode: null,
         notes: "Gọi giữ chỗ, ETA 15:00",
         createdAt: now,
@@ -419,6 +454,8 @@ export async function seedOpsDemo(db: AppDb) {
         discountKind: "percent",
         discountValue: 10,
         deposit: 0,
+        cashPaid: 0,
+        transferPaid: 0,
         pmsCode: null,
         notes: "VIP công ty — cần hoa",
         createdAt: now,
@@ -443,6 +480,8 @@ export async function seedOpsDemo(db: AppDb) {
         discountKind: "amount",
         discountValue: 200000,
         deposit: 1000000,
+        cashPaid: 0,
+        transferPaid: 1000000,
         pmsCode: null,
         notes: "Đoàn 2 phòng",
         createdAt: now,
@@ -467,8 +506,36 @@ export async function seedOpsDemo(db: AppDb) {
         discountKind: "none",
         discountValue: 0,
         deposit: 1000000,
+        cashPaid: 0,
+        transferPaid: 1000000,
         pmsCode: null,
         notes: "Đoàn 2 phòng",
+        createdAt: now,
+        updatedAt: now,
+        createdBy: dutyId,
+        updatedBy: dutyId,
+      },
+      {
+        id: "sale-103",
+        bookingId: "sale-103",
+        roomId: "r-103",
+        guestName: "Lê Hoàng Nam",
+        guestPhone: "0905555666",
+        origin: "ops",
+        source: "walk_in",
+        status: "departed",
+        checkIn: addDaysVN(today, -2),
+        checkOut: today,
+        adults: 2,
+        children: 0,
+        rate: 900000,
+        discountKind: "none",
+        discountValue: 0,
+        deposit: 1800000,
+        cashPaid: 800000,
+        transferPaid: 1000000,
+        pmsCode: null,
+        notes: "Đã trả phòng, thu đủ",
         createdAt: now,
         updatedAt: now,
         createdBy: dutyId,

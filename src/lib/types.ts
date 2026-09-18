@@ -91,6 +91,9 @@ export type SaleSource = (typeof SALE_SOURCES)[number];
 export const DISCOUNT_KINDS = ["none", "percent", "amount"] as const;
 export type DiscountKind = (typeof DISCOUNT_KINDS)[number];
 
+export const PAYMENT_METHODS = ["transfer", "cash"] as const;
+export type PaymentMethod = (typeof PAYMENT_METHODS)[number];
+
 export const ACTIVE_SALE_STATUSES: SaleStatus[] = ["reserved", "inhouse"];
 
 export type SessionUser = {

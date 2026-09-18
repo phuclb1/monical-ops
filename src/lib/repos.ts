@@ -4,7 +4,7 @@ import { auditChanges, collapseAuditBurst } from "./audit-view";
 import { getDb } from "./db";
 import * as t from "./db/schema";
 import { addDaysVN, addMinutes, currentShiftType, datesUntil, nid, nextDate, nextShiftSlot, nowISO, shiftWindow, todayVN, weekdayISO } from "./datetime";
-import { bookingDue, bookingKey, bookingQuote, catalogRate, ganttSpan, groupByBooking, isActiveSaleStatus, isSaleOrigin, isSaleSource, nightlyNetFromLine, nightsBetween, normalizeDiscount, occupiesNight, parseSaleSource, quoteLinesBySaleId, rangesOverlap, rollupBookingStatus, roomMoveKind, saleStatusToStay } from "./sales";
+import { applyPaidAmount, bookingDue, bookingKey, bookingQuote, catalogRate, ganttSpan, groupByBooking, isActiveSaleStatus, isSaleOrigin, isSaleSource, nightlyNetFromLine, nightsBetween, normalizeDiscount, occupiesNight, paidFromMethod, parsePaymentMethod, parseSaleSource, quoteLinesBySaleId, rangesOverlap, rollupBookingStatus, roomMoveKind, salePaid, saleStatusToStay } from "./sales";
 import { nextOpsBookingCode, rekeyLegacyOpsBookingCodes } from "./db/ops-codes";
 import { extraAmount } from "./extras";
 import { can } from "./permissions";
@@ -775,6 +775,9 @@ type SaleInput = {
   discountValue?: number;
   discounts?: Record<string, { kind?: string; value?: number }>;
   deposit?: number;
+  cashPaid?: number;
+  transferPaid?: number;
+  paymentMethod?: string;
   pmsCode?: string;
   notes?: string;
   checkinNow?: boolean;
@@ -797,6 +800,17 @@ function uniqueSaleRoomIds(data: SaleInput) {
   const ids = [...new Set([...(data.roomIds || []), data.roomId || ""].map((id) => id.trim()).filter(Boolean))];
   if (!ids.length) throw new Error("Chọn phòng");
   return ids;
+}
+
+function paymentOf(data: SaleInput, current?: { cashPaid?: number | null; transferPaid?: number | null; deposit?: number | null }) {
+  if (data.cashPaid != null || data.transferPaid != null) {
+    const cashPaid = Math.max(0, Math.round(data.cashPaid || 0));
+    const transferPaid = Math.max(0, Math.round(data.transferPaid || 0));
+    return { cashPaid, transferPaid, deposit: cashPaid + transferPaid };
+  }
+  const method = parsePaymentMethod(data.paymentMethod);
+  if (current) return applyPaidAmount(current, Math.max(0, data.deposit || 0), method);
+  return paidFromMethod(Math.max(0, data.deposit || 0), method);
 }
 
 async function syncStayFromSale(
@@ -929,6 +943,7 @@ function toBookingView(id: string, rooms: Awaited<ReturnType<typeof listRoomSale
   const sorted = [...rooms].sort((a, b) => (a.room?.number || "").localeCompare(b.room?.number || ""));
   const first = sorted[0];
   const quote = bookingQuote(sorted);
+  const paid = salePaid(first);
   const checkIn = sorted.reduce((min, row) => (row.checkIn < min ? row.checkIn : min), first.checkIn);
   const checkOut = sorted.reduce((max, row) => (row.checkOut > max ? row.checkOut : max), first.checkOut);
   const nights = Math.max(quote.nights, nightsBetween(checkIn, checkOut));
@@ -942,8 +957,10 @@ function toBookingView(id: string, rooms: Awaited<ReturnType<typeof listRoomSale
     notes: first.notes,
     adults: first.adults,
     children: first.children,
-    deposit: first.deposit || 0,
-    due: bookingDue(quote.total, first.deposit || 0),
+    deposit: paid.deposit,
+    cashPaid: paid.cashPaid,
+    transferPaid: paid.transferPaid,
+    due: bookingDue(quote.total, paid.deposit),
     createdAt: sorted.reduce((min, row) => (row.createdAt < min ? row.createdAt : min), first.createdAt),
     checkIn,
     checkOut,
@@ -1118,7 +1135,7 @@ export async function salesGantt(from: string, toExclusive: string) {
           const span = ganttSpan(sale.checkIn, sale.checkOut, from, days.length);
           return span ? { sale, ...span } : null;
         })
-        .filter((bar): bar is { sale: (typeof active)[number]; start: number; end: number } => Boolean(bar))
+        .filter((bar): bar is { sale: (typeof active)[number]; start: number; end: number; nightStart: number; nightEnd: number } => Boolean(bar))
         .sort((a, b) => a.start - b.start);
       return { room, bars };
     });
@@ -1204,7 +1221,7 @@ export async function createRoomSale(user: SessionUser, data: SaleInput) {
   const pmsCode =
     data.pmsCode?.trim() || (origin === "ops" ? await nextOpsBookingCode(db, now) : "");
   if (!pmsCode) throw new Error("Tích ezCloud thì nhập mã PMS");
-  const deposit = Math.max(0, data.deposit || 0);
+  const paid = paymentOf(data);
   const bookingTotal = bookingQuote(
     rooms.map((row) => ({
       rate: row.rate,
@@ -1235,7 +1252,9 @@ export async function createRoomSale(user: SessionUser, data: SaleInput) {
       rate: row.rate,
       discountKind: row.discountKind,
       discountValue: row.discountValue,
-      deposit,
+      deposit: paid.deposit,
+      cashPaid: paid.cashPaid,
+      transferPaid: paid.transferPaid,
       breakfast: row.breakfast,
       pmsCode,
       notes: data.notes?.trim() || null,
@@ -1299,6 +1318,8 @@ export async function addRoomsToBooking(user: SessionUser, saleId: string, roomI
     breakfasts: Object.fromEntries(ids.map((id) => [id, before.breakfast !== false])),
     discounts: Object.fromEntries(ids.map((id) => [id, { kind: "none", value: 0 }])),
     deposit: before.deposit,
+    cashPaid: before.cashPaid,
+    transferPaid: before.transferPaid,
     pmsCode: before.pmsCode || "",
     notes: before.notes || "",
     origin: before.origin,
@@ -1321,6 +1342,7 @@ export async function updateRoomSale(user: SessionUser, id: string, data: SaleIn
   const { discountKind, discountValue } = normalizeDiscount(data.discountKind, data.discountValue);
   const rate = Math.max(0, data.rates?.[roomId] ?? data.rate);
   const breakfast = data.breakfasts?.[roomId] ?? before.breakfast !== false;
+  const paid = paymentOf(data, before);
   const patch = {
     roomId,
     guestName,
@@ -1334,7 +1356,9 @@ export async function updateRoomSale(user: SessionUser, id: string, data: SaleIn
     rate,
     discountKind,
     discountValue,
-    deposit: Math.max(0, data.deposit || 0),
+    deposit: paid.deposit,
+    cashPaid: paid.cashPaid,
+    transferPaid: paid.transferPaid,
     breakfast,
     pmsCode: before.pmsCode,
     notes: before.notes,
@@ -1349,6 +1373,8 @@ export async function updateRoomSale(user: SessionUser, id: string, data: SaleIn
     origin: patch.origin,
     source: patch.source,
     deposit: patch.deposit,
+    cashPaid: patch.cashPaid,
+    transferPaid: patch.transferPaid,
     pmsCode: patch.pmsCode,
     notes: patch.notes,
     updatedAt: patch.updatedAt,
@@ -1375,6 +1401,9 @@ export async function updateBooking(
     discountKind?: string;
     discountValue?: number;
     deposit?: number;
+    cashPaid?: number;
+    transferPaid?: number;
+    paymentMethod?: string;
     notes?: string;
   },
 ) {
@@ -1396,7 +1425,20 @@ export async function updateBooking(
   const guestPhone = data.guestPhone !== undefined ? data.guestPhone.trim() || null : hit.guestPhone;
   const adults = Math.max(1, data.adults ?? hit.adults ?? 1);
   const children = Math.max(0, data.children ?? hit.children ?? 0);
-  const deposit = Math.max(0, data.deposit || 0);
+  const paid = paymentOf(
+    {
+      guestName,
+      source,
+      checkIn: hit.checkIn,
+      checkOut: hit.checkOut,
+      rate: hit.rate,
+      deposit: data.deposit,
+      cashPaid: data.cashPaid,
+      transferPaid: data.transferPaid,
+      paymentMethod: data.paymentMethod,
+    },
+    hit,
+  );
   const notes = data.notes !== undefined ? data.notes.trim() || null : undefined;
   const roomById = new Map(rooms.map((room) => [room.id, room]));
   const nextBySale = new Map(data.assignments.map((row) => [row.saleId, row]));
@@ -1438,7 +1480,9 @@ export async function updateBooking(
       breakfast: assignment?.breakfast ?? row.breakfast !== false,
       discountKind,
       discountValue,
-      deposit,
+      deposit: paid.deposit,
+      cashPaid: paid.cashPaid,
+      transferPaid: paid.transferPaid,
       ...(notes !== undefined ? { notes } : {}),
       updatedAt: now,
       updatedBy: user.id,
@@ -1502,28 +1546,35 @@ export async function moveGanttSale(
 export async function recordBookingPayment(
   user: SessionUser,
   bookingId: string,
-  data: { amount?: number; settle?: boolean },
+  data: { amount?: number; settle?: boolean; paymentMethod?: string },
 ) {
   const booking = await getBooking(bookingId);
   if (!booking) throw new Error("Không tìm thấy booking");
   const active = booking.rooms.filter((row) => isActiveSaleStatus(row.status));
   if (!active.length) throw new Error("Booking đã đóng, không thu thêm");
-  const current = Math.max(0, Math.round(booking.deposit || 0));
+  const current = salePaid(booking);
   const due = Math.max(0, Math.round(booking.due || 0));
   const amount = Math.max(0, Math.round(data.amount || 0));
-  let next = current;
+  let next = current.deposit;
   if (data.settle || !amount) {
     if (due <= 0) throw new Error("Booking đã thu đủ");
-    next = current + due;
+    next = current.deposit + due;
   } else {
-    next = current + amount;
+    next = current.deposit + amount;
   }
+  const paid = applyPaidAmount(current, next, parsePaymentMethod(data.paymentMethod));
   const db = await getDb();
   const now = nowISO();
   for (const row of active) {
-    const patch = { deposit: next, updatedAt: now, updatedBy: user.id };
+    const patch = {
+      deposit: paid.deposit,
+      cashPaid: paid.cashPaid,
+      transferPaid: paid.transferPaid,
+      updatedAt: now,
+      updatedBy: user.id,
+    };
     await db.update(t.roomSales).set(patch).where(eq(t.roomSales.id, row.id));
-    await audit(user.id, "room_sale", row.id, "update", { deposit: row.deposit }, patch);
+    await audit(user.id, "room_sale", row.id, "update", { deposit: row.deposit, cashPaid: row.cashPaid, transferPaid: row.transferPaid }, patch);
   }
   return booking.id;
 }

@@ -21,6 +21,7 @@ import {
   BookMarked,
   Tag,
   Sparkles,
+  Wallet,
 } from "lucide-react";
 import clsx from "clsx";
 import { PRIMARY_NAV } from "@/lib/nav";
@@ -36,6 +37,7 @@ const ICONS: Record<string, typeof CalendarDays> = {
   "/sales/bookings": BookMarked,
   "/sales/rates": Tag,
   "/sales/extras": Sparkles,
+  "/reports/sales": Wallet,
   "/kitchen": ChefHat,
   "/shifts": TimerReset,
   "/forms": FileText,

@@ -19,7 +19,7 @@ import { formatDateLong, todayVN } from "@/lib/datetime";
 import { extraDetail } from "@/lib/extras";
 import { can } from "@/lib/permissions";
 import { getBooking, listBookingLogs, listRooms, listRoomSales, listRoomTypes, listSaleExtraTypes } from "@/lib/repos";
-import { bookingQuote, formatVnd, isActiveSaleStatus, isOpsBookingCode } from "@/lib/sales";
+import { bookingQuote, formatVnd, isActiveSaleStatus, isOpsBookingCode, paidNote } from "@/lib/sales";
 import type { SaleOrigin, SaleSource, SaleStatus } from "@/lib/types";
 
 const STATUS_TONE: Record<SaleStatus, "ok" | "warn" | "danger" | "gold" | "neutral"> = {
@@ -127,7 +127,10 @@ export default async function BookingDetailPage({
               </p>
             ))}
             {booking.deposit ? (
-              <p className="mt-1 text-sm text-[#1b7a4e]">Đã đặt cọc {formatVnd(booking.deposit)}</p>
+              <p className="mt-1 text-sm text-[#1b7a4e]">
+                Đã đặt cọc {formatVnd(booking.deposit)}
+                {paidNote(booking) ? ` · ${paidNote(booking)}` : ""}
+              </p>
             ) : (
               <p className="mt-1 text-sm text-[#c47b12]">Chưa đặt cọc</p>
             )}
@@ -142,7 +145,13 @@ export default async function BookingDetailPage({
             {firstActive ? (
               <div className="mt-3 border-t border-line pt-3">
                 <p className="mb-2 text-xs font-semibold text-[#5c6665]">Thanh toán</p>
-                <BookingPaymentPanel bookingId={booking.id} deposit={booking.deposit} due={booking.due} />
+                <BookingPaymentPanel
+                  bookingId={booking.id}
+                  deposit={booking.deposit}
+                  due={booking.due}
+                  cashPaid={booking.cashPaid}
+                  transferPaid={booking.transferPaid}
+                />
               </div>
             ) : null}
             {readyIn.length || staying.length ? (
@@ -263,6 +272,8 @@ export default async function BookingDetailPage({
                   adults: booking.adults,
                   children: booking.children,
                   deposit: booking.deposit,
+                  cashPaid: booking.cashPaid,
+                  transferPaid: booking.transferPaid,
                   notes: booking.notes || "",
                 }}
               />

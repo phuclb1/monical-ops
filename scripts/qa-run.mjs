@@ -271,7 +271,7 @@ try {
 
   await check("TC-108", "Booking Đặng — đã cọc, còn phải thu", async (shot) => {
     await go("/sales/bookings/sale-401");
-    await must(shot, ["Đặng Minh Tuấn", "Đã đặt cọc", "500.000₫", "Còn phải thu", "1.900.000₫", "Thanh toán", "Thu đủ"]);
+    await must(shot, ["Đặng Minh Tuấn", "Đã đặt cọc", "500.000₫", "Còn phải thu", "1.900.000₫", "Thanh toán", "Thu đủ", "Chuyển khoản", "Tiền mặt"]);
   });
 
   await check("TC-110", "Sửa booking: thông tin khách + nhật ký", async (shot) => {
@@ -279,7 +279,7 @@ try {
     await must(shot, ["Nhật ký", "Tạo", "Đặng Minh Tuấn"]);
     await page.locator("summary", { hasText: "Sửa booking" }).click();
     await ready();
-    await must(shot, ["Sửa booking", "Họ tên", "SĐT", "Người lớn", "Đổi số phòng cùng hạng hoặc nâng hạng", "Đặt cọc", "Chiết khấu", "Lưu booking"]);
+    await must(shot, ["Sửa booking", "Họ tên", "SĐT", "Người lớn", "Đổi số phòng cùng hạng hoặc nâng hạng", "Đặt cọc", "Chiết khấu", "Lưu booking", "Hình thức"]);
     if (!(await page.locator('input[name="guestName"]').count())) {
       throw new Error("Form sửa booking thiếu ô tên khách");
     }
@@ -302,6 +302,17 @@ try {
       "In phiếu",
       "Tải PDF",
     ]);
+  });
+
+  await check("TC-119b", "Lễ tân không vào báo cáo doanh thu", async (shot) => {
+    await go("/reports/sales");
+    await ready();
+    if (page.url().includes("/reports/sales")) throw new Error("Lễ tân vẫn vào được /reports/sales");
+    await page.screenshot({ path: shot, fullPage: true });
+    const text = await pageText();
+    if (text.includes("Doanh thu booking") && page.url().includes("/reports/sales")) {
+      throw new Error("Lễ tân thấy báo cáo doanh thu");
+    }
   });
 
   await check("TC-95", "Form bán phòng: giá, chiết khấu, mã PMS", async (shot) => {
@@ -441,6 +452,22 @@ try {
     await must(shot, ["Sơ đồ phòng", "Đặng Minh Tuấn"]);
     await go("/sales/rates");
     await must(shot, ["Giá phòng", "Ngày thường", "Cuối tuần"]);
+  });
+
+  await check("TC-119", "Báo cáo doanh thu bán phòng", async (shot) => {
+    await go("/reports/sales");
+    await must(shot, [
+      "Doanh thu bán phòng",
+      "Tháng",
+      "Quý",
+      "Năm",
+      "Doanh thu booking",
+      "Đã đặt cọc",
+      "Phải thu",
+      "Doanh thu ghi nhận",
+      "Tiền chuyển khoản",
+      "Tiền mặt",
+    ]);
   });
 
   await check("TC-05", "HK không vào trang nhân viên", async (shot) => {

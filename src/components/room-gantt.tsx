@@ -30,7 +30,7 @@ type GanttSale = {
 
 type GanttRow = {
   room: { id: string; number: string; type: string; floor: number; opsStatus: string };
-  bars: { sale: GanttSale; start: number; end: number }[];
+  bars: { sale: GanttSale; start: number; end: number; nightStart: number; nightEnd: number }[];
 };
 
 type RoomType = { name: string; sortOrder: number; baseRate: number; weekendRate: number };
@@ -78,8 +78,8 @@ function rangeOpen(row: GanttRow, start: number, nights: number, exceptId: strin
   const end = start + nights;
   for (const bar of row.bars) {
     if (bar.sale.id === exceptId) continue;
-    const a = Math.max(0, bar.start);
-    const b = Math.min(dayCount, bar.end);
+    const a = Math.max(0, bar.nightStart);
+    const b = Math.min(dayCount, bar.nightEnd);
     if (start < b && end > a) return false;
   }
   return true;
@@ -168,19 +168,20 @@ export function RoomGantt({
     submitMove(sale, target.room.id, checkIn, checkOut);
   }
 
-  function onBarDown(event: ReactPointerEvent<HTMLButtonElement>, sale: GanttSale, fromRoomId: string, start: number, end: number) {
+  function onBarDown(event: ReactPointerEvent<HTMLButtonElement>, sale: GanttSale, fromRoomId: string, nightStart: number, visualStart: number, visualEnd: number) {
     if (event.button !== 0 || pending) return;
     event.preventDefault();
     const bar = event.currentTarget;
     const box = bar.getBoundingClientRect();
-    const nights = Math.max(1, end - start, nightsBetween(sale.checkIn, sale.checkOut));
-    const grab = Math.max(0, Math.min(nights - 1, Math.floor(((event.clientX - box.left) / Math.max(1, box.width)) * nights)));
+    const nights = Math.max(1, nightsBetween(sale.checkIn, sale.checkOut));
+    const visual = Math.max(0.5, visualEnd - visualStart);
+    const grab = Math.max(0, Math.min(nights - 1, Math.floor(((event.clientX - box.left) / Math.max(1, box.width)) * visual)));
     bar.setPointerCapture(event.pointerId);
     setNotice("");
     setDrag({
       sale,
       fromRoomId,
-      fromStart: start,
+      fromStart: nightStart,
       nights,
       grab,
       x: event.clientX,
@@ -188,7 +189,7 @@ export function RoomGantt({
       width: box.width,
       height: box.height,
       moved: false,
-      hover: { roomId: fromRoomId, start },
+      hover: { roomId: fromRoomId, start: nightStart },
     });
   }
 
@@ -250,11 +251,14 @@ export function RoomGantt({
               {onFloor.map((row) => {
                 const occupied = new Set<number>();
                 for (const bar of row.bars) {
-                  for (let i = bar.start; i < bar.end; i += 1) occupied.add(i);
+                  for (let i = bar.nightStart; i < bar.nightEnd; i += 1) occupied.add(i);
                 }
                 const drop =
                   drag?.hover?.roomId === row.room.id
-                    ? { start: drag.hover.start, end: drag.hover.start + drag.nights }
+                    ? {
+                        start: drag.hover.start + 0.5,
+                        end: drag.hover.start + drag.nights + 0.5,
+                      }
                     : null;
                 const dropOk = drop ? rangeOpen(row, drop.start, drag?.nights || 0, drag?.sale.id || "", days.length) : false;
                 return (
@@ -267,11 +271,11 @@ export function RoomGantt({
                       <div className="room-gantt-cells" style={{ gridTemplateColumns: `repeat(${days.length}, minmax(0, 1fr))` }}>
                         {days.map((day, index) => {
                           const weekend = weekdayISO(day) >= 5;
-                          const isDrop = Boolean(drop && index >= drop.start && index < drop.end);
+                          const isDrop = Boolean(drop && index + 1 > drop.start && index < drop.end);
                           if (row.room.opsStatus === "ooo") {
                             return <div key={day} className="room-gantt-cell is-ooo" title="OOO" />;
                           }
-                          if (occupied.has(index) && !(drag && drag.sale.id && row.bars.some((bar) => bar.sale.id === drag.sale.id && index >= bar.start && index < bar.end))) {
+                          if (occupied.has(index) && !(drag && drag.sale.id && row.bars.some((bar) => bar.sale.id === drag.sale.id && index >= bar.nightStart && index < bar.nightEnd))) {
                             return (
                               <div
                                 key={day}
@@ -290,20 +294,20 @@ export function RoomGantt({
                         })}
                       </div>
                       {row.bars.map((bar) => {
-                        const nights = bar.end - bar.start;
                         const tone = bar.sale.status === "inhouse" ? "inhouse" : "reserved";
                         const dragging = drag?.sale.id === bar.sale.id;
+                        const span = Math.max(0.5, bar.end - bar.start);
                         return (
                           <button
                             key={bar.sale.id}
                             type="button"
                             className={`room-gantt-bar ${BAR[tone]} ${dragging ? "is-dragging" : ""}`}
                             style={{
-                              left: `calc(${(bar.start / days.length) * 100}% + 2px)`,
-                              width: `calc(${(nights / days.length) * 100}% - 4px)`,
+                              left: `calc(${(bar.start / days.length) * 100}% + 1px)`,
+                              width: `calc(${(span / days.length) * 100}% - 2px)`,
                             }}
                             title={`${bar.sale.guestName} · ${bar.sale.checkIn} → ${bar.sale.checkOut} — kéo để đổi phòng / ngày`}
-                            onPointerDown={(event) => onBarDown(event, bar.sale, row.room.id, bar.start, bar.end)}
+                            onPointerDown={(event) => onBarDown(event, bar.sale, row.room.id, bar.nightStart, bar.start, bar.end)}
                             onPointerMove={onBarMove}
                             onPointerUp={onBarUp}
                             onPointerCancel={() => setDrag(null)}

@@ -65,6 +65,11 @@ function viewWindow(view: SalesView, date: string) {
   return { from: date, to: addDaysVN(date, span), prev: addDaysVN(date, -span), next: addDaysVN(date, span) };
 }
 
+function defaultGanttDate(view: SalesView, today: string) {
+  if (view === "month") return startOfMonthVN(today);
+  return addDaysVN(today, -1);
+}
+
 export default async function SalesPage({
   searchParams,
 }: {
@@ -75,13 +80,15 @@ export default async function SalesPage({
   if (!can(user.role, "manageSales")) redirect("/more");
   const { date: rawDate, error, origin: rawOrigin, focus: rawFocus, view: rawView } = await searchParams;
   const today = todayVN();
-  const date = rawDate && /^\d{4}-\d{2}-\d{2}$/.test(rawDate) ? rawDate : today;
+  const view = parseView(rawView || "");
+  const hasDate = Boolean(rawDate && /^\d{4}-\d{2}-\d{2}$/.test(rawDate));
+  const date = hasDate ? rawDate! : defaultGanttDate(view, today);
+  const focusDate = hasDate ? date : today;
   const origin = isSaleOrigin(rawOrigin || "") ? rawOrigin : "";
   const raw = rawFocus || "";
   const focus = isRoomFocus(raw) ? raw : "";
-  const view = parseView(rawView || "");
   const { from, to, prev, next } = viewWindow(view, date);
-  const [focusBoard, gantt, types] = await Promise.all([roomFocusBoard(date), salesGantt(from, to), listRoomTypes()]);
+  const [focusBoard, gantt, types] = await Promise.all([roomFocusBoard(focusDate), salesGantt(from, to), listRoomTypes()]);
   const hits = focus ? focusBoard[focus] : [];
   const hitByRoom = new Map(hits.map((hit) => [hit.roomId, hit]));
   const rangeSales = (gantt?.sales || []).filter((sale) => {
@@ -103,14 +110,18 @@ export default async function SalesPage({
     }));
   const salesHref = (extra: Record<string, string | undefined>) => {
     const nextQuery = new URLSearchParams();
-    nextQuery.set("date", extra.date ?? date);
+    const nextView = (extra.view === "" ? "7" : extra.view ?? view) as SalesView;
+    const nextDate =
+      extra.date ??
+      (extra.view !== undefined && extra.view !== view && !hasDate ? defaultGanttDate(parseView(nextView), today) : date);
+    if (nextDate !== defaultGanttDate(parseView(nextView), today)) nextQuery.set("date", nextDate);
     const nextOrigin = extra.origin === "" ? "" : extra.origin ?? origin;
     const nextFocus = extra.focus === "" ? "" : extra.focus ?? focus;
-    const nextView = extra.view === "" ? "7" : extra.view ?? view;
     if (nextOrigin) nextQuery.set("origin", nextOrigin);
     if (nextFocus) nextQuery.set("focus", nextFocus);
     if (nextView && nextView !== "7") nextQuery.set("view", nextView);
-    return `/sales?${nextQuery.toString()}`;
+    const text = nextQuery.toString();
+    return text ? `/sales?${text}` : "/sales";
   };
   const lastDay = addDaysVN(to, -1);
   const rangeLabel = view === "month" ? formatMonthLong(date) : `${formatDayMonth(from)} – ${formatDayMonth(lastDay)}`;
@@ -120,10 +131,10 @@ export default async function SalesPage({
       <div className="flex items-start justify-between gap-3 md:items-center">
         <div>
           <h1 className="text-xl font-bold">Sơ đồ phòng</h1>
-          <p className="text-xs text-[#5c6665] md:text-sm">Gantt 7 ngày, 15 ngày hoặc 1 tháng. Quản lý booking ở Đặt phòng.</p>
+          <p className="text-xs text-[#5c6665] md:text-sm">Gantt từ hôm qua. Box booking nửa ngày nhận / nửa ngày trả — cùng ngày có thể ghép khách đi và khách đến. Quản lý booking ở Đặt phòng.</p>
         </div>
         <div className="flex flex-col items-end gap-1 md:flex-row md:items-center md:gap-3">
-          <Link href={`/sales/new?date=${date}`} className="cta-link">
+          <Link href={`/sales/new?date=${today}`} className="cta-link">
             Bán phòng
           </Link>
           <Link href="/sales/bookings" className="flex min-h-11 items-center text-sm font-semibold text-teal">
@@ -181,8 +192,8 @@ export default async function SalesPage({
       <div className="space-y-2 md:rounded-2xl md:border md:border-line md:bg-white/70 md:p-3">
         <RoomFocusChips
           path="/sales"
-          query={{ date, origin, view: view === "7" ? undefined : view }}
-          date={date}
+          query={{ date: hasDate ? date : undefined, origin, view: view === "7" ? undefined : view }}
+          date={focusDate}
           focus={focus}
           counts={focusBoard.counts}
         />

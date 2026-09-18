@@ -6,7 +6,7 @@ import { SALE_ORIGIN_LABEL, SALE_SOURCE_LABEL, SALE_STATUS_LABEL } from "@/lib/c
 import { formatDateLong, formatDateNumeric } from "@/lib/datetime";
 import { can } from "@/lib/permissions";
 import { listBookings } from "@/lib/repos";
-import { formatVnd, isOpsBookingCode } from "@/lib/sales";
+import { formatVnd, isOpsBookingCode, paidNote } from "@/lib/sales";
 import type { SaleOrigin, SaleSource, SaleStatus } from "@/lib/types";
 
 const TABS = [
@@ -71,6 +71,11 @@ export default async function BookingsPage({
           <Link href="/sales" className="flex min-h-11 items-center text-sm font-semibold text-teal">
             Sơ đồ phòng
           </Link>
+          {can(user.role, "viewSalesRevenue") ? (
+            <Link href="/reports/sales" className="flex min-h-11 items-center text-sm font-semibold text-teal">
+              Doanh thu
+            </Link>
+          ) : null}
         </div>
       </div>
 
@@ -118,7 +123,7 @@ export default async function BookingsPage({
                     <div className="flex flex-col items-end gap-1">
                       <Chip tone={STATUS_TONE[row.status]}>{SALE_STATUS_LABEL[row.status]}</Chip>
                       {row.deposit ? (
-                        <Chip tone="ok">Đã cọc {formatVnd(row.deposit)}</Chip>
+                        <Chip tone="ok">Đã cọc {formatVnd(row.deposit)}{paidNote(row) ? ` · ${paidNote(row)}` : ""}</Chip>
                       ) : row.status === "reserved" || row.status === "inhouse" ? (
                         <Chip tone="warn">Chưa cọc</Chip>
                       ) : null}
@@ -164,7 +169,7 @@ export default async function BookingsPage({
                 <div className="flex flex-col items-start gap-1">
                   <Chip tone={STATUS_TONE[row.status]}>{SALE_STATUS_LABEL[row.status]}</Chip>
                   {row.deposit ? (
-                    <Chip tone="ok">Đã cọc</Chip>
+                    <Chip tone="ok">Đã cọc{paidNote(row) ? ` · ${paidNote(row)}` : ""}</Chip>
                   ) : row.status === "reserved" || row.status === "inhouse" ? (
                     <Chip tone="warn">Chưa cọc</Chip>
                   ) : null}

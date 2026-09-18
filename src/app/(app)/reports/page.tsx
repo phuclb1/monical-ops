@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { Card, Chip } from "@/components/ui";
 import { getSession } from "@/lib/auth";
 import { formatDateTime } from "@/lib/datetime";
+import { can } from "@/lib/permissions";
 import { listForms, overdueReport } from "@/lib/repos";
 
 export default async function ReportsPage() {
@@ -14,6 +15,11 @@ export default async function ReportsPage() {
     <main className="space-y-3 px-3 py-4">
       <h1 className="text-xl font-bold">Báo cáo ngày</h1>
       <p className="text-xs text-[#5c6665]">Quản lý xem việc quá hạn, đăng ký trễ và checkout thiếu hóa đơn.</p>
+      {can(user.role, "viewSalesRevenue") ? (
+        <Link href="/reports/sales" className="card mb-0 flex min-h-16 items-center p-4 font-semibold">
+          Doanh thu bán phòng — tháng / quý / năm
+        </Link>
+      ) : null}
 
       <Card>
         <h2 className="mb-2 font-bold">Việc quá hạn ({overdue.tasks.length})</h2>

@@ -8,7 +8,7 @@ import { SALE_ORIGIN_LABEL, SALE_SOURCE_LABEL, SALE_STATUS_LABEL } from "@/lib/c
 import { formatDateLong, todayVN } from "@/lib/datetime";
 import { can } from "@/lib/permissions";
 import { getRoomSale, getRoomDayChecklists, getBooking, listRooms } from "@/lib/repos";
-import { bookingDue, bookingQuote, discountLabel, formatVnd, isOpsBookingCode } from "@/lib/sales";
+import { bookingDue, bookingQuote, discountLabel, formatVnd, isOpsBookingCode, paidNote } from "@/lib/sales";
 import type { SaleOrigin, SaleSource, SaleStatus } from "@/lib/types";
 
 const STATUS_TONE: Record<SaleStatus, "ok" | "warn" | "danger" | "gold" | "neutral"> = {
@@ -91,7 +91,10 @@ export default async function SaleDetailPage({
           </p>
         ) : null}
         {sale.deposit ? (
-          <p className="mt-1 text-sm text-[#1b7a4e]">Đã đặt cọc {formatVnd(sale.deposit)}</p>
+          <p className="mt-1 text-sm text-[#1b7a4e]">
+            Đã đặt cọc {formatVnd(sale.deposit)}
+            {paidNote(sale) ? ` · ${paidNote(sale)}` : ""}
+          </p>
         ) : (
           <p className="mt-1 text-sm text-[#c47b12]">Chưa đặt cọc</p>
         )}

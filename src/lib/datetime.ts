@@ -62,6 +62,42 @@ export function startOfMonthVN(isoDate: string) {
   return `${isoDate.slice(0, 7)}-01`;
 }
 
+export function startOfYearVN(isoDate: string) {
+  return `${isoDate.slice(0, 4)}-01-01`;
+}
+
+export function startOfQuarterVN(isoDate: string) {
+  const month = Number(isoDate.slice(5, 7));
+  const start = Math.floor((Math.max(1, month) - 1) / 3) * 3 + 1;
+  return `${isoDate.slice(0, 4)}-${String(start).padStart(2, "0")}-01`;
+}
+
+export function quarterOfVN(isoDate: string) {
+  return Math.floor((Number(startOfQuarterVN(isoDate).slice(5, 7)) - 1) / 3) + 1;
+}
+
+export type PeriodGrain = "month" | "quarter" | "year";
+
+export function periodWindow(grain: PeriodGrain, isoDate: string) {
+  if (grain === "year") {
+    const from = startOfYearVN(isoDate);
+    return { from, to: addMonthsVN(from, 12), prev: addMonthsVN(from, -12), next: addMonthsVN(from, 12) };
+  }
+  if (grain === "quarter") {
+    const from = startOfQuarterVN(isoDate);
+    return { from, to: addMonthsVN(from, 3), prev: addMonthsVN(from, -3), next: addMonthsVN(from, 3) };
+  }
+  const from = startOfMonthVN(isoDate);
+  return { from, to: addMonthsVN(from, 1), prev: addMonthsVN(from, -1), next: addMonthsVN(from, 1) };
+}
+
+export function formatPeriodLabel(grain: PeriodGrain, isoDate: string) {
+  const year = isoDate.slice(0, 4);
+  if (grain === "year") return `Năm ${year}`;
+  if (grain === "quarter") return `Quý ${quarterOfVN(isoDate)}/${year}`;
+  return formatMonthLong(isoDate);
+}
+
 export function addMonthsVN(isoDate: string, delta: number) {
   const year = Number(isoDate.slice(0, 4));
   const month = Number(isoDate.slice(5, 7));

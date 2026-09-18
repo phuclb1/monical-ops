@@ -1,6 +1,6 @@
 import { addDaysVN, weekdayISO } from "./datetime";
-import type { DiscountKind, SaleOrigin, SaleSource, SaleStatus } from "./types";
-import { ACTIVE_SALE_STATUSES, SALE_SOURCES } from "./types";
+import type { DiscountKind, PaymentMethod, SaleOrigin, SaleSource, SaleStatus } from "./types";
+import { ACTIVE_SALE_STATUSES, PAYMENT_METHODS, SALE_SOURCES } from "./types";
 
 export function nightsBetween(checkIn: string, checkOut: string) {
   const start = new Date(`${checkIn}T12:00:00+07:00`).getTime();
@@ -24,10 +24,29 @@ export function parseDiscountKind(value: FormDataEntryValue | string | null | un
   return "none";
 }
 
+export function parseDiscountValue(kind: FormDataEntryValue | string | null | undefined, raw: FormDataEntryValue | string | null | undefined) {
+  if (parseDiscountKind(kind) !== "percent") return parseMoney(raw);
+  const text = String(raw ?? "").trim().replace(/%/g, "").replace(",", ".");
+  const n = Number(text.replace(/[^\d.]/g, ""));
+  if (!Number.isFinite(n) || n < 0) return 0;
+  return Math.round(n);
+}
+
+function asDiscount(kind: string | null | undefined, value: number | null | undefined) {
+  const discountKind = parseDiscountKind(kind);
+  const discountValue = Math.max(0, Math.round(value || 0));
+  if (discountKind === "percent" && discountValue > 100) {
+    return { discountKind: "amount" as const, discountValue };
+  }
+  return { discountKind, discountValue: discountKind === "none" ? 0 : discountValue };
+}
+
 export function normalizeDiscount(kind: string | null | undefined, value: number | null | undefined) {
   const discountKind = parseDiscountKind(kind);
   const discountValue = Math.max(0, Math.round(value || 0));
-  if (discountKind === "percent" && discountValue > 100) throw new Error("Chiết khấu tối đa 100%");
+  if (discountKind === "percent" && discountValue > 100) {
+    throw new Error("Chiết khấu tối đa 100%. Nếu giảm theo tiền, chọn Số tiền.");
+  }
   return { discountKind, discountValue: discountKind === "none" ? 0 : discountValue };
 }
 
@@ -52,7 +71,7 @@ export function nightlyCharge(rate: number, breakfast?: boolean | null) {
 }
 
 function lineDiscount(subtotal: number, kind: string | null | undefined, value: number | null | undefined) {
-  const { discountKind, discountValue } = normalizeDiscount(kind ?? undefined, value ?? undefined);
+  const { discountKind, discountValue } = asDiscount(kind, value);
   if (discountKind === "percent") return Math.round(subtotal * discountValue / 100);
   if (discountKind === "amount") return discountValue;
   return 0;
@@ -65,7 +84,7 @@ export function bookingQuote<T extends QuoteLineInput>(rooms: T[]) {
     const breakfastOff = breakfastOffAmount(nights, breakfast);
     const gross = Math.max(0, Math.round(row.rate || 0) * nights);
     const subtotal = Math.max(0, gross - breakfastOff);
-    const { discountKind, discountValue } = normalizeDiscount(row.discountKind, row.discountValue);
+    const { discountKind, discountValue } = asDiscount(row.discountKind, row.discountValue);
     const discount = Math.min(subtotal, Math.max(0, lineDiscount(subtotal, discountKind, discountValue)));
     return { nights, breakfast, breakfastOff, gross, subtotal, discount, total: subtotal - discount, discountKind, discountValue };
   });
@@ -152,6 +171,70 @@ export function bookingDue(total: number, deposit: number) {
   return Math.max(0, Math.round(total || 0) - Math.max(0, Math.round(deposit || 0)));
 }
 
+export function isPaymentMethod(value: string): value is PaymentMethod {
+  return (PAYMENT_METHODS as readonly string[]).includes(value);
+}
+
+export function parsePaymentMethod(value: FormDataEntryValue | string | null | undefined): PaymentMethod {
+  return String(value || "") === "cash" ? "cash" : "transfer";
+}
+
+export function salePaid(row: { cashPaid?: number | null; transferPaid?: number | null; deposit?: number | null }) {
+  const cashPaid = Math.max(0, Math.round(row.cashPaid || 0));
+  const transferPaid = Math.max(0, Math.round(row.transferPaid || 0));
+  const deposit = Math.max(0, Math.round(row.deposit || 0));
+  if (cashPaid + transferPaid === 0 && deposit > 0) {
+    return { cashPaid: 0, transferPaid: deposit, deposit };
+  }
+  return { cashPaid, transferPaid, deposit: cashPaid + transferPaid || deposit };
+}
+
+export function paidFromMethod(amount: number, method: PaymentMethod) {
+  const deposit = Math.max(0, Math.round(amount || 0));
+  return method === "cash"
+    ? { cashPaid: deposit, transferPaid: 0, deposit }
+    : { cashPaid: 0, transferPaid: deposit, deposit };
+}
+
+export function applyPaidAmount(
+  current: { cashPaid?: number | null; transferPaid?: number | null; deposit?: number | null },
+  nextDeposit: number,
+  method: PaymentMethod,
+) {
+  const paid = salePaid(current);
+  const next = Math.max(0, Math.round(nextDeposit || 0));
+  if (next === paid.deposit) return paid;
+  if (next > paid.deposit) {
+    const extra = next - paid.deposit;
+    return method === "cash"
+      ? { cashPaid: paid.cashPaid + extra, transferPaid: paid.transferPaid, deposit: next }
+      : { cashPaid: paid.cashPaid, transferPaid: paid.transferPaid + extra, deposit: next };
+  }
+  let need = paid.deposit - next;
+  let cashPaid = paid.cashPaid;
+  let transferPaid = paid.transferPaid;
+  if (method === "cash") {
+    const take = Math.min(cashPaid, need);
+    cashPaid -= take;
+    need -= take;
+    transferPaid -= need;
+  } else {
+    const take = Math.min(transferPaid, need);
+    transferPaid -= take;
+    need -= take;
+    cashPaid -= need;
+  }
+  return { cashPaid: Math.max(0, cashPaid), transferPaid: Math.max(0, transferPaid), deposit: next };
+}
+
+export function paidNote(row: { cashPaid?: number | null; transferPaid?: number | null; deposit?: number | null }) {
+  const paid = salePaid(row);
+  const parts: string[] = [];
+  if (paid.transferPaid) parts.push(`chuyển khoản ${formatVnd(paid.transferPaid)}`);
+  if (paid.cashPaid) parts.push(`tiền mặt ${formatVnd(paid.cashPaid)}`);
+  return parts.join(" · ");
+}
+
 export function discountLabel(kind: string | null | undefined, value: number | null | undefined) {
   if (kind === "percent" && value) return `${value}%`;
   if (kind === "amount" && value) return formatVnd(value);
@@ -167,10 +250,14 @@ export function occupiesNight(checkIn: string, checkOut: string, date: string) {
 }
 
 export function ganttSpan(checkIn: string, checkOut: string, from: string, days: number) {
-  const start = Math.max(0, nightsBetween(from, checkIn));
-  const end = Math.min(days, nightsBetween(from, checkOut));
+  const checkInCol = nightsBetween(from, checkIn);
+  const checkOutCol = nightsBetween(from, checkOut);
+  const start = Math.max(0, checkInCol + 0.5);
+  const end = Math.min(days, checkOutCol + 0.5);
+  const nightStart = Math.max(0, checkInCol);
+  const nightEnd = Math.min(days, checkOutCol);
   if (end <= start) return null;
-  return { start, end };
+  return { start, end, nightStart, nightEnd };
 }
 
 export function isActiveSaleStatus(status: string): status is SaleStatus {

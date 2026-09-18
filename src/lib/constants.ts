@@ -1,4 +1,4 @@
-import type { DepartmentCode, DiscountKind, FormCode, HkStatus, Role, SaleOrigin, SaleSource, SaleStatus, ShiftType, StayStatus, TaskPriority, TaskStatus } from "./types";
+import type { DepartmentCode, DiscountKind, FormCode, HkStatus, PaymentMethod, Role, SaleOrigin, SaleSource, SaleStatus, ShiftType, StayStatus, TaskPriority, TaskStatus } from "./types";
 
 export const HOTEL_NAME = process.env.NEXT_PUBLIC_HOTEL_NAME ?? "MONICAL hotel dalat";
 export const HOTEL_LETTERHEAD = process.env.NEXT_PUBLIC_HOTEL_LETTERHEAD ?? "MONICAL Hotel Dalat";
@@ -111,6 +111,11 @@ export const DISCOUNT_KIND_LABEL: Record<DiscountKind, string> = {
   none: "Không",
   percent: "%",
   amount: "Số tiền",
+};
+
+export const PAYMENT_METHOD_LABEL: Record<PaymentMethod, string> = {
+  transfer: "Chuyển khoản",
+  cash: "Tiền mặt",
 };
 
 export const REQUEST_KIND_LABEL: Record<string, string> = {
