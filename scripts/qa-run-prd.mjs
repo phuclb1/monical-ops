@@ -186,8 +186,10 @@ try {
     await must(shot, ["Theo dõi việc trễ"]);
   });
 
-  await checkAuthed("TC-30p", "Bếp / dự báo ăn sáng", async (shot) => {
+  await checkAuthed("TC-30p", "Bếp / báo cáo ăn sáng", async (shot) => {
     await go("/kitchen");
+    await must(shot, ["Ăn sáng", "Hôm nay", "suất"]);
+    await go("/kitchen/forecast");
     await must(shot, ["Người lớn", "Trẻ em"]);
   });
 
@@ -270,9 +272,9 @@ try {
     await must(shot, ["Hạng phòng · chọn 1 hoặc nhiều phòng", "Đã chọn 2 phòng", "Chưa đặt cọc", "Còn phải thu"]);
   });
 
-  await checkAuthed("TC-96", "Giá phòng ngày thường / cuối tuần", async (shot) => {
+  await checkAuthed("TC-96", "Giá thường / lễ tết / sức chứa trên hạng phòng", async (shot) => {
     await go("/sales/rates");
-    await must(shot, ["Giá phòng", "Ngày thường", "Cuối tuần"]);
+    await must(shot, ["Hạng phòng", "Giá thường", "Giá lễ tết", "Sức chứa"]);
   });
 
   await checkAuthed("TC-41", "Quản lý hạng phòng", async (shot) => {
@@ -365,6 +367,26 @@ try {
     if (!text.includes("Thông báo điện thoại") && !text.includes("Thêm vào Màn hình chính") && !text.includes("Bật")) {
       throw new Error("Không thấy UI push");
     }
+  });
+
+  await check("TC-120", "Chủ sở hữu vào doanh thu tháng/quý/năm", async (shot) => {
+    await logout();
+    await login("chusohuu");
+    signedIn = true;
+    await must(shot, ["Doanh thu", "Tháng", "Quý", "Năm", "Doanh thu ghi nhận"]);
+    if (!page.url().includes("/owner")) throw new Error(`Owner không vào /owner · ${page.url()}`);
+  });
+
+  await checkAuthed("TC-121", "Chủ sở hữu xem thông tin khách theo kỳ", async (shot) => {
+    await go("/owner/guests");
+    await must(shot, ["Thông tin khách", "Tháng", "Quý", "Năm", "Khách nhận trong kỳ"]);
+  });
+
+  await checkAuthed("TC-122", "Chủ sở hữu không vào vận hành Today", async (shot) => {
+    await go("/today");
+    await ready();
+    if (page.url().includes("/today")) throw new Error("Owner vẫn vào được /today");
+    await must(shot, ["Doanh thu"]);
   });
 
   await checkAuthed("TC-06", "Đăng xuất về login", async (shot) => {

@@ -4,6 +4,7 @@ import { loadUserSession, signSession } from "@/lib/auth";
 import { SESSION_COOKIE } from "@/lib/session-token";
 import { getDb } from "@/lib/db";
 import { users } from "@/lib/db/schema";
+import { homePath } from "@/lib/nav";
 import { verifyPassword } from "@/lib/password";
 
 export async function POST(request: Request) {
@@ -18,7 +19,7 @@ export async function POST(request: Request) {
   const session = await loadUserSession(row.id);
   if (!session) return NextResponse.redirect(new URL("/login?error=1", request.url), 303);
   const token = await signSession(session);
-  const res = NextResponse.redirect(new URL("/today", request.url), 303);
+  const res = NextResponse.redirect(new URL(homePath(session.role), request.url), 303);
   res.cookies.set(SESSION_COOKIE, token, {
     httpOnly: true,
     sameSite: "lax",

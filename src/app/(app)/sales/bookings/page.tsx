@@ -82,7 +82,7 @@ export default async function BookingsPage({
       <form className="card p-3 md:flex md:items-end md:gap-3 md:p-4">
         <div className="md:min-w-0 md:flex-1">
           <Field label="Tìm khách / phòng / mã">
-            <input name="q" defaultValue={rawQ || ""} placeholder="Tên khách, P.101, Bk-1/09…" />
+            <input name="q" defaultValue={rawQ || ""} placeholder="Tên khách, P.101, BK-09-1…" />
           </Field>
         </div>
         {tab !== "open" ? <input type="hidden" name="tab" value={tab} /> : null}

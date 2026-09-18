@@ -267,13 +267,13 @@ export async function breakfastAction(formData: FormData) {
     actualAdults: formData.get("actualAdults") ? Number(formData.get("actualAdults")) : undefined,
     actualChildren: formData.get("actualChildren") ? Number(formData.get("actualChildren")) : undefined,
   });
-  refresh(["/kitchen", "/today"]);
+  refresh(["/kitchen", "/kitchen/forecast", "/today"]);
 }
 
 export async function confirmBreakfastAction(formData: FormData) {
   const user = await requireSession();
   await repo.confirmBreakfast(user, String(formData.get("date")));
-  refresh(["/kitchen", "/today"]);
+  refresh(["/kitchen", "/kitchen/forecast", "/today"]);
 }
 
 export async function saveFormAction(formData: FormData) {

@@ -10,10 +10,9 @@ const LINKS = [
   { href: "/reception", label: "Lễ tân — khách & đăng ký lưu trú", show: (r: Parameters<typeof can>[0]) => can(r, "viewReception") || r === "hk" },
   { href: "/sales", label: "Bán phòng — sơ đồ trống / giữ / nhận", show: (r: Parameters<typeof can>[0]) => can(r, "manageSales") },
   { href: "/sales/bookings", label: "Đặt phòng — booking / nhiều phòng", show: (r: Parameters<typeof can>[0]) => can(r, "manageSales") },
-  { href: "/sales/rates", label: "Giá phòng — ngày thường / cuối tuần", show: (r: Parameters<typeof can>[0]) => can(r, "manageRates") },
   { href: "/sales/extras", label: "Dịch vụ kèm — phụ thu / giặt sấy / đệm", show: (r: Parameters<typeof can>[0]) => can(r, "manageRates") },
   { href: "/reports/sales", label: "Doanh thu bán phòng — tháng / quý / năm", show: (r: Parameters<typeof can>[0]) => can(r, "viewSalesRevenue") },
-  { href: "/kitchen", label: "Bếp — ăn sáng", show: (r: Parameters<typeof can>[0]) => can(r, "viewKitchen") },
+  { href: "/kitchen", label: "Bếp — báo cáo ăn sáng / dự báo", show: (r: Parameters<typeof can>[0]) => can(r, "viewKitchen") },
   { href: "/shifts", label: "Ca làm việc & checklist", show: () => true },
   { href: "/forms", label: "Biểu mẫu điện tử", show: () => true },
   { href: "/incidents", label: "Sự cố", show: () => true },
@@ -22,7 +21,7 @@ const LINKS = [
   { href: "/notifications", label: "Thông báo + push điện thoại", show: () => true },
   { href: "/staff", label: "Nhân viên — tài khoản", show: (r: Parameters<typeof can>[0]) => can(r, "manageStaff") },
   { href: "/roster", label: "Lịch lễ tân — xếp 1 lần đến khi đổi", show: (r: Parameters<typeof can>[0]) => can(r, "manageRoster") },
-  { href: "/rooms/manage", label: "Phòng & hạng phòng", show: (r: Parameters<typeof can>[0]) => can(r, "manageRooms") },
+  { href: "/rooms/manage", label: "Hạng phòng — giá thường / lễ tết / sức chứa", show: (r: Parameters<typeof can>[0]) => can(r, "manageRooms") },
 ];
 
 export default async function MorePage() {

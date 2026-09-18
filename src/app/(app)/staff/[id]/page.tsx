@@ -3,10 +3,10 @@ import { notFound, redirect } from "next/navigation";
 import { resetStaffPasswordAction, toggleStaffAction, updateStaffAction } from "@/actions/staff";
 import { Btn, Card, Chip, Field } from "@/components/ui";
 import { getSession } from "@/lib/auth";
-import { DEPT_LABEL, ROLE_LABEL } from "@/lib/constants";
+import { DEPT_LABEL, ROLE_DEPT, ROLE_LABEL } from "@/lib/constants";
 import { can } from "@/lib/permissions";
 import { getStaff } from "@/lib/repos";
-import { ROLES, type DepartmentCode, type Role } from "@/lib/types";
+import { ROLES, type DepartmentCode } from "@/lib/types";
 
 export default async function StaffDetailPage({
   params,
@@ -50,7 +50,7 @@ export default async function StaffDetailPage({
             <select name="role" defaultValue={person.role}>
               {ROLES.map((role) => (
                 <option key={role} value={role}>
-                  {ROLE_LABEL[role]} — {DEPT_LABEL[role === "manager" ? "management" : (role as DepartmentCode)]}
+                  {ROLE_LABEL[role]} — {DEPT_LABEL[ROLE_DEPT[role]]}
                 </option>
               ))}
             </select>

@@ -1,4 +1,4 @@
-import { addDaysVN, weekdayISO } from "./datetime";
+import { addDaysVN, isHolidayNight, weekdayISO } from "./datetime";
 import type { DiscountKind, PaymentMethod, SaleOrigin, SaleSource, SaleStatus } from "./types";
 import { ACTIVE_SALE_STATUSES, PAYMENT_METHODS, SALE_SOURCES } from "./types";
 
@@ -12,9 +12,11 @@ export function isWeekendNight(isoDate: string) {
   return weekdayISO(isoDate) >= 5;
 }
 
+export { isHolidayNight };
+
 export function catalogRate(type: { baseRate: number; weekendRate: number } | undefined, date: string) {
   if (!type) return 0;
-  if (isWeekendNight(date) && type.weekendRate) return type.weekendRate;
+  if (isHolidayNight(date) && type.weekendRate) return type.weekendRate;
   return type.baseRate || 0;
 }
 
@@ -59,15 +61,12 @@ type QuoteLineInput = {
   discountValue?: number | null;
 };
 
-export const BREAKFAST_NIGHT_DEDUCT = 100_000;
-
-export function breakfastOffAmount(nights: number, breakfast?: boolean | null) {
-  if (breakfast !== false) return 0;
-  return BREAKFAST_NIGHT_DEDUCT * Math.max(0, nights);
+export function breakfastOffAmount(_nights: number, _breakfast?: boolean | null) {
+  return 0;
 }
 
-export function nightlyCharge(rate: number, breakfast?: boolean | null) {
-  return Math.max(0, Math.round(rate || 0) - (breakfast === false ? BREAKFAST_NIGHT_DEDUCT : 0));
+export function nightlyCharge(rate: number, _breakfast?: boolean | null) {
+  return Math.max(0, Math.round(rate || 0));
 }
 
 function lineDiscount(subtotal: number, kind: string | null | undefined, value: number | null | undefined) {
@@ -296,13 +295,16 @@ export function parseSaleSource(raw: string | null | undefined): SaleSource {
 
 export function formatOpsBookingCode(seq: number, month: number | string) {
   const mm = String(month).padStart(2, "0");
-  return `Bk-${Math.max(1, Math.round(seq))}/${mm}`;
+  return `BK-${mm}-${Math.max(1, Math.round(seq))}`;
 }
 
 export function parseOpsBookingCode(code: string | null | undefined) {
-  const match = String(code || "").trim().match(/^Bk-(\d+)\/(\d{1,2})$/i);
-  if (!match) return null;
-  return { seq: Number(match[1]), month: Number(match[2]) };
+  const value = String(code || "").trim();
+  const next = value.match(/^BK-(\d{1,2})-(\d+)$/i);
+  if (next) return { month: Number(next[1]), seq: Number(next[2]) };
+  const legacy = value.match(/^BK-(\d+)\/(\d{1,2})$/i);
+  if (legacy) return { seq: Number(legacy[1]), month: Number(legacy[2]) };
+  return null;
 }
 
 export function isOpsBookingCode(code: string | null | undefined) {
@@ -310,6 +312,13 @@ export function isOpsBookingCode(code: string | null | undefined) {
   if (!value) return false;
   if (/^OPS-/i.test(value)) return true;
   return Boolean(parseOpsBookingCode(value));
+}
+
+export function isLegacyOpsBookingCode(code: string | null | undefined) {
+  const value = String(code || "").trim();
+  if (!value) return false;
+  if (/^OPS-/i.test(value)) return true;
+  return /^BK-\d+\/\d{1,2}$/i.test(value);
 }
 
 export function bookingKey(sale: { id: string; bookingId?: string | null }) {

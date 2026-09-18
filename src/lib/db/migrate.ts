@@ -22,7 +22,8 @@ CREATE TABLE IF NOT EXISTS room_types (
   name TEXT NOT NULL UNIQUE,
   sort_order INTEGER NOT NULL DEFAULT 0,
   base_rate INTEGER NOT NULL DEFAULT 0,
-  weekend_rate INTEGER NOT NULL DEFAULT 0
+  weekend_rate INTEGER NOT NULL DEFAULT 0,
+  adults INTEGER NOT NULL DEFAULT 2
 );
 CREATE TABLE IF NOT EXISTS rooms (
   id TEXT PRIMARY KEY,
@@ -429,4 +430,5 @@ export const SCHEMA_PATCHES = [
   "ALTER TABLE room_sales ADD COLUMN cash_paid INTEGER NOT NULL DEFAULT 0",
   "ALTER TABLE room_sales ADD COLUMN transfer_paid INTEGER NOT NULL DEFAULT 0",
   "UPDATE room_sales SET transfer_paid = deposit WHERE deposit > 0 AND cash_paid = 0 AND transfer_paid = 0",
+  "ALTER TABLE room_types ADD COLUMN adults INTEGER DEFAULT 0",
 ];

@@ -14,6 +14,7 @@ import { isChecklistTaskKind } from "@/lib/task-types";
 export default async function TodayPage() {
   const user = await getSession();
   if (!user) redirect("/login");
+  if (user.role === "owner") redirect("/owner");
   const data = await getDashboard(user);
   const open = await currentOpenShift();
   const bundle = open ? await getShiftBundle(open.id, user.role === "manager" ? undefined : user.departmentCode) : null;
@@ -232,7 +233,7 @@ export default async function TodayPage() {
           <Empty title="Chưa gửi số" />
         )}
         <Link href="/kitchen" className="mt-2 block text-sm font-semibold text-teal">
-          Mở bếp / dự báo
+          Mở báo cáo ăn sáng
         </Link>
       </Card>
 

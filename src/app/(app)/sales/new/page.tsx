@@ -4,6 +4,7 @@ import { createSaleAction } from "@/actions/sales";
 import { SaleForm } from "@/components/sale-form";
 import { getSession } from "@/lib/auth";
 import { catalogRate, defaultCheckout } from "@/lib/sales";
+import { defaultAdultsForRoomType } from "@/lib/rooms-catalog";
 import { todayVN } from "@/lib/datetime";
 import { can } from "@/lib/permissions";
 import { listRooms, listRoomTypes } from "@/lib/repos";
@@ -54,6 +55,7 @@ export default async function NewSalePage({
             roomId: selected.id,
             checkIn: date,
             checkOut: defaultCheckout(date),
+            adults: defaultAdultsForRoomType(selected.type, selectedType?.adults),
             rate: catalogRate(selectedType, date),
             date,
           }}

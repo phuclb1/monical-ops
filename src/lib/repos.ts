@@ -13,7 +13,7 @@ import { ensureShiftChecklists, ensureTodayRoomTasks, loadChecklistByTask, loadC
 import { getTaskType, taskBoardColumn, taskTypeLabel, type TaskBoardColumn } from "./task-types";
 import type { DepartmentCode, HkStatus, Role, SaleSource, SaleStatus, SessionUser, ShiftType, TaskStatus } from "./types";
 import { DEPT_LABEL, HK_LABEL, ROLE_DEPT, TASK_STATUS_LABEL, requestKindLabel } from "./constants";
-import { floorOf, roomIdOf, slugTypeName } from "./rooms-catalog";
+import { defaultAdultsForRoomType, floorOf, roomIdOf, slugTypeName } from "./rooms-catalog";
 import { hashPassword } from "./password";
 import { schedulePush } from "./push";
 import { insertInBatches } from "./db/batch";
@@ -606,9 +606,12 @@ export const listRoomTypes = cache(async () => {
   return db.select().from(t.roomTypes).orderBy(t.roomTypes.sortOrder, t.roomTypes.name);
 });
 
-export async function createRoomType(actor: SessionUser, name: string) {
+export async function createRoomType(
+  actor: SessionUser,
+  data: { name: string; adults?: number; baseRate?: number; weekendRate?: number },
+) {
   const db = await getDb();
-  const trimmed = name.trim().toUpperCase();
+  const trimmed = data.name.trim().toUpperCase();
   if (!trimmed) throw new Error("Nhập tên hạng phòng");
   const code = slugTypeName(trimmed);
   if (!code) throw new Error("Tên hạng phòng không hợp lệ");
@@ -616,29 +619,43 @@ export async function createRoomType(actor: SessionUser, name: string) {
   if (exists) throw new Error("Hạng phòng đã tồn tại");
   const last = (await db.select().from(t.roomTypes).orderBy(desc(t.roomTypes.sortOrder)).limit(1))[0];
   const id = `rt-${code}`;
-  await db.insert(t.roomTypes).values({
+  const occupancy = defaultAdultsForRoomType(trimmed, data.adults);
+  const record = {
     id,
     code,
     name: trimmed,
     sortOrder: (last?.sortOrder ?? 0) + 10,
-    baseRate: 0,
-    weekendRate: 0,
-  });
-  await audit(actor.id, "room_type", id, "create", null, { name: trimmed });
+    baseRate: Math.max(0, Math.round(data.baseRate || 0)),
+    weekendRate: Math.max(0, Math.round(data.weekendRate || 0)),
+    adults: occupancy,
+  };
+  await db.insert(t.roomTypes).values(record);
+  await audit(actor.id, "room_type", id, "create", null, record);
   return id;
 }
 
-export async function renameRoomType(actor: SessionUser, id: string, name: string) {
+export async function updateRoomType(
+  actor: SessionUser,
+  id: string,
+  data: { name: string; adults?: number; baseRate?: number; weekendRate?: number },
+) {
   const db = await getDb();
   const before = (await db.select().from(t.roomTypes).where(eq(t.roomTypes.id, id)).limit(1))[0];
   if (!before) throw new Error("Không tìm thấy hạng phòng");
-  const trimmed = name.trim().toUpperCase();
+  const trimmed = data.name.trim().toUpperCase();
   if (!trimmed) throw new Error("Nhập tên hạng phòng");
   const clash = (await db.select({ id: t.roomTypes.id }).from(t.roomTypes).where(and(eq(t.roomTypes.name, trimmed), ne(t.roomTypes.id, id))).limit(1))[0];
   if (clash) throw new Error("Tên hạng phòng đã dùng");
-  await db.update(t.roomTypes).set({ name: trimmed }).where(eq(t.roomTypes.id, id));
+  const occupancy = defaultAdultsForRoomType(trimmed, data.adults ?? before.adults);
+  const next = {
+    name: trimmed,
+    adults: occupancy,
+    baseRate: Math.max(0, Math.round(data.baseRate ?? before.baseRate)),
+    weekendRate: Math.max(0, Math.round(data.weekendRate ?? before.weekendRate)),
+  };
+  await db.update(t.roomTypes).set(next).where(eq(t.roomTypes.id, id));
   await db.update(t.rooms).set({ type: trimmed, updatedAt: nowISO(), updatedBy: actor.id }).where(eq(t.rooms.type, before.name));
-  await audit(actor.id, "room_type", id, "rename", before, { name: trimmed });
+  await audit(actor.id, "room_type", id, "update", before, next);
 }
 
 export async function deleteRoomType(actor: SessionUser, id: string) {

@@ -1,19 +1,37 @@
 export const ROOM_TYPE_SEED = [
-  { id: "rt-vip", code: "vip", name: "VIP", sortOrder: 10 },
-  { id: "rt-senior", code: "senior", name: "SENIOR", sortOrder: 20 },
-  { id: "rt-deluxe", code: "deluxe", name: "DELUXE", sortOrder: 30 },
-  { id: "rt-deluxe-view", code: "deluxe-view", name: "DELUXE VIEW", sortOrder: 40 },
-  { id: "rt-superior", code: "superior", name: "SUPERIOR", sortOrder: 50 },
-  { id: "rt-superior-view", code: "superior-view", name: "SUPERIOR VIEW", sortOrder: 60 },
-  { id: "rt-standard", code: "standard", name: "STANDARD", sortOrder: 70 },
-  { id: "rt-standard-view", code: "standard-view", name: "STANDARD VIEW", sortOrder: 80 },
-  { id: "rt-family-plus", code: "family-plus", name: "FAMILY PLUS", sortOrder: 90 },
-  { id: "rt-family", code: "family", name: "FAMILY", sortOrder: 100 },
-  { id: "rt-family-view", code: "family-view", name: "FAMILY VIEW", sortOrder: 110 },
-  { id: "rt-dorm", code: "dorm", name: "DORM", sortOrder: 120 },
-  { id: "rt-triple", code: "triple", name: "TRIPLE", sortOrder: 130 },
-  { id: "rt-twin", code: "twin", name: "TWIN", sortOrder: 140 },
+  { id: "rt-vip", code: "vip", name: "VIP", sortOrder: 10, adults: 2 },
+  { id: "rt-senior", code: "senior", name: "SENIOR", sortOrder: 20, adults: 2 },
+  { id: "rt-deluxe", code: "deluxe", name: "DELUXE", sortOrder: 30, adults: 2 },
+  { id: "rt-deluxe-view", code: "deluxe-view", name: "DELUXE VIEW", sortOrder: 40, adults: 2 },
+  { id: "rt-superior", code: "superior", name: "SUPERIOR", sortOrder: 50, adults: 2 },
+  { id: "rt-superior-view", code: "superior-view", name: "SUPERIOR VIEW", sortOrder: 60, adults: 2 },
+  { id: "rt-standard", code: "standard", name: "STANDARD", sortOrder: 70, adults: 2 },
+  { id: "rt-standard-view", code: "standard-view", name: "STANDARD VIEW", sortOrder: 80, adults: 2 },
+  { id: "rt-family-plus", code: "family-plus", name: "FAMILY PLUS", sortOrder: 90, adults: 4 },
+  { id: "rt-family", code: "family", name: "FAMILY", sortOrder: 100, adults: 4 },
+  { id: "rt-family-view", code: "family-view", name: "FAMILY VIEW", sortOrder: 110, adults: 4 },
+  { id: "rt-dorm", code: "dorm", name: "DORM", sortOrder: 120, adults: 8 },
+  { id: "rt-triple", code: "triple", name: "TRIPLE", sortOrder: 130, adults: 3 },
+  { id: "rt-twin", code: "twin", name: "TWIN", sortOrder: 140, adults: 2 },
 ] as const;
+
+export function defaultAdultsForRoomType(name: string, configured?: number | null) {
+  if (configured && configured > 0) return Math.max(1, Math.round(configured));
+  const n = (name || "").toUpperCase();
+  if (n.includes("DORM")) return 8;
+  if (n.includes("FAMILY")) return 4;
+  if (n.includes("TRIPLE")) return 3;
+  return 2;
+}
+
+export function defaultAdultsForRooms(
+  rooms: { type: string }[],
+  types: { name: string; adults?: number | null }[] = [],
+) {
+  const byName = new Map(types.map((type) => [type.name, type.adults]));
+  const sum = rooms.reduce((total, room) => total + defaultAdultsForRoomType(room.type, byName.get(room.type)), 0);
+  return Math.max(1, sum);
+}
 
 export const ROOM_SEED = [
   { number: "506", type: "VIP" },

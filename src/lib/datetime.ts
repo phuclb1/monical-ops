@@ -54,6 +54,25 @@ export function addDaysVN(isoDate: string, days: number) {
   return todayVN(d);
 }
 
+const SOLAR_HOLIDAYS = new Set(["01-01", "04-30", "05-01", "09-02", "09-03"]);
+const TET_RANGES: [string, string][] = [
+  ["2025-01-25", "2025-02-02"],
+  ["2026-02-14", "2026-02-23"],
+  ["2027-02-04", "2027-02-14"],
+  ["2028-01-24", "2028-02-02"],
+];
+const HUNG_KINGS = new Set(["2025-04-07", "2026-03-28", "2027-04-16", "2028-04-04"]);
+
+export function isPublicHolidayVN(isoDate: string) {
+  if (SOLAR_HOLIDAYS.has(isoDate.slice(5))) return true;
+  if (HUNG_KINGS.has(isoDate)) return true;
+  return TET_RANGES.some(([start, end]) => isoDate >= start && isoDate <= end);
+}
+
+export function isHolidayNight(isoDate: string) {
+  return weekdayISO(isoDate) >= 5 || isPublicHolidayVN(isoDate);
+}
+
 export function startOfWeekVN(isoDate: string) {
   return addDaysVN(isoDate, 1 - weekdayISO(isoDate));
 }

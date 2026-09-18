@@ -187,8 +187,10 @@ try {
     await must(shot, ["Thay khăn", "Dọn phòng khách ở"]);
   });
 
-  await check("TC-30", "Báo ăn sáng ngày mai", async (shot) => {
+  await check("TC-30", "Báo cáo ăn sáng từ booking", async (shot) => {
     await go("/kitchen");
+    await must(shot, ["Ăn sáng", "Hôm nay", "Ngày mai", "suất", "Tổng quan 7 ngày"]);
+    await go("/kitchen/forecast");
     await must(shot, ["dị ứng hải sản", "Người lớn"]);
   });
 
@@ -336,12 +338,6 @@ try {
       "Chưa đặt cọc",
       "Còn phải thu",
     ]);
-    const breakfast = page.locator('input[name^="breakfast-"][type="checkbox"]').first();
-    if (await breakfast.count()) {
-      await breakfast.uncheck();
-      await ready();
-      await must(shot, ["Không ăn sáng", "100.000₫"]);
-    }
   });
 
   await check("TC-96", "Lễ tân không sửa giá phòng", async (shot) => {
@@ -450,8 +446,8 @@ try {
   await check("TC-97", "Quản lý sơ đồ bán + giá phòng", async (shot) => {
     await go("/sales");
     await must(shot, ["Sơ đồ phòng", "Đặng Minh Tuấn"]);
-    await go("/sales/rates");
-    await must(shot, ["Giá phòng", "Ngày thường", "Cuối tuần"]);
+    await go("/rooms/manage");
+    await must(shot, ["Hạng phòng", "Giá thường", "Giá lễ tết", "Sức chứa"]);
   });
 
   await check("TC-119", "Báo cáo doanh thu bán phòng", async (shot) => {
@@ -468,6 +464,25 @@ try {
       "Tiền chuyển khoản",
       "Tiền mặt",
     ]);
+  });
+
+  await check("TC-120", "Chủ sở hữu vào doanh thu tháng/quý/năm", async (shot) => {
+    await logout();
+    await login("chusohuu");
+    await must(shot, ["Doanh thu", "Tháng", "Quý", "Năm", "Doanh thu ghi nhận", "Doanh thu booking"]);
+    if (!page.url().includes("/owner")) throw new Error(`Owner không vào /owner · ${page.url()}`);
+  });
+
+  await check("TC-121", "Chủ sở hữu xem thông tin khách theo kỳ", async (shot) => {
+    await go("/owner/guests");
+    await must(shot, ["Thông tin khách", "Tháng", "Quý", "Năm", "Người lớn", "Trẻ em", "Khách nhận trong kỳ"]);
+  });
+
+  await check("TC-122", "Chủ sở hữu không vào vận hành Today", async (shot) => {
+    await go("/today");
+    await ready();
+    if (page.url().includes("/today")) throw new Error("Owner vẫn vào được /today");
+    await must(shot, ["Doanh thu"]);
   });
 
   await check("TC-05", "HK không vào trang nhân viên", async (shot) => {

@@ -307,10 +307,10 @@ export async function saveRoomRatesAction(formData: FormData) {
       })),
     );
   } catch (e) {
-    fail("/sales/rates", e);
+    fail("/rooms/manage", e);
   }
   refresh();
-  redirect("/sales/rates?ok=1");
+  redirect("/rooms/manage?ok=1");
 }
 
 export async function saveExtraRatesAction(formData: FormData) {

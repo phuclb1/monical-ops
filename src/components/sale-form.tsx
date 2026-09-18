@@ -1,16 +1,15 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Btn, Field, PayMethodField } from "@/components/ui";
 import { DISCOUNT_KIND_LABEL, SALE_SOURCE_GROUPS, SALE_SOURCE_LABEL } from "@/lib/constants";
 import {
-  BREAKFAST_NIGHT_DEDUCT,
   bookingDue,
   bookingQuote,
   catalogRate,
   defaultCheckout,
   formatVnd,
-  isWeekendNight,
+  isHolidayNight,
   paidNote,
   parseMoney,
   parseDiscountValue,
@@ -18,10 +17,11 @@ import {
   roomMoveKind,
 } from "@/lib/sales";
 import { extraAmount } from "@/lib/extras";
+import { defaultAdultsForRooms } from "@/lib/rooms-catalog";
 import { DISCOUNT_KINDS, type DiscountKind } from "@/lib/types";
 
 type Room = { id: string; number: string; type: string; floor?: number };
-type RoomType = { name: string; sortOrder: number; baseRate: number; weekendRate: number };
+type RoomType = { name: string; sortOrder: number; baseRate: number; weekendRate: number; adults?: number };
 type StayDates = { checkIn: string; checkOut: string };
 type DiscountState = { kind: DiscountKind; value: string };
 
@@ -148,6 +148,9 @@ export function SaleForm({
   const [payMethod, setPayMethod] = useState<"cash" | "transfer">("transfer");
   const [fromEz, setFromEz] = useState(defaults.origin === "ezcloud");
   const selectedRooms = rooms.filter((room) => roomIds.includes(room.id));
+  const occupancyAdults = useMemo(() => defaultAdultsForRooms(selectedRooms, types), [selectedRooms, types]);
+  const [adults, setAdults] = useState(String(defaults.adults ?? occupancyAdults));
+  const [adultsTouched, setAdultsTouched] = useState(false);
   const quoteInputs = selectedRooms.map((room) => {
     const stay = dates[room.id] || { checkIn: defaults.checkIn, checkOut: defaults.checkOut };
     return {
@@ -165,6 +168,9 @@ export function SaleForm({
   const bookingTotal = booked.total;
   const depositAmount = parseMoney(deposit);
   const due = bookingDue(bookingTotal, depositAmount);
+  useEffect(() => {
+    if (!adultsTouched) setAdults(String(occupancyAdults));
+  }, [occupancyAdults, adultsTouched]);
   const filteredRooms = useMemo(() => {
     const q = query.trim().toLowerCase();
     if (!q) return rooms;
@@ -293,7 +299,7 @@ export function SaleForm({
             const stay = dates[room.id] || { checkIn: defaults.checkIn, checkOut: defaults.checkOut };
             const eats = breakfast[room.id] !== false;
             const catalog = catalogFor(room.id, stay.checkIn);
-            const roomQuote = quotes[index]?.quote;
+            const peakRate = isHolidayNight(stay.checkIn) && Boolean(typeByName[room.type]?.weekendRate);
             return (
               <div key={room.id} className="sale-room rounded-xl border border-line p-3">
                 <p className="font-bold">
@@ -336,12 +342,6 @@ export function SaleForm({
                   />
                   <span>Ăn sáng</span>
                 </label>
-                {!eats ? (
-                  <p className="sale-room-hint sale-room-bf-off text-xs text-[#c47b12]">
-                    Không ăn sáng: trừ {formatVnd(BREAKFAST_NIGHT_DEDUCT)}/đêm
-                    {roomQuote?.breakfastOff ? ` · −${formatVnd(roomQuote.breakfastOff)}` : ""}
-                  </p>
-                ) : null}
                 <div className="sale-room-rate">
                   <Field label="Giá / đêm (₫)">
                     <input
@@ -352,13 +352,13 @@ export function SaleForm({
                       placeholder="800000"
                     />
                   </Field>
-                  {eats && catalog ? (
+                  {catalog ? (
                     <p className="sale-room-hint text-xs text-[#5c6665]">
-                      Giá bảng {isWeekendNight(stay.checkIn) ? "cuối tuần" : "ngày thường"}: {formatVnd(catalog)}
+                      Giá bảng {peakRate ? "lễ tết" : "ngày thường"}: {formatVnd(catalog)}
                     </p>
-                  ) : eats ? (
+                  ) : (
                     <p className="sale-room-hint text-xs text-[#5c6665]">Chưa có giá bảng — nhập giá bán.</p>
-                  ) : null}
+                  )}
                 </div>
                 <RoomDiscountFields
                   namePrefix={room.id}
@@ -433,7 +433,16 @@ export function SaleForm({
       </Field>
       <div className="grid grid-cols-2 gap-2">
         <Field label="Người lớn">
-          <input name="adults" type="number" min={1} defaultValue={defaults.adults ?? 1} />
+          <input
+            name="adults"
+            type="number"
+            min={1}
+            value={adults}
+            onChange={(e) => {
+              setAdultsTouched(true);
+              setAdults(e.target.value);
+            }}
+          />
         </Field>
         <Field label="Trẻ em">
           <input name="children" type="number" min={0} defaultValue={defaults.children ?? 0} />
@@ -444,7 +453,7 @@ export function SaleForm({
           name="pmsCode"
           defaultValue={defaults.pmsCode || ""}
           required={fromEz}
-          placeholder={fromEz ? "EZ-..." : "Để trống — Ops cấp Bk-1/09"}
+          placeholder={fromEz ? "EZ-..." : "Để trống — Ops cấp BK-09-1"}
         />
       </Field>
       <Field label="Ghi chú">
@@ -624,7 +633,6 @@ export function BookingForm({
         const stay = stayOf(line.saleId, { checkIn: line.checkIn, checkOut: line.checkOut });
         const canEditCheckIn = line.status !== "inhouse";
         const eats = breakfast[line.saleId] !== false;
-        const roomQuote = quotes[index]?.quote;
         return (
           <div key={line.saleId} className="space-y-2 rounded-xl border border-line p-3">
             <input type="hidden" name="saleId" value={line.saleId} />
@@ -703,12 +711,6 @@ export function BookingForm({
               />
               <span>Ăn sáng</span>
             </label>
-            {!eats ? (
-              <p className="text-xs text-[#c47b12]">
-                Không ăn sáng: trừ {formatVnd(BREAKFAST_NIGHT_DEDUCT)}/đêm
-                {roomQuote?.breakfastOff ? ` · −${formatVnd(roomQuote.breakfastOff)}` : ""}
-              </p>
-            ) : null}
             <RoomDiscountFields
               namePrefix={line.saleId}
               discount={discounts[line.saleId] || emptyDiscount()}

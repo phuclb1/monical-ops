@@ -1,5 +1,5 @@
 import { eq } from "drizzle-orm";
-import { bookingKey, formatOpsBookingCode, parseOpsBookingCode } from "../sales";
+import { bookingKey, formatOpsBookingCode, isLegacyOpsBookingCode, parseOpsBookingCode } from "../sales";
 import { nowISO, todayVN } from "../datetime";
 import type { AppDb } from "./index";
 import * as t from "./schema";
@@ -61,14 +61,18 @@ export async function rekeyLegacyOpsBookingCodes(db: AppDb) {
   }
 
   const legacy = [...groups.values()]
-    .filter((rows) => /^OPS-/i.test(rows[0]?.pmsCode || ""))
+    .filter((rows) => isLegacyOpsBookingCode(rows[0]?.pmsCode))
     .sort((a, b) => a[0].createdAt.localeCompare(b[0].createdAt) || a[0].id.localeCompare(b[0].id));
 
   for (const rows of legacy) {
     const oldCode = rows[0].pmsCode?.trim();
     if (!oldCode) continue;
     const { yearMonth, month } = yearMonthOf(rows[0].createdAt);
-    let seq = (seqByMonth.get(yearMonth) || 0) + 1;
+    const parsed = parseOpsBookingCode(oldCode);
+    let seq =
+      parsed && String(parsed.month).padStart(2, "0") === month
+        ? parsed.seq
+        : (seqByMonth.get(yearMonth) || 0) + 1;
     let code = formatOpsBookingCode(seq, month);
     while (used.has(code)) {
       seq += 1;

@@ -25,6 +25,9 @@ export default async function ExtraRatesPage({
         <Link href="/sales" className="text-sm font-semibold text-teal">
           ← Sơ đồ bán phòng
         </Link>
+        <Link href="/rooms/manage" className="ml-3 text-sm font-semibold text-teal">
+          Hạng / giá
+        </Link>
         <h1 className="mt-2 text-xl font-bold">Dịch vụ kèm</h1>
         <p className="text-xs text-[#5c6665]">
           Bảng giá phụ thu / dịch vụ thêm vào booking. Lễ tân chọn số lượng khi gắn vào đặt phòng. Chỉ quản lý sửa giá.

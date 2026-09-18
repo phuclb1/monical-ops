@@ -140,9 +140,9 @@ export default async function SalesPage({
           <Link href="/sales/bookings" className="flex min-h-11 items-center text-sm font-semibold text-teal">
             Đặt phòng
           </Link>
-          {can(user.role, "manageRates") ? (
-            <Link href="/sales/rates" className="flex min-h-11 items-center text-sm font-semibold text-teal">
-              Giá phòng
+          {can(user.role, "manageRooms") ? (
+            <Link href="/rooms/manage" className="flex min-h-11 items-center text-sm font-semibold text-teal">
+              Hạng / giá
             </Link>
           ) : null}
         </div>

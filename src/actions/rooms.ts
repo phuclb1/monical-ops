@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { requireSession } from "@/lib/auth";
 import { can } from "@/lib/permissions";
 import * as repo from "@/lib/repos";
+import { parseMoney } from "@/lib/sales";
 
 function requireManager() {
   return requireSession().then((user) => {
@@ -20,12 +21,24 @@ function fail(e: unknown): never {
 function refresh() {
   revalidatePath("/rooms");
   revalidatePath("/rooms/manage");
+  revalidatePath("/sales");
+  revalidatePath("/sales/new");
+  revalidatePath("/sales/rates");
+}
+
+function typeFromForm(formData: FormData) {
+  return {
+    name: String(formData.get("name") || ""),
+    adults: Number(formData.get("adults") || 0),
+    baseRate: parseMoney(formData.get("baseRate")),
+    weekendRate: parseMoney(formData.get("weekendRate")),
+  };
 }
 
 export async function createRoomTypeAction(formData: FormData) {
   const user = await requireManager();
   try {
-    await repo.createRoomType(user, String(formData.get("name") || ""));
+    await repo.createRoomType(user, typeFromForm(formData));
   } catch (e) {
     if ((e as { digest?: string }).digest?.startsWith("NEXT_REDIRECT")) throw e;
     fail(e);
@@ -34,10 +47,10 @@ export async function createRoomTypeAction(formData: FormData) {
   redirect("/rooms/manage?ok=type");
 }
 
-export async function renameRoomTypeAction(formData: FormData) {
+export async function updateRoomTypeAction(formData: FormData) {
   const user = await requireManager();
   try {
-    await repo.renameRoomType(user, String(formData.get("id")), String(formData.get("name") || ""));
+    await repo.updateRoomType(user, String(formData.get("id")), typeFromForm(formData));
   } catch (e) {
     fail(e);
   }

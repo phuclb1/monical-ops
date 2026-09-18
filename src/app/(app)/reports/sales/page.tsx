@@ -3,11 +3,11 @@ import { redirect } from "next/navigation";
 import { Card, Chip, Empty, Stat, TabChip } from "@/components/ui";
 import { getSession } from "@/lib/auth";
 import { SALE_STATUS_LABEL } from "@/lib/constants";
-import { formatDateNumeric, formatPeriodLabel, periodWindow, todayVN, type PeriodGrain } from "@/lib/datetime";
+import { formatDateNumeric, formatPeriodLabel } from "@/lib/datetime";
 import { can } from "@/lib/permissions";
 import { listBookings } from "@/lib/repos";
 import { formatVnd, paidNote } from "@/lib/sales";
-import { isReportGrain, roomRevenueReport, type ReportGrain } from "@/lib/sales-report";
+import { parsePeriodQuery, roomRevenueReport, type ReportGrain } from "@/lib/sales-report";
 import type { SaleStatus } from "@/lib/types";
 
 const GRAINS: { id: ReportGrain; label: string }[] = [
@@ -24,13 +24,6 @@ const STATUS_TONE: Record<SaleStatus, "ok" | "warn" | "danger" | "gold" | "neutr
   no_show: "warn",
 };
 
-function parseDate(raw: string | undefined, today: string) {
-  if (raw && /^\d{4}-\d{2}-\d{2}$/.test(raw)) return raw;
-  if (raw && /^\d{4}-\d{2}$/.test(raw)) return `${raw}-01`;
-  if (raw && /^\d{4}$/.test(raw)) return `${raw}-01-01`;
-  return today;
-}
-
 function hrefFor(grain: ReportGrain, date: string) {
   return `/reports/sales?grain=${grain}&date=${date}`;
 }
@@ -43,11 +36,8 @@ export default async function SalesRevenuePage({
   const user = await getSession();
   if (!user) redirect("/login");
   if (!can(user.role, "viewSalesRevenue")) redirect("/more");
-  const today = todayVN();
   const { grain: rawGrain, date: rawDate } = await searchParams;
-  const grain: PeriodGrain = rawGrain && isReportGrain(rawGrain) ? rawGrain : "month";
-  const date = parseDate(rawDate, today);
-  const window = periodWindow(grain, date);
+  const { grain, window } = parsePeriodQuery(rawGrain, rawDate);
   const year = window.from.slice(0, 4);
   const bookings = await listBookings();
   const report = roomRevenueReport(bookings, window.from, window.to);

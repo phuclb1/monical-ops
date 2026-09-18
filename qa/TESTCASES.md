@@ -25,7 +25,7 @@ git rev-parse --short HEAD
 
 Evidence (ảnh) nằm tại `qa/evidence/<run-id>/TC-xx.png` — **đã gitignore**, không commit. `manifest.json` vẫn có thể commit nếu muốn giữ số pass.
 
-Tài khoản local (mật khẩu `123456`): `tuyen` lễ tân tối · `ngan` sáng · `thu` chiều · `uyen` HK · `quanly` quản lý.
+Tài khoản local (mật khẩu `123456`): `tuyen` lễ tân tối · `ngan` sáng · `thu` chiều · `uyen` HK · `quanly` quản lý · `chusohuu` chủ sở hữu.
 
 Tài khoản PRD: chỉ `quanly` / `123456`.
 
@@ -116,6 +116,9 @@ Trạng thái: `pass` · `fail` · `skip` (chưa chạy vòng này).
 | TC-118 | In phiếu xác nhận booking Đoàn Minh Châu | `tuyen` | skip | — | — |
 | TC-119 | Báo cáo doanh thu phòng: tháng/quý/năm, cọc, phải thu, ghi nhận, CK/tiền mặt | `quanly` | skip | — | — |
 | TC-119b | Lễ tân không vào `/reports/sales` (về Thêm) | `tuyen` | skip | — | — |
+| TC-120 | Chủ sở hữu vào `/owner`: doanh thu tháng/quý/năm | `chusohuu` | skip | — | — |
+| TC-121 | Chủ sở hữu xem thông tin khách theo kỳ | `chusohuu` | skip | — | — |
+| TC-122 | Chủ sở hữu không vào `/today` (về `/owner`) | `chusohuu` | skip | — | — |
 
 ### Việc
 
@@ -134,7 +137,7 @@ Trạng thái: `pass` · `fail` · `skip` (chưa chạy vòng này).
 
 | ID | Case | Role | Kết quả | Commit | Evidence |
 |---|---|---|---|---|---|
-| TC-30 | Báo ăn sáng ngày mai (số + dị ứng P.105) | `tuyen` | pass | `4881717-dirty` | [TC-30.png](evidence/R-20260916-2/TC-30.png) |
+| TC-30 | Báo cáo ăn sáng từ booking + dự báo chay/dị ứng | `tuyen` | pass | `4881717-dirty` | [TC-30.png](evidence/R-20260916-2/TC-30.png) |
 | TC-31 | Bếp bấm đã nhận số | kitchen | skip | — | chưa có user bếp local |
 | TC-40 | Danh sách phòng | `tuyen` | pass | `4881717-dirty` | [TC-40.png](evidence/R-20260916-2/TC-40.png) |
 | TC-41 | Quản lý hạng phòng | `quanly` | pass | `4881717-dirty` | [TC-41.png](evidence/R-20260916-2/TC-41.png) |
@@ -181,6 +184,7 @@ Dùng sau `npm run db:reseed-local`.
 | TC-94 | `/sales` | Đặng Minh Tuấn P.401 · Công ty An Phú P.506 |
 | TC-95 | `/sales/new` | Giá / đêm · chiết khấu · mã PMS |
 | TC-96 | `/sales/rates` login `tuyen` | Redirect về sơ đồ bán, không form Lưu giá |
+| TC-97 | `/rooms/manage` login `quanly` | Giá thường · Giá lễ tết · Sức chứa tối đa |
 | TC-98 | login `uyen` `/sales` | Redirect Thêm, không menu bán phòng |
 | TC-99 | `/sales/new` | Nền tảng · Booking.com · Agoda · Từ ezCloud |
 | TC-100 | `/sales` | Lọc Tất cả · Ops · ezCloud |
@@ -202,9 +206,12 @@ Dùng sau `npm run db:reseed-local`.
 | TC-118 | `/sales/bookings/bk-doan/print` | Phiếu XÁC NHẬN ĐẶT PHÒNG · FAMILY · hạng phòng · điều khoản · In phiếu · Tải PDF |
 | TC-119 | login `quanly` `/reports/sales` | Doanh thu bán phòng · Tháng / Quý / Năm · Đã đặt cọc · Phải thu · ghi nhận · CK · tiền mặt |
 | TC-119b | login `tuyen` `/reports/sales` | Redirect Thêm, không vào báo cáo doanh thu |
+| TC-120 | login `chusohuu` `/owner` | Doanh thu · Tháng / Quý / Năm · Doanh thu ghi nhận · chỉ xem |
+| TC-121 | login `chusohuu` `/owner/guests` | Thông tin khách · người lớn / trẻ em · SĐT · phòng · ngày |
+| TC-122 | login `chusohuu` `/today` | Redirect `/owner`, không vào vận hành |
 | TC-20 | `/tasks` | 3 việc HK cũ **và** Nhận P.105 · Trả P.102 |
 | TC-21 | `/tasks` | Việc quản lý: *Cần thêm HK ca này — tầng 2 và 3* |
-| TC-30 | `/kitchen` | Ngày mai 7 NL · 2 TE · chay 2 · dị ứng 1 |
+| TC-30 | `/kitchen` + `/kitchen/forecast` | Báo cáo suất theo booking · Hôm nay / Ngày mai / 7 ngày · dự báo dị ứng hải sản |
 | TC-03 | login `tuyen` `/today` | Ca đang làm · Đầu ca / cuối ca · Nhận P.105 |
 | TC-04 | login `quanly` `/today` | Có ca đang chạy **hoặc** «Ca lễ tân chưa mở» — **không** nút bắt buộc «Mở ca hiện tại» |
 | TC-70 | `/shifts` | Đầu ca · Cuối ca · ca hiện tại Đang mở. Không checklist HK/bếp |

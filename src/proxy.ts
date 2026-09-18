@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
+import { homePath, isOwnerPath } from "@/lib/nav";
 import { readSessionToken } from "@/lib/session-token";
 
 const PUBLIC = [
@@ -34,6 +35,18 @@ export async function proxy(request: NextRequest) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
     url.searchParams.set("next", pathname);
+    return NextResponse.redirect(url);
+  }
+  if (session.role === "owner" && !isOwnerPath(pathname)) {
+    const url = request.nextUrl.clone();
+    url.pathname = "/owner";
+    url.search = "";
+    return NextResponse.redirect(url);
+  }
+  if (session.role !== "owner" && isOwnerPath(pathname)) {
+    const url = request.nextUrl.clone();
+    url.pathname = homePath(session.role);
+    url.search = "";
     return NextResponse.redirect(url);
   }
   return NextResponse.next();

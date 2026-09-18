@@ -4,13 +4,14 @@ import { join } from "node:path";
 import { createClient } from "@libsql/client";
 import { drizzle } from "drizzle-orm/libsql";
 import * as schema from "../src/lib/db/schema";
-import { RETIRED_USERNAMES, STAFF_SEED, syncStaffUsers } from "../src/lib/db/seed";
+import { RETIRED_USERNAMES, DEPT_SEED, STAFF_SEED, syncDepartments, syncStaffUsers } from "../src/lib/db/seed";
 import { hashPassword } from "../src/lib/password";
 import { DEMO_PASSWORD } from "../src/lib/constants";
 
 async function reseedLocal() {
   const url = `file:${join(process.cwd(), "data", "ops.db")}`;
   const db = drizzle(createClient({ url }), { schema });
+  await syncDepartments(db);
   await syncStaffUsers(db, { resetPasswords: true });
   const rows = await db.select({ username: schema.users.username, fullName: schema.users.fullName, active: schema.users.active }).from(schema.users);
   console.log("Local users:");
@@ -26,6 +27,11 @@ function sqlLiteral(value: string) {
 async function reseedRemote() {
   const now = new Date().toISOString();
   const statements: string[] = [];
+  for (const dept of DEPT_SEED) {
+    statements.push(`INSERT INTO departments (id, code, name)
+SELECT ${sqlLiteral(dept.id)}, ${sqlLiteral(dept.code)}, ${sqlLiteral(dept.name)}
+WHERE NOT EXISTS (SELECT 1 FROM departments WHERE id = ${sqlLiteral(dept.id)} OR code = ${sqlLiteral(dept.code)});`);
+  }
   for (const person of STAFF_SEED) {
     const hash = await hashPassword(DEMO_PASSWORD);
     const cols = `${sqlLiteral(person.id)}, ${sqlLiteral(person.username)}, ${sqlLiteral(hash)}, ${sqlLiteral(person.fullName)}, ${sqlLiteral(person.role)}, ${sqlLiteral(person.departmentId)}, ${sqlLiteral(person.phone)}, 1, ${sqlLiteral(now)}, ${sqlLiteral(now)}`;

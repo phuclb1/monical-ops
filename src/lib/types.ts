@@ -5,6 +5,7 @@ export const ROLES = [
   "utility",
   "manager",
   "accounting",
+  "owner",
 ] as const;
 
 export type Role = (typeof ROLES)[number];
@@ -16,6 +17,7 @@ export const DEPARTMENTS = [
   "utility",
   "management",
   "accounting",
+  "owner",
 ] as const;
 
 export type DepartmentCode = (typeof DEPARTMENTS)[number];

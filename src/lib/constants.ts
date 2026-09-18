@@ -16,6 +16,7 @@ export const ROLE_LABEL: Record<Role, string> = {
   utility: "Tạp vụ",
   manager: "Quản lý",
   accounting: "Kế toán",
+  owner: "Chủ sở hữu",
 };
 
 export const ROLE_DEPT: Record<Role, DepartmentCode> = {
@@ -25,6 +26,7 @@ export const ROLE_DEPT: Record<Role, DepartmentCode> = {
   utility: "utility",
   manager: "management",
   accounting: "accounting",
+  owner: "owner",
 };
 
 export const DEPT_LABEL: Record<DepartmentCode, string> = {
@@ -34,6 +36,7 @@ export const DEPT_LABEL: Record<DepartmentCode, string> = {
   utility: "Tạp vụ",
   management: "Quản lý",
   accounting: "Kế toán",
+  owner: "Chủ sở hữu",
 };
 
 export const SHIFT_LABEL: Record<ShiftType, string> = {

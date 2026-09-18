@@ -5,6 +5,7 @@ import { eq } from "drizzle-orm";
 import { clearSessionCookie, loadUserSession, setSessionCookie } from "@/lib/auth";
 import { getDb } from "@/lib/db";
 import { users } from "@/lib/db/schema";
+import { homePath } from "@/lib/nav";
 import { verifyPassword } from "@/lib/password";
 
 export async function loginAction(formData: FormData) {
@@ -18,7 +19,7 @@ export async function loginAction(formData: FormData) {
   const session = await loadUserSession(row.id);
   if (!session) redirect("/login?error=1");
   await setSessionCookie(session);
-  redirect("/today");
+  redirect(homePath(session.role));
 }
 
 export async function logoutAction() {

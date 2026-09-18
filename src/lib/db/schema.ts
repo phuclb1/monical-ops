@@ -26,6 +26,7 @@ export const roomTypes = sqliteTable("room_types", {
   sortOrder: integer("sort_order").notNull().default(0),
   baseRate: integer("base_rate").notNull().default(0),
   weekendRate: integer("weekend_rate").notNull().default(0),
+  adults: integer("adults").notNull().default(2),
 });
 
 export const rooms = sqliteTable("rooms", {

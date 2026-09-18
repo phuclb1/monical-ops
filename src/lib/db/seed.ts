@@ -7,12 +7,23 @@ import type { AppDb } from "./index";
 import * as t from "./schema";
 import type { ShiftType } from "../types";
 import { insertInBatches } from "./batch";
-import { ROOM_REMAP, ROOM_SEED, ROOM_TYPE_SEED, floorOf, roomIdOf } from "../rooms-catalog";
+import { ROOM_REMAP, ROOM_SEED, ROOM_TYPE_SEED, defaultAdultsForRoomType, floorOf, roomIdOf } from "../rooms-catalog";
 import { EXTRA_TYPE_SEED } from "../extras";
 import { DEFAULT_WEEK_DUTY, ROSTER_SHIFTS, weekSlotId } from "../roster";
 
+export const DEPT_SEED = [
+  { id: "d-reception", code: "reception", name: "Lễ tân" },
+  { id: "d-hk", code: "hk", name: "Buồng phòng" },
+  { id: "d-kitchen", code: "kitchen", name: "Bếp" },
+  { id: "d-utility", code: "utility", name: "Tạp vụ" },
+  { id: "d-mgmt", code: "management", name: "Quản lý" },
+  { id: "d-acc", code: "accounting", name: "Kế toán" },
+  { id: "d-owner", code: "owner", name: "Chủ sở hữu" },
+] as const;
+
 export const STAFF_SEED = [
   { id: "u-quanly", username: "quanly", fullName: "Minh Quản lý", role: "manager", departmentId: "d-mgmt", phone: "+84901111007" },
+  { id: "u-chusohuu", username: "chusohuu", fullName: "Chủ MONICAL", role: "owner", departmentId: "d-owner", phone: "+84901111000" },
 ] as const;
 
 export const LOCAL_STAFF = [
@@ -52,14 +63,28 @@ const DEMO_ROOM_OPS: Record<string, { ops: string; hk: string; assignedTo?: stri
 export async function seedIfEmpty(db: AppDb) {
   const existing = await db.select({ id: t.rooms.id }).from(t.rooms).limit(1);
   if (!existing.length) await seed(db);
+  await syncDepartments(db);
   await syncStaffUsers(db);
   await syncRoomCatalog(db);
+  await syncRoomTypeAdults(db);
   await syncExtraCatalog(db);
   await syncReceptionRoster(db);
   await syncTaskKinds(db);
   await syncLegacyRoomDiscounts(db);
   await syncDemoPerRoomDiscount(db);
   await syncSalePaymentSplit(db);
+}
+
+async function syncRoomTypeAdults(db: AppDb) {
+  try {
+    const types = await db.select().from(t.roomTypes);
+    for (const type of types) {
+      if (type.adults && type.adults > 0) continue;
+      await db.update(t.roomTypes).set({ adults: defaultAdultsForRoomType(type.name) }).where(eq(t.roomTypes.id, type.id));
+    }
+  } catch {
+    // adults column may still be missing on a half-patched DB
+  }
 }
 
 async function syncLegacyRoomDiscounts(db: AppDb) {
@@ -192,17 +217,9 @@ export async function seed(db: AppDb) {
   const now = nowISO();
   const hash = await hashPassword(DEMO_PASSWORD);
 
-  const depts = [
-    { id: "d-reception", code: "reception", name: "Lễ tân" },
-    { id: "d-hk", code: "hk", name: "Buồng phòng" },
-    { id: "d-kitchen", code: "kitchen", name: "Bếp" },
-    { id: "d-utility", code: "utility", name: "Tạp vụ" },
-    { id: "d-mgmt", code: "management", name: "Quản lý" },
-    { id: "d-acc", code: "accounting", name: "Kế toán" },
-  ];
   const hasUsers = (await db.select({ id: t.users.id }).from(t.users).limit(1)).length > 0;
   if (!hasUsers) {
-    await db.insert(t.departments).values(depts);
+    await db.insert(t.departments).values([...DEPT_SEED]);
   }
 
   if (!hasUsers) {
@@ -868,6 +885,18 @@ async function remapRoomRefs(db: AppDb, fromId: string, toId: string | null) {
   await db.update(t.incidents).set({ roomId: toId }).where(eq(t.incidents.roomId, fromId));
   if (toId) await db.update(t.roomSales).set({ roomId: toId }).where(eq(t.roomSales.roomId, fromId));
   else await db.delete(t.roomSales).where(eq(t.roomSales.roomId, fromId));
+}
+
+export async function syncDepartments(db: AppDb) {
+  const existing = await db.select().from(t.departments);
+  const haveId = new Set(existing.map((row) => row.id));
+  const haveCode = new Set(existing.map((row) => row.code));
+  for (const dept of DEPT_SEED) {
+    if (haveId.has(dept.id) || haveCode.has(dept.code)) continue;
+    await db.insert(t.departments).values(dept);
+    haveId.add(dept.id);
+    haveCode.add(dept.code);
+  }
 }
 
 export async function syncStaffUsers(db: AppDb, opts?: { resetPasswords?: boolean }) {

@@ -53,6 +53,7 @@ Tài khoản demo, mật khẩu `123456`:
 | `thuy`    | Buồng phòng          |
 | `oanh`    | Bếp                  |
 | `quanly`  | Quản lý              |
+| `chusohuu` | Chủ sở hữu (chỉ xem doanh thu / khách) |
 
 Lần đầu chạy sẽ tạo `data/ops.db` và seed ca hôm nay, khách P.305 đang đếm 30 phút đăng ký lưu trú, việc khăn tắm, phòng OOO và bàn giao ca trước.
 
