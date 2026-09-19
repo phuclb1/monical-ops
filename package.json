@@ -7,6 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
+    "test": "tsx --test test/**/*.test.ts",
     "preview": "opennextjs-cloudflare build && opennextjs-cloudflare preview",
     "deploy": "opennextjs-cloudflare build && opennextjs-cloudflare deploy",
     "deploy:staging": "NEXT_PUBLIC_APP_URL=https://ops-staging.monicalhoteldalat.com NEXT_PUBLIC_VAPID_PUBLIC_KEY=BB5b4KJ43Tmex5SVN1wDfoBwuyf2g63XM3wMVna9Sm2BEEwwO__XUs9zNKsffkm40zI1cyewYmEIe3IpqQwqeQw opennextjs-cloudflare build && opennextjs-cloudflare deploy --env staging",

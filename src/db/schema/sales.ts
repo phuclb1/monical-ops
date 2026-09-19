@@ -1,0 +1,58 @@
+import { integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
+
+export const roomSales = sqliteTable("room_sales", {
+  id: text("id").primaryKey(),
+  bookingId: text("booking_id"),
+  roomId: text("room_id").notNull(),
+  guestName: text("guest_name").notNull(),
+  guestPhone: text("guest_phone"),
+  origin: text("origin").notNull().default("ops"),
+  source: text("source").notNull(),
+  status: text("status").notNull(),
+  checkIn: text("check_in").notNull(),
+  checkOut: text("check_out").notNull(),
+  adults: integer("adults").notNull().default(1),
+  children: integer("children").notNull().default(0),
+  rate: integer("rate").notNull().default(0),
+  discountKind: text("discount_kind").notNull().default("none"),
+  discountValue: integer("discount_value").notNull().default(0),
+  deposit: integer("deposit").notNull().default(0),
+  cashPaid: integer("cash_paid").notNull().default(0),
+  transferPaid: integer("transfer_paid").notNull().default(0),
+  companyPaid: integer("company_paid").notNull().default(0),
+  breakfast: integer("breakfast", { mode: "boolean" }).notNull().default(true),
+  breakfastAdults: integer("breakfast_adults"),
+  breakfastChildren: integer("breakfast_children"),
+  cars: integer("cars").notNull().default(0),
+  bikes: integer("bikes").notNull().default(0),
+  pmsCode: text("pms_code"),
+  notes: text("notes"),
+  createdAt: text("created_at").notNull(),
+  updatedAt: text("updated_at").notNull(),
+  createdBy: text("created_by"),
+  updatedBy: text("updated_by"),
+});
+
+export const saleExtraTypes = sqliteTable("sale_extra_types", {
+  id: text("id").primaryKey(),
+  code: text("code").notNull().unique(),
+  name: text("name").notNull(),
+  unitPrice: integer("unit_price").notNull().default(0),
+  unit: text("unit").notNull().default("once"),
+  unitLabel: text("unit_label"),
+  sortOrder: integer("sort_order").notNull().default(0),
+  active: integer("active", { mode: "boolean" }).notNull().default(true),
+});
+
+export const saleExtras = sqliteTable("sale_extras", {
+  id: text("id").primaryKey(),
+  bookingId: text("booking_id").notNull(),
+  typeId: text("type_id"),
+  kind: text("kind").notNull(),
+  name: text("name").notNull(),
+  qty: integer("qty").notNull().default(1),
+  unitPrice: integer("unit_price").notNull().default(0),
+  unit: text("unit").notNull().default("once"),
+  createdAt: text("created_at").notNull(),
+  createdBy: text("created_by"),
+});

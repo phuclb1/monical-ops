@@ -1,0 +1,42 @@
+import { integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
+
+export const stays = sqliteTable("stays", {
+  id: text("id").primaryKey(),
+  pmsCode: text("pms_code").notNull(),
+  origin: text("origin").notNull().default("ops"),
+  source: text("source").notNull().default("walk_in"),
+  roomId: text("room_id"),
+  guestName: text("guest_name").notNull(),
+  guestPhone: text("guest_phone"),
+  status: text("status").notNull(),
+  arrivalDate: text("arrival_date").notNull(),
+  departureDate: text("departure_date").notNull(),
+  adults: integer("adults").notNull().default(1),
+  children: integer("children").notNull().default(0),
+  breakfast: integer("breakfast", { mode: "boolean" }).notNull().default(true),
+  pmsBookingOk: integer("pms_booking_ok", { mode: "boolean" }).notNull().default(false),
+  pmsCheckinOk: integer("pms_checkin_ok", { mode: "boolean" }).notNull().default(false),
+  pmsCheckoutOk: integer("pms_checkout_ok", { mode: "boolean" }).notNull().default(false),
+  invoiceOk: integer("invoice_ok", { mode: "boolean" }).notNull().default(false),
+  paymentNote: text("payment_note"),
+  checkinAt: text("checkin_at"),
+  registrationDueAt: text("registration_due_at"),
+  registrationDoneAt: text("registration_done_at"),
+  registrationReason: text("registration_reason"),
+  notes: text("notes"),
+  createdAt: text("created_at").notNull(),
+  updatedAt: text("updated_at").notNull(),
+  createdBy: text("created_by"),
+  updatedBy: text("updated_by"),
+});
+
+export const vehicles = sqliteTable("vehicles", {
+  id: text("id").primaryKey(),
+  stayId: text("stay_id").notNull(),
+  vehicleType: text("vehicle_type").notNull(),
+  plate: text("plate").notNull(),
+  location: text("location"),
+  keyLocation: text("key_location"),
+  notes: text("notes"),
+  createdAt: text("created_at").notNull(),
+});

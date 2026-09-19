@@ -1,0 +1,261 @@
+export const SCHEMA_SQL_OPS = `CREATE TABLE IF NOT EXISTS stays (
+  id TEXT PRIMARY KEY,
+  pms_code TEXT NOT NULL,
+  origin TEXT NOT NULL DEFAULT 'ops',
+  source TEXT NOT NULL DEFAULT 'walk_in',
+  room_id TEXT,
+  guest_name TEXT NOT NULL,
+  guest_phone TEXT,
+  status TEXT NOT NULL,
+  arrival_date TEXT NOT NULL,
+  departure_date TEXT NOT NULL,
+  adults INTEGER NOT NULL DEFAULT 1,
+  children INTEGER NOT NULL DEFAULT 0,
+  breakfast INTEGER NOT NULL DEFAULT 1,
+  pms_booking_ok INTEGER NOT NULL DEFAULT 0,
+  pms_checkin_ok INTEGER NOT NULL DEFAULT 0,
+  pms_checkout_ok INTEGER NOT NULL DEFAULT 0,
+  invoice_ok INTEGER NOT NULL DEFAULT 0,
+  payment_note TEXT,
+  checkin_at TEXT,
+  registration_due_at TEXT,
+  registration_done_at TEXT,
+  registration_reason TEXT,
+  notes TEXT,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL,
+  created_by TEXT,
+  updated_by TEXT
+);
+CREATE TABLE IF NOT EXISTS vehicles (
+  id TEXT PRIMARY KEY,
+  stay_id TEXT NOT NULL,
+  vehicle_type TEXT NOT NULL,
+  plate TEXT NOT NULL,
+  location TEXT,
+  key_location TEXT,
+  notes TEXT,
+  created_at TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS reception_week_slots (
+  id TEXT PRIMARY KEY,
+  weekday INTEGER NOT NULL,
+  shift_type TEXT NOT NULL,
+  user_id TEXT NOT NULL,
+  effective_from TEXT NOT NULL DEFAULT '1970-01-01'
+);
+CREATE UNIQUE INDEX IF NOT EXISTS reception_week_slots_day_shift_from ON reception_week_slots (weekday, shift_type, effective_from);
+CREATE TABLE IF NOT EXISTS reception_day_overrides (
+  id TEXT PRIMARY KEY,
+  date TEXT NOT NULL,
+  shift_type TEXT NOT NULL,
+  user_id TEXT NOT NULL,
+  note TEXT,
+  created_by TEXT,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+);
+CREATE UNIQUE INDEX IF NOT EXISTS reception_day_overrides_date_shift ON reception_day_overrides (date, shift_type);
+CREATE TABLE IF NOT EXISTS shifts (
+  id TEXT PRIMARY KEY,
+  type TEXT NOT NULL,
+  date TEXT NOT NULL,
+  status TEXT NOT NULL,
+  opened_at TEXT NOT NULL,
+  opened_by TEXT NOT NULL,
+  closed_at TEXT,
+  closed_by TEXT,
+  close_reason TEXT
+);
+CREATE TABLE IF NOT EXISTS checklists (
+  id TEXT PRIMARY KEY,
+  kind TEXT NOT NULL DEFAULT 'shift_open',
+  shift_id TEXT,
+  stay_id TEXT,
+  room_id TEXT,
+  task_id TEXT,
+  date TEXT,
+  department_code TEXT NOT NULL DEFAULT 'reception',
+  title TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS checklist_items (
+  id TEXT PRIMARY KEY,
+  checklist_id TEXT NOT NULL,
+  item_key TEXT,
+  label TEXT NOT NULL,
+  required INTEGER NOT NULL DEFAULT 1,
+  done INTEGER NOT NULL DEFAULT 0,
+  done_by TEXT,
+  done_at TEXT,
+  skip_reason TEXT,
+  note TEXT,
+  photo TEXT,
+  sort_order INTEGER NOT NULL DEFAULT 0
+);
+CREATE TABLE IF NOT EXISTS tasks (
+  id TEXT PRIMARY KEY,
+  kind TEXT NOT NULL DEFAULT 'general',
+  stay_id TEXT,
+  from_dept TEXT NOT NULL,
+  to_dept TEXT NOT NULL,
+  room_id TEXT,
+  area TEXT,
+  content TEXT NOT NULL,
+  priority TEXT NOT NULL,
+  assignee_id TEXT,
+  due_at TEXT,
+  form_code TEXT,
+  status TEXT NOT NULL,
+  blocked_reason TEXT,
+  blocked_action TEXT,
+  zalo_message TEXT,
+  zalo_sent INTEGER NOT NULL DEFAULT 0,
+  zalo_sent_at TEXT,
+  photo TEXT,
+  created_by TEXT NOT NULL,
+  created_at TEXT NOT NULL,
+  updated_by TEXT,
+  updated_at TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS task_history (
+  id TEXT PRIMARY KEY,
+  task_id TEXT NOT NULL,
+  from_status TEXT,
+  to_status TEXT NOT NULL,
+  actor_id TEXT NOT NULL,
+  note TEXT,
+  created_at TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS guest_requests (
+  id TEXT PRIMARY KEY,
+  stay_id TEXT,
+  room_id TEXT,
+  kind TEXT NOT NULL,
+  content TEXT NOT NULL,
+  quantity INTEGER NOT NULL DEFAULT 1,
+  due_at TEXT,
+  assignee_id TEXT,
+  status TEXT NOT NULL,
+  created_by TEXT NOT NULL,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS handovers (
+  id TEXT PRIMARY KEY,
+  from_shift_id TEXT NOT NULL,
+  to_shift_type TEXT,
+  status TEXT NOT NULL,
+  created_by TEXT NOT NULL,
+  created_at TEXT NOT NULL,
+  accepted_by TEXT,
+  accepted_at TEXT,
+  notes TEXT
+);
+CREATE TABLE IF NOT EXISTS handover_items (
+  id TEXT PRIMARY KEY,
+  handover_id TEXT NOT NULL,
+  category TEXT NOT NULL,
+  ref_type TEXT,
+  ref_id TEXT,
+  summary TEXT NOT NULL,
+  note TEXT
+);
+CREATE TABLE IF NOT EXISTS form_submissions (
+  id TEXT PRIMARY KEY,
+  form_code TEXT NOT NULL,
+  shift_id TEXT,
+  room_id TEXT,
+  stay_id TEXT,
+  date TEXT NOT NULL,
+  payload TEXT NOT NULL,
+  signature TEXT,
+  submitted_by TEXT NOT NULL,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL,
+  deleted_at TEXT
+);
+CREATE TABLE IF NOT EXISTS incidents (
+  id TEXT PRIMARY KEY,
+  type TEXT NOT NULL,
+  location TEXT,
+  room_id TEXT,
+  description TEXT NOT NULL,
+  severity TEXT NOT NULL,
+  status TEXT NOT NULL,
+  photo TEXT,
+  reported_by TEXT NOT NULL,
+  approved_by TEXT,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS breakfasts (
+  id TEXT PRIMARY KEY,
+  date TEXT NOT NULL UNIQUE,
+  adults INTEGER NOT NULL DEFAULT 0,
+  children INTEGER NOT NULL DEFAULT 0,
+  vegetarian INTEGER NOT NULL DEFAULT 0,
+  allergy INTEGER NOT NULL DEFAULT 0,
+  early INTEGER NOT NULL DEFAULT 0,
+  takeaway INTEGER NOT NULL DEFAULT 0,
+  notes TEXT,
+  sent_by TEXT,
+  confirmed_by TEXT,
+  confirmed_at TEXT,
+  actual_adults INTEGER,
+  actual_children INTEGER,
+  updated_at TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS notifications (
+  id TEXT PRIMARY KEY,
+  user_id TEXT,
+  role TEXT,
+  title TEXT NOT NULL,
+  body TEXT NOT NULL,
+  link TEXT,
+  read INTEGER NOT NULL DEFAULT 0,
+  created_at TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS audit_logs (
+  id TEXT PRIMARY KEY,
+  entity TEXT NOT NULL,
+  entity_id TEXT NOT NULL,
+  action TEXT NOT NULL,
+  actor_id TEXT NOT NULL,
+  before_json TEXT,
+  after_json TEXT,
+  created_at TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS push_subscriptions (
+  id TEXT PRIMARY KEY,
+  user_id TEXT NOT NULL,
+  endpoint TEXT NOT NULL UNIQUE,
+  p256dh TEXT NOT NULL,
+  auth TEXT NOT NULL,
+  user_agent TEXT,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS sale_extra_types (
+  id TEXT PRIMARY KEY,
+  code TEXT NOT NULL UNIQUE,
+  name TEXT NOT NULL,
+  unit_price INTEGER NOT NULL DEFAULT 0,
+  unit TEXT NOT NULL DEFAULT 'once',
+  unit_label TEXT,
+  sort_order INTEGER NOT NULL DEFAULT 0,
+  active INTEGER NOT NULL DEFAULT 1
+);
+CREATE TABLE IF NOT EXISTS sale_extras (
+  id TEXT PRIMARY KEY,
+  booking_id TEXT NOT NULL,
+  type_id TEXT,
+  kind TEXT NOT NULL,
+  name TEXT NOT NULL,
+  qty INTEGER NOT NULL DEFAULT 1,
+  unit_price INTEGER NOT NULL DEFAULT 0,
+  unit TEXT NOT NULL DEFAULT 'once',
+  created_at TEXT NOT NULL,
+  created_by TEXT
+);
+CREATE INDEX IF NOT EXISTS sale_extras_booking ON sale_extras (booking_id);
+`;

@@ -1,0 +1,68 @@
+import assert from "node:assert/strict";
+import { test } from "node:test";
+import { ganttSections, quoteTotal, rangeOpen, saleTitle, type GanttRow } from "../src/components/room-gantt/model";
+import { groupRoomsByType, parseDiscountState, roomOpen } from "../src/components/sale-form/shared";
+
+const room = (id: string, number: string, type: string, floor: number): GanttRow["room"] => ({
+  id,
+  number,
+  type,
+  floor,
+  opsStatus: "vacant",
+});
+
+test("sale-form shared: discount parse, grouping, occupancy", () => {
+  assert.deepEqual(parseDiscountState("percent", 10), { kind: "percent", value: "10" });
+  assert.deepEqual(parseDiscountState("percent", 150), { kind: "amount", value: "150" });
+  const grouped = groupRoomsByType(
+    [
+      { id: "1", number: "202", type: "Deluxe" },
+      { id: "2", number: "101", type: "Standard" },
+      { id: "3", number: "102", type: "Standard" },
+    ],
+    [
+      { name: "Standard", sortOrder: 1, baseRate: 1, weekendRate: 1 },
+      { name: "Deluxe", sortOrder: 2, baseRate: 1, weekendRate: 1 },
+    ],
+  );
+  assert.deepEqual(
+    grouped.map((row) => [row.type, row.rooms.map((item) => item.number)]),
+    [
+      ["Standard", ["101", "102"]],
+      ["Deluxe", ["202"]],
+    ],
+  );
+  assert.equal(
+    roomOpen("r1", "2026-09-19", "2026-09-21", [{ roomId: "r1", checkIn: "2026-09-20", checkOut: "2026-09-22" }]),
+    false,
+  );
+  assert.equal(
+    roomOpen("r1", "2026-09-19", "2026-09-20", [{ roomId: "r1", checkIn: "2026-09-20", checkOut: "2026-09-22" }]),
+    true,
+  );
+});
+
+test("gantt model: sections, title, quote, open range", () => {
+  const rows: GanttRow[] = [
+    { room: room("a", "202", "Deluxe", 2), bars: [] },
+    {
+      room: room("b", "101", "Standard", 1),
+      bars: [{ sale: { id: "s1", roomId: "b", guestName: "Hà", status: "reserved", checkIn: "2026-09-19", checkOut: "2026-09-21", rate: 1 }, start: 0, end: 2, nightStart: 0, nightEnd: 2 }],
+    },
+  ];
+  const byFloor = ganttSections(rows, [], "floor");
+  assert.deepEqual(
+    byFloor.map((section) => section.label),
+    ["Tầng 1", "Tầng 2"],
+  );
+  const byType = ganttSections(rows, [{ name: "Standard", sortOrder: 1, baseRate: 1, weekendRate: 1 }, { name: "Deluxe", sortOrder: 2, baseRate: 1, weekendRate: 1 }], "type");
+  assert.equal(byType[0].label, "Standard");
+  assert.match(saleTitle({ id: "s", roomId: "b", guestName: "Hà", status: "reserved", checkIn: "2026-09-19", checkOut: "2026-09-21", rate: 1, cars: 1 }), /Hà · .+ · 1 ô tô/);
+  assert.equal(
+    quoteTotal({ id: "s", roomId: "b", guestName: "Hà", status: "reserved", checkIn: "2026-09-19", checkOut: "2026-09-21", rate: 1_000_000 }, 1_000_000, "2026-09-19", "2026-09-21"),
+    2_000_000,
+  );
+  assert.equal(rangeOpen(rows[1], 0, 2, "other", 7), false);
+  assert.equal(rangeOpen(rows[1], 0, 2, "s1", 7), true);
+  assert.equal(rangeOpen({ ...rows[1], room: { ...rows[1].room, opsStatus: "ooo" } }, 3, 1, "s1", 7), false);
+});
