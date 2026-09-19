@@ -63,6 +63,7 @@ export const roomSales = sqliteTable("room_sales", {
   deposit: integer("deposit").notNull().default(0),
   cashPaid: integer("cash_paid").notNull().default(0),
   transferPaid: integer("transfer_paid").notNull().default(0),
+  companyPaid: integer("company_paid").notNull().default(0),
   breakfast: integer("breakfast", { mode: "boolean" }).notNull().default(true),
   breakfastAdults: integer("breakfast_adults"),
   breakfastChildren: integer("breakfast_children"),

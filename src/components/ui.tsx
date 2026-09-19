@@ -1,6 +1,8 @@
 import clsx from "clsx";
 import Link from "next/link";
 import type { ReactNode } from "react";
+import { PAYMENT_METHOD_LABEL } from "@/lib/constants";
+import { PAYMENT_METHODS, type PaymentMethod } from "@/lib/types";
 
 export function Card({ children, className }: { children: ReactNode; className?: string }) {
   return <section className={clsx("card p-4", className)}>{children}</section>;
@@ -126,36 +128,27 @@ export function PayMethodField({
   onChange,
 }: {
   name?: string;
-  value?: "cash" | "transfer";
-  onChange?: (value: "cash" | "transfer") => void;
+  value?: PaymentMethod;
+  onChange?: (value: PaymentMethod) => void;
 }) {
-  const current = value || "transfer";
+  const current = value || "personal";
   return (
     <fieldset>
       <legend className="mb-1.5 block text-xs font-semibold text-[#5c6665]">Hình thức</legend>
-      <div className="grid grid-cols-2 gap-2">
-        <label className="min-h-11 rounded-xl border border-line bg-white px-3 text-sm font-semibold">
-          <input
-            type="radio"
-            name={name}
-            value="transfer"
-            {...(onChange
-              ? { checked: current === "transfer", onChange: () => onChange("transfer") }
-              : { defaultChecked: current === "transfer" })}
-          />
-          Chuyển khoản
-        </label>
-        <label className="min-h-11 rounded-xl border border-line bg-white px-3 text-sm font-semibold">
-          <input
-            type="radio"
-            name={name}
-            value="cash"
-            {...(onChange
-              ? { checked: current === "cash", onChange: () => onChange("cash") }
-              : { defaultChecked: current === "cash" })}
-          />
-          Tiền mặt
-        </label>
+      <div className="grid grid-cols-1 gap-2">
+        {PAYMENT_METHODS.map((method) => (
+          <label key={method} className="flex min-h-11 items-center gap-2 rounded-xl border border-line bg-white px-3 text-sm font-semibold">
+            <input
+              type="radio"
+              name={name}
+              value={method}
+              {...(onChange
+                ? { checked: current === method, onChange: () => onChange(method) }
+                : { defaultChecked: current === method })}
+            />
+            {PAYMENT_METHOD_LABEL[method]}
+          </label>
+        ))}
       </div>
     </fieldset>
   );

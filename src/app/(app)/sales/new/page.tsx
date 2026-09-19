@@ -3,11 +3,10 @@ import { redirect } from "next/navigation";
 import { createSaleAction } from "@/actions/sales";
 import { SaleForm } from "@/components/sale-form";
 import { getSession } from "@/lib/auth";
-import { catalogRate, defaultCheckout } from "@/lib/sales";
-import { defaultAdultsForRoomType } from "@/lib/rooms-catalog";
+import { defaultCheckout, isActiveSaleStatus } from "@/lib/sales";
 import { todayVN } from "@/lib/datetime";
 import { can } from "@/lib/permissions";
-import { listRooms, listRoomTypes } from "@/lib/repos";
+import { listRooms, listRoomSales, listRoomTypes, listStays } from "@/lib/repos";
 
 export default async function NewSalePage({
   searchParams,
@@ -17,13 +16,19 @@ export default async function NewSalePage({
   const user = await getSession();
   if (!user) redirect("/login");
   if (!can(user.role, "manageSales")) redirect("/more");
-  const { room, date: rawDate, error } = await searchParams;
+  const { date: rawDate, error } = await searchParams;
   const today = todayVN();
   const date = rawDate && /^\d{4}-\d{2}-\d{2}$/.test(rawDate) ? rawDate : today;
-  const [rooms, types] = await Promise.all([listRooms(), listRoomTypes()]);
+  const [rooms, types, sales, stays] = await Promise.all([listRooms(), listRoomTypes(), listRoomSales(), listStays()]);
   const sellable = rooms.filter((item) => item.opsStatus !== "ooo").sort((a, b) => a.number.localeCompare(b.number));
-  const selected = sellable.find((item) => item.id === room) ?? sellable[0];
-  const selectedType = types.find((type) => type.name === selected?.type);
+  const busy = [
+    ...sales
+      .filter((row) => isActiveSaleStatus(row.status))
+      .map((row) => ({ roomId: row.roomId, checkIn: row.checkIn, checkOut: row.checkOut })),
+    ...stays
+      .filter((row) => row.roomId && ["arriving", "inhouse", "departing"].includes(row.status))
+      .map((row) => ({ roomId: row.roomId as string, checkIn: row.arrivalDate, checkOut: row.departureDate })),
+  ];
 
   return (
     <main className="booking-desk space-y-3 px-3 py-4 md:space-y-4">
@@ -38,25 +43,23 @@ export default async function NewSalePage({
             </Link>
           </div>
           <h1 className="mt-1 text-xl font-bold">Đặt phòng</h1>
-          <p className="text-xs text-[#5c6665] md:text-sm">Chọn hạng / phòng, ngày, ăn sáng và chiết khấu từng phòng. Khách chỉ thấy hạng phòng trên phiếu in.</p>
+          <p className="text-xs text-[#5c6665] md:text-sm">Chọn ngày trước, rồi tick phòng trống. Khách chỉ thấy hạng phòng trên phiếu in.</p>
         </div>
       </div>
       {error ? <p className="text-sm text-[#c23b3b]">{error}</p> : null}
-      {selected ? (
+      {sellable.length ? (
         <SaleForm
           action={createSaleAction}
           rooms={sellable}
           types={types}
+          busy={busy}
           today={today}
           showCheckinNow
           allowMultiple
           submitLabel="Lưu đặt phòng"
           defaults={{
-            roomId: selected.id,
             checkIn: date,
             checkOut: defaultCheckout(date),
-            adults: defaultAdultsForRoomType(selected.type, selectedType?.adults),
-            rate: catalogRate(selectedType, date),
             date,
           }}
         />

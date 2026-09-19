@@ -123,9 +123,10 @@ async function syncSalePaymentSplit(db: AppDb) {
       deposit: t.roomSales.deposit,
       cashPaid: t.roomSales.cashPaid,
       transferPaid: t.roomSales.transferPaid,
+      companyPaid: t.roomSales.companyPaid,
     }).from(t.roomSales);
     for (const row of rows) {
-      if (row.deposit <= 0 || row.cashPaid + row.transferPaid > 0) continue;
+      if (row.deposit <= 0 || row.cashPaid + row.transferPaid + (row.companyPaid || 0) > 0) continue;
       await db.update(t.roomSales).set({ transferPaid: row.deposit }).where(eq(t.roomSales.id, row.id));
     }
   } catch {

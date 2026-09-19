@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { Btn, Field, PayMethodField } from "@/components/ui";
-import { DISCOUNT_KIND_LABEL, SALE_SOURCE_GROUPS, SALE_SOURCE_LABEL } from "@/lib/constants";
+import { DISCOUNT_KIND_LABEL, PAYMENT_METHOD_LABEL, SALE_SOURCE_GROUPS, SALE_SOURCE_LABEL } from "@/lib/constants";
 import {
   bookingDue,
   bookingQuote,
@@ -13,14 +13,15 @@ import {
   paidNote,
   parseMoney,
   parseDiscountValue,
+  primaryPaymentMethod,
   rangesOverlap,
   roomMoveKind,
 } from "@/lib/sales";
 import { extraAmount } from "@/lib/extras";
 import { defaultAdultsForRooms } from "@/lib/rooms-catalog";
-import { DISCOUNT_KINDS, type DiscountKind } from "@/lib/types";
+import { DISCOUNT_KINDS, type DiscountKind, type PaymentMethod } from "@/lib/types";
 
-type Room = { id: string; number: string; type: string; floor?: number };
+type Room = { id: string; number: string; type: string; floor?: number; opsStatus?: string };
 type RoomType = { name: string; sortOrder: number; baseRate: number; weekendRate: number; adults?: number };
 type StayDates = { checkIn: string; checkOut: string };
 type DiscountState = { kind: DiscountKind; value: string };
@@ -91,10 +92,21 @@ function groupRoomsByType(rooms: Room[], types: RoomType[]) {
     .map(([type, items]) => ({ type, rooms: items.sort((a, b) => a.number.localeCompare(b.number)) }));
 }
 
+function roomOpen(
+  roomId: string,
+  checkIn: string,
+  checkOut: string,
+  busy: { roomId: string; checkIn: string; checkOut: string }[],
+) {
+  if (!checkIn || !checkOut || checkOut <= checkIn) return false;
+  return !busy.some((row) => row.roomId === roomId && rangesOverlap(checkIn, checkOut, row.checkIn, row.checkOut));
+}
+
 export function SaleForm({
   action,
   rooms,
   types,
+  busy = [],
   defaults,
   submitLabel,
   showCheckinNow,
@@ -104,6 +116,7 @@ export function SaleForm({
   action: (formData: FormData) => void | Promise<void>;
   rooms: Room[];
   types: RoomType[];
+  busy?: { roomId: string; checkIn: string; checkOut: string }[];
   defaults: {
     id?: string;
     roomId?: string;
@@ -133,23 +146,15 @@ export function SaleForm({
   allowMultiple?: boolean;
 }) {
   const typeByName = useMemo(() => Object.fromEntries(types.map((type) => [type.name, type])), [types]);
-  const initialId = defaults.roomId || rooms[0]?.id || "";
-  const [roomIds, setRoomIds] = useState<string[]>(initialId ? [initialId] : []);
+  const [roomIds, setRoomIds] = useState<string[]>([]);
   const [query, setQuery] = useState("");
-  const [dates, setDates] = useState<Record<string, StayDates>>(() =>
-    initialId ? { [initialId]: { checkIn: defaults.checkIn, checkOut: defaults.checkOut } } : {},
-  );
-  const [breakfast, setBreakfast] = useState<Record<string, boolean>>(() => (initialId ? { [initialId]: true } : {}));
-  const [rates, setRates] = useState<Record<string, string>>(() => {
-    const room = rooms.find((item) => item.id === initialId);
-    const next = catalogRate(typeByName[room?.type || ""], defaults.checkIn);
-    return initialId ? { [initialId]: String(defaults.rate ?? next ?? "") } : {};
-  });
-  const [discounts, setDiscounts] = useState<Record<string, DiscountState>>(() =>
-    initialId ? { [initialId]: parseDiscountState(defaults.discountKind, defaults.discountValue) } : {},
-  );
+  const [sharedStay, setSharedStay] = useState<StayDates>({ checkIn: defaults.checkIn, checkOut: defaults.checkOut });
+  const [dates, setDates] = useState<Record<string, StayDates>>({});
+  const [breakfast, setBreakfast] = useState<Record<string, boolean>>({});
+  const [rates, setRates] = useState<Record<string, string>>({});
+  const [discounts, setDiscounts] = useState<Record<string, DiscountState>>({});
   const [deposit, setDeposit] = useState(defaults.deposit ? String(defaults.deposit) : "");
-  const [payMethod, setPayMethod] = useState<"cash" | "transfer">("transfer");
+  const [payMethod, setPayMethod] = useState<PaymentMethod>("personal");
   const [fromEz, setFromEz] = useState(defaults.origin === "ezcloud");
   const selectedRooms = rooms.filter((room) => roomIds.includes(room.id));
   const occupancyAdults = useMemo(() => defaultAdultsForRooms(selectedRooms, types), [selectedRooms, types]);
@@ -160,7 +165,7 @@ export function SaleForm({
   const [breakfastChildren, setBreakfastChildren] = useState(String(defaults.breakfastChildren ?? defaults.children ?? 0));
   const [breakfastPaxTouched, setBreakfastPaxTouched] = useState(false);
   const quoteInputs = selectedRooms.map((room) => {
-    const stay = dates[room.id] || { checkIn: defaults.checkIn, checkOut: defaults.checkOut };
+    const stay = dates[room.id] || sharedStay;
     return {
       room,
       rate: parseMoney(rates[room.id]),
@@ -179,6 +184,10 @@ export function SaleForm({
   const stayAdults = Math.max(1, Number(adults) || 1);
   const stayChildren = Math.max(0, Number(children) || 0);
   const anyBreakfast = selectedRooms.some((room) => breakfast[room.id] !== false);
+  const openRooms = useMemo(
+    () => rooms.filter((room) => room.opsStatus !== "ooo" && roomOpen(room.id, sharedStay.checkIn, sharedStay.checkOut, busy)),
+    [rooms, sharedStay, busy],
+  );
   useEffect(() => {
     if (!adultsTouched) setAdults(String(occupancyAdults));
   }, [occupancyAdults, adultsTouched]);
@@ -196,11 +205,32 @@ export function SaleForm({
     setBreakfastAdults((prev) => String(Math.min(stayAdults, Math.max(0, Number(prev) || 0))));
     setBreakfastChildren((prev) => String(Math.min(stayChildren, Math.max(0, Number(prev) || 0))));
   }, [anyBreakfast, stayAdults, stayChildren, breakfastPaxTouched]);
+  useEffect(() => {
+    setRoomIds((prev) => prev.filter((id) => roomOpen(id, sharedStay.checkIn, sharedStay.checkOut, busy)));
+    setDates((prev) => {
+      const ids = Object.keys(prev);
+      if (!ids.length) return prev;
+      const next = { ...prev };
+      for (const id of ids) next[id] = sharedStay;
+      return next;
+    });
+    setRates((prev) => {
+      const ids = Object.keys(prev);
+      if (!ids.length) return prev;
+      const next = { ...prev };
+      for (const id of ids) {
+        const room = rooms.find((item) => item.id === id);
+        const value = catalogRate(typeByName[room?.type || ""], sharedStay.checkIn);
+        if (value) next[id] = String(value);
+      }
+      return next;
+    });
+  }, [sharedStay, busy, rooms, typeByName]);
   const filteredRooms = useMemo(() => {
     const q = query.trim().toLowerCase();
-    if (!q) return rooms;
-    return rooms.filter((room) => `p.${room.number} ${room.number} ${room.type}`.toLowerCase().includes(q));
-  }, [rooms, query]);
+    if (!q) return openRooms;
+    return openRooms.filter((room) => `p.${room.number} ${room.number} ${room.type}`.toLowerCase().includes(q));
+  }, [openRooms, query]);
   const typeGroups = groupRoomsByType(filteredRooms, types);
 
   function catalogFor(roomId: string, date: string) {
@@ -214,10 +244,18 @@ export function SaleForm({
 
   function setStay(roomId: string, patch: Partial<StayDates>) {
     setDates((prev) => {
-      const current = prev[roomId] || { checkIn: defaults.checkIn, checkOut: defaults.checkOut };
+      const current = prev[roomId] || sharedStay;
       const next = { ...current, ...patch };
       if (next.checkOut <= next.checkIn) next.checkOut = defaultCheckout(next.checkIn);
       return { ...prev, [roomId]: next };
+    });
+  }
+
+  function updateSharedStay(patch: Partial<StayDates>) {
+    setSharedStay((current) => {
+      const next = { ...current, ...patch };
+      if (next.checkOut <= next.checkIn) next.checkOut = defaultCheckout(next.checkIn);
+      return next;
     });
   }
 
@@ -226,11 +264,10 @@ export function SaleForm({
       const on = prev.includes(id);
       const next = on ? prev.filter((item) => item !== id) : [...prev, id];
       if (!on) {
-        const checkIn = defaults.checkIn;
-        setStay(id, { checkIn, checkOut: defaultCheckout(checkIn) });
+        setStay(id, sharedStay);
         setBreakfast((prevBreakfast) => ({ ...prevBreakfast, [id]: true }));
         setDiscounts((prev) => ({ ...prev, [id]: prev[id] || emptyDiscount() }));
-        const value = catalogFor(id, checkIn);
+        const value = catalogFor(id, sharedStay.checkIn);
         if (value) setRoomRate(id, String(value));
       }
       return next;
@@ -261,24 +298,50 @@ export function SaleForm({
         <input type="checkbox" name="fromEzcloud" value="1" checked={fromEz} onChange={(e) => setFromEz(e.target.checked)} />
         <span>Từ ezCloud</span>
       </label>
+      <div className="grid grid-cols-2 gap-2">
+        <Field label="Nhận">
+          <input
+            name="checkIn"
+            type="date"
+            required
+            value={sharedStay.checkIn}
+            onChange={(e) => updateSharedStay({ checkIn: e.target.value })}
+          />
+        </Field>
+        <Field label="Trả">
+          <input
+            name="checkOut"
+            type="date"
+            required
+            value={sharedStay.checkOut}
+            onChange={(e) => updateSharedStay({ checkOut: e.target.value })}
+          />
+        </Field>
+      </div>
       {allowMultiple ? (
         <div>
-          <p className="mb-1.5 text-xs font-semibold text-[#5c6665]">Hạng phòng · chọn 1 hoặc nhiều phòng</p>
+          <p className="mb-1.5 text-xs font-semibold text-[#5c6665]">
+            Phòng trống · {openRooms.length} phòng
+          </p>
           <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Tìm hạng / số phòng" />
           <div className="mt-2 max-h-72 space-y-3 overflow-y-auto rounded-xl border border-line p-2 md:max-h-56">
-            {typeGroups.map((group) => (
-              <div key={group.type}>
-                <p className="px-1 py-1 text-[11px] font-bold uppercase tracking-wide text-[#8a7a72]">{group.type}</p>
-                <div className="grid grid-cols-2 gap-1 md:grid-cols-4 lg:grid-cols-5">
-                  {group.rooms.map((room) => (
-                    <label key={room.id} className="min-h-11 gap-2 rounded-lg px-2 py-1">
-                      <input type="checkbox" name="roomId" value={room.id} checked={roomIds.includes(room.id)} onChange={() => toggleRoom(room.id)} />
-                      <span className="text-sm font-semibold">P.{room.number}</span>
-                    </label>
-                  ))}
+            {typeGroups.length ? (
+              typeGroups.map((group) => (
+                <div key={group.type}>
+                  <p className="px-1 py-1 text-[11px] font-bold uppercase tracking-wide text-[#8a7a72]">{group.type}</p>
+                  <div className="grid grid-cols-2 gap-1 md:grid-cols-4 lg:grid-cols-5">
+                    {group.rooms.map((room) => (
+                      <label key={room.id} className="min-h-11 gap-2 rounded-lg px-2 py-1">
+                        <input type="checkbox" name="roomId" value={room.id} checked={roomIds.includes(room.id)} onChange={() => toggleRoom(room.id)} />
+                        <span className="text-sm font-semibold">P.{room.number}</span>
+                      </label>
+                    ))}
+                  </div>
                 </div>
-              </div>
-            ))}
+              ))
+            ) : (
+              <p className="px-1 py-2 text-sm text-[#5c6665]">Không còn phòng trống cho ngày này.</p>
+            )}
           </div>
           {roomIds.length ? (
             <p className="mt-1 text-xs text-[#5c6665]">
@@ -290,19 +353,22 @@ export function SaleForm({
           )}
         </div>
       ) : (
-        <Field label="Phòng">
+        <Field label="Phòng trống">
           <select
             name="roomId"
             required
             value={roomIds[0] || ""}
             onChange={(e) => {
               const next = e.target.value;
-              setRoomIds([next]);
-              const value = catalogFor(next, dates[next]?.checkIn || defaults.checkIn);
+              setRoomIds(next ? [next] : []);
+              if (!next) return;
+              setStay(next, sharedStay);
+              const value = catalogFor(next, sharedStay.checkIn);
               if (value) setRoomRate(next, String(value));
             }}
           >
-            {rooms.map((room) => (
+            <option value="">Chọn phòng</option>
+            {filteredRooms.map((room) => (
               <option key={room.id} value={room.id}>
                 {room.type} · P.{room.number}
               </option>
@@ -320,8 +386,8 @@ export function SaleForm({
             <span>Giá / đêm</span>
             <span>Chiết khấu</span>
           </div>
-          {selectedRooms.map((room, index) => {
-            const stay = dates[room.id] || { checkIn: defaults.checkIn, checkOut: defaults.checkOut };
+          {selectedRooms.map((room) => {
+            const stay = dates[room.id] || sharedStay;
             const eats = breakfast[room.id] !== false;
             const catalog = catalogFor(room.id, stay.checkIn);
             const peakRate = isHolidayNight(stay.checkIn) && Boolean(typeByName[room.type]?.weekendRate);
@@ -433,7 +499,7 @@ export function SaleForm({
             </li>
             {depositAmount ? (
               <li className="flex justify-between gap-2 text-[#1b7a4e]">
-                <span>Đã đặt cọc · {payMethod === "cash" ? "tiền mặt" : "chuyển khoản"}</span>
+                <span>Đã đặt cọc · {PAYMENT_METHOD_LABEL[payMethod]}</span>
                 <span>−{formatVnd(depositAmount)}</span>
               </li>
             ) : (
@@ -591,6 +657,7 @@ export function BookingForm({
     deposit?: number;
     cashPaid?: number;
     transferPaid?: number;
+    companyPaid?: number;
     notes?: string;
   };
 }) {
@@ -616,9 +683,7 @@ export function BookingForm({
     Object.fromEntries(lines.map((line) => [line.saleId, parseDiscountState(line.discountKind, line.discountValue)])),
   );
   const [deposit, setDeposit] = useState(defaults.deposit ? String(defaults.deposit) : "");
-  const [payMethod, setPayMethod] = useState<"cash" | "transfer">(
-    (defaults.cashPaid || 0) > (defaults.transferPaid || 0) ? "cash" : "transfer",
-  );
+  const [payMethod, setPayMethod] = useState<PaymentMethod>(() => primaryPaymentMethod(defaults));
 
   function stayOf(saleId: string, fallback: StayDates) {
     return dates[saleId] || fallback;
@@ -940,7 +1005,7 @@ export function BookingForm({
           </li>
           {depositAmount ? (
             <li className="flex justify-between gap-2 text-[#1b7a4e]">
-              <span>Đã đặt cọc{paidNote(defaults) ? ` · ${paidNote(defaults)}` : payMethod === "cash" ? " · tiền mặt" : " · chuyển khoản"}</span>
+              <span>Đã đặt cọc{paidNote(defaults) ? ` · ${paidNote(defaults)}` : ` · ${PAYMENT_METHOD_LABEL[payMethod]}`}</span>
               <span>−{formatVnd(depositAmount)}</span>
             </li>
           ) : (

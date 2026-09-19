@@ -58,6 +58,7 @@ CREATE TABLE IF NOT EXISTS room_sales (
   deposit INTEGER NOT NULL DEFAULT 0,
   cash_paid INTEGER NOT NULL DEFAULT 0,
   transfer_paid INTEGER NOT NULL DEFAULT 0,
+  company_paid INTEGER NOT NULL DEFAULT 0,
   breakfast INTEGER NOT NULL DEFAULT 1,
   breakfast_adults INTEGER,
   breakfast_children INTEGER,
@@ -441,4 +442,5 @@ export const SCHEMA_PATCHES = [
   "ALTER TABLE room_sales ADD COLUMN breakfast_children INTEGER",
   "UPDATE room_sales SET breakfast_adults = CASE WHEN breakfast = 0 THEN 0 ELSE adults END WHERE breakfast_adults IS NULL",
   "UPDATE room_sales SET breakfast_children = CASE WHEN breakfast = 0 THEN 0 ELSE children END WHERE breakfast_children IS NULL",
+  "ALTER TABLE room_sales ADD COLUMN company_paid INTEGER NOT NULL DEFAULT 0",
 ];

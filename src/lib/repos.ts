@@ -819,6 +819,7 @@ type SaleInput = {
   deposit?: number;
   cashPaid?: number;
   transferPaid?: number;
+  companyPaid?: number;
   paymentMethod?: string;
   pmsCode?: string;
   notes?: string;
@@ -851,11 +852,15 @@ function uniqueSaleRoomIds(data: SaleInput) {
   return ids;
 }
 
-function paymentOf(data: SaleInput, current?: { cashPaid?: number | null; transferPaid?: number | null; deposit?: number | null }) {
-  if (data.cashPaid != null || data.transferPaid != null) {
+function paymentOf(
+  data: SaleInput,
+  current?: { cashPaid?: number | null; transferPaid?: number | null; companyPaid?: number | null; deposit?: number | null },
+) {
+  if (data.cashPaid != null || data.transferPaid != null || data.companyPaid != null) {
     const cashPaid = Math.max(0, Math.round(data.cashPaid || 0));
     const transferPaid = Math.max(0, Math.round(data.transferPaid || 0));
-    return { cashPaid, transferPaid, deposit: cashPaid + transferPaid };
+    const companyPaid = Math.max(0, Math.round(data.companyPaid || 0));
+    return { cashPaid, transferPaid, companyPaid, deposit: cashPaid + transferPaid + companyPaid };
   }
   const method = parsePaymentMethod(data.paymentMethod);
   if (current) return applyPaidAmount(current, Math.max(0, data.deposit || 0), method);
@@ -1013,6 +1018,7 @@ function toBookingView(id: string, rooms: Awaited<ReturnType<typeof listRoomSale
     deposit: paid.deposit,
     cashPaid: paid.cashPaid,
     transferPaid: paid.transferPaid,
+    companyPaid: paid.companyPaid,
     due: bookingDue(quote.total, paid.deposit),
     createdAt: sorted.reduce((min, row) => (row.createdAt < min ? row.createdAt : min), first.createdAt),
     checkIn,
@@ -1325,6 +1331,7 @@ export async function createRoomSale(user: SessionUser, data: SaleInput) {
       deposit: paid.deposit,
       cashPaid: paid.cashPaid,
       transferPaid: paid.transferPaid,
+      companyPaid: paid.companyPaid,
       breakfast: row.breakfast,
       pmsCode,
       notes: data.notes?.trim() || null,
@@ -1395,6 +1402,7 @@ export async function addRoomsToBooking(user: SessionUser, saleId: string, roomI
     deposit: before.deposit,
     cashPaid: before.cashPaid,
     transferPaid: before.transferPaid,
+    companyPaid: before.companyPaid,
     pmsCode: before.pmsCode || "",
     notes: before.notes || "",
     origin: before.origin,
@@ -1434,6 +1442,7 @@ export async function updateRoomSale(user: SessionUser, id: string, data: SaleIn
     deposit: paid.deposit,
     cashPaid: paid.cashPaid,
     transferPaid: paid.transferPaid,
+    companyPaid: paid.companyPaid,
     breakfast,
     pmsCode: before.pmsCode,
     notes: before.notes,
@@ -1450,6 +1459,7 @@ export async function updateRoomSale(user: SessionUser, id: string, data: SaleIn
     deposit: patch.deposit,
     cashPaid: patch.cashPaid,
     transferPaid: patch.transferPaid,
+    companyPaid: patch.companyPaid,
     pmsCode: patch.pmsCode,
     notes: patch.notes,
     updatedAt: patch.updatedAt,
@@ -1490,6 +1500,7 @@ export async function updateBooking(
     deposit?: number;
     cashPaid?: number;
     transferPaid?: number;
+    companyPaid?: number;
     paymentMethod?: string;
     notes?: string;
   },
@@ -1524,6 +1535,7 @@ export async function updateBooking(
       deposit: data.deposit,
       cashPaid: data.cashPaid,
       transferPaid: data.transferPaid,
+      companyPaid: data.companyPaid,
       paymentMethod: data.paymentMethod,
     },
     hit,
@@ -1587,6 +1599,7 @@ export async function updateBooking(
       deposit: paid.deposit,
       cashPaid: paid.cashPaid,
       transferPaid: paid.transferPaid,
+      companyPaid: paid.companyPaid,
       ...(notes !== undefined ? { notes } : {}),
       updatedAt: now,
       updatedBy: user.id,
@@ -1689,11 +1702,12 @@ export async function recordBookingPayment(
       deposit: paid.deposit,
       cashPaid: paid.cashPaid,
       transferPaid: paid.transferPaid,
+      companyPaid: paid.companyPaid,
       updatedAt: now,
       updatedBy: user.id,
     };
     await db.update(t.roomSales).set(patch).where(eq(t.roomSales.id, row.id));
-    await audit(user.id, "room_sale", row.id, "update", { deposit: row.deposit, cashPaid: row.cashPaid, transferPaid: row.transferPaid }, patch);
+    await audit(user.id, "room_sale", row.id, "update", { deposit: row.deposit, cashPaid: row.cashPaid, transferPaid: row.transferPaid, companyPaid: row.companyPaid }, patch);
   }
   return booking.id;
 }

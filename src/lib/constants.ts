@@ -121,7 +121,8 @@ export const DISCOUNT_KIND_LABEL: Record<DiscountKind, string> = {
 };
 
 export const PAYMENT_METHOD_LABEL: Record<PaymentMethod, string> = {
-  transfer: "Chuyển khoản",
+  company: "CK công ty",
+  personal: "CK cá nhân",
   cash: "Tiền mặt",
 };
 

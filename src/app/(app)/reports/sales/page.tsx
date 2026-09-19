@@ -52,7 +52,7 @@ export default async function SalesRevenuePage({
         <div>
           <h1 className="text-xl font-bold">Doanh thu bán phòng</h1>
           <p className="text-xs text-[#5c6665] md:text-sm">
-            Booking theo ngày nhận. Doanh thu ghi nhận khi khách đã checkout. Tiền mặt / chuyển khoản theo từng lần thu trên booking.
+            Booking theo ngày nhận. Doanh thu ghi nhận khi khách đã checkout. CK công ty / CK cá nhân / tiền mặt theo từng lần thu trên booking.
           </p>
         </div>
         <Link href="/sales/bookings" className="flex min-h-11 items-center text-sm font-semibold text-teal">
@@ -105,12 +105,13 @@ export default async function SalesRevenuePage({
         <Stat label="Đã đặt cọc" value={formatVnd(report.booking.deposit)} tone="text-[#1b7a4e]" />
         <Stat label="Phải thu" value={formatVnd(report.booking.due)} tone="text-[#c47b12]" />
         <Stat label="Doanh thu ghi nhận" value={formatVnd(report.recognizedMoney.total)} />
-        <Stat label="Tiền chuyển khoản" value={formatVnd(report.booking.transfer)} />
+        <Stat label="CK công ty" value={formatVnd(report.booking.company)} />
+        <Stat label="CK cá nhân" value={formatVnd(report.booking.transfer)} />
         <Stat label="Tiền mặt" value={formatVnd(report.booking.cash)} />
       </div>
       <p className="text-xs text-[#5c6665]">
         {report.recognized.length
-          ? `Ghi nhận ${report.recognized.length} booking checkout trong kỳ · CK ${formatVnd(report.recognizedMoney.transfer)} · tiền mặt ${formatVnd(report.recognizedMoney.cash)}.`
+          ? `Ghi nhận ${report.recognized.length} booking checkout trong kỳ · CK công ty ${formatVnd(report.recognizedMoney.company)} · CK cá nhân ${formatVnd(report.recognizedMoney.transfer)} · tiền mặt ${formatVnd(report.recognizedMoney.cash)}.`
           : "Chưa có booking checkout trong kỳ — doanh thu ghi nhận khi lễ tân bấm trả phòng."}
       </p>
 

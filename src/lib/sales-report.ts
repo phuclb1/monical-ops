@@ -31,6 +31,7 @@ type BookingMoney = {
   deposit: number;
   cashPaid?: number | null;
   transferPaid?: number | null;
+  companyPaid?: number | null;
 };
 
 function moneyOf<T extends BookingMoney>(rows: T[]) {
@@ -42,9 +43,10 @@ function moneyOf<T extends BookingMoney>(rows: T[]) {
       acc.due += row.due;
       acc.cash += paid.cashPaid;
       acc.transfer += paid.transferPaid;
+      acc.company += paid.companyPaid;
       return acc;
     },
-    { total: 0, deposit: 0, due: 0, cash: 0, transfer: 0 },
+    { total: 0, deposit: 0, due: 0, cash: 0, transfer: 0, company: 0 },
   );
 }
 

@@ -153,6 +153,7 @@ export default async function BookingDetailPage({
                   due={booking.due}
                   cashPaid={booking.cashPaid}
                   transferPaid={booking.transferPaid}
+                  companyPaid={booking.companyPaid}
                 />
               </div>
             ) : null}
@@ -280,6 +281,7 @@ export default async function BookingDetailPage({
                   deposit: booking.deposit,
                   cashPaid: booking.cashPaid,
                   transferPaid: booking.transferPaid,
+                  companyPaid: booking.companyPaid,
                   notes: booking.notes || "",
                 }}
               />

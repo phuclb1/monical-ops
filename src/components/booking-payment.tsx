@@ -3,7 +3,9 @@
 import { useState } from "react";
 import { recordBookingPaymentAction } from "@/actions/sales";
 import { Btn, PayMethodField } from "@/components/ui";
+import { PAYMENT_METHOD_LABEL } from "@/lib/constants";
 import { formatVnd, paidNote, parseMoney } from "@/lib/sales";
+import type { PaymentMethod } from "@/lib/types";
 
 export function BookingPaymentPanel({
   bookingId,
@@ -11,17 +13,19 @@ export function BookingPaymentPanel({
   due,
   cashPaid,
   transferPaid,
+  companyPaid,
 }: {
   bookingId: string;
   deposit: number;
   due: number;
   cashPaid?: number;
   transferPaid?: number;
+  companyPaid?: number;
 }) {
   const [amount, setAmount] = useState("");
-  const [method, setMethod] = useState<"cash" | "transfer">("transfer");
+  const [method, setMethod] = useState<PaymentMethod>("personal");
   const extra = parseMoney(amount);
-  const note = paidNote({ cashPaid, transferPaid, deposit });
+  const note = paidNote({ cashPaid, transferPaid, companyPaid, deposit });
 
   if (due <= 0) {
     return (
@@ -49,7 +53,9 @@ export function BookingPaymentPanel({
       {note ? <p className="text-xs text-[#5c6665]">Đã thu {note}</p> : null}
       {extra && extra < due ? <p className="text-xs text-[#5c6665]">Sau lần này còn {formatVnd(due - extra)}</p> : null}
       <Btn type="submit" className="w-full">
-        {extra ? `Thu ${formatVnd(extra)} · ${method === "cash" ? "tiền mặt" : "chuyển khoản"}` : `Thu đủ ${formatVnd(due)} · ${method === "cash" ? "tiền mặt" : "chuyển khoản"}`}
+        {extra
+          ? `Thu ${formatVnd(extra)} · ${PAYMENT_METHOD_LABEL[method]}`
+          : `Thu đủ ${formatVnd(due)} · ${PAYMENT_METHOD_LABEL[method]}`}
       </Btn>
     </form>
   );

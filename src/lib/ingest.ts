@@ -215,7 +215,7 @@ async function ingestOne(raw: IngestBooking): Promise<IngestResult> {
     rate: Math.max(0, raw.rate ?? saleRow?.rate ?? catalogRate(roomType ?? undefined, raw.arrivalDate)),
     discountKind,
     discountValue,
-    ...applyPaidAmount(salePaid(saleRow || {}), Math.max(0, raw.deposit ?? saleRow?.deposit ?? 0), "transfer"),
+    ...applyPaidAmount(salePaid(saleRow || {}), Math.max(0, raw.deposit ?? saleRow?.deposit ?? 0), "personal"),
     breakfast,
     breakfastAdults: breakfastPax.adults,
     breakfastChildren: breakfastPax.children,
