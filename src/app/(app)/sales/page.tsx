@@ -6,7 +6,7 @@ import { SALE_SOURCE_LABEL, SALE_STATUS_LABEL } from "@/lib/constants";
 import { addDaysVN, addMonthsVN, formatDayMonth, formatMonthLong, startOfMonthVN, todayVN } from "@/lib/datetime";
 import { can } from "@/lib/permissions";
 import { salesGantt, roomFocusBoard, listRoomTypes } from "@/lib/repos";
-import { formatVnd, groupByBooking, isSaleOrigin } from "@/lib/sales";
+import { formatVnd, groupByBooking, isSaleOrigin, rollupBookingStatus } from "@/lib/sales";
 import { isRoomFocus } from "@/lib/room-focus";
 import { ParkingIcons } from "@/components/parking-icons";
 import { RoomFocusChips } from "@/components/room-focus-chips";
@@ -15,15 +15,17 @@ import type { SaleSource, SaleStatus } from "@/lib/types";
 
 const KIND_LABEL: Record<string, string> = {
   vacant: "Trống",
-  reserved: "Đã giữ",
+  reserved: "Chưa nhận",
   inhouse: "Đang ở",
+  departed: "Đã trả",
   ooo: "OOO",
 };
 
 const TILE: Record<string, string> = {
   vacant: "border-line bg-white",
-  reserved: "border-[#e8c9a0] bg-[#fff8ea]",
-  inhouse: "border-[#c9e6e4] bg-[#e8f3f2]",
+  reserved: "border-[#e8c9a0] bg-[#fff1d2]",
+  inhouse: "border-[#c9e6e4] bg-[#dceeee]",
+  departed: "border-[#cfcfcf] bg-[#e6e6e6]",
   ooo: "border-[#f1c7c7] bg-[#fde8e8]",
 };
 
@@ -112,7 +114,7 @@ export default async function SalesPage({
     id,
     rooms,
     guestName: rooms[0]?.guestName || "",
-    status: rooms.some((row) => row.status === "inhouse") ? "inhouse" : "reserved",
+    status: rollupBookingStatus(rooms.map((row) => row.status)),
   }));
   const ganttRows = (gantt?.rows || [])
     .filter((row) => !focus || hitByRoom.has(row.room.id))
@@ -222,7 +224,11 @@ export default async function SalesPage({
 
         <div className="flex flex-wrap gap-2 text-[11px] font-semibold">
           {Object.entries(KIND_LABEL).map(([key, label]) => (
-            <span key={key} className={`rounded-full border px-2 py-1 ${TILE[key]}`}>
+            <span
+              key={key}
+              className={`rounded-full border px-2 py-1 ${TILE[key]} ${key === "departed" ? "gantt-legend-departed" : ""}`}
+              style={key === "departed" ? { backgroundColor: "#e6e6e6", borderColor: "#cfcfcf" } : undefined}
+            >
               {label}
             </span>
           ))}
@@ -274,7 +280,7 @@ export default async function SalesPage({
                       {row.rooms[0].checkIn} → {row.rooms[0].checkOut} · {row.rooms.map((sale) => `P.${sale.room?.number}`).join(" · ")} · {SALE_SOURCE_LABEL[row.rooms[0].source as SaleSource] || row.rooms[0].source}
                     </p>
                   </div>
-                  <Chip tone={row.status === "inhouse" ? "ok" : "gold"}>{SALE_STATUS_LABEL[row.status as SaleStatus]}</Chip>
+                  <Chip tone={row.status === "inhouse" ? "ok" : row.status === "departed" ? "neutral" : "gold"}>{SALE_STATUS_LABEL[row.status as SaleStatus]}</Chip>
                 </Link>
               ))}
             </div>

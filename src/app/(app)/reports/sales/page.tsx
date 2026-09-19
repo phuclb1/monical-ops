@@ -52,7 +52,7 @@ export default async function SalesRevenuePage({
         <div>
           <h1 className="text-xl font-bold">Doanh thu bán phòng</h1>
           <p className="text-xs text-[#5c6665] md:text-sm">
-            Booking theo ngày nhận. Doanh thu ghi nhận khi khách đã checkout. CK công ty / CK cá nhân / tiền mặt theo từng lần thu trên booking.
+            Booking theo ngày nhận. Doanh thu ghi nhận khi khách check-in thành công. CK công ty / CK cá nhân / tiền mặt theo từng lần thu trên booking.
           </p>
         </div>
         <Link href="/sales/bookings" className="flex min-h-11 items-center text-sm font-semibold text-teal">
@@ -111,8 +111,8 @@ export default async function SalesRevenuePage({
       </div>
       <p className="text-xs text-[#5c6665]">
         {report.recognized.length
-          ? `Ghi nhận ${report.recognized.length} booking checkout trong kỳ · CK công ty ${formatVnd(report.recognizedMoney.company)} · CK cá nhân ${formatVnd(report.recognizedMoney.transfer)} · tiền mặt ${formatVnd(report.recognizedMoney.cash)}.`
-          : "Chưa có booking checkout trong kỳ — doanh thu ghi nhận khi lễ tân bấm trả phòng."}
+          ? `Ghi nhận ${report.recognized.length} booking check-in trong kỳ · CK công ty ${formatVnd(report.recognizedMoney.company)} · CK cá nhân ${formatVnd(report.recognizedMoney.transfer)} · tiền mặt ${formatVnd(report.recognizedMoney.cash)}.`
+          : "Chưa có booking check-in trong kỳ — doanh thu ghi nhận khi lễ tân bấm nhận phòng."}
       </p>
 
       <Card>
@@ -144,7 +144,7 @@ export default async function SalesRevenuePage({
       </Card>
 
       <Card>
-        <h2 className="mb-2 font-bold">Đã checkout — ghi nhận ({report.recognized.length})</h2>
+        <h2 className="mb-2 font-bold">Đã check-in — ghi nhận ({report.recognized.length})</h2>
         {report.recognized.length ? (
           <div className="space-y-2">
             {report.recognized.map((row) => (
@@ -153,7 +153,7 @@ export default async function SalesRevenuePage({
                   <div className="min-w-0">
                     <p className="font-bold">{row.guestName}</p>
                     <p className="text-xs text-[#5c6665]">
-                      Trả {formatDateNumeric(row.checkOut)} · {row.roomLabel}
+                      Nhận {formatDateNumeric(row.checkIn)} · {row.roomLabel}
                     </p>
                     {paidNote(row) ? <p className="mt-1 text-xs text-[#1b7a4e]">{paidNote(row)}</p> : null}
                   </div>
@@ -163,7 +163,7 @@ export default async function SalesRevenuePage({
             ))}
           </div>
         ) : (
-          <Empty title="Chưa có khách checkout trong kỳ" text="Doanh thu ghi nhận khi lễ tân bấm trả phòng." />
+          <Empty title="Chưa có khách check-in trong kỳ" text="Doanh thu ghi nhận khi lễ tân bấm nhận phòng." />
         )}
       </Card>
     </main>

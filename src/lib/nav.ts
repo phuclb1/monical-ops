@@ -10,8 +10,8 @@ export const PRIMARY_NAV = [
 ] as const;
 
 export const MANAGER_NAV = [
-  { href: "/reports/sales", label: "Doanh thu" },
   { href: "/sales/bookings", label: "Đặt phòng" },
+  { href: "/reports/sales", label: "Doanh thu" },
   { href: "/kitchen", label: "Bếp" },
   { href: "/tasks", label: "Việc" },
   { href: "/more", label: "Thêm" },
@@ -24,7 +24,7 @@ export const OWNER_NAV = [
 
 export function homePath(role: Role) {
   if (role === "owner") return "/owner";
-  if (role === "manager") return "/reports/sales";
+  if (role === "manager") return "/sales/bookings";
   return "/today";
 }
 

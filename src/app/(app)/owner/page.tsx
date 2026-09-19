@@ -36,7 +36,7 @@ export default async function OwnerRevenuePage({
       <div>
         <h1 className="text-xl font-bold">Doanh thu</h1>
         <p className="text-xs text-[#5c6665] md:text-sm">
-          Booking theo ngày nhận. Doanh thu ghi nhận khi khách đã trả phòng.
+          Booking theo ngày nhận. Doanh thu ghi nhận khi khách check-in thành công.
         </p>
       </div>
 
@@ -47,8 +47,8 @@ export default async function OwnerRevenuePage({
         <p className="owner-hero-value">{formatVnd(report.recognizedMoney.total)}</p>
         <p className="mt-1 text-xs text-[#5c6665]">
           {report.recognized.length
-            ? `${report.recognized.length} booking checkout · CK công ty ${formatVnd(report.recognizedMoney.company)} · CK cá nhân ${formatVnd(report.recognizedMoney.transfer)} · tiền mặt ${formatVnd(report.recognizedMoney.cash)}`
-            : "Chưa có booking checkout trong kỳ"}
+            ? `${report.recognized.length} booking check-in · CK công ty ${formatVnd(report.recognizedMoney.company)} · CK cá nhân ${formatVnd(report.recognizedMoney.transfer)} · tiền mặt ${formatVnd(report.recognizedMoney.cash)}`
+            : "Chưa có booking check-in trong kỳ"}
         </p>
       </section>
 

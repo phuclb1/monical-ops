@@ -3,7 +3,13 @@ import { bookingQuote, parkingLabel } from "@/lib/sales";
 export const BAR: Record<string, string> = {
   reserved: "bg-[#fff1d2] text-[#8a6a22] ring-1 ring-[#e8c9a0]",
   inhouse: "bg-[#dceeee] text-[#0f4c4c] ring-1 ring-[#c9e6e4]",
+  departed: "bg-[#e6e6e6] text-[#5c5c5c] ring-1 ring-[#cfcfcf]",
 };
+
+export function ganttBarTone(status: string) {
+  if (status === "inhouse" || status === "departed") return status;
+  return "reserved";
+}
 
 export const DRAG_PX = 8;
 
@@ -25,7 +31,8 @@ export type GanttSale = {
 
 export function saleTitle(sale: GanttSale) {
   const parking = parkingLabel(sale.cars, sale.bikes);
-  return `${sale.guestName} · ${sale.checkIn} → ${sale.checkOut}${parking !== "—" ? ` · ${parking}` : ""} — kéo để đổi phòng / ngày`;
+  const action = sale.status === "departed" ? "đã trả phòng" : "kéo để đổi phòng / ngày";
+  return `${sale.guestName} · ${sale.checkIn} → ${sale.checkOut}${parking !== "—" ? ` · ${parking}` : ""} — ${action}`;
 }
 
 export type GanttRow = {

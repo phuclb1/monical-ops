@@ -8,6 +8,7 @@ import {
   formatOpsBookingCode,
   groupByBooking,
   isActiveSaleStatus,
+  isGanttSaleStatus,
   isLegacyOpsBookingCode,
   isOpsBookingCode,
   occupiesNight,
@@ -27,6 +28,8 @@ test("stay windows and active statuses", () => {
   assert.equal(occupiesNight("2026-09-19", "2026-09-21", "2026-09-21"), false);
   assert.equal(isActiveSaleStatus("reserved"), true);
   assert.equal(isActiveSaleStatus("cancelled"), false);
+  assert.equal(isGanttSaleStatus("departed"), true);
+  assert.equal(isGanttSaleStatus("cancelled"), false);
 });
 
 test("OTA / walk-in source aliases and booking codes", () => {

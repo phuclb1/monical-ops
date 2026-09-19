@@ -1090,6 +1090,18 @@ label {
   cursor: grabbing;
 }
 
+.room-gantt-bar.is-departed {
+  cursor: pointer;
+  background-color: #e6e6e6;
+  color: #5c5c5c;
+  box-shadow: 0 0 0 1px #cfcfcf;
+}
+
+.gantt-legend-departed {
+  border-color: #cfcfcf;
+  background-color: #e6e6e6;
+}
+
 .room-gantt-scroll.is-dragging .room-gantt-cell.is-open,
 .room-gantt-scroll.is-pending .room-gantt-cell.is-open {
   pointer-events: none;

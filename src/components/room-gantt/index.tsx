@@ -7,7 +7,7 @@ import { ParkingIcons } from "@/components/parking-icons";
 import { WEEKDAYS, addDaysVN, formatDateNumeric, weekdayISO } from "@/lib/datetime";
 import { bookingKey, catalogRate, nightsBetween, roomMoveKind } from "@/lib/sales";
 import { GanttUpgradeDialog } from "./dialog";
-import { BAR, DRAG_PX, ganttSections, quoteTotal, rangeOpen, saleTitle, type ConfirmState, type DragState, type GanttGroup, type GanttRow, type GanttSale, type Hover, type RoomType } from "./model";
+import { BAR, DRAG_PX, ganttBarTone, ganttSections, quoteTotal, rangeOpen, saleTitle, type ConfirmState, type DragState, type GanttGroup, type GanttRow, type GanttSale, type Hover, type RoomType } from "./model";
 
 export function RoomGantt({
   days,
@@ -96,6 +96,7 @@ export function RoomGantt({
 
   function onBarDown(event: ReactPointerEvent<HTMLButtonElement>, sale: GanttSale, fromRoomId: string, nightStart: number, visualStart: number, visualEnd: number) {
     if (event.button !== 0 || pending) return;
+    if (sale.status === "departed") return;
     event.preventDefault();
     const bar = event.currentTarget;
     const box = bar.getBoundingClientRect();
@@ -221,23 +222,30 @@ export function RoomGantt({
                         })}
                       </div>
                       {row.bars.map((bar) => {
-                        const tone = bar.sale.status === "inhouse" ? "inhouse" : "reserved";
+                        const tone = ganttBarTone(bar.sale.status);
                         const dragging = drag?.sale.id === bar.sale.id;
                         const span = Math.max(0.5, bar.end - bar.start);
+                        const checkedOut = bar.sale.status === "departed";
                         return (
                           <button
                             key={bar.sale.id}
                             type="button"
-                            className={`room-gantt-bar ${BAR[tone]} ${dragging ? "is-dragging" : ""}`}
+                            className={`room-gantt-bar ${BAR[tone]} ${dragging ? "is-dragging" : ""} ${checkedOut ? "is-departed" : ""}`}
                             style={{
                               left: `calc(${(bar.start / days.length) * 100}% + 1px)`,
                               width: `calc(${(span / days.length) * 100}% - 2px)`,
+                              ...(checkedOut
+                                ? { backgroundColor: "#e6e6e6", color: "#5c5c5c", boxShadow: "0 0 0 1px #cfcfcf" }
+                                : {}),
                             }}
                             title={saleTitle(bar.sale)}
                             onPointerDown={(event) => onBarDown(event, bar.sale, row.room.id, bar.nightStart, bar.start, bar.end)}
                             onPointerMove={onBarMove}
                             onPointerUp={onBarUp}
                             onPointerCancel={() => setDrag(null)}
+                            onClick={() => {
+                              if (checkedOut) router.push(`/sales/bookings/${bookingKey(bar.sale)}`);
+                            }}
                             disabled={pending}
                           >
                             <span className="min-w-0 truncate">{bar.sale.guestName}</span>
@@ -256,7 +264,7 @@ export function RoomGantt({
 
       {drag?.moved ? (
         <div
-          className={`room-gantt-ghost ${BAR[drag.sale.status === "inhouse" ? "inhouse" : "reserved"]}`}
+          className={`room-gantt-ghost ${BAR[ganttBarTone(drag.sale.status)]}`}
           style={{
             width: drag.width,
             height: drag.height,

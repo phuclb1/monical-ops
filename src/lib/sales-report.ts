@@ -53,7 +53,9 @@ function moneyOf<T extends BookingMoney>(rows: T[]) {
 export function roomRevenueReport<T extends BookingMoney>(bookings: T[], from: string, to: string) {
   const live = bookings.filter((row) => row.status !== "cancelled" && row.status !== "no_show");
   const booked = live.filter((row) => row.checkIn >= from && row.checkIn < to);
-  const recognized = live.filter((row) => row.status === "departed" && row.checkOut >= from && row.checkOut < to);
+  const recognized = live.filter(
+    (row) => (row.status === "inhouse" || row.status === "departed") && row.checkIn >= from && row.checkIn < to,
+  );
   return {
     booked,
     recognized,

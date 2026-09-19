@@ -36,6 +36,7 @@ export {
   rangesOverlap,
   occupiesNight,
   isActiveSaleStatus,
+  isGanttSaleStatus,
   isSaleOrigin,
   isSaleSource,
   parseSaleSource,

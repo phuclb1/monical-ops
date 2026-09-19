@@ -13,6 +13,10 @@ export function isActiveSaleStatus(status: string): status is SaleStatus {
   return ACTIVE_SALE_STATUSES.includes(status as SaleStatus);
 }
 
+export function isGanttSaleStatus(status: string): status is SaleStatus {
+  return status === "reserved" || status === "inhouse" || status === "departed";
+}
+
 export function isSaleOrigin(value: string): value is SaleOrigin {
   return value === "ops" || value === "ezcloud";
 }

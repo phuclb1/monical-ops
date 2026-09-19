@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { ganttSections, quoteTotal, rangeOpen, saleTitle, type GanttRow } from "../src/components/room-gantt/model";
+import { ganttBarTone, ganttSections, quoteTotal, rangeOpen, saleTitle, type GanttRow } from "../src/components/room-gantt/model";
 import { groupRoomsByType, parseDiscountState, roomOpen } from "../src/components/sale-form/shared";
 
 const room = (id: string, number: string, type: string, floor: number): GanttRow["room"] => ({
@@ -58,6 +58,10 @@ test("gantt model: sections, title, quote, open range", () => {
   const byType = ganttSections(rows, [{ name: "Standard", sortOrder: 1, baseRate: 1, weekendRate: 1 }, { name: "Deluxe", sortOrder: 2, baseRate: 1, weekendRate: 1 }], "type");
   assert.equal(byType[0].label, "Standard");
   assert.match(saleTitle({ id: "s", roomId: "b", guestName: "Hà", status: "reserved", checkIn: "2026-09-19", checkOut: "2026-09-21", rate: 1, cars: 1 }), /Hà · .+ · 1 ô tô/);
+  assert.match(saleTitle({ id: "s", roomId: "b", guestName: "Nam", status: "departed", checkIn: "2026-09-17", checkOut: "2026-09-19", rate: 1 }), /đã trả phòng/);
+  assert.equal(ganttBarTone("reserved"), "reserved");
+  assert.equal(ganttBarTone("inhouse"), "inhouse");
+  assert.equal(ganttBarTone("departed"), "departed");
   assert.equal(
     quoteTotal({ id: "s", roomId: "b", guestName: "Hà", status: "reserved", checkIn: "2026-09-19", checkOut: "2026-09-21", rate: 1_000_000 }, 1_000_000, "2026-09-19", "2026-09-21"),
     2_000_000,

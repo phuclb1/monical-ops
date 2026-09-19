@@ -10,6 +10,7 @@ import {
   ganttSpan,
   groupByBooking,
   isActiveSaleStatus,
+  isGanttSaleStatus,
   nightlyNetFromLine,
   nightsBetween,
   occupiesNight,
@@ -169,7 +170,7 @@ export async function salesGantt(from: string, toExclusive: string) {
   const days = datesUntil(from, toExclusive);
   const [rooms, sales] = await Promise.all([listRooms(), listRoomSales()]);
   const active = sales.filter(
-    (sale) => isActiveSaleStatus(sale.status) && rangesOverlap(sale.checkIn, sale.checkOut, from, toExclusive),
+    (sale) => isGanttSaleStatus(sale.status) && rangesOverlap(sale.checkIn, sale.checkOut, from, toExclusive),
   );
   const rows = rooms
     .slice()
@@ -185,7 +186,7 @@ export async function salesGantt(from: string, toExclusive: string) {
         .sort((a, b) => a.start - b.start);
       return { room, bars };
     });
-  const lineById = quoteLinesBySaleId(sales.filter((sale) => isActiveSaleStatus(sale.status)));
+  const lineById = quoteLinesBySaleId(sales.filter((sale) => isGanttSaleStatus(sale.status)));
   let soldNights = 0;
   let revenue = 0;
   for (const date of days) {
