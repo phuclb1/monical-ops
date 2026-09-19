@@ -1,5 +1,3 @@
-"use server";
-
 export { openShiftAction, closeShiftAction, toggleCheckAction, skipCheckAction, saveCheckItemAction } from "./shifts";
 export { createTaskAction, taskStatusAction, zaloSentAction } from "./tasks";
 export { roomStatusAction, reportOooAction, approveOooAction, saveRoomChecklistAction, inspectRoomAction } from "./rooms";
