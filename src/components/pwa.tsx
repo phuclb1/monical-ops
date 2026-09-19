@@ -1,11 +1,19 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { usePathname } from "next/navigation";
+import { rememberOpsUser } from "@/lib/pwa-cache";
 import { Btn } from "./ui";
 
 export function PwaBoot() {
   const [install, setInstall] = useState<Event | null>(null);
   const [locked, setLocked] = useState(false);
+  const path = usePathname();
+
+  useEffect(() => {
+    const userId = document.querySelector("[data-ops-user]")?.getAttribute("data-ops-user");
+    rememberOpsUser(userId || null);
+  }, [path]);
 
   useEffect(() => {
     if ("serviceWorker" in navigator) {

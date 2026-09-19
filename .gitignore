@@ -51,3 +51,4 @@ wrangler.toml
 # local screenshots — QA evidence & flow captures (not committed)
 qa/evidence/**/*.png
 tmp/
+.tmp/

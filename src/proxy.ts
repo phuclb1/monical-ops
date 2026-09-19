@@ -15,6 +15,11 @@ const PUBLIC = [
   "/api/ingest",
 ];
 
+function withCache(res: NextResponse, value: string) {
+  res.headers.set("Cache-Control", value);
+  return res;
+}
+
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
   if (
@@ -23,10 +28,21 @@ export async function proxy(request: NextRequest) {
     pathname === "/favicon.ico" ||
     pathname === "/icon.svg" ||
     pathname === "/logo.png" ||
-    pathname === "/apple-touch-icon.png" ||
-    PUBLIC.some((p) => pathname === p || pathname.startsWith(`${p}/`))
+    pathname === "/apple-touch-icon.png"
   ) {
     return NextResponse.next();
+  }
+
+  if (PUBLIC.some((p) => pathname === p || pathname.startsWith(`${p}/`))) {
+    const res = NextResponse.next();
+    if (pathname === "/sw.js") return withCache(res, "public, max-age=0, must-revalidate");
+    if (pathname.startsWith("/tin-tuc") || pathname === "/sitemap.xml" || pathname === "/robots.txt") {
+      return withCache(res, "public, s-maxage=3600, stale-while-revalidate=86400");
+    }
+    if (pathname === "/login" || pathname.startsWith("/api/")) {
+      return withCache(res, "private, no-store");
+    }
+    return res;
   }
 
   const token = request.cookies.get("ops_session")?.value;
@@ -35,21 +51,21 @@ export async function proxy(request: NextRequest) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
     url.searchParams.set("next", pathname);
-    return NextResponse.redirect(url);
+    return withCache(NextResponse.redirect(url), "private, no-store");
   }
   if (session.role === "owner" && !isOwnerPath(pathname)) {
     const url = request.nextUrl.clone();
     url.pathname = "/owner";
     url.search = "";
-    return NextResponse.redirect(url);
+    return withCache(NextResponse.redirect(url), "private, no-store");
   }
   if (session.role !== "owner" && isOwnerPath(pathname)) {
     const url = request.nextUrl.clone();
     url.pathname = homePath(session.role);
     url.search = "";
-    return NextResponse.redirect(url);
+    return withCache(NextResponse.redirect(url), "private, no-store");
   }
-  return NextResponse.next();
+  return withCache(NextResponse.next(), "private, no-store");
 }
 
 export const config = {

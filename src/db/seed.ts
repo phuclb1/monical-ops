@@ -1,15 +1,15 @@
 import { eq, inArray } from "drizzle-orm";
-import { DEMO_PASSWORD } from "../constants";
-import { addDaysVN, addMinutes, currentShiftType, nid, nowISO, todayVN, WEEKDAYS } from "../datetime";
-import { hashPassword } from "../password";
-import { ensureShiftChecklists, ensureTodayRoomTasks } from "../checklist-ops";
+import { ensureShiftChecklists, ensureTodayRoomTasks } from "@/lib/checklist-ops";
+import { DEMO_PASSWORD } from "@/lib/constants";
+import { addDaysVN, addMinutes, currentShiftType, nid, nowISO, todayVN, WEEKDAYS } from "@/lib/datetime";
+import { EXTRA_TYPE_SEED } from "@/lib/extras";
+import { hashPassword } from "@/lib/password";
+import { ROOM_REMAP, ROOM_SEED, ROOM_TYPE_SEED, defaultAdultsForRoomType, floorOf, roomIdOf } from "@/lib/rooms-catalog";
+import { DEFAULT_WEEK_DUTY, ROSTER_SHIFTS, weekSlotId } from "@/lib/roster";
+import type { ShiftType } from "@/lib/types";
+import { insertInBatches } from "./batch";
 import type { AppDb } from "./index";
 import * as t from "./schema";
-import type { ShiftType } from "../types";
-import { insertInBatches } from "./batch";
-import { ROOM_REMAP, ROOM_SEED, ROOM_TYPE_SEED, defaultAdultsForRoomType, floorOf, roomIdOf } from "../rooms-catalog";
-import { EXTRA_TYPE_SEED } from "../extras";
-import { DEFAULT_WEEK_DUTY, ROSTER_SHIFTS, weekSlotId } from "../roster";
 
 export const DEPT_SEED = [
   { id: "d-reception", code: "reception", name: "Lễ tân" },

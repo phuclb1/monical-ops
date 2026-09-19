@@ -3,8 +3,8 @@ import { unlinkSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { createClient } from "@libsql/client";
 import { drizzle } from "drizzle-orm/libsql";
-import * as schema from "../src/lib/db/schema";
-import { RETIRED_USERNAMES, DEPT_SEED, STAFF_SEED, syncDepartments, syncStaffUsers } from "../src/lib/db/seed";
+import * as schema from "../src/db/schema";
+import { RETIRED_USERNAMES, DEPT_SEED, STAFF_SEED, syncDepartments, syncStaffUsers } from "../src/db/seed";
 import { hashPassword } from "../src/lib/password";
 import { DEMO_PASSWORD } from "../src/lib/constants";
 

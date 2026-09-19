@@ -1,9 +1,9 @@
 import { createClient } from "@libsql/client";
 import { drizzle } from "drizzle-orm/libsql";
 import { join } from "node:path";
-import * as schema from "../src/lib/db/schema";
-import { SCHEMA_SQL } from "../src/lib/db/migrate";
-import { syncReceptionRoster } from "../src/lib/db/seed";
+import * as schema from "../src/db/schema";
+import { SCHEMA_SQL } from "../src/db/migrate";
+import { syncReceptionRoster } from "../src/db/seed";
 
 async function main() {
   const client = createClient({ url: `file:${join(process.cwd(), "data", "ops.db")}` });

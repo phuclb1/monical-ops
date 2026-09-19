@@ -3,9 +3,9 @@ import { unlinkSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { createClient } from "@libsql/client";
 import { drizzle } from "drizzle-orm/libsql";
-import * as schema from "../src/lib/db/schema";
-import { SCHEMA_SQL } from "../src/lib/db/migrate";
-import { syncRoomCatalog } from "../src/lib/db/seed";
+import * as schema from "../src/db/schema";
+import { SCHEMA_SQL } from "../src/db/migrate";
+import { syncRoomCatalog } from "../src/db/seed";
 import { ROOM_REMAP, ROOM_SEED, ROOM_TYPE_SEED, floorOf, roomIdOf } from "../src/lib/rooms-catalog";
 
 async function reseedLocal() {

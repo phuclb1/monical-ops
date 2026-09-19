@@ -106,7 +106,8 @@ export default async function BookingDetailPage({
               {formatDateLong(booking.checkIn)} → {formatDateLong(booking.checkOut)} · {booking.nights} đêm
             </p>
             <p className="mt-1 text-sm">
-              {booking.adults} NL{booking.children ? ` · ${booking.children} TE` : ""}
+              {booking.adults} NL{booking.children ? ` · ${booking.children} TE` : ""} ở
+              {` · ăn sáng ${booking.breakfastAdults} NL${booking.breakfastChildren ? ` · ${booking.breakfastChildren} TE` : ""}`}
               {parkingLabel(booking.cars, booking.bikes) !== "—" ? ` · ${parkingLabel(booking.cars, booking.bikes)}` : ""} · tạm tính {formatVnd(booking.subtotal)}
             </p>
             {booking.breakfastOff ? (
@@ -272,6 +273,8 @@ export default async function BookingDetailPage({
                   source: booking.source,
                   adults: booking.adults,
                   children: booking.children,
+                  breakfastAdults: booking.breakfastAdults,
+                  breakfastChildren: booking.breakfastChildren,
                   cars: booking.cars,
                   bikes: booking.bikes,
                   deposit: booking.deposit,

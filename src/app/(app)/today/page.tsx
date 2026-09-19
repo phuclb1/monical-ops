@@ -9,6 +9,7 @@ import { formatVnd } from "@/lib/sales";
 import { Card, Chip, Empty, SectionTitle, Stat } from "@/components/ui";
 import { RegistrationTimer } from "@/components/countdown";
 import { openShiftAction } from "@/actions/ops";
+import { BoardCache } from "@/components/board-cache";
 import { isChecklistTaskKind } from "@/lib/task-types";
 
 export default async function TodayPage() {
@@ -18,13 +19,24 @@ export default async function TodayPage() {
   const data = await getDashboard(user);
   const open = await currentOpenShift();
   const bundle = open ? await getShiftBundle(open.id, user.role === "manager" ? undefined : user.departmentCode) : null;
-  const myShiftLists = (bundle?.checklists ?? []).slice().sort((a, b) => (a.kind === "shift_open" ? -1 : 1));
+  const myShiftLists = (bundle?.checklists ?? []).slice().sort((a) => (a.kind === "shift_open" ? -1 : 1));
   const roomJobs = data.nowTasks.filter((task) => task.kind === "checkin" || task.kind === "checkout");
   const otherNow = data.nowTasks.filter((task) => !isChecklistTaskKind(task.kind));
   const sales = can(user.role, "manageSales") ? await salesBoard(todayVN()) : null;
 
   return (
     <main className="today-grid space-y-4 px-3 py-4 md:space-y-0">
+      <BoardCache
+        userId={user.id}
+        board="today"
+        payload={{
+          shiftType: data.shift?.type ?? null,
+          shiftDate: data.shift?.date ?? null,
+          dutyName: data.duty.user?.fullName ?? null,
+          unread: data.unread,
+          nowTaskCount: data.nowTasks.length,
+        }}
+      />
       <Card className="today-wide">
         {data.shift ? (
           <div className="flex items-start justify-between gap-3">

@@ -7,6 +7,7 @@ import { getNews, listNews, type NewsPost } from "@/lib/news";
 import { absoluteUrl } from "@/lib/site";
 
 export const dynamicParams = false;
+export const revalidate = 3600;
 
 export function generateStaticParams() {
   return listNews().map((post) => ({ slug: post.slug }));

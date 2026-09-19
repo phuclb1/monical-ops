@@ -21,7 +21,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
   const bottomItems = owner ? OWNER_NAV : user.role === "manager" ? MANAGER_NAV : PRIMARY_NAV;
 
   return (
-    <div className="md:flex md:min-h-dvh">
+    <div className="md:flex md:min-h-dvh" data-ops-user={user.id}>
       <aside className="sticky top-0 hidden h-dvh w-[260px] shrink-0 flex-col border-r border-line bg-[#fff8ee] md:flex">
         <div className="flex items-center gap-3 border-b border-line px-4 py-4">
           <div className="overflow-hidden rounded-lg bg-burgundy">

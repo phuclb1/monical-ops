@@ -1,6 +1,6 @@
 import { and, eq } from "drizzle-orm";
-import type { AppDb } from "./db";
-import * as t from "./db/schema";
+import type { AppDb } from "@/db";
+import * as t from "@/db/schema";
 import { nid, nowISO, shiftWindow, todayVN, weekdayISO } from "./datetime";
 import { CHECKLIST_KIND_LABEL, checklistTemplate, isChecklistKind, type ChecklistKind } from "./checklists";
 import { rosterVersionOf } from "./roster";

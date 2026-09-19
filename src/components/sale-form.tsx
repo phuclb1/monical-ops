@@ -115,6 +115,8 @@ export function SaleForm({
     checkOut: string;
     adults?: number;
     children?: number;
+    breakfastAdults?: number;
+    breakfastChildren?: number;
     cars?: number;
     bikes?: number;
     rate?: number;
@@ -152,7 +154,11 @@ export function SaleForm({
   const selectedRooms = rooms.filter((room) => roomIds.includes(room.id));
   const occupancyAdults = useMemo(() => defaultAdultsForRooms(selectedRooms, types), [selectedRooms, types]);
   const [adults, setAdults] = useState(String(defaults.adults ?? occupancyAdults));
+  const [children, setChildren] = useState(String(defaults.children ?? 0));
   const [adultsTouched, setAdultsTouched] = useState(false);
+  const [breakfastAdults, setBreakfastAdults] = useState(String(defaults.breakfastAdults ?? defaults.adults ?? occupancyAdults));
+  const [breakfastChildren, setBreakfastChildren] = useState(String(defaults.breakfastChildren ?? defaults.children ?? 0));
+  const [breakfastPaxTouched, setBreakfastPaxTouched] = useState(false);
   const quoteInputs = selectedRooms.map((room) => {
     const stay = dates[room.id] || { checkIn: defaults.checkIn, checkOut: defaults.checkOut };
     return {
@@ -170,9 +176,26 @@ export function SaleForm({
   const bookingTotal = booked.total;
   const depositAmount = parseMoney(deposit);
   const due = bookingDue(bookingTotal, depositAmount);
+  const stayAdults = Math.max(1, Number(adults) || 1);
+  const stayChildren = Math.max(0, Number(children) || 0);
+  const anyBreakfast = selectedRooms.some((room) => breakfast[room.id] !== false);
   useEffect(() => {
     if (!adultsTouched) setAdults(String(occupancyAdults));
   }, [occupancyAdults, adultsTouched]);
+  useEffect(() => {
+    if (!anyBreakfast) {
+      setBreakfastAdults("0");
+      setBreakfastChildren("0");
+      return;
+    }
+    if (!breakfastPaxTouched) {
+      setBreakfastAdults(String(stayAdults));
+      setBreakfastChildren(String(stayChildren));
+      return;
+    }
+    setBreakfastAdults((prev) => String(Math.min(stayAdults, Math.max(0, Number(prev) || 0))));
+    setBreakfastChildren((prev) => String(Math.min(stayChildren, Math.max(0, Number(prev) || 0))));
+  }, [anyBreakfast, stayAdults, stayChildren, breakfastPaxTouched]);
   const filteredRooms = useMemo(() => {
     const q = query.trim().toLowerCase();
     if (!q) return rooms;
@@ -433,6 +456,7 @@ export function SaleForm({
       <Field label="SĐT">
         <input name="guestPhone" type="tel" defaultValue={defaults.guestPhone || ""} placeholder="090..." />
       </Field>
+      <p className="text-xs font-semibold text-[#5c6665]">Khách ở</p>
       <div className="grid grid-cols-2 gap-2">
         <Field label="Người lớn">
           <input
@@ -447,9 +471,52 @@ export function SaleForm({
           />
         </Field>
         <Field label="Trẻ em">
-          <input name="children" type="number" min={0} defaultValue={defaults.children ?? 0} />
+          <input
+            name="children"
+            type="number"
+            min={0}
+            value={children}
+            onChange={(e) => setChildren(e.target.value)}
+          />
         </Field>
       </div>
+      <p className="text-xs font-semibold text-[#5c6665]">Khách ăn sáng · không lớn hơn khách ở</p>
+      <div className="grid grid-cols-2 gap-2">
+        <Field label="Người lớn">
+          <input
+            name="breakfastAdults"
+            type="number"
+            min={0}
+            max={stayAdults}
+            value={breakfastAdults}
+            disabled={!anyBreakfast}
+            onChange={(e) => {
+              setBreakfastPaxTouched(true);
+              setBreakfastAdults(e.target.value);
+            }}
+          />
+        </Field>
+        <Field label="Trẻ em">
+          <input
+            name="breakfastChildren"
+            type="number"
+            min={0}
+            max={stayChildren}
+            value={breakfastChildren}
+            disabled={!anyBreakfast}
+            onChange={(e) => {
+              setBreakfastPaxTouched(true);
+              setBreakfastChildren(e.target.value);
+            }}
+          />
+        </Field>
+      </div>
+      {!anyBreakfast ? (
+        <>
+          <input type="hidden" name="breakfastAdults" value="0" />
+          <input type="hidden" name="breakfastChildren" value="0" />
+        </>
+      ) : null}
       <div className="grid grid-cols-2 gap-2">
         <Field label="Ô tô">
           <input name="cars" type="number" min={0} defaultValue={defaults.cars ?? 0} />
@@ -517,6 +584,8 @@ export function BookingForm({
     source?: string;
     adults?: number;
     children?: number;
+    breakfastAdults?: number;
+    breakfastChildren?: number;
     cars?: number;
     bikes?: number;
     deposit?: number;
@@ -534,6 +603,15 @@ export function BookingForm({
   const [breakfast, setBreakfast] = useState<Record<string, boolean>>(() =>
     Object.fromEntries(lines.map((line) => [line.saleId, line.breakfast !== false])),
   );
+  const [adults, setAdults] = useState(String(defaults.adults ?? 1));
+  const [children, setChildren] = useState(String(defaults.children ?? 0));
+  const [breakfastAdults, setBreakfastAdults] = useState(
+    String(defaults.breakfastAdults ?? defaults.adults ?? 1),
+  );
+  const [breakfastChildren, setBreakfastChildren] = useState(
+    String(defaults.breakfastChildren ?? defaults.children ?? 0),
+  );
+  const [breakfastPaxTouched, setBreakfastPaxTouched] = useState(false);
   const [discounts, setDiscounts] = useState<Record<string, DiscountState>>(() =>
     Object.fromEntries(lines.map((line) => [line.saleId, parseDiscountState(line.discountKind, line.discountValue)])),
   );
@@ -605,6 +683,31 @@ export function BookingForm({
   const bookingTotal = booked.total + extrasTotal;
   const depositAmount = parseMoney(deposit);
   const due = bookingDue(bookingTotal, depositAmount);
+  const stayAdults = Math.max(1, Number(adults) || 1);
+  const stayChildren = Math.max(0, Number(children) || 0);
+  const anyBreakfast = lines.some((line) => breakfast[line.saleId] !== false);
+  useEffect(() => {
+    if (!anyBreakfast) {
+      setBreakfastAdults("0");
+      setBreakfastChildren("0");
+      return;
+    }
+    if (!breakfastPaxTouched) {
+      setBreakfastAdults((prev) => {
+        const current = Number(prev);
+        if (!Number.isFinite(current)) return String(stayAdults);
+        return String(Math.min(stayAdults, Math.max(0, current)));
+      });
+      setBreakfastChildren((prev) => {
+        const current = Number(prev);
+        if (!Number.isFinite(current)) return String(stayChildren);
+        return String(Math.min(stayChildren, Math.max(0, current)));
+      });
+      return;
+    }
+    setBreakfastAdults((prev) => String(Math.min(stayAdults, Math.max(0, Number(prev) || 0))));
+    setBreakfastChildren((prev) => String(Math.min(stayChildren, Math.max(0, Number(prev) || 0))));
+  }, [anyBreakfast, stayAdults, stayChildren, breakfastPaxTouched]);
 
   return (
     <form action={action} className="space-y-3">
@@ -629,14 +732,64 @@ export function BookingForm({
           ))}
         </select>
       </Field>
+      <p className="text-xs font-semibold text-[#5c6665]">Khách ở</p>
       <div className="grid grid-cols-2 gap-2">
         <Field label="Người lớn">
-          <input name="adults" type="number" min={1} defaultValue={defaults.adults ?? 1} />
+          <input
+            name="adults"
+            type="number"
+            min={1}
+            value={adults}
+            onChange={(e) => setAdults(e.target.value)}
+          />
         </Field>
         <Field label="Trẻ em">
-          <input name="children" type="number" min={0} defaultValue={defaults.children ?? 0} />
+          <input
+            name="children"
+            type="number"
+            min={0}
+            value={children}
+            onChange={(e) => setChildren(e.target.value)}
+          />
         </Field>
       </div>
+      <p className="text-xs font-semibold text-[#5c6665]">Khách ăn sáng · không lớn hơn khách ở</p>
+      <div className="grid grid-cols-2 gap-2">
+        <Field label="Người lớn">
+          <input
+            name="breakfastAdults"
+            type="number"
+            min={0}
+            max={stayAdults}
+            value={breakfastAdults}
+            disabled={!anyBreakfast}
+            onChange={(e) => {
+              setBreakfastPaxTouched(true);
+              setBreakfastAdults(e.target.value);
+            }}
+          />
+        </Field>
+        <Field label="Trẻ em">
+          <input
+            name="breakfastChildren"
+            type="number"
+            min={0}
+            max={stayChildren}
+            value={breakfastChildren}
+            disabled={!anyBreakfast}
+            onChange={(e) => {
+              setBreakfastPaxTouched(true);
+              setBreakfastChildren(e.target.value);
+            }}
+          />
+        </Field>
+      </div>
+      {!anyBreakfast ? (
+        <>
+          <input type="hidden" name="breakfastAdults" value="0" />
+          <input type="hidden" name="breakfastChildren" value="0" />
+        </>
+      ) : null}
       <div className="grid grid-cols-2 gap-2">
         <Field label="Ô tô">
           <input name="cars" type="number" min={0} defaultValue={defaults.cars ?? 0} />

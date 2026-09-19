@@ -2,9 +2,9 @@ import { join } from "node:path";
 import { createClient } from "@libsql/client";
 import { drizzle } from "drizzle-orm/libsql";
 import { eq } from "drizzle-orm";
-import * as schema from "../src/lib/db/schema";
-import { SCHEMA_PATCHES, SCHEMA_SQL } from "../src/lib/db/migrate";
-import { wipeAllLocal } from "../src/lib/db/seed";
+import * as schema from "../src/db/schema";
+import { SCHEMA_PATCHES, SCHEMA_SQL } from "../src/db/migrate";
+import { wipeAllLocal } from "../src/db/seed";
 import { currentShiftType, todayVN } from "../src/lib/datetime";
 
 async function main() {

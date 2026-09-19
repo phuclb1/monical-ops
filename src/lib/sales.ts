@@ -332,6 +332,52 @@ export function bookingKey(sale: { id: string; bookingId?: string | null }) {
   return sale.bookingId || sale.id;
 }
 
+export function clampStayPax(adults?: number | null, children?: number | null) {
+  return {
+    adults: Math.max(1, Math.round(Number(adults) || 1)),
+    children: Math.max(0, Math.round(Number(children) || 0)),
+  };
+}
+
+export function clampBreakfastPax(
+  stayAdults: number,
+  stayChildren: number,
+  breakfastAdults?: number | null,
+  breakfastChildren?: number | null,
+  hasBreakfast = true,
+) {
+  if (!hasBreakfast) return { adults: 0, children: 0 };
+  const capA = Math.max(0, stayAdults);
+  const capC = Math.max(0, stayChildren);
+  const rawA = breakfastAdults == null ? capA : Math.round(Number(breakfastAdults) || 0);
+  const rawC = breakfastChildren == null ? capC : Math.round(Number(breakfastChildren) || 0);
+  return {
+    adults: Math.min(capA, Math.max(0, rawA)),
+    children: Math.min(capC, Math.max(0, rawC)),
+  };
+}
+
+type PaxRoom = {
+  adults?: number | null;
+  children?: number | null;
+  breakfast?: boolean | null;
+  breakfastAdults?: number | null;
+  breakfastChildren?: number | null;
+};
+
+export function bookingStayPax(rooms: PaxRoom[]) {
+  const first = rooms[0];
+  return { adults: Math.max(0, first?.adults || 0), children: Math.max(0, first?.children || 0) };
+}
+
+export function bookingBreakfastPax(rooms: PaxRoom[]) {
+  const stay = bookingStayPax(rooms);
+  const eating = rooms.filter((row) => row.breakfast !== false);
+  if (!eating.length) return { adults: 0, children: 0 };
+  const sample = eating.find((row) => row.breakfastAdults != null || row.breakfastChildren != null) ?? eating[0];
+  return clampBreakfastPax(stay.adults, stay.children, sample.breakfastAdults, sample.breakfastChildren, true);
+}
+
 export function roomMoveKind(
   fromType: string,
   toType: string,

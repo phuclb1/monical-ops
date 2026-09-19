@@ -55,22 +55,7 @@ async function createLocalDb(): Promise<AppDb> {
 }
 
 async function prepareD1(db: AppDb) {
-  const statements = SCHEMA_SQL.split(";").map((s) => s.trim()).filter(Boolean);
-  try {
-    const { getCloudflareContext } = await import("@opennextjs/cloudflare");
-    const { env } = await getCloudflareContext({ async: true });
-    await env.DB.exec(SCHEMA_SQL);
-  } catch {
-    // Live D1 already has tables; a later CREATE INDEX in SCHEMA_SQL can fail
-    // (e.g. unique on effective_from before the column exists). Apply what we can.
-    for (const stmt of statements) {
-      try {
-        await db.run(stmt);
-      } catch {
-        // table / index already exists, or depends on a SCHEMA_PATCHES column
-      }
-    }
-  }
+  // Production D1 is migrated via wrangler/drizzle, not CREATE TABLE on every isolate.
   await applyPatches(db);
   await rekeyLegacyOpsBookingCodes(db);
   await seedIfEmpty(db);

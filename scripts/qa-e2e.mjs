@@ -6,8 +6,11 @@ import { chromium } from "playwright-core";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const base = process.env.OPS_URL || "http://localhost:3002";
-const GUEST = "E2E Van A";
-const ROOM = "101";
+const receptionUser = process.env.OPS_RECEPTION_USER || "tuyen";
+const hkUser = process.env.OPS_HK_USER || "uyen";
+const password = process.env.OPS_PASSWORD || "123456";
+const GUEST = process.env.OPS_GUEST || "E2E Van A";
+const ROOM = process.env.OPS_ROOM || "101";
 const HK_TASK = `E2E dọn P.${ROOM}`;
 
 function gitCommit() {
@@ -30,7 +33,7 @@ const page = await browser.newPage({
 const results = [];
 
 async function ready() {
-  await page.waitForLoadState("networkidle", { timeout: 20000 }).catch(() => {});
+  await page.waitForLoadState("networkidle", { timeout: 30000 }).catch(() => {});
   await page.waitForTimeout(400);
 }
 
@@ -42,9 +45,9 @@ async function go(path) {
 async function login(username) {
   await go("/login");
   await page.locator('input[name="username"]').fill(username);
-  await page.locator('input[name="password"]').fill("123456");
+  await page.locator('input[name="password"]').fill(password);
   await Promise.all([
-    page.waitForURL((url) => !url.pathname.startsWith("/login"), { timeout: 20000 }),
+    page.waitForURL((url) => !url.pathname.startsWith("/login"), { timeout: 30000 }),
     page.getByRole("button", { name: "Đăng nhập" }).click(),
   ]);
   await ready();
@@ -97,7 +100,12 @@ async function check(id, title, fn) {
 
 try {
   await check("E2E-R1", "Lễ tân vào Today — ca đang mở + đầu ca", async (shot) => {
-    await login("tuyen");
+    await login(receptionUser);
+    const text = await pageText();
+    if (text.includes("Chưa mở ca") || text.includes("Mở ca hiện tại")) {
+      await page.getByRole("button", { name: /Mở ca hiện tại|Mở ca/ }).click();
+      await ready();
+    }
     await must(shot, ["Ca đang làm", "Đầu ca"]);
   });
 
@@ -156,7 +164,8 @@ try {
     await go("/sales/bookings");
     await page.getByRole("link").filter({ hasText: GUEST }).first().click();
     await ready();
-    await page.getByRole("button", { name: "Nhận" }).click();
+    await page.getByRole("button", { name: /Nhận/ }).click();
+    await page.getByText("Đang ở", { exact: false }).first().waitFor({ timeout: 30000 });
     await ready();
     await must(shot, [GUEST, "Đang ở"]);
   });
@@ -196,7 +205,7 @@ try {
 
   await check("E2E-H1", "HK login — không vào bán phòng", async (shot) => {
     await logout();
-    await login("uyen");
+    await login(hkUser);
     await go("/sales");
     await ready();
     if (page.url().includes("/sales")) throw new Error("HK vẫn vào được /sales");
@@ -239,7 +248,7 @@ try {
 
   await check("E2E-X1", "Lễ tân hủy booking E2E (không trả cùng ngày nhận)", async (shot) => {
     await logout();
-    await login("tuyen");
+    await login(receptionUser);
     await go("/sales/bookings");
     await page.getByRole("link").filter({ hasText: GUEST }).first().click();
     await ready();

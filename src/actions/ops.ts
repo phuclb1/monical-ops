@@ -5,6 +5,11 @@ import { redirect } from "next/navigation";
 import { requireSession } from "@/lib/auth";
 import type { TaskStatus } from "@/lib/types";
 import * as repo from "@/lib/repos";
+import {
+  openNotifAction as openNotif,
+  readAllNotifAction as readAllNotif,
+  readNotifAction as readNotif,
+} from "@/modules/notifications/actions/notifications.action";
 
 function refresh(paths: string[]) {
   for (const p of paths) revalidatePath(p);
@@ -312,22 +317,14 @@ export async function approveIncidentAction(formData: FormData) {
 }
 
 export async function readNotifAction(formData: FormData) {
-  const user = await requireSession();
-  await repo.markNotifRead(user, String(formData.get("id")));
-  refresh(["/notifications", "/today"]);
+  return readNotif(formData);
 }
 
 export async function openNotifAction(formData: FormData) {
-  const user = await requireSession();
-  const id = String(formData.get("id") || "");
-  const link = String(formData.get("link") || "/notifications");
-  if (id) await repo.markNotifRead(user, id);
-  refresh(["/notifications", "/today"]);
-  if (link.startsWith("/") && !link.startsWith("//")) redirect(link);
+  return openNotif(formData);
 }
 
 export async function readAllNotifAction() {
-  const user = await requireSession();
-  await repo.markAllNotifRead(user);
-  refresh(["/notifications", "/today"]);
+  return readAllNotif();
 }
+

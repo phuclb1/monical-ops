@@ -1,11 +1,20 @@
 import { cache } from "react";
 import { and, desc, eq, inArray, like, lt, ne, or, sql } from "drizzle-orm";
 import { auditChanges, collapseAuditBurst } from "./audit-view";
-import { getDb } from "./db";
-import * as t from "./db/schema";
+import { insertInBatches } from "@/db/batch";
+import { nextOpsBookingCode, rekeyLegacyOpsBookingCodes } from "@/db/ops-codes";
+import { getDb } from "@/db";
+import * as t from "@/db/schema";
+import {
+  countUnreadNotifications,
+  listNotifications,
+  markAllNotifRead,
+  markNotifRead,
+  notify,
+  visibleNotifications,
+} from "@/modules/notifications/models/notifications";
 import { addDaysVN, addMinutes, currentShiftType, datesUntil, nid, nextDate, nextShiftSlot, nowISO, shiftWindow, todayVN, weekdayISO } from "./datetime";
-import { applyPaidAmount, bookingDue, bookingKey, bookingQuote, catalogRate, ganttSpan, groupByBooking, isActiveSaleStatus, isSaleOrigin, isSaleSource, nightlyNetFromLine, nightsBetween, normalizeDiscount, occupiesNight, paidFromMethod, parsePaymentMethod, parseSaleSource, quoteLinesBySaleId, rangesOverlap, rollupBookingStatus, roomMoveKind, salePaid, saleStatusToStay } from "./sales";
-import { nextOpsBookingCode, rekeyLegacyOpsBookingCodes } from "./db/ops-codes";
+import { applyPaidAmount, bookingBreakfastPax, bookingDue, bookingKey, bookingQuote, catalogRate, clampBreakfastPax, clampStayPax, ganttSpan, groupByBooking, isActiveSaleStatus, isSaleOrigin, isSaleSource, nightlyNetFromLine, nightsBetween, normalizeDiscount, occupiesNight, paidFromMethod, parsePaymentMethod, parseSaleSource, quoteLinesBySaleId, rangesOverlap, rollupBookingStatus, roomMoveKind, salePaid, saleStatusToStay } from "./sales";
 import { extraAmount } from "./extras";
 import { can } from "./permissions";
 import { dayOverrideId, rosterVersionOf, weekSlotId } from "./roster";
@@ -15,9 +24,15 @@ import type { DepartmentCode, HkStatus, Role, SaleSource, SaleStatus, SessionUse
 import { DEPT_LABEL, HK_LABEL, ROLE_DEPT, TASK_STATUS_LABEL, requestKindLabel } from "./constants";
 import { defaultAdultsForRoomType, floorOf, roomIdOf, slugTypeName } from "./rooms-catalog";
 import { hashPassword } from "./password";
-import { schedulePush } from "./push";
-import { insertInBatches } from "./db/batch";
 import { buildRoomFocus, isDirtyRoom } from "./room-focus";
+
+export {
+  countUnreadNotifications,
+  listNotifications,
+  markAllNotifRead,
+  markNotifRead,
+  notify,
+};
 
 export async function audit(actorId: string, entity: string, entityId: string, action: string, before?: unknown, after?: unknown) {
   const db = await getDb();
@@ -31,29 +46,6 @@ export async function audit(actorId: string, entity: string, entityId: string, a
     afterJson: after ? JSON.stringify(after) : null,
     createdAt: nowISO(),
   });
-}
-
-export async function notify(input: { userId?: string | null; role?: string | null; title: string; body: string; link?: string }) {
-  const db = await getDb();
-  await db.insert(t.notifications).values({
-    id: nid(),
-    userId: input.userId ?? null,
-    role: input.role ?? null,
-    title: input.title,
-    body: input.body,
-    link: input.link ?? null,
-    read: false,
-    createdAt: nowISO(),
-  });
-  await schedulePush(input);
-}
-
-function visibleNotifications(user: SessionUser) {
-  return or(
-    eq(t.notifications.userId, user.id),
-    and(sql`${t.notifications.userId} is null`, eq(t.notifications.role, user.role)),
-    and(sql`${t.notifications.userId} is null`, sql`${t.notifications.role} is null`),
-  );
 }
 
 async function bookingCreatedBy(bookingId: string, fallback?: string | null) {
@@ -813,6 +805,8 @@ type SaleInput = {
   checkOut: string;
   adults?: number;
   children?: number;
+  breakfastAdults?: number;
+  breakfastChildren?: number;
   cars?: number;
   bikes?: number;
   rate: number;
@@ -842,6 +836,13 @@ function saleLineWindow(data: SaleInput, roomId: string) {
     data.discounts?.[roomId]?.value ?? data.discountValue,
   );
   return { checkIn, checkOut, breakfast, rate, discountKind, discountValue };
+}
+
+function salePax(data: Pick<SaleInput, "adults" | "children" | "breakfastAdults" | "breakfastChildren" | "breakfasts">, roomIds: string[]) {
+  const stay = clampStayPax(data.adults, data.children);
+  const hasBreakfast = roomIds.some((id) => data.breakfasts?.[id] !== false);
+  const breakfast = clampBreakfastPax(stay.adults, stay.children, data.breakfastAdults, data.breakfastChildren, hasBreakfast);
+  return { adults: stay.adults, children: stay.children, breakfastAdults: breakfast.adults, breakfastChildren: breakfast.children };
 }
 
 function uniqueSaleRoomIds(data: SaleInput) {
@@ -1005,6 +1006,8 @@ function toBookingView(id: string, rooms: Awaited<ReturnType<typeof listRoomSale
     notes: first.notes,
     adults: first.adults,
     children: first.children,
+    breakfastAdults: bookingBreakfastPax(sorted).adults,
+    breakfastChildren: bookingBreakfastPax(sorted).children,
     cars: first.cars || 0,
     bikes: first.bikes || 0,
     deposit: paid.deposit,
@@ -1260,6 +1263,7 @@ export async function createRoomSale(user: SessionUser, data: SaleInput) {
   const origin = data.origin === "ezcloud" ? "ezcloud" : "ops";
   if (origin === "ezcloud" && !data.pmsCode?.trim()) throw new Error("Tích ezCloud thì nhập mã PMS");
   const roomIds = uniqueSaleRoomIds(data);
+  const pax = salePax(data, roomIds);
   const lines = roomIds.map((roomId) => ({ roomId, ...saleLineWindow(data, roomId) }));
   const rooms = [];
   for (const line of lines) {
@@ -1309,8 +1313,10 @@ export async function createRoomSale(user: SessionUser, data: SaleInput) {
       status,
       checkIn: row.checkIn,
       checkOut: row.checkOut,
-      adults: Math.max(1, data.adults || 1),
-      children: Math.max(0, data.children || 0),
+      adults: pax.adults,
+      children: pax.children,
+      breakfastAdults: pax.breakfastAdults,
+      breakfastChildren: pax.breakfastChildren,
       cars: Math.max(0, data.cars || 0),
       bikes: Math.max(0, data.bikes || 0),
       rate: row.rate,
@@ -1378,6 +1384,8 @@ export async function addRoomsToBooking(user: SessionUser, saleId: string, roomI
     checkOut: before.checkOut,
     adults: before.adults,
     children: before.children,
+    breakfastAdults: before.breakfastAdults ?? undefined,
+    breakfastChildren: before.breakfastChildren ?? undefined,
     cars: before.cars,
     bikes: before.bikes,
     rate: before.rate,
@@ -1473,6 +1481,8 @@ export async function updateBooking(
     source?: string;
     adults?: number;
     children?: number;
+    breakfastAdults?: number;
+    breakfastChildren?: number;
     cars?: number;
     bikes?: number;
     discountKind?: string;
@@ -1521,6 +1531,17 @@ export async function updateBooking(
   const notes = data.notes !== undefined ? data.notes.trim() || null : undefined;
   const roomById = new Map(rooms.map((room) => [room.id, room]));
   const nextBySale = new Map(data.assignments.map((row) => [row.saleId, row]));
+  const hasBreakfast = active.some((row) => {
+    const assignment = nextBySale.get(row.id);
+    return assignment?.breakfast ?? row.breakfast !== false;
+  });
+  const breakfastPax = clampBreakfastPax(
+    adults,
+    children,
+    data.breakfastAdults ?? hit.breakfastAdults,
+    data.breakfastChildren ?? hit.breakfastChildren,
+    hasBreakfast,
+  );
   const seen = new Set<string>();
   const now = nowISO();
   const today = todayVN();
@@ -1553,6 +1574,8 @@ export async function updateBooking(
       source,
       adults,
       children,
+      breakfastAdults: breakfastPax.adults,
+      breakfastChildren: breakfastPax.children,
       cars,
       bikes,
       rate: nextRate,
@@ -2248,24 +2271,6 @@ export async function approveIncident(user: SessionUser, id: string) {
   await db.update(t.incidents).set({ status: "approved", approvedBy: user.id, updatedAt: nowISO() }).where(eq(t.incidents.id, id));
 }
 
-export async function listNotifications(user: SessionUser) {
-  const db = await getDb();
-  return db
-    .select()
-    .from(t.notifications)
-    .where(visibleNotifications(user))
-    .orderBy(desc(t.notifications.createdAt));
-}
-
-export const countUnreadNotifications = cache(async (user: SessionUser) => {
-  const db = await getDb();
-  const rows = await db
-    .select({ n: sql<number>`count(*)` })
-    .from(t.notifications)
-    .where(and(visibleNotifications(user), eq(t.notifications.read, false)));
-  return Number(rows[0]?.n ?? 0);
-});
-
 function parseAuditJson(raw: string | null) {
   if (!raw) return null;
   try {
@@ -2318,22 +2323,6 @@ export async function listAuditLogs(filter?: { entity?: string; action?: string;
     })),
     nextBefore: hasMore ? page[page.length - 1]?.createdAt ?? null : null,
   };
-}
-
-export async function markNotifRead(user: SessionUser, id: string) {
-  const db = await getDb();
-  await db
-    .update(t.notifications)
-    .set({ read: true })
-    .where(and(eq(t.notifications.id, id), visibleNotifications(user)));
-}
-
-export async function markAllNotifRead(user: SessionUser) {
-  const db = await getDb();
-  await db
-    .update(t.notifications)
-    .set({ read: true })
-    .where(and(eq(t.notifications.read, false), visibleNotifications(user)));
 }
 
 export async function searchOps(q: string) {

@@ -1,5 +1,10 @@
-const CACHE = "ops-monical-v5";
-const SHELL = ["/", "/today", "/login", "/offline.html", "/logo.png", "/icon-192.png", "/icon-512.png", "/manifest.webmanifest"];
+const CACHE = "ops-monical-v6";
+const SHELL = ["/login", "/offline.html", "/logo.png", "/icon-192.png", "/icon-512.png", "/manifest.webmanifest"];
+const STATIC_EXT = /\.(?:js|css|woff2?|png|jpe?g|gif|webp|svg|ico)$/;
+
+function isStatic(url) {
+  return url.pathname.startsWith("/_next/static") || STATIC_EXT.test(url.pathname);
+}
 
 self.addEventListener("install", (event) => {
   event.waitUntil(caches.open(CACHE).then((cache) => cache.addAll(SHELL).catch(() => {})));
@@ -17,18 +22,30 @@ self.addEventListener("fetch", (event) => {
   const req = event.request;
   if (req.method !== "GET") return;
   const url = new URL(req.url);
-  if (url.pathname.startsWith("/api/")) return;
+  if (url.pathname.startsWith("/api/") || url.pathname === "/sw.js") return;
+
+  if (isStatic(url)) {
+    event.respondWith(
+      caches.match(req).then(
+        (cached) =>
+          cached ||
+          fetch(req).then((res) => {
+            if (res.ok) {
+              const copy = res.clone();
+              caches.open(CACHE).then((cache) => cache.put(req, copy)).catch(() => {});
+            }
+            return res;
+          }),
+      ),
+    );
+    return;
+  }
+
   event.respondWith(
-    fetch(req)
-      .then((res) => {
-        const copy = res.clone();
-        caches.open(CACHE).then((cache) => cache.put(req, copy)).catch(() => {});
-        return res;
-      })
-      .catch(async () => {
-        const cached = await caches.match(req);
-        return cached || caches.match("/offline.html");
-      }),
+    fetch(req).catch(async () => {
+      const cached = await caches.match(req);
+      return cached || caches.match("/offline.html");
+    }),
   );
 });
 

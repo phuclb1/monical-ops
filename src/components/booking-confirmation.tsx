@@ -87,6 +87,12 @@ export function BookingConfirmation({ booking }: { booking: Booking }) {
               <td colSpan={3}>{booking.notes || ""}</td>
             </tr>
             <tr>
+              <th>Khách ở</th>
+              <td>{pax(booking.adults, booking.children)}</td>
+              <th>Ăn sáng</th>
+              <td>{pax(booking.breakfastAdults ?? booking.adults, booking.breakfastChildren ?? booking.children)}</td>
+            </tr>
+            <tr>
               <th>Xe</th>
               <td colSpan={3}>{parkingLabel(booking.cars, booking.bikes)}</td>
             </tr>

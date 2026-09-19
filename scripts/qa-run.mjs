@@ -85,6 +85,14 @@ async function check(id, title, fn) {
   console.log(`${row.result.toUpperCase()} ${id}  ${title}`);
 }
 
+function fold(s) {
+  return String(s).replace(/[\u00a0\u202f]/g, " ").toLocaleLowerCase("vi");
+}
+
+function hasText(hay, needle) {
+  return fold(hay).includes(fold(needle));
+}
+
 async function pageText() {
   const body = await page.locator("body").innerText();
   const values = await page.evaluate(() =>
@@ -96,7 +104,7 @@ async function pageText() {
 async function must(shot, needles) {
   await page.screenshot({ path: shot, fullPage: true });
   const text = await pageText();
-  const missing = needles.filter((n) => !text.includes(n));
+  const missing = needles.filter((n) => !hasText(text, n));
   if (missing.length) throw new Error(`Thiếu: ${missing.join(" | ")} · URL ${page.url()}`);
 }
 
@@ -423,9 +431,9 @@ try {
     await go("/notifications");
     await must(shot, ["Thông báo", "Đặt phòng · Đặng Minh Tuấn", "Chỉ hiện thêm, sửa, hủy booking do bạn tạo"]);
     const text = await pageText();
-    if (text.includes("Đặt phòng · Mai Thanh Hà")) throw new Error("Lễ tân thấy booking người khác tạo");
-    if (text.includes("Sửa booking · Công ty An Phú")) throw new Error("Lễ tân thấy noti quản lý");
-    if (text.includes("Thay khăn P.305")) throw new Error("Lễ tân thấy noti HK");
+    if (hasText(text, "Đặt phòng · Mai Thanh Hà")) throw new Error("Lễ tân thấy booking người khác tạo");
+    if (hasText(text, "Sửa booking · Công ty An Phú")) throw new Error("Lễ tân thấy noti quản lý");
+    if (hasText(text, "Thay khăn P.305")) throw new Error("Lễ tân thấy noti HK");
   });
 
   await logout();
@@ -507,7 +515,7 @@ try {
       "Sửa booking · Công ty An Phú",
     ]);
     const text = await pageText();
-    if (text.includes("Thay khăn P.305")) throw new Error("Quản lý thấy noti HK");
+    if (hasText(text, "Thay khăn P.305")) throw new Error("Quản lý thấy noti HK");
   });
 
   await check("TC-120", "Chủ sở hữu vào doanh thu tháng/quý/năm", async (shot) => {
@@ -561,8 +569,8 @@ try {
     await go("/notifications");
     await must(shot, ["Thông báo", "Thay khăn P.305"]);
     const text = await pageText();
-    if (text.includes("Đặt phòng · Đặng Minh Tuấn")) throw new Error("HK thấy noti booking");
-    if (text.includes("Sửa booking · Công ty An Phú")) throw new Error("HK thấy noti booking");
+    if (hasText(text, "Đặt phòng · Đặng Minh Tuấn")) throw new Error("HK thấy noti booking");
+    if (hasText(text, "Sửa booking · Công ty An Phú")) throw new Error("HK thấy noti booking");
   });
 } finally {
   await browser.close();

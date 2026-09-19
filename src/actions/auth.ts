@@ -3,8 +3,8 @@
 import { redirect } from "next/navigation";
 import { eq } from "drizzle-orm";
 import { clearSessionCookie, loadUserSession, setSessionCookie } from "@/lib/auth";
-import { getDb } from "@/lib/db";
-import { users } from "@/lib/db/schema";
+import { getDb } from "@/db";
+import { users } from "@/db/schema";
 import { homePath } from "@/lib/nav";
 import { verifyPassword } from "@/lib/password";
 

@@ -64,6 +64,8 @@ export const roomSales = sqliteTable("room_sales", {
   cashPaid: integer("cash_paid").notNull().default(0),
   transferPaid: integer("transfer_paid").notNull().default(0),
   breakfast: integer("breakfast", { mode: "boolean" }).notNull().default(true),
+  breakfastAdults: integer("breakfast_adults"),
+  breakfastChildren: integer("breakfast_children"),
   cars: integer("cars").notNull().default(0),
   bikes: integer("bikes").notNull().default(0),
   pmsCode: text("pms_code"),

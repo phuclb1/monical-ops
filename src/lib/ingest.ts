@@ -1,10 +1,10 @@
 import { eq } from "drizzle-orm";
-import { getDb } from "./db";
-import * as t from "./db/schema";
+import { getDb } from "@/db";
+import * as t from "@/db/schema";
 import { nid, nowISO } from "./datetime";
 import { audit } from "./repos";
 import { ensureTodayRoomTasks } from "./checklist-ops";
-import { catalogRate, isActiveSaleStatus, normalizeDiscount, parseSaleSource, rangesOverlap, applyPaidAmount, salePaid } from "./sales";
+import { catalogRate, clampBreakfastPax, isActiveSaleStatus, normalizeDiscount, parseSaleSource, rangesOverlap, applyPaidAmount, salePaid } from "./sales";
 import type { SaleOrigin, SaleStatus, StayStatus } from "./types";
 import { SALE_STATUSES, STAY_STATUSES } from "./types";
 
@@ -197,6 +197,10 @@ async function ingestOne(raw: IngestBooking): Promise<IngestResult> {
   const roomType = room
     ? (await db.select().from(t.roomTypes).where(eq(t.roomTypes.name, room.type)).limit(1))[0]
     : null;
+  const adults = Math.max(1, raw.adults || saleRow?.adults || 1);
+  const children = Math.max(0, raw.children ?? saleRow?.children ?? 0);
+  const breakfast = raw.breakfast ?? saleRow?.breakfast ?? true;
+  const breakfastPax = clampBreakfastPax(adults, children, saleRow?.breakfastAdults, saleRow?.breakfastChildren, breakfast !== false);
   const salePayload = {
     roomId: room.id,
     guestName,
@@ -206,13 +210,15 @@ async function ingestOne(raw: IngestBooking): Promise<IngestResult> {
     status: saleStatus,
     checkIn: raw.arrivalDate,
     checkOut: raw.departureDate,
-    adults: Math.max(1, raw.adults || saleRow?.adults || 1),
-    children: Math.max(0, raw.children ?? saleRow?.children ?? 0),
+    adults,
+    children,
     rate: Math.max(0, raw.rate ?? saleRow?.rate ?? catalogRate(roomType ?? undefined, raw.arrivalDate)),
     discountKind,
     discountValue,
     ...applyPaidAmount(salePaid(saleRow || {}), Math.max(0, raw.deposit ?? saleRow?.deposit ?? 0), "transfer"),
-    breakfast: raw.breakfast ?? saleRow?.breakfast ?? true,
+    breakfast,
+    breakfastAdults: breakfastPax.adults,
+    breakfastChildren: breakfastPax.children,
     pmsCode,
     notes: raw.notes?.trim() || saleRow?.notes || null,
     updatedAt: now,

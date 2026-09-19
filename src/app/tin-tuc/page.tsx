@@ -3,6 +3,8 @@ import Link from "next/link";
 import { listNews } from "@/lib/news";
 import { HOTEL_NAME } from "@/lib/constants";
 
+export const revalidate = 3600;
+
 export const metadata: Metadata = {
   title: "Tin tức khách sạn Đà Lạt gần trung tâm",
   description: `Bài viết gợi ý chỗ ở gần Hồ Xuân Hương, chợ đêm và kinh nghiệm đặt phòng tại ${HOTEL_NAME}.`,

@@ -56,8 +56,8 @@ export default async function KitchenPage({
             Ăn sáng
           </h1>
           <p className="mt-1 text-xs text-[#5c6665] md:text-sm">
-            {formatDateLong(date).toLowerCase()} · {day.rooms} phòng · {day.adults} người lớn + {day.children} trẻ em ={" "}
-            <strong>{day.servings} suất</strong>
+            {formatDateLong(date).toLowerCase()} · {day.rooms} phòng · {day.stayAdults} NL + {day.stayChildren} TE ở ·{" "}
+            {day.adults} NL + {day.children} TE ăn sáng = <strong>{day.servings} suất</strong>
             {day.servings ? ` (${day.checkedIn} đã check-in + ${day.expected} dự kiến)` : ""}
           </p>
         </div>
@@ -140,7 +140,7 @@ export default async function KitchenPage({
                   </p>
                   <p className="text-xs text-[#5c6665]">{showPhone ? row.guestPhone || "—" : maskPhone(row.guestPhone)}</p>
                   <p className="mt-2 text-sm">
-                    {row.adults} NL · {row.children} TE · <strong>{row.servings} suất</strong>
+                    {row.adults} NL · {row.children} TE ăn sáng · <strong>{row.servings} suất</strong>
                   </p>
                 </>
               );
@@ -232,7 +232,8 @@ export default async function KitchenPage({
       <p className="text-xs leading-5 text-[#5c6665]">
         Báo cáo dành cho nhà hàng chuẩn bị bữa sáng. Gồm khách đã check-in và khách dự kiến (booking đã tạo, chưa nhận
         phòng). Khách nhận phòng đúng ngày này không hiện trên báo cáo cùng ngày — ăn sáng hôm sau, sau khi đã ngủ đêm.
-        Booking hủy / no-show không tính. Phòng tắt ăn sáng không tính.
+        Booking hủy / no-show không tính. Phòng tắt ăn sáng không tính. Số khách ăn sáng không lớn hơn số khách ở —
+        booking nhiều phòng không nhân số khách.
       </p>
       <p className="breakfast-no-print text-sm">
         <Link href="/kitchen/forecast" className="font-semibold text-teal">

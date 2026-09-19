@@ -1,8 +1,8 @@
 import { cache } from "react";
 import { cookies } from "next/headers";
 import { eq } from "drizzle-orm";
-import { getDb } from "./db";
-import { departments, users } from "./db/schema";
+import { getDb } from "@/db";
+import { departments, users } from "@/db/schema";
 import { readSessionToken, SESSION_COOKIE, signSession } from "./session-token";
 import type { DepartmentCode, Role, SessionUser } from "./types";
 

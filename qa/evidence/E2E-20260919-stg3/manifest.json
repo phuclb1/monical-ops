@@ -1,0 +1,140 @@
+{
+  "runId": "E2E-20260919-stg3",
+  "date": "2026-09-19T02:45:05.379Z",
+  "commit": "a8f4ea7-dirty",
+  "env": "https://ops-staging.monicalhoteldalat.com",
+  "guest": "E2E Van A",
+  "room": "101",
+  "pass": 18,
+  "fail": 0,
+  "total": 18,
+  "passRate": "100%",
+  "results": [
+    {
+      "id": "E2E-R1",
+      "title": "Lễ tân vào Today — ca đang mở + đầu ca",
+      "result": "pass",
+      "evidence": "qa/evidence/E2E-20260919-stg3/E2E-R1.png",
+      "note": ""
+    },
+    {
+      "id": "E2E-R2",
+      "title": "Tick 1 mục checklist đầu ca",
+      "result": "pass",
+      "evidence": "qa/evidence/E2E-20260919-stg3/E2E-R2.png",
+      "note": ""
+    },
+    {
+      "id": "E2E-R3",
+      "title": "Bán P.101 — giữ chỗ, cọc, chưa nhận",
+      "result": "pass",
+      "evidence": "qa/evidence/E2E-20260919-stg3/E2E-R3.png",
+      "note": ""
+    },
+    {
+      "id": "E2E-R4",
+      "title": "Sơ đồ ngày hiện booking E2E",
+      "result": "pass",
+      "evidence": "qa/evidence/E2E-20260919-stg3/E2E-R4.png",
+      "note": ""
+    },
+    {
+      "id": "E2E-R5",
+      "title": "Task nhận P.101 + tick checklist",
+      "result": "pass",
+      "evidence": "qa/evidence/E2E-20260919-stg3/E2E-R5.png",
+      "note": ""
+    },
+    {
+      "id": "E2E-R6",
+      "title": "Nhận phòng trên booking",
+      "result": "pass",
+      "evidence": "qa/evidence/E2E-20260919-stg3/E2E-R6.png",
+      "note": ""
+    },
+    {
+      "id": "E2E-R8",
+      "title": "Lễ tân giao việc dọn HK",
+      "result": "pass",
+      "evidence": "qa/evidence/E2E-20260919-stg3/E2E-R8.png",
+      "note": ""
+    },
+    {
+      "id": "E2E-R9",
+      "title": "Filter Phòng bẩn có P.101",
+      "result": "pass",
+      "evidence": "qa/evidence/E2E-20260919-stg3/E2E-R9.png",
+      "note": ""
+    },
+    {
+      "id": "E2E-R12",
+      "title": "Lễ tân không vào nhật ký",
+      "result": "pass",
+      "evidence": "qa/evidence/E2E-20260919-stg3/E2E-R12.png",
+      "note": ""
+    },
+    {
+      "id": "E2E-H1",
+      "title": "HK login — không vào bán phòng",
+      "result": "pass",
+      "evidence": "qa/evidence/E2E-20260919-stg3/E2E-H1.png",
+      "note": ""
+    },
+    {
+      "id": "E2E-H3",
+      "title": "HK thấy việc lễ tân giao",
+      "result": "pass",
+      "evidence": "qa/evidence/E2E-20260919-stg3/E2E-H3.png",
+      "note": ""
+    },
+    {
+      "id": "E2E-H4",
+      "title": "HK Mới → Đang xử lý → Hoàn tất",
+      "result": "pass",
+      "evidence": "qa/evidence/E2E-20260919-stg3/E2E-H4.png",
+      "note": ""
+    },
+    {
+      "id": "E2E-H5",
+      "title": "HK chuyển status phòng nếu được",
+      "result": "pass",
+      "evidence": "qa/evidence/E2E-20260919-stg3/E2E-H5.png",
+      "note": ""
+    },
+    {
+      "id": "E2E-H6",
+      "title": "Phòng bẩn không còn khách E2E",
+      "result": "pass",
+      "evidence": "qa/evidence/E2E-20260919-stg3/E2E-H6.png",
+      "note": ""
+    },
+    {
+      "id": "E2E-X1",
+      "title": "Lễ tân hủy booking E2E (không trả cùng ngày nhận)",
+      "result": "pass",
+      "evidence": "qa/evidence/E2E-20260919-stg3/E2E-X1.png",
+      "note": ""
+    },
+    {
+      "id": "E2E-X3",
+      "title": "Sơ đồ ngày không còn booking E2E",
+      "result": "pass",
+      "evidence": "qa/evidence/E2E-20260919-stg3/E2E-X3.png",
+      "note": ""
+    },
+    {
+      "id": "E2E-R11",
+      "title": "Bàn giao còn trang gom việc",
+      "result": "pass",
+      "evidence": "qa/evidence/E2E-20260919-stg3/E2E-R11.png",
+      "note": ""
+    },
+    {
+      "id": "E2E-R10",
+      "title": "Cuối ca hiện trên ca đang mở",
+      "result": "pass",
+      "evidence": "qa/evidence/E2E-20260919-stg3/E2E-R10.png",
+      "note": ""
+    }
+  ]
+}

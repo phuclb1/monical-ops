@@ -39,6 +39,7 @@ function refresh() {
   revalidatePath("/reports");
   revalidatePath("/reports/sales");
   revalidatePath("/notifications");
+  revalidatePath("/kitchen");
 }
 
 function saleFromForm(formData: FormData) {
@@ -86,6 +87,8 @@ function saleFromForm(formData: FormData) {
     checkOut: dates[roomIds[0] || ""]?.checkOut || fallbackOut,
     adults: Number(formData.get("adults") || 1),
     children: Number(formData.get("children") || 0),
+    breakfastAdults: Number(formData.get("breakfastAdults") || 0),
+    breakfastChildren: Number(formData.get("breakfastChildren") || 0),
     cars: Math.max(0, Number(formData.get("cars") || 0) || 0),
     bikes: Math.max(0, Number(formData.get("bikes") || 0) || 0),
     rate: rates[roomIds[0] || ""] || fallbackRate,
@@ -254,6 +257,8 @@ export async function updateBookingAction(formData: FormData) {
       source: String(formData.get("source") || ""),
       adults: Number(formData.get("adults") || 1),
       children: Number(formData.get("children") || 0),
+      breakfastAdults: Number(formData.get("breakfastAdults") || 0),
+      breakfastChildren: Number(formData.get("breakfastChildren") || 0),
       cars: Math.max(0, Number(formData.get("cars") || 0) || 0),
       bikes: Math.max(0, Number(formData.get("bikes") || 0) || 0),
       deposit: parseMoney(formData.get("deposit")),

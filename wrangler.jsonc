@@ -9,6 +9,13 @@
     "directory": ".open-next/assets",
     "binding": "ASSETS"
   },
+  "observability": {
+    "enabled": true
+  },
+  // Enable in Cloudflare dashboard then uncomment:
+  // "r2_buckets": [
+  //   { "binding": "NEXT_INC_CACHE_R2_BUCKET", "bucket_name": "ops-monical-cache" }
+  // ],
   "routes": [
     {
       "pattern": "platform.monicalhoteldalat.com",
@@ -19,7 +26,8 @@
     {
       "binding": "DB",
       "database_name": "ops-monical",
-      "database_id": "52bda0cc-4f78-4c8c-80c2-9fdf806e2404"
+      "database_id": "52bda0cc-4f78-4c8c-80c2-9fdf806e2404",
+      "migrations_dir": "./drizzle"
     }
   ],
   "vars": {
@@ -28,5 +36,32 @@
     "NEXT_PUBLIC_APP_URL": "https://platform.monicalhoteldalat.com",
     "NEXT_PUBLIC_VAPID_PUBLIC_KEY": "BB5b4KJ43Tmex5SVN1wDfoBwuyf2g63XM3wMVna9Sm2BEEwwO__XUs9zNKsffkm40zI1cyewYmEIe3IpqQwqeQw",
     "VAPID_SUBJECT": "https://platform.monicalhoteldalat.com"
+  },
+  "env": {
+    "staging": {
+      "name": "ops-staging",
+      "workers_dev": true,
+      "routes": [
+        {
+          "pattern": "ops-staging.monicalhoteldalat.com",
+          "custom_domain": true
+        }
+      ],
+      "d1_databases": [
+        {
+          "binding": "DB",
+          "database_name": "ops-staging",
+          "database_id": "51841c04-99e0-4647-8ae3-45393301b5b0",
+          "migrations_dir": "./drizzle"
+        }
+      ],
+      "vars": {
+        "NEXTJS_ENV": "production",
+        "NEXT_PUBLIC_HOTEL_NAME": "MONICAL hotel dalat",
+        "NEXT_PUBLIC_APP_URL": "https://ops-staging.monicalhoteldalat.com",
+        "NEXT_PUBLIC_VAPID_PUBLIC_KEY": "BB5b4KJ43Tmex5SVN1wDfoBwuyf2g63XM3wMVna9Sm2BEEwwO__XUs9zNKsffkm40zI1cyewYmEIe3IpqQwqeQw",
+        "VAPID_SUBJECT": "https://ops-staging.monicalhoteldalat.com"
+      }
+    }
   }
 }
