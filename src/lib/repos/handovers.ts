@@ -2,9 +2,10 @@ import { desc, eq } from "drizzle-orm";
 import { getDb } from "@/db";
 import * as t from "@/db/schema";
 import { notify } from "@/modules/notifications/models/notifications";
-import { nid, nowISO, nextShiftSlot } from "../datetime";
+import { nid, nowISO, nextShiftSlot, todayVN } from "../datetime";
 import { DEPT_LABEL, HK_LABEL, TASK_STATUS_LABEL, requestKindLabel } from "../constants";
 import { taskTypeLabel } from "../task-types";
+import { stayBoardStatus } from "../stay-checklist";
 import type { DepartmentCode, HkStatus, SessionUser, ShiftType, TaskStatus } from "../types";
 import { audit } from "./audit";
 import { listRooms } from "./rooms";
@@ -45,14 +46,15 @@ export async function buildHandoverDraft() {
   const requests = stays.flatMap((s) => s.requests.map((r) => ({ ...r, room: s.room?.number })));
   const items: { category: string; refType: string; refId: string; summary: string }[] = [];
   const openTask = new Set(["new", "accepted", "in_progress"]);
+  const today = todayVN();
 
-  for (const s of stays.filter((x) => x.status === "arriving")) {
+  for (const s of stays.filter((x) => stayBoardStatus(x, today) === "arriving")) {
     items.push({ category: "Khách đến chưa nhận", refType: "stay", refId: s.id, summary: stayTag(s) });
   }
   for (const s of stays.filter((x) => x.status === "no_show")) {
     items.push({ category: "Khách chưa đến", refType: "stay", refId: s.id, summary: stayTag(s) });
   }
-  for (const s of stays.filter((x) => ["arriving", "inhouse", "departing", "no_show"].includes(x.status) && x.notes)) {
+  for (const s of stays.filter((x) => ["arriving", "inhouse", "departing", "no_show"].includes(stayBoardStatus(x, today)) && x.notes)) {
     items.push({
       category: "Ghi chú khách",
       refType: "stay",
@@ -60,10 +62,10 @@ export async function buildHandoverDraft() {
       summary: `P.${s.room?.number || "—"} ${s.guestName}: ${s.notes}`,
     });
   }
-  for (const s of stays.filter((x) => x.status === "inhouse" && x.registrationDueAt && !x.registrationDoneAt)) {
+  for (const s of stays.filter((x) => stayBoardStatus(x, today) === "inhouse" && x.registrationDueAt && !x.registrationDoneAt)) {
     items.push({ category: "Đăng ký lưu trú chưa xong", refType: "stay", refId: s.id, summary: stayTag(s) });
   }
-  for (const s of stays.filter((x) => x.status === "departing" && (!x.invoiceOk || !x.pmsCheckoutOk))) {
+  for (const s of stays.filter((x) => stayBoardStatus(x, today) === "departing" && (!x.invoiceOk || !x.pmsCheckoutOk))) {
     items.push({
       category: "Khách đi — hóa đơn / PMS",
       refType: "stay",

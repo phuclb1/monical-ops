@@ -1,5 +1,6 @@
 "use server";
 
+import { redirect } from "next/navigation";
 import { requireSession } from "@/lib/auth";
 import * as repo from "@/lib/repos";
 import { refresh } from "./shared";
@@ -62,17 +63,22 @@ export async function saveRoomChecklistAction(formData: FormData) {
   refresh(["/rooms", `/rooms/${roomId}`, "/forms"]);
 }
 
-export async function inspectRoomAction(formData: FormData) {
+export async function requestHandoffAction(formData: FormData) {
   const user = await requireSession();
   const roomId = String(formData.get("roomId"));
   const stayId = String(formData.get("stayId") || "") || undefined;
-  await repo.updateRoom(user, roomId, { hkStatus: "waiting", opsStatus: "vacant_dirty" });
-  await repo.createTask(user, {
-    kind: "checkout_clean",
-    stayId,
-    fromDept: user.departmentCode,
-    roomId,
-    content: "Dọn phòng trả — cần INS trước khách mới",
-  });
-  refresh(["/rooms", "/today", "/handover", "/tasks", stayId ? `/reception/${stayId}` : "/reception"]);
+  const saleId = String(formData.get("saleId") || "") || undefined;
+  const purpose = String(formData.get("purpose") || "") as "standby" | "stayover" | "checkout_inspect";
+  const back = stayId ? `/reception/${stayId}` : saleId ? `/sales/${saleId}` : `/rooms/${roomId}`;
+  try {
+    await repo.requestHkHandoff(user, { purpose, roomId, stayId, saleId });
+  } catch (e) {
+    redirect(`${back}?error=${encodeURIComponent((e as Error).message)}`);
+  }
+  refresh(["/today", "/tasks", "/rooms", "/sales", "/reception", stayId ? `/reception/${stayId}` : "/reception", saleId ? `/sales/${saleId}` : "/sales"]);
+}
+
+export async function inspectRoomAction(formData: FormData) {
+  formData.set("purpose", "checkout_inspect");
+  await requestHandoffAction(formData);
 }

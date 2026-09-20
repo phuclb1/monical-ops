@@ -4,8 +4,8 @@ import * as t from "@/db/schema";
 import { nid, nowISO, shiftWindow, todayVN, weekdayISO } from "../datetime";
 import { CHECKLIST_KIND_LABEL, checklistTemplate, type ChecklistKind } from "../checklists";
 import { rosterVersionOf } from "../roster";
-import { isActiveSaleStatus } from "../sales";
 import { SHIFT_LABEL } from "../constants";
+import { getTaskType } from "../task-types";
 import type { ShiftType } from "../types";
 import type { ChecklistActor } from "./types";
 
@@ -43,35 +43,35 @@ async function shiftAssignee(db: AppDb, date: string, shiftType: ShiftType) {
   return rosterVersionOf(slots, date).slots[0]?.userId ?? null;
 }
 
-async function insertBundle(
+async function insertTask(
   db: AppDb,
   input: {
-    kind: ChecklistKind;
-    title: string;
+    kind: string;
     content: string;
-    date: string;
-    shiftId?: string | null;
     stayId?: string | null;
     roomId?: string | null;
+    area?: string | null;
+    fromDept: string;
+    toDept: string;
     dueAt: string | null;
     actorId: string;
     assigneeId?: string | null;
-    shiftType?: ShiftType;
+    note: string;
   },
 ) {
   const now = nowISO();
   const taskId = nid();
-  const checklistId = nid();
+  const type = getTaskType(input.kind);
   await db.insert(t.tasks).values({
     id: taskId,
     kind: input.kind,
     stayId: input.stayId || null,
-    fromDept: "reception",
-    toDept: "reception",
+    fromDept: input.fromDept,
+    toDept: input.toDept,
     roomId: input.roomId || null,
-    area: input.kind === "shift_open" || input.kind === "shift_close" ? "Quầy lễ tân" : null,
+    area: input.area || null,
     content: input.content,
-    priority: "priority",
+    priority: type.priority,
     assigneeId: input.assigneeId || null,
     dueAt: input.dueAt,
     formCode: null,
@@ -93,9 +93,42 @@ async function insertBundle(
     fromStatus: null,
     toStatus: "new",
     actorId: input.actorId,
-    note: `Tự tạo ${CHECKLIST_KIND_LABEL[input.kind]}`,
+    note: input.note,
     createdAt: now,
   });
+  return taskId;
+}
+
+async function insertBundle(
+  db: AppDb,
+  input: {
+    kind: ChecklistKind;
+    title: string;
+    content: string;
+    date: string;
+    shiftId?: string | null;
+    stayId?: string | null;
+    roomId?: string | null;
+    dueAt: string | null;
+    actorId: string;
+    assigneeId?: string | null;
+    shiftType?: ShiftType;
+  },
+) {
+  const taskId = await insertTask(db, {
+    kind: input.kind,
+    content: input.content,
+    stayId: input.stayId,
+    roomId: input.roomId,
+    area: input.kind === "shift_open" || input.kind === "shift_close" ? "Quầy lễ tân" : null,
+    fromDept: "reception",
+    toDept: "reception",
+    dueAt: input.dueAt,
+    actorId: input.actorId,
+    assigneeId: input.assigneeId,
+    note: `Tự tạo ${CHECKLIST_KIND_LABEL[input.kind]}`,
+  });
+  const checklistId = nid();
   await db.insert(t.checklists).values({
     id: checklistId,
     kind: input.kind,
@@ -173,89 +206,37 @@ export async function ensureShiftChecklists(db: AppDb, shift: ShiftRow, actor: C
   }
 }
 
-type RoomJob = {
-  kind: "checkin" | "checkout";
-  roomId: string;
-  stayId?: string | null;
-  guestName: string;
-  roomNumber: string;
-};
+export async function spawnRoomChecklist(
+  db: AppDb,
+  input: {
+    kind: "checkin" | "checkout";
+    guestName: string;
+    roomNumber: string;
+    roomId: string;
+    stayId?: string | null;
+    actorId: string;
+    date?: string;
+  },
+) {
+  const date = input.date || todayVN();
+  const lists = await db.select().from(t.checklists);
+  const exists = lists.some((row) => row.kind === input.kind && row.roomId === input.roomId && row.date === date);
+  if (exists) return null;
+  const verb = input.kind === "checkin" ? "Nhận" : "Trả";
+  const assigneeId = await morningAssignee(db, date);
+  return insertBundle(db, {
+    kind: input.kind,
+    title: `${CHECKLIST_KIND_LABEL[input.kind]} P.${input.roomNumber}`,
+    content: `${verb} P.${input.roomNumber} — ${input.guestName}`,
+    date,
+    stayId: input.stayId,
+    roomId: input.roomId,
+    dueAt: shiftWindow("morning", date).end,
+    actorId: input.actorId,
+    assigneeId,
+  });
+}
 
-export async function ensureTodayRoomTasks(db: AppDb, actor: ChecklistActor, date = todayVN()) {
-  const [stays, sales, rooms, lists] = await Promise.all([
-    db.select().from(t.stays),
-    db.select().from(t.roomSales),
-    db.select().from(t.rooms),
-    db.select().from(t.checklists),
-  ]);
-  const roomOf = new Map(rooms.map((room) => [room.id, room]));
-  const existing = new Set(
-    lists
-      .filter((row) => row.date === date && (row.kind === "checkin" || row.kind === "checkout") && row.roomId)
-      .map((row) => `${row.kind}:${row.roomId}`),
-  );
-
-  const jobs = new Map<string, RoomJob>();
-  const put = (job: RoomJob) => {
-    const key = `${job.kind}:${job.roomId}`;
-    if (existing.has(key) || jobs.has(key)) return;
-    jobs.set(key, job);
-  };
-
-  for (const stay of stays) {
-    if (!stay.roomId) continue;
-    const room = roomOf.get(stay.roomId);
-    if (!room) continue;
-    if (stay.arrivalDate === date && (stay.status === "arriving" || stay.status === "no_show")) {
-      put({ kind: "checkin", roomId: stay.roomId, stayId: stay.id, guestName: stay.guestName, roomNumber: room.number });
-    }
-    if (stay.departureDate === date && (stay.status === "inhouse" || stay.status === "departing")) {
-      put({ kind: "checkout", roomId: stay.roomId, stayId: stay.id, guestName: stay.guestName, roomNumber: room.number });
-    }
-  }
-
-  for (const sale of sales) {
-    if (!isActiveSaleStatus(sale.status)) continue;
-    const room = roomOf.get(sale.roomId);
-    if (!room) continue;
-    const stay = stays.find((row) => row.pmsCode && row.pmsCode === sale.pmsCode) ?? stays.find((row) => row.roomId === sale.roomId && row.guestName === sale.guestName);
-    if (sale.status === "reserved" && sale.checkIn === date) {
-      put({
-        kind: "checkin",
-        roomId: sale.roomId,
-        stayId: stay?.id || null,
-        guestName: sale.guestName,
-        roomNumber: room.number,
-      });
-    }
-    if (sale.status === "inhouse" && sale.checkOut === date) {
-      put({
-        kind: "checkout",
-        roomId: sale.roomId,
-        stayId: stay?.id || null,
-        guestName: sale.guestName,
-        roomNumber: room.number,
-      });
-    }
-  }
-
-  if (!jobs.size) return;
-  const assigneeId = actor.assigneeId || (await morningAssignee(db, date));
-  const dueAt = shiftWindow("morning", date).end;
-  const actorId = actor.actorId || assigneeId || "u-quanly";
-
-  for (const job of jobs.values()) {
-    const verb = job.kind === "checkin" ? "Nhận" : "Trả";
-    await insertBundle(db, {
-      kind: job.kind,
-      title: `${CHECKLIST_KIND_LABEL[job.kind]} P.${job.roomNumber}`,
-      content: `${verb} P.${job.roomNumber} — ${job.guestName}`,
-      date,
-      stayId: job.stayId,
-      roomId: job.roomId,
-      dueAt,
-      actorId,
-      assigneeId,
-    });
-  }
+export async function ensureTodayRoomTasks(_db: AppDb, _actor: ChecklistActor, _date = todayVN()) {
+  return;
 }

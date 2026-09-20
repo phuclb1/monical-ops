@@ -23,8 +23,7 @@ export async function seedDemoOps(db: AppDb, ctx: DemoCtx) {
   
     const curShift = (await db.select().from(t.shifts).where(eq(t.shifts.id, curShiftId)))[0];
     await ensureShiftChecklists(db, curShift, { actorId: dutyId, assigneeId: dutyId });
-    await ensureTodayRoomTasks(db, { actorId: dutyId, assigneeId: LOCAL_WEEK_DUTY.morning });
-  
+
     const due = addMinutes(now, 90);
     const tasks = [
       {
@@ -125,6 +124,8 @@ export async function seedDemoOps(db: AppDb, ctx: DemoCtx) {
         createdAt: row.createdAt,
       });
     }
+
+    await ensureTodayRoomTasks(db, { actorId: dutyId, assigneeId: LOCAL_WEEK_DUTY.morning });
   
     await db.insert(t.breakfasts).values({
       id: nid(),

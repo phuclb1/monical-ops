@@ -54,6 +54,8 @@ test("pax clamp, rollup, grouping, room move", () => {
   assert.equal(rollupBookingStatus(["cancelled"]), "cancelled");
   assert.equal(saleStatusToStay("reserved"), "arriving");
   assert.equal(saleStatusToStay("no_show"), "no_show");
+  assert.equal(saleStatusToStay("cancelled"), "departed");
+  assert.equal(saleStatusToStay("inhouse", { checkOut: "2026-09-19", date: "2026-09-19" }), "departing");
   assert.equal(defaultCheckout("2026-09-19"), "2026-09-20");
 
   const types = [

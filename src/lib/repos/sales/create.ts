@@ -10,7 +10,7 @@ import { audit } from "../audit";
 import { listRooms, listRoomTypes } from "../rooms";
 import { assertSaleWindow, paymentOf, saleLineWindow, salePax, type SaleInput, uniqueSaleRoomIds } from "./helpers";
 import { notifyBookingChange } from "./notify";
-import { syncStayFromSale } from "./stay";
+import { applySaleRoomState, syncStayFromSale } from "./stay";
 
 export async function createRoomSale(user: SessionUser, data: SaleInput) {
   const guestName = data.guestName.trim();
@@ -92,6 +92,7 @@ export async function createRoomSale(user: SessionUser, data: SaleInput) {
     };
     await db.insert(t.roomSales).values(record);
     await syncStayFromSale(user.id, record);
+    if (status === "inhouse") await applySaleRoomState(user.id, record);
     await audit(user.id, "room_sale", id, "create", null, record);
     ids.push(id);
   }

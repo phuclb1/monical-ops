@@ -91,10 +91,17 @@ export function quoteLinesBySaleId<T extends { id: string; bookingId?: string | 
   return map;
 }
 
-export function saleStatusToStay(status: string) {
-  if (status === "inhouse") return "inhouse" as const;
+export function saleStatusToStay(
+  status: string,
+  opts?: { checkOut?: string; date?: string },
+) {
+  if (status === "cancelled") return "departed" as const;
+  if (status === "no_show") return "no_show" as const;
   if (status === "departed") return "departed" as const;
-  if (status === "cancelled" || status === "no_show") return "no_show" as const;
+  if (status === "inhouse") {
+    if (opts?.checkOut && opts?.date && opts.checkOut <= opts.date) return "departing" as const;
+    return "inhouse" as const;
+  }
   return "arriving" as const;
 }
 

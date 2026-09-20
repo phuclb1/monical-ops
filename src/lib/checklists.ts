@@ -55,7 +55,6 @@ export function shiftCloseTemplate(type: ShiftType): ChecklistTemplateItem[] {
 
 export function checkinTemplate(): ChecklistTemplateItem[] {
   return [
-    R("ins", "Phòng INS / sẵn sàng"),
     R("pms", "Check-in PMS"),
     R("key", "Đưa chìa / thẻ phòng"),
     R("registration", "Đăng ký lưu trú"),
@@ -69,7 +68,6 @@ export function checkoutTemplate(): ChecklistTemplateItem[] {
     R("pms", "Check-out PMS"),
     R("key", "Thu chìa / thẻ"),
     R("vehicle", "Xe / chìa đã trả", false),
-    R("hk", "Đã gửi HK dọn trả"),
   ];
 }
 

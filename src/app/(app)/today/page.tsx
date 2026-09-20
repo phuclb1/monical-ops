@@ -20,8 +20,10 @@ export default async function TodayPage() {
   const open = await currentOpenShift();
   const bundle = open ? await getShiftBundle(open.id, user.role === "manager" ? undefined : user.departmentCode) : null;
   const myShiftLists = (bundle?.checklists ?? []).slice().sort((a) => (a.kind === "shift_open" ? -1 : 1));
-  const roomJobs = data.nowTasks.filter((task) => task.kind === "checkin" || task.kind === "checkout");
-  const otherNow = data.nowTasks.filter((task) => !isChecklistTaskKind(task.kind));
+  const roomJobs = data.nowTasks.filter((task) =>
+    ["checkin", "checkout", "inspect", "housekeeping", "checkout_clean"].includes(task.kind),
+  );
+  const otherNow = data.nowTasks.filter((task) => !isChecklistTaskKind(task.kind) && !["inspect", "housekeeping", "checkout_clean"].includes(task.kind));
   const sales = can(user.role, "manageSales") ? await salesBoard(todayVN()) : null;
 
   return (
@@ -166,20 +168,22 @@ export default async function TodayPage() {
       </Card>
 
       <Card>
-        <SectionTitle hint="Ca sáng phụ trách">Nhận / trả hôm nay</SectionTitle>
+        <SectionTitle hint="Ca sáng phụ trách">Nhận / trả / HK hôm nay</SectionTitle>
         {roomJobs.length ? (
           <ul className="space-y-2">
             {roomJobs.map((task) => (
               <li key={task.id}>
                 <Link href={`/tasks/${task.id}`} className="flex min-h-12 items-center justify-between gap-2">
                   <span className="text-sm font-medium">{task.content}</span>
-                  <Chip tone={task.kind === "checkin" ? "teal" : "warn"}>{task.kind === "checkin" ? "Nhận" : "Trả"}</Chip>
+                  <Chip tone={task.kind === "checkin" ? "teal" : task.kind === "inspect" ? "warn" : task.toDept === "hk" ? "gold" : "warn"}>
+                    {task.kind === "checkin" ? "Nhận" : task.kind === "checkout" ? "Trả" : task.kind === "inspect" ? "HK kiểm" : task.kind === "housekeeping" ? "Dọn ở" : "Dọn trả"}
+                  </Chip>
                 </Link>
               </li>
             ))}
           </ul>
         ) : (
-          <Empty title="Không có phòng nhận / trả hôm nay" />
+          <Empty title="Chưa có việc nhận / trả / HK theo phòng" />
         )}
         <Link href="/tasks" className="mt-3 block text-center text-sm font-semibold text-teal">
           Bảng việc

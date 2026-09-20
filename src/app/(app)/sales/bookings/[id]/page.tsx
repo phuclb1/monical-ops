@@ -1,18 +1,12 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
-import {
-  addRoomsToBookingAction,
-  cancelBookingAction,
-  checkinBookingAction,
-  checkoutBookingAction,
-  updateBookingAction,
-} from "@/actions/sales";
+import { addRoomsToBookingAction, cancelBookingAction, updateBookingAction } from "@/actions/sales";
 import { AddBookingRoomsForm, BookingForm } from "@/components/sale-form";
 import { BookingExtrasPanel } from "@/components/booking-extras";
 import { BookingPaymentPanel } from "@/components/booking-payment";
 import { BookingRoomList } from "@/components/booking-room-list";
 import { BookingLog } from "@/components/booking-log";
-import { Btn, Card, Chip, Fold } from "@/components/ui";
+import { Card, Chip, Fold } from "@/components/ui";
 import { getSession } from "@/lib/auth";
 import { SALE_ORIGIN_LABEL, SALE_SOURCE_LABEL, SALE_STATUS_LABEL } from "@/lib/constants";
 import { formatDateLong, todayVN } from "@/lib/datetime";
@@ -159,22 +153,12 @@ export default async function BookingDetailPage({
             ) : null}
             {readyIn.length || staying.length ? (
               <div className="mt-3 space-y-2 border-t border-line pt-3">
-                {readyIn.length ? (
-                  <form action={checkinBookingAction}>
-                    <input type="hidden" name="bookingId" value={booking.id} />
-                    <Btn type="submit" className="w-full">
-                      {booking.due ? "Nhận · còn thu" : readyIn.length > 1 ? `Nhận ${readyIn.length} phòng` : "Nhận"}
-                    </Btn>
-                  </form>
-                ) : null}
-                {staying.length ? (
-                  <form action={checkoutBookingAction}>
-                    <input type="hidden" name="bookingId" value={booking.id} />
-                    <Btn type="submit" className="w-full">
-                      {staying.length > 1 ? `Trả ${staying.length} phòng` : "Trả"}
-                    </Btn>
-                  </form>
-                ) : null}
+                <p className="text-xs text-[#5c6665]">Gửi HK kiểm phòng trên từng chỗ bán, rồi mới nhận hoặc hoàn tất trả.</p>
+                {[...readyIn, ...staying].map((row) => (
+                  <Link key={row.id} href={`/sales/${row.id}`} className="cta-link w-full">
+                    P.{row.room?.number || "—"} · Giao việc HK
+                  </Link>
+                ))}
               </div>
             ) : null}
           </Card>

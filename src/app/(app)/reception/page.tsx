@@ -6,7 +6,9 @@ import { getSession } from "@/lib/auth";
 import { SALE_ORIGIN_LABEL, SALE_SOURCE_LABEL, STAY_LABEL } from "@/lib/constants";
 import { maskName } from "@/lib/mask";
 import { listStays } from "@/lib/repos";
-import type { SaleOrigin, SaleSource, StayStatus } from "@/lib/types";
+import { stayBoardStatus } from "@/lib/stay-checklist";
+import { todayVN } from "@/lib/datetime";
+import type { SaleOrigin, SaleSource } from "@/lib/types";
 
 export default async function ReceptionPage({
   searchParams,
@@ -17,8 +19,9 @@ export default async function ReceptionPage({
   if (!user) redirect("/login");
   const { tab = "inhouse" } = await searchParams;
   const stays = await listStays();
+  const today = todayVN();
   const tabs = ["arriving", "inhouse", "departing", "no_show"] as const;
-  const rows = stays.filter((s) => s.status === tab);
+  const rows = stays.filter((s) => stayBoardStatus(s, today) === tab);
 
   return (
     <main className="space-y-3 px-3 py-4">
@@ -43,7 +46,7 @@ export default async function ReceptionPage({
                     {SALE_SOURCE_LABEL[s.source as SaleSource] || s.source || "—"} · {SALE_ORIGIN_LABEL[(s.origin as SaleOrigin) || "ops"]} · {s.pmsCode} · P.{s.room?.number || "—"}
                   </p>
                 </div>
-                <Chip>{STAY_LABEL[s.status as StayStatus]}</Chip>
+                <Chip>{STAY_LABEL[stayBoardStatus(s, today)]}</Chip>
               </div>
               {s.vehicles.length ? (
                 <p className="mt-1 text-xs text-[#5c6665]">Xe {s.vehicles.map((v) => v.plate).join(", ")}</p>

@@ -1,13 +1,15 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
-import { addRoomsToBookingAction, cancelSaleAction, checkinSaleAction, checkoutSaleAction } from "@/actions/sales";
+import { addRoomsToBookingAction, cancelSaleAction } from "@/actions/sales";
 import { AddBookingRoomsForm } from "@/components/sale-form";
+import { RoomHandoffPanel } from "@/components/room-handoff";
 import { Btn, Card, Chip } from "@/components/ui";
 import { getSession } from "@/lib/auth";
 import { SALE_ORIGIN_LABEL, SALE_SOURCE_LABEL, SALE_STATUS_LABEL } from "@/lib/constants";
 import { formatDateLong, todayVN } from "@/lib/datetime";
 import { can } from "@/lib/permissions";
-import { getRoomSale, getRoomDayChecklists, getBooking, listRooms } from "@/lib/repos";
+import { getRoomSale, getRoomDayChecklists, getBooking, listRooms, listRoomHandoff } from "@/lib/repos";
+import { canCheckinAfterStandby, canCheckoutAfterInspect } from "@/lib/room-handoff";
 import { bookingDue, bookingQuote, discountLabel, formatVnd, isOpsBookingCode, paidNote } from "@/lib/sales";
 import type { SaleOrigin, SaleSource, SaleStatus } from "@/lib/types";
 
@@ -33,10 +35,16 @@ export default async function SaleDetailPage({
   const { error } = await searchParams;
   const [sale, rooms] = await Promise.all([getRoomSale(id), listRooms()]);
   if (!sale) notFound();
-  const [roomLists, booking] = await Promise.all([
+  const [roomLists, booking, handoff] = await Promise.all([
     sale.roomId ? getRoomDayChecklists(sale.roomId) : Promise.resolve([]),
     getBooking(sale.bookingKey),
+    sale.roomId ? listRoomHandoff(sale.roomId) : Promise.resolve([]),
   ]);
+  const visibleLists = roomLists.filter((list) => {
+    if (list.kind === "checkin") return canCheckinAfterStandby(handoff);
+    if (list.kind === "checkout") return canCheckoutAfterInspect(handoff);
+    return true;
+  });
   const today = todayVN();
   const active = sale.status === "reserved" || sale.status === "inhouse";
   const group = [sale, ...sale.peers].sort((a, b) => (a.room?.number || "").localeCompare(b.room?.number || ""));
@@ -137,11 +145,11 @@ export default async function SaleDetailPage({
         </Card>
       ) : null}
 
-      {roomLists.length ? (
+      {visibleLists.length ? (
         <Card className="space-y-2">
           <h2 className="font-bold">Checklist lễ tân</h2>
-          <p className="text-xs text-[#5c6665]">Không chặn nhận / trả phòng. Tick trên việc theo phòng.</p>
-          {roomLists.map((list) => (
+          <p className="text-xs text-[#5c6665]">Mở sau khi HK hoàn thành kiểm phòng. Tick đăng ký / chìa / PMS.</p>
+          {visibleLists.map((list) => (
             <Link key={list.id} href={list.taskId ? `/tasks/${list.taskId}` : "/tasks"} className="block min-h-11 text-sm font-semibold text-teal">
               {list.title}
               {list.taskId ? " — mở việc" : ""}
@@ -150,21 +158,16 @@ export default async function SaleDetailPage({
         </Card>
       ) : null}
 
-      {sale.status === "reserved" ? (
-        <form action={checkinSaleAction}>
-          <input type="hidden" name="id" value={sale.id} />
-          <Btn type="submit" className="w-full" disabled={today < sale.checkIn}>
-            Nhận phòng
-          </Btn>
-        </form>
-      ) : null}
-      {sale.status === "inhouse" ? (
-        <form action={checkoutSaleAction}>
-          <input type="hidden" name="id" value={sale.id} />
-          <Btn type="submit" className="w-full">
-            Trả phòng
-          </Btn>
-        </form>
+      {sale.roomId && (sale.status === "reserved" || sale.status === "inhouse") ? (
+        <RoomHandoffPanel
+          roomId={sale.roomId}
+          saleId={sale.id}
+          saleStatus={sale.status}
+          checkIn={sale.checkIn}
+          today={today}
+          tasks={handoff}
+          error={error}
+        />
       ) : null}
 
       {active ? (

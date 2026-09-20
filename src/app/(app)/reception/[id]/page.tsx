@@ -1,14 +1,18 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
-import { addRequestAction, addVehicleAction, completeRequestAction, inspectRoomAction, stayPatchAction, taskStatusAction } from "@/actions/ops";
+import { addRequestAction, addVehicleAction, completeRequestAction, stayPatchAction, taskStatusAction } from "@/actions/ops";
 import { ChecklistPanel } from "@/components/checklist-panel";
+import { RoomHandoffPanel } from "@/components/room-handoff";
 import { Btn, Card, Chip, Field } from "@/components/ui";
 import { RegistrationTimer } from "@/components/countdown";
 import { getSession } from "@/lib/auth";
 import { requestKindLabel, SALE_ORIGIN_LABEL, SALE_SOURCE_LABEL, TASK_STATUS_LABEL } from "@/lib/constants";
 import { can } from "@/lib/permissions";
 import { maskName, maskPhone } from "@/lib/mask";
-import { getStay } from "@/lib/repos";
+import { activeSaleForRoom, getStay, listRoomHandoff } from "@/lib/repos";
+import { stayBoardStatus } from "@/lib/stay-checklist";
+import { canCheckinAfterStandby, canCheckoutAfterInspect } from "@/lib/room-handoff";
+import { todayVN } from "@/lib/datetime";
 import { STAY_TASK_KINDS, isChecklistTaskKind, taskTypeLabel } from "@/lib/task-types";
 import type { SaleOrigin, SaleSource, TaskStatus } from "@/lib/types";
 
@@ -25,14 +29,30 @@ function Confirm({ id, field, label, done }: { id: string; field: string; label:
   );
 }
 
-export default async function StayPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function StayPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ error?: string }>;
+}) {
   const user = await getSession();
   if (!user) redirect("/login");
   const { id } = await params;
+  const { error } = await searchParams;
   const stay = await getStay(id);
   if (!stay) notFound();
   const pii = can(user.role, "viewGuestPii");
   const roomTasks = stay.tasks.filter((task) => !isChecklistTaskKind(task.kind));
+  const board = stayBoardStatus(stay, todayVN());
+  const sale = stay.roomId ? await activeSaleForRoom(stay.roomId) : null;
+  const handoff = stay.roomId ? await listRoomHandoff(stay.roomId) : [];
+  const saleStatus = sale?.status || (board === "arriving" ? "reserved" : board === "inhouse" || board === "departing" ? "inhouse" : "departed");
+  const visibleLists = stay.checklists.filter((list) => {
+    if (list.kind === "checkin") return canCheckinAfterStandby(handoff);
+    if (list.kind === "checkout") return canCheckoutAfterInspect(handoff);
+    return true;
+  });
 
   return (
     <main className="space-y-3 px-3 py-4">
@@ -46,16 +66,29 @@ export default async function StayPage({ params }: { params: Promise<{ id: strin
       {pii ? <p className="text-sm">SĐT {maskPhone(stay.guestPhone)}</p> : <p className="text-sm">SĐT đã che</p>}
       <RegistrationTimer dueAt={stay.registrationDueAt} doneAt={stay.registrationDoneAt} />
 
-      {stay.checklists.map((list) => (
+      {visibleLists.map((list) => (
         <div key={list.id} className="space-y-1">
           {list.taskId ? (
             <Link href={`/tasks/${list.taskId}`} className="block text-sm font-semibold text-teal">
               Mở việc trên bảng
             </Link>
           ) : null}
-          <ChecklistPanel list={list} hint="Cùng task trên bảng việc. Tick tay — không chặn nhận/trả phòng." />
+          <ChecklistPanel list={list} hint="Mở sau khi HK kiểm phòng xong. Tick đăng ký / chìa / PMS." />
         </div>
       ))}
+
+      {stay.roomId && (saleStatus === "reserved" || saleStatus === "inhouse") ? (
+        <RoomHandoffPanel
+          roomId={stay.roomId}
+          stayId={stay.id}
+          saleId={sale?.id}
+          saleStatus={saleStatus}
+          checkIn={sale?.checkIn || stay.arrivalDate}
+          today={todayVN()}
+          tasks={handoff}
+          error={error}
+        />
+      ) : null}
 
       <Card className="space-y-2">
         <h2 className="font-bold">Đối chiếu ezCloudhotel PMS</h2>
@@ -170,16 +203,6 @@ export default async function StayPage({ params }: { params: Promise<{ id: strin
           </Btn>
         </form>
       </Card>
-
-      {stay.roomId && stay.status === "departing" ? (
-        <form action={inspectRoomAction}>
-          <input type="hidden" name="roomId" value={stay.roomId} />
-          <input type="hidden" name="stayId" value={stay.id} />
-          <Btn type="submit" className="w-full">
-            Gửi HK dọn phòng trả
-          </Btn>
-        </form>
-      ) : null}
     </main>
   );
 }
