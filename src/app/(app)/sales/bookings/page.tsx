@@ -6,7 +6,7 @@ import { SALE_ORIGIN_LABEL, SALE_SOURCE_LABEL, SALE_STATUS_LABEL } from "@/lib/c
 import { formatDateLong, formatDateNumeric } from "@/lib/datetime";
 import { can } from "@/lib/permissions";
 import { listBookings } from "@/lib/repos";
-import { formatVnd, isOpsBookingCode, paidNote } from "@/lib/sales";
+import { formatVnd, isOpsBookingCode, matchesBookingSearch, paidNote } from "@/lib/sales";
 import type { SaleOrigin, SaleSource, SaleStatus } from "@/lib/types";
 
 const TABS = [
@@ -39,22 +39,22 @@ export default async function BookingsPage({
   if (!can(user.role, "manageSales")) redirect("/more");
   const { tab: rawTab, q: rawQ } = await searchParams;
   const tab = isTab(rawTab || "") ? rawTab : "open";
-  const q = (rawQ || "").trim().toLowerCase();
+  const q = (rawQ || "").trim();
   const bookings = await listBookings();
+  const matched = q ? bookings.filter((row) => matchesBookingSearch(row, q)) : bookings;
   const counts = {
-    open: bookings.filter((row) => row.status === "reserved" || row.status === "inhouse").length,
-    reserved: bookings.filter((row) => row.status === "reserved").length,
-    inhouse: bookings.filter((row) => row.status === "inhouse").length,
-    done: bookings.filter((row) => row.status === "departed" || row.status === "cancelled" || row.status === "no_show").length,
-    all: bookings.length,
+    open: matched.filter((row) => row.status === "reserved" || row.status === "inhouse").length,
+    reserved: matched.filter((row) => row.status === "reserved").length,
+    inhouse: matched.filter((row) => row.status === "inhouse").length,
+    done: matched.filter((row) => row.status === "departed" || row.status === "cancelled" || row.status === "no_show").length,
+    all: matched.length,
   };
-  const rows = bookings
+  const rows = matched
     .filter((row) => {
       if (tab === "open" && row.status !== "reserved" && row.status !== "inhouse") return false;
       if (tab === "reserved" && row.status !== "reserved") return false;
       if (tab === "inhouse" && row.status !== "inhouse") return false;
       if (tab === "done" && row.status !== "departed" && row.status !== "cancelled" && row.status !== "no_show") return false;
-      if (q && !`${row.guestName} ${row.pmsCode || ""} ${row.roomLabel}`.toLowerCase().includes(q)) return false;
       return true;
     })
     .sort((a, b) => b.createdAt.localeCompare(a.createdAt) || b.id.localeCompare(a.id));
@@ -83,23 +83,45 @@ export default async function BookingsPage({
 
       <form className="card p-3 md:flex md:items-end md:gap-3 md:p-4">
         <div className="md:min-w-0 md:flex-1">
-          <Field label="Tìm khách / phòng / mã">
-            <input name="q" defaultValue={rawQ || ""} placeholder="Tên khách, P.101, BK-09-1…" />
+          <Field label="Tìm booking">
+            <input
+              name="q"
+              type="search"
+              defaultValue={rawQ || ""}
+              placeholder="Tên, SĐT, phòng, mã, ghi chú, nguồn…"
+              autoComplete="off"
+              enterKeyHint="search"
+            />
           </Field>
         </div>
         {tab !== "open" ? <input type="hidden" name="tab" value={tab} /> : null}
-        <Btn type="submit" variant="ghost" className="mt-2 w-full md:mt-0 md:w-auto md:px-6">
-          Tìm
-        </Btn>
+        <div className="mt-2 flex gap-2 md:mt-0">
+          <Btn type="submit" variant="ghost" className="w-full md:w-auto md:px-6">
+            Tìm
+          </Btn>
+          {q ? (
+            <Link
+              href={tab === "open" ? "/sales/bookings" : `/sales/bookings?tab=${tab}`}
+              className="inline-flex min-h-12 items-center justify-center rounded-xl px-4 text-sm font-semibold text-teal"
+            >
+              Xóa
+            </Link>
+          ) : null}
+        </div>
       </form>
 
       <div className="tab-scroller -mx-3 px-3 pb-1">
         {TABS.map((item) => (
-          <TabChip key={item.id} href={item.id === "open" && !q ? "/sales/bookings" : `/sales/bookings?tab=${item.id}${q ? `&q=${encodeURIComponent(rawQ || "")}` : ""}`} active={tab === item.id}>
+          <TabChip key={item.id} href={item.id === "open" && !q ? "/sales/bookings" : `/sales/bookings?tab=${item.id}${q ? `&q=${encodeURIComponent(q)}` : ""}`} active={tab === item.id}>
             {item.label} · {counts[item.id]}
           </TabChip>
         ))}
       </div>
+      {q ? (
+        <p className="text-xs text-[#5c6665]">
+          {rows.length} kết quả trong tab này · {counts.all} booking khớp “{q}”
+        </p>
+      ) : null}
 
       {rows.length ? (
         <>
@@ -185,7 +207,10 @@ export default async function BookingsPage({
           </div>
         </>
       ) : (
-        <Empty title="Không có booking khớp" text={q ? "Đổi từ khóa hoặc tab." : "Bấm Đặt mới để tạo booking."} />
+        <Empty
+          title="Không có booking khớp"
+          text={q ? "Đổi từ khóa hoặc tab. Có thể tìm tên (không dấu), SĐT, phòng, mã, ghi chú, nguồn." : "Bấm Đặt mới để tạo booking."}
+        />
       )}
     </main>
   );

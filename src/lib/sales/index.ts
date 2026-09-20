@@ -58,3 +58,5 @@ export {
   saleStatusToStay,
   defaultCheckout,
 } from "./pax";
+export { bookingSearchText, matchesBookingSearch } from "./search";
+export type { BookingSearchRow } from "./search";
