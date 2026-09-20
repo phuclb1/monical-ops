@@ -3,7 +3,7 @@ import { checkinSaleAction, checkoutSaleAction } from "@/actions/sales";
 import { requestHandoffAction } from "@/actions/ops";
 import { Btn, Card, Chip } from "@/components/ui";
 import { TASK_STATUS_LABEL } from "@/lib/constants";
-import { canCheckinAfterStandby, canCheckoutAfterInspect, doneHandoff, openHandoff } from "@/lib/room-handoff";
+import { canCheckinAfterStandby, canCheckoutAfterInspect, doneHandoff, openHandoff, type HandoffTask } from "@/lib/room-handoff";
 import { taskTypeLabel } from "@/lib/task-types";
 import type { TaskStatus } from "@/lib/types";
 
@@ -140,8 +140,8 @@ function HandoffRow({
   allowRepeat,
 }: {
   label: string;
-  open?: Task;
-  done?: Task;
+  open?: HandoffTask;
+  done?: HandoffTask;
   actionLabel: string;
   purpose: string;
   roomId: string;
@@ -152,12 +152,12 @@ function HandoffRow({
   return (
     <div className="space-y-2 rounded-xl bg-sand p-3">
       <p className="text-sm font-semibold">{label}</p>
-      {open ? (
+      {open?.id ? (
         <Link href={`/tasks/${open.id}`} className="flex min-h-11 items-center justify-between gap-2 text-sm font-semibold text-teal">
           <span>{open.content}</span>
           <Chip tone="warn">{TASK_STATUS_LABEL[open.status as TaskStatus] || "Đang làm"}</Chip>
         </Link>
-      ) : done && !allowRepeat ? (
+      ) : done?.id && !allowRepeat ? (
         <Link href={`/tasks/${done.id}`} className="flex min-h-11 items-center justify-between gap-2 text-sm font-semibold text-teal">
           <span>{taskTypeLabel(done.kind)} — HK đã xong</span>
           <Chip tone="ok">Xong</Chip>

@@ -10,7 +10,7 @@ import { formatVnd, isOpsBookingCode, matchesBookingSearch, paidNote } from "@/l
 import type { SaleOrigin, SaleSource, SaleStatus } from "@/lib/types";
 
 const TABS = [
-  { id: "open", label: "Đang mở" },
+  { id: "open", label: "Đang mở / đã trả" },
   { id: "reserved", label: "Giữ chỗ" },
   { id: "inhouse", label: "Đang ở" },
   { id: "done", label: "Đã đóng" },
@@ -43,7 +43,7 @@ export default async function BookingsPage({
   const bookings = await listBookings();
   const matched = q ? bookings.filter((row) => matchesBookingSearch(row, q)) : bookings;
   const counts = {
-    open: matched.filter((row) => row.status === "reserved" || row.status === "inhouse").length,
+    open: matched.filter((row) => row.status === "reserved" || row.status === "inhouse" || row.status === "departed").length,
     reserved: matched.filter((row) => row.status === "reserved").length,
     inhouse: matched.filter((row) => row.status === "inhouse").length,
     done: matched.filter((row) => row.status === "departed" || row.status === "cancelled" || row.status === "no_show").length,
@@ -51,7 +51,7 @@ export default async function BookingsPage({
   };
   const rows = matched
     .filter((row) => {
-      if (tab === "open" && row.status !== "reserved" && row.status !== "inhouse") return false;
+      if (tab === "open" && row.status !== "reserved" && row.status !== "inhouse" && row.status !== "departed") return false;
       if (tab === "reserved" && row.status !== "reserved") return false;
       if (tab === "inhouse" && row.status !== "inhouse") return false;
       if (tab === "done" && row.status !== "departed" && row.status !== "cancelled" && row.status !== "no_show") return false;

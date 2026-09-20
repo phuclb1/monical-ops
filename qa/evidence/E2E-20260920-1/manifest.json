@@ -1,0 +1,175 @@
+{
+  "runId": "E2E-20260920-1",
+  "date": "2026-09-20T14:14:36.025Z",
+  "commit": "1e56aca-dirty",
+  "env": "http://localhost:3002",
+  "guest": "E2E Van A",
+  "room": "101",
+  "pass": 23,
+  "fail": 0,
+  "total": 23,
+  "passRate": "100%",
+  "results": [
+    {
+      "id": "E2E-R1",
+      "title": "Lễ tân vào Today — ca đang mở + đầu ca",
+      "result": "pass",
+      "evidence": "qa/evidence/E2E-20260920-1/E2E-R1.png",
+      "note": ""
+    },
+    {
+      "id": "E2E-R2",
+      "title": "Tick 1 mục checklist đầu ca",
+      "result": "pass",
+      "evidence": "qa/evidence/E2E-20260920-1/E2E-R2.png",
+      "note": ""
+    },
+    {
+      "id": "E2E-R3",
+      "title": "Bán P.101 — giữ chỗ, cọc, chưa nhận",
+      "result": "pass",
+      "evidence": "qa/evidence/E2E-20260920-1/E2E-R3.png",
+      "note": ""
+    },
+    {
+      "id": "E2E-R4",
+      "title": "Sơ đồ ngày hiện booking E2E",
+      "result": "pass",
+      "evidence": "qa/evidence/E2E-20260920-1/E2E-R4.png",
+      "note": ""
+    },
+    {
+      "id": "E2E-S1",
+      "title": "Tìm booking theo tên — tab mặc định gồm đã giữ",
+      "result": "pass",
+      "evidence": "qa/evidence/E2E-20260920-1/E2E-S1.png",
+      "note": ""
+    },
+    {
+      "id": "E2E-R5",
+      "title": "Gửi HK kiểm phòng standby — chưa cho nhận",
+      "result": "pass",
+      "evidence": "qa/evidence/E2E-20260920-1/E2E-R5.png",
+      "note": ""
+    },
+    {
+      "id": "E2E-H1",
+      "title": "HK login — không vào bán phòng",
+      "result": "pass",
+      "evidence": "qa/evidence/E2E-20260920-1/E2E-H1.png",
+      "note": ""
+    },
+    {
+      "id": "E2E-H2",
+      "title": "HK hoàn tất standby P.101",
+      "result": "pass",
+      "evidence": "qa/evidence/E2E-20260920-1/E2E-H2.png",
+      "note": ""
+    },
+    {
+      "id": "E2E-R6",
+      "title": "Lễ tân nhận phòng sau khi HK standby xong",
+      "result": "pass",
+      "evidence": "qa/evidence/E2E-20260920-1/E2E-R6.png",
+      "note": ""
+    },
+    {
+      "id": "E2E-R8",
+      "title": "Lễ tân gửi HK dọn phòng khách ở",
+      "result": "pass",
+      "evidence": "qa/evidence/E2E-20260920-1/E2E-R8.png",
+      "note": ""
+    },
+    {
+      "id": "E2E-H3",
+      "title": "HK thấy việc dọn khách ở",
+      "result": "pass",
+      "evidence": "qa/evidence/E2E-20260920-1/E2E-H3.png",
+      "note": ""
+    },
+    {
+      "id": "E2E-H4",
+      "title": "HK hoàn tất dọn phòng khách ở",
+      "result": "pass",
+      "evidence": "qa/evidence/E2E-20260920-1/E2E-H4.png",
+      "note": ""
+    },
+    {
+      "id": "E2E-R13",
+      "title": "Lễ tân gửi HK kiểm phòng trước trả",
+      "result": "pass",
+      "evidence": "qa/evidence/E2E-20260920-1/E2E-R13.png",
+      "note": ""
+    },
+    {
+      "id": "E2E-H7",
+      "title": "HK hoàn tất kiểm phòng trả",
+      "result": "pass",
+      "evidence": "qa/evidence/E2E-20260920-1/E2E-H7.png",
+      "note": ""
+    },
+    {
+      "id": "E2E-R14",
+      "title": "Lễ tân hoàn tất trả phòng",
+      "result": "pass",
+      "evidence": "qa/evidence/E2E-20260920-1/E2E-R14.png",
+      "note": ""
+    },
+    {
+      "id": "E2E-S2",
+      "title": "Tab mặc định + tìm kiếm hiện booking đã trả",
+      "result": "pass",
+      "evidence": "qa/evidence/E2E-20260920-1/E2E-S2.png",
+      "note": ""
+    },
+    {
+      "id": "E2E-H8",
+      "title": "HK thấy việc dọn trả tự tạo",
+      "result": "pass",
+      "evidence": "qa/evidence/E2E-20260920-1/E2E-H8.png",
+      "note": ""
+    },
+    {
+      "id": "E2E-R9",
+      "title": "Filter Phòng bẩn có P.101 sau trả",
+      "result": "pass",
+      "evidence": "qa/evidence/E2E-20260920-1/E2E-R9.png",
+      "note": ""
+    },
+    {
+      "id": "E2E-H5",
+      "title": "HK chuyển status phòng nếu được",
+      "result": "pass",
+      "evidence": "qa/evidence/E2E-20260920-1/E2E-H5.png",
+      "note": ""
+    },
+    {
+      "id": "E2E-H6",
+      "title": "Phòng bẩn không còn khách E2E sau dọn trả",
+      "result": "pass",
+      "evidence": "qa/evidence/E2E-20260920-1/E2E-H6.png",
+      "note": ""
+    },
+    {
+      "id": "E2E-R12",
+      "title": "Lễ tân không vào nhật ký",
+      "result": "pass",
+      "evidence": "qa/evidence/E2E-20260920-1/E2E-R12.png",
+      "note": ""
+    },
+    {
+      "id": "E2E-R11",
+      "title": "Bàn giao còn trang gom việc",
+      "result": "pass",
+      "evidence": "qa/evidence/E2E-20260920-1/E2E-R11.png",
+      "note": ""
+    },
+    {
+      "id": "E2E-R10",
+      "title": "Cuối ca hiện trên ca đang mở",
+      "result": "pass",
+      "evidence": "qa/evidence/E2E-20260920-1/E2E-R10.png",
+      "note": ""
+    }
+  ]
+}

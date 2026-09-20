@@ -35,15 +35,15 @@ Tài khoản PRD: chỉ `quanly` / `123456`.
 
 | | |
 |---|---|
-| **Run** | `R-20260919-3` |
-| **Ngày** | 2026-09-19 06:59 +07 |
-| **Commit** | `a8f4ea7-dirty` |
+| **Run** | `R-20260920-3` |
+| **Ngày** | 2026-09-20 21:51 +07 |
+| **Commit** | `1e56aca-dirty` |
 | **Môi trường** | **local** `http://localhost:3002` |
-| **Pass** | **68 / 68** đã chạy |
+| **Pass** | **72 / 72** đã chạy |
 | **Fail** | 0 |
 | **Skip** | catalog còn skip thao tác tay / PWA (TC-06, 17, 18, 26, 31, 51, 62, 71, 80–82) |
 | **Tỷ lệ pass (đã chạy)** | **100%** |
-| **Ghi chú** | Smoke sau refactor module notifications + PWA cache. E2E `E2E-20260919-1` **18/18 = 100%**. Ca sáng. |
+| **Ghi chú** | Smoke process HK handoff + tìm booking (TC-13, 72–76, 101, 140–143). E2E `E2E-20260920-1` **23/23 = 100%**. Ca chiều. |
 
 PRD gần nhất: `R-20260915-prd3` · Worker `fe86b482-50aa-4ad3-886d-b0d8e5916ccd` · **19/19 = 100%** (26 skip vì PRD chỉ `quanly`, không seed khách/việc).
 
@@ -71,7 +71,7 @@ Trạng thái: `pass` · `fail` · `skip` (chưa chạy vòng này).
 | TC-10 | Tab khách đến — Nguyễn Thu Hà P.105 | `tuyen` | pass | `a8f4ea7-dirty` | [TC-10.png](evidence/R-20260919-3/TC-10.png) |
 | TC-11 | Tab đang ở — Khoa + Hạnh | `tuyen` | pass | `a8f4ea7-dirty` | [TC-11.png](evidence/R-20260919-3/TC-11.png) |
 | TC-12 | Tab khách đi — Phạm Đức Anh P.102 | `tuyen` | pass | `a8f4ea7-dirty` | [TC-12.png](evidence/R-20260919-3/TC-12.png) |
-| TC-13 | Thẻ check-in: booking xong, chưa check-in PMS | `tuyen` | pass | `a8f4ea7-dirty` | [TC-13.png](evidence/R-20260919-3/TC-13.png) |
+| TC-13 | Thẻ check-in P.105: giao HK standby trước nhận | `tuyen` | pass | `a8f4ea7-dirty` | [TC-13.png](evidence/R-20260919-3/TC-13.png) |
 | TC-14 | Gửi ô tô 51H-223.18 + timer đăng ký P.305 | `tuyen` | pass | `a8f4ea7-dirty` | [TC-14.png](evidence/R-20260919-3/TC-14.png) |
 | TC-15 | Checkout: thiếu hóa đơn, việc dọn phòng trả | `tuyen` | pass | `a8f4ea7-dirty` | [TC-15.png](evidence/R-20260919-3/TC-15.png) |
 | TC-16 | Bấm xác nhận check-in PMS → bắt đầu 30 phút | `tuyen` | pass | `a8f4ea7-dirty` | [TC-16.png](evidence/R-20260919-3/TC-16.png) |
@@ -98,7 +98,10 @@ Trạng thái: `pass` · `fail` · `skip` (chưa chạy vòng này).
 | TC-98 | HK không vào `/sales` (về Thêm) | `uyen` | pass | `a8f4ea7-dirty` | [TC-98.png](evidence/R-20260919-3/TC-98.png) |
 | TC-99 | Form bán: nền tảng Booking.com / Agoda / vãng lai | `tuyen` | pass | `a8f4ea7-dirty` | [TC-99.png](evidence/R-20260919-3/TC-99.png) |
 | TC-100 | Sơ đồ lọc Ops / ezCloud | `tuyen` | pass | `a8f4ea7-dirty` | [TC-100.png](evidence/R-20260919-3/TC-100.png) |
-| TC-101 | Danh sách đặt phòng / booking | `tuyen` | pass | `a8f4ea7-dirty` | [TC-101.png](evidence/R-20260919-3/TC-101.png) |
+| TC-101 | Danh sách đặt phòng: tab Đang mở / đã trả + ô tìm | `tuyen` | pass | `a8f4ea7-dirty` | [TC-101.png](evidence/R-20260919-3/TC-101.png) |
+| TC-140 | Tìm booking theo tên không dấu (Đặng) | `tuyen` | — | — | — |
+| TC-141 | Tìm booking departed theo SĐT (Lê Hoàng Nam) | `tuyen` | — | — | — |
+| TC-142 | Tìm booking không khớp | `tuyen` | — | — | — |
 | TC-102 | Quick filter: Sẽ đến / Check-in / Đang ở / Trả / Phòng bẩn | `tuyen` | pass | `a8f4ea7-dirty` | [TC-102.png](evidence/R-20260919-3/TC-102.png) |
 | TC-103 | Lọc Sẽ đến hiện Mai Thanh Hà | `tuyen` | pass | `a8f4ea7-dirty` | [TC-103.png](evidence/R-20260919-3/TC-103.png) |
 | TC-104 | Lọc Đang ở hiện Đặng Minh Tuấn | `tuyen` | pass | `a8f4ea7-dirty` | [TC-104.png](evidence/R-20260919-3/TC-104.png) |
@@ -138,7 +141,7 @@ Trạng thái: `pass` · `fail` · `skip` (chưa chạy vòng này).
 | TC-22 | Tạo việc — loại lễ tân (khăn, dọn) | `tuyen` | pass | `a8f4ea7-dirty` | [TC-22.png](evidence/R-20260919-3/TC-22.png) |
 | TC-23 | Tạo việc — loại quản lý (đôn việc) | `quanly` | pass | `a8f4ea7-dirty` | [TC-23.png](evidence/R-20260919-3/TC-23.png) |
 | TC-24 | HK thấy khăn / dọn / thêm HK | `uyen` | pass | `a8f4ea7-dirty` | [TC-24.png](evidence/R-20260919-3/TC-24.png) |
-| TC-25 | HK tạo việc (Kiểm INS) | `uyen` | pass | `a8f4ea7-dirty` | [TC-25.png](evidence/R-20260919-3/TC-25.png) |
+| TC-25 | HK tạo việc (Kiểm phòng) | `uyen` | pass | `a8f4ea7-dirty` | [TC-25.png](evidence/R-20260919-3/TC-25.png) |
 | TC-26 | Đổi trạng thái việc Mới → Đang làm → Xong | `uyen` | skip | — | — |
 
 ### Bếp / phòng / ca / bàn giao / nhân sự
@@ -158,11 +161,12 @@ Trạng thái: `pass` · `fail` · `skip` (chưa chạy vòng này).
 | TC-64b | Lễ tân không vào `/audit` | `tuyen` | pass | `a8f4ea7-dirty` | [TC-64b.png](evidence/R-20260919-3/TC-64b.png) |
 | TC-70 | Checklist đầu ca / cuối ca đang mở | `tuyen` | pass | `a8f4ea7-dirty` | [TC-70.png](evidence/R-20260919-3/TC-70.png) |
 | TC-71 | Lễ tân mở ca khi chưa có ca | `tuyen` | skip | — | data hiện đã mở ca |
-| TC-72 | Today: task nhận P.105 / trả P.102 | `tuyen` | pass | `a8f4ea7-dirty` | [TC-72.png](evidence/R-20260919-3/TC-72.png) |
-| TC-73 | Bảng việc có Nhận P.105, Trả P.102, Nhận P.506 | `tuyen` | pass | `a8f4ea7-dirty` | [TC-73.png](evidence/R-20260919-3/TC-73.png) |
-| TC-74 | Task nhận P.105: mục INS / PMS / chìa + note/ảnh | `tuyen` | pass | `a8f4ea7-dirty` | [TC-74.png](evidence/R-20260919-3/TC-74.png) |
-| TC-75 | Thẻ khách s-201 cùng checklist nhận phòng | `tuyen` | pass | `a8f4ea7-dirty` | [TC-75.png](evidence/R-20260919-3/TC-75.png) |
-| TC-76 | Chỗ bán P.506 link checklist nhận phòng | `tuyen` | pass | `a8f4ea7-dirty` | [TC-76.png](evidence/R-20260919-3/TC-76.png) |
+| TC-72 | Today: việc HK dọn khách ở / dọn trả | `tuyen` | pass | `a8f4ea7-dirty` | [TC-72.png](evidence/R-20260919-3/TC-72.png) |
+| TC-73 | Bảng việc có dọn P.202 / dọn trả P.102 / khăn P.305 | `tuyen` | pass | `a8f4ea7-dirty` | [TC-73.png](evidence/R-20260919-3/TC-73.png) |
+| TC-74 | P.401 inhouse: gửi HK dọn khách ở + kiểm phòng trả | `tuyen` | pass | `a8f4ea7-dirty` | [TC-74.png](evidence/R-20260919-3/TC-74.png) |
+| TC-75 | Thẻ khách s-201 sau PMS: gửi HK dọn / kiểm trả | `tuyen` | — | — | — |
+| TC-76 | P.506 giữ chỗ: chờ HK standby rồi mới nhận | `tuyen` | pass | `a8f4ea7-dirty` | [TC-76.png](evidence/R-20260919-3/TC-76.png) |
+| TC-143 | Booking An Phú: link Giao việc HK từng chỗ | `tuyen` | — | — | — |
 
 ### PWA / iPhone
 
@@ -181,7 +185,7 @@ Dùng sau `npm run db:reseed-local`.
 | ID | Làm gì | Kỳ vọng |
 |---|---|---|
 | TC-10 | `/reception?tab=arriving` | Nguyễn Thu Hà, P.105, INS sẵn sàng |
-| TC-13 | `/reception/s-201` | Booking xong · chưa check-in PMS · checklist nhận: Phòng INS / Check-in PMS / Đưa chìa |
+| TC-13 | `/reception/s-201` | Giao việc HK · Yêu cầu HK kiểm phòng standby · chưa nhận |
 | TC-14 | `/reception/s-305` | Trần Minh Khoa vừa nhận phòng · xe `51H-223.18` hầm B1-12 · đếm 30 phút ĐKLT |
 | TC-15 | `/reception/s-102` | Checkout hôm nay · checklist trả: Hóa đơn · việc dọn phòng trả HK vẫn tách |
 | TC-16 | `/reception/s-201` → bấm xác nhận check-in PMS | Chip «Đã check-in PMS … — đã xác nhận», bắt đầu 30 phút ĐKLT |
@@ -196,7 +200,10 @@ Dùng sau `npm run db:reseed-local`.
 | TC-98 | login `uyen` `/sales` | Redirect Thêm, không menu bán phòng |
 | TC-99 | `/sales/new` | Nền tảng · Booking.com · Agoda · Từ ezCloud |
 | TC-100 | `/sales` | Lọc Tất cả · Ops · ezCloud |
-| TC-101 | `/sales/bookings` | Đặt phòng · Đang mở · Đặng / An Phú / Đoàn Minh Châu |
+| TC-101 | `/sales/bookings` | Đặt phòng · Đang mở / đã trả · Tìm booking · Đặng / An Phú / Đoàn / Lê Hoàng Nam (đã trả) |
+| TC-140 | `/sales/bookings?q=dang+minh` | Đặng Minh Tuấn · không ra An Phú |
+| TC-141 | `/sales/bookings?q=0905555666` | Lê Hoàng Nam · Đã trả |
+| TC-142 | `/sales/bookings?q=xyz-khong-co` | Không có booking khớp |
 | TC-102 | `/sales` | Quick filter Sẽ đến · Check-in hôm nay · Đang ở · Trả hôm nay · Phòng bẩn |
 | TC-103 | `/sales?focus=booking` | Mai Thanh Hà |
 | TC-104 | `/sales?focus=inhouse` | Đặng Minh Tuấn |
@@ -220,25 +227,71 @@ Dùng sau `npm run db:reseed-local`.
 | TC-130 | login `tuyen` `/notifications` | Đặt phòng Đặng Minh Tuấn · không thấy Mai Thanh Hà / sửa An Phú / HK |
 | TC-131 | login `quanly` `/notifications` | Mọi thêm/sửa/hủy · Đặng Minh Tuấn · Mai Thanh Hà · Sửa An Phú |
 | TC-132 | login `uyen` `/notifications` | Thay khăn P.305 · không thấy Đặt phòng |
-| TC-20 | `/tasks` | 3 việc HK cũ **và** Nhận P.105 · Trả P.102 |
+| TC-20 | `/tasks` | Thay khăn P.305 · Dọn phòng khách ở P.202 · Dọn phòng trả P.102 |
 | TC-21 | `/tasks` | Việc quản lý: *Cần thêm HK ca này — tầng 2 và 3* |
 | TC-30 | `/kitchen` + `/kitchen/forecast` | Báo cáo suất theo booking · Hôm nay / Ngày mai / 7 ngày · dự báo dị ứng hải sản |
-| TC-03 | login `tuyen` `/today` | Ca đang làm · Đầu ca / cuối ca · Nhận P.105 |
+| TC-03 | login `tuyen` `/today` | Ca đang làm · Đầu ca / cuối ca |
 | TC-04 | login `quanly` → doanh thu · tab Đặt phòng / Bếp / Việc · `/today` | Có ca đang chạy **hoặc** «Ca lễ tân chưa mở» — **không** nút bắt buộc «Mở ca hiện tại» |
 | TC-70 | `/shifts` | Đầu ca · Cuối ca · ca hiện tại Đang mở. Không checklist HK/bếp |
-| TC-72 | `/today` | Nhận P.105 · Trả P.102 |
-| TC-73 | `/tasks` | Nhận P.105 · Trả P.102 · Nhận P.506 Công ty An Phú |
-| TC-74 | `/tasks` → việc Nhận P.105 | Phòng INS · Check-in PMS · Đưa chìa · ô ghi chú / ảnh |
-| TC-75 | `/reception/s-201` | Cùng checklist nhận với task (không list derived cũ trong khối checklist) |
-| TC-76 | `/sales/sale-506` | Checklist lễ tân · Nhận phòng P.506 |
+| TC-72 | `/today` | Nhận / trả / HK hôm nay · Dọn phòng khách ở P.202 · Dọn phòng trả P.102 |
+| TC-73 | `/tasks` | Dọn phòng khách ở P.202 · Dọn phòng trả P.102 · Thay khăn P.305 |
+| TC-74 | `/sales/sale-401` | Giao việc HK · Yêu cầu HK dọn phòng khách ở · Yêu cầu HK kiểm phòng trả |
+| TC-75 | `/reception/s-201` sau xác nhận check-in PMS | Giao việc HK · dọn khách ở · kiểm phòng trả |
+| TC-76 | `/sales/sale-506` | Giao việc HK · Yêu cầu HK kiểm phòng standby · chưa nút Nhận phòng |
+| TC-143 | `/sales/bookings/sale-506` | Gửi HK kiểm phòng trên từng chỗ bán · P.506 · Giao việc HK |
 | TC-64 | login `quanly` `/audit` | Nhật ký thao tác · người làm · chi tiết thay đổi before → after |
 | TC-64b | login `tuyen` `/audit` | Redirect Thêm, không vào nhật ký |
+
+### E2E — process HK handoff (`npm run qa:e2e`)
+
+Khách `E2E Van A` · P.101. Lễ tân `tuyen` · HK `uyen`.
+
+| ID | Làm gì | Kỳ vọng |
+|---|---|---|
+| E2E-R1 | Login lễ tân `/today` | Ca đang làm · Đầu ca |
+| E2E-R2 | `/shifts` tick 1 mục đầu ca | Đầu ca · Đang mở |
+| E2E-R3 | `/sales/new` giữ P.101, cọc, không nhận ngay | Đã giữ · Đã đặt cọc |
+| E2E-R4 | `/sales` | Hiện khách E2E P.101 |
+| E2E-S1 | `/sales/bookings?q=E2E Van A` | Tìm booking · Đã giữ · tab Đang mở / đã trả |
+| E2E-R5 | Booking → Giao việc HK → Yêu cầu HK kiểm phòng standby | Standby P.101 · Chờ HK hoàn thành kiểm standby |
+| E2E-H1 | Login HK `/sales` | Không vào bán phòng |
+| E2E-H2 | HK `/tasks` hoàn tất Standby P.101 | Hoàn tất |
+| E2E-R6 | Lễ tân Giao việc HK → Nhận phòng | Đang ở · nút dọn khách ở |
+| E2E-R8 | Yêu cầu HK dọn phòng khách ở | Dọn phòng khách ở P.101 |
+| E2E-H3–H4 | HK thấy + hoàn tất dọn khách ở | Hoàn tất |
+| E2E-R13 | Yêu cầu HK kiểm phòng trả | Kiểm phòng trả P.101 · chưa nút hoàn tất trả |
+| E2E-H7 | HK hoàn tất kiểm phòng trả | Hoàn tất |
+| E2E-R14 | Hoàn tất trả phòng | Đã trả |
+| E2E-S2 | Tìm booking E2E | Đã trả trên tab Đang mở / đã trả |
+| E2E-H8 | HK `/tasks` | Dọn phòng trả P.101 tự tạo |
+| E2E-R9 | `/rooms?focus=dirty` | P.101 phòng bẩn |
+| E2E-H5–H6 | HK chuyển status + dọn trả | Filter bẩn không còn tên khách E2E |
+| E2E-R12 | `/audit` | Lễ tân không vào nhật ký |
+| E2E-R11 | `/handover` | Bàn giao |
+| E2E-R10 | `/shifts` | Cuối ca · Đang mở |
 
 ---
 
 ## Lịch sử run
 
 Thêm block mới **trên cùng** mỗi lần test.
+
+### R-20260920-3 — 2026-09-20
+
+- Commit: `1e56aca-dirty`
+- Env: local `http://localhost:3002` (sau `db:reseed-local`)
+- Pass / Fail / Skip: **72 / 0 / 0** trong runner · catalog còn skip tay/PWA
+- Tỷ lệ: **72/72 = 100%**
+- Evidence: `qa/evidence/R-20260920-3/`
+- Ghi chú: smoke process HK handoff + tìm booking departed. Ca chiều.
+
+### E2E-20260920-1 — 2026-09-20
+
+- Commit: `1e56aca-dirty`
+- Env: local `http://localhost:3002`
+- Pass / Fail: **23 / 0** · **23/23 = 100%**
+- Evidence: `qa/evidence/E2E-20260920-1/`
+- Ghi chú: process mới HK handoff. Bán P.101 E2E Van A → gửi standby → HK xong → nhận phòng → dọn khách ở → kiểm phòng trả → hoàn tất trả → tab Đang mở / đã trả + tìm kiếm hiện Đã trả → hệ thống tự tạo dọn trả.
 
 ### E2E-20260919-1 — 2026-09-19
 
