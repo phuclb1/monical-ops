@@ -3,6 +3,7 @@ import { getDb } from "@/db";
 import * as t from "@/db/schema";
 import { nowISO, todayVN } from "../../datetime";
 import { ensureTodayRoomTasks } from "../../checklist-ops";
+import { can } from "../../permissions";
 import { applyPaidAmount, isActiveSaleStatus, parsePaymentMethod, salePaid } from "../../sales";
 import type { SaleStatus, SessionUser } from "../../types";
 import { audit } from "../audit";
@@ -48,7 +49,12 @@ export async function recordBookingPayment(
   return booking.id;
 }
 
+function assertCanCancel(user: SessionUser) {
+  if (!can(user.role, "cancelBooking")) throw new Error("Chỉ quản lý mới hủy booking");
+}
+
 export async function cancelBooking(user: SessionUser, bookingId: string, asNoShow = false) {
+  assertCanCancel(user);
   const booking = await getBooking(bookingId);
   if (!booking) throw new Error("Không tìm thấy booking");
   const active = booking.rooms.filter((row) => isActiveSaleStatus(row.status));
@@ -136,6 +142,7 @@ export async function checkoutBooking(user: SessionUser, bookingId: string) {
 }
 
 export async function cancelRoomSale(user: SessionUser, id: string, asNoShow = false, opts?: { silent?: boolean }) {
+  assertCanCancel(user);
   const db = await getDb();
   const before = (await db.select().from(t.roomSales).where(eq(t.roomSales.id, id)).limit(1))[0];
   if (!before) throw new Error("Không tìm thấy chỗ bán");

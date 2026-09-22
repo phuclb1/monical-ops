@@ -326,9 +326,12 @@ try {
     }
   });
 
-  await check("TC-111", "Nút hủy booking trên chi tiết", async (shot) => {
+  await check("TC-111", "Lễ tân không hủy booking", async (shot) => {
     await go("/sales/bookings/sale-508");
-    await must(shot, ["Mai Thanh Hà", "Hủy booking", "No-show", "In xác nhận"]);
+    await must(shot, ["Mai Thanh Hà", "In xác nhận"]);
+    const text = await pageText();
+    if (hasText(text, "Hủy booking")) throw new Error("Lễ tân vẫn thấy nút hủy booking");
+    if (hasText(text, "No-show")) throw new Error("Lễ tân vẫn thấy nút no-show");
   });
 
   await check("TC-118", "In phiếu xác nhận booking", async (shot) => {
@@ -510,6 +513,14 @@ try {
     await must(shot, ["Sơ đồ phòng", "Đặng Minh Tuấn"]);
     await go("/rooms/manage");
     await must(shot, ["Hạng phòng", "Giá thường", "Giá lễ tết", "Sức chứa"]);
+  });
+
+  await check("TC-111b", "Quản lý hủy booking — xác nhận hoàn cọc", async (shot) => {
+    await go("/sales/bookings/sale-508");
+    await must(shot, ["Mai Thanh Hà", "Hủy booking", "No-show"]);
+    await page.getByRole("button", { name: "Hủy booking" }).click();
+    await ready();
+    await must(shot, ["Xác nhận đã hoàn cọc", "Đã hoàn cọc", "300.000"]);
   });
 
   await check("TC-119", "Báo cáo doanh thu bán phòng", async (shot) => {

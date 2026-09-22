@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
-import { addRoomsToBookingAction, cancelBookingAction, updateBookingAction } from "@/actions/sales";
+import { addRoomsToBookingAction, updateBookingAction } from "@/actions/sales";
 import { AddBookingRoomsForm, BookingForm } from "@/components/sale-form";
+import { BookingCancelActions } from "@/components/booking-cancel";
 import { BookingExtrasPanel } from "@/components/booking-extras";
 import { BookingPaymentPanel } from "@/components/booking-payment";
 import { BookingRoomList } from "@/components/booking-room-list";
@@ -163,24 +164,14 @@ export default async function BookingDetailPage({
             ) : null}
           </Card>
 
-          {firstActive ? (
-            <div className="flex items-center justify-between gap-3 px-1">
-              <form action={cancelBookingAction}>
-                <input type="hidden" name="bookingId" value={booking.id} />
-                <button type="submit" className="inline-flex min-h-11 items-center text-sm font-semibold text-[#5c6665]">
-                  Hủy booking
-                </button>
-              </form>
-              {canNoShow ? (
-                <form action={cancelBookingAction}>
-                  <input type="hidden" name="bookingId" value={booking.id} />
-                  <input type="hidden" name="asNoShow" value="1" />
-                  <button type="submit" className="inline-flex min-h-11 items-center text-sm font-semibold text-[#c23b3b]">
-                    No-show
-                  </button>
-                </form>
-              ) : null}
-            </div>
+          {firstActive && can(user.role, "cancelBooking") ? (
+            <BookingCancelActions
+              kind="booking"
+              id={booking.id}
+              guestName={booking.guestName}
+              deposit={booking.deposit}
+              canNoShow={canNoShow}
+            />
           ) : null}
         </aside>
 

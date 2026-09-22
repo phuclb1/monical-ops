@@ -1,9 +1,10 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
-import { addRoomsToBookingAction, cancelSaleAction } from "@/actions/sales";
+import { addRoomsToBookingAction } from "@/actions/sales";
 import { AddBookingRoomsForm } from "@/components/sale-form";
+import { BookingCancelActions } from "@/components/booking-cancel";
 import { RoomHandoffPanel } from "@/components/room-handoff";
-import { Btn, Card, Chip } from "@/components/ui";
+import { Card, Chip } from "@/components/ui";
 import { getSession } from "@/lib/auth";
 import { SALE_ORIGIN_LABEL, SALE_SOURCE_LABEL, SALE_STATUS_LABEL } from "@/lib/constants";
 import { formatDateLong, todayVN } from "@/lib/datetime";
@@ -170,26 +171,15 @@ export default async function SaleDetailPage({
         />
       ) : null}
 
-      {active ? (
-        <div className="grid grid-cols-2 gap-2">
-          <form action={cancelSaleAction}>
-            <input type="hidden" name="id" value={sale.id} />
-            <Btn type="submit" variant="ghost" className="w-full">
-              Hủy chỗ
-            </Btn>
-          </form>
-          {sale.status === "reserved" ? (
-            <form action={cancelSaleAction}>
-              <input type="hidden" name="id" value={sale.id} />
-              <input type="hidden" name="asNoShow" value="1" />
-              <Btn type="submit" variant="danger" className="w-full">
-                No-show
-              </Btn>
-            </form>
-          ) : (
-            <span />
-          )}
-        </div>
+      {active && can(user.role, "cancelBooking") ? (
+        <BookingCancelActions
+          kind="sale"
+          id={sale.id}
+          guestName={sale.guestName}
+          deposit={sale.deposit || 0}
+          canNoShow={sale.status === "reserved"}
+          variant="block"
+        />
       ) : null}
 
       {active ? (
