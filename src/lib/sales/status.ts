@@ -32,6 +32,10 @@ export function isOtaSource(value: string | null | undefined) {
   return OTA_SOURCES.has(String(value || ""));
 }
 
+export function isOtaDebt(source: string | null | undefined, mode?: string | null) {
+  return isOtaSource(source) && mode !== "hotel";
+}
+
 export function parseSaleSource(raw: string | null | undefined): SaleSource {
   const original = String(raw || "").trim().toLowerCase();
   if (isSaleSource(original)) return original;

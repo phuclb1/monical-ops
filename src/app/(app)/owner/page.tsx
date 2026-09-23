@@ -6,7 +6,7 @@ import { SALE_STATUS_LABEL } from "@/lib/constants";
 import { formatDateNumeric } from "@/lib/datetime";
 import { can } from "@/lib/permissions";
 import { listBookings } from "@/lib/repos";
-import { formatVnd, isOtaSource, paidNote } from "@/lib/sales";
+import { formatVnd, isOtaDebt, isOtaSource, paidNote } from "@/lib/sales";
 import { parsePeriodQuery, roomRevenueReport } from "@/lib/sales-report";
 import type { SaleStatus } from "@/lib/types";
 
@@ -82,7 +82,11 @@ export default async function OwnerRevenuePage({
                       <Chip tone={STATUS_TONE[row.status as SaleStatus]}>{SALE_STATUS_LABEL[row.status as SaleStatus]}</Chip>
                       <span className="text-sm font-bold">{formatVnd(row.total)}</span>
                       <span className="text-xs text-[#5c6665]">
-                        {isOtaSource(row.source) ? `Công nợ OTA ${formatVnd(row.due)}` : `Còn ${formatVnd(row.due)}`}
+                        {isOtaDebt(row.source, row.otaPaymentMode)
+                          ? `Công nợ OTA ${formatVnd(row.due)}`
+                          : isOtaSource(row.source)
+                            ? `Công nợ OTA 0₫ · Khách trả ${formatVnd(row.due)}`
+                            : `Còn ${formatVnd(row.due)}`}
                       </span>
                     </div>
                   </div>

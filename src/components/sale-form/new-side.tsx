@@ -33,7 +33,7 @@ export function SaleFormSide(props: {
   setBreakfastAdults: (value: string) => void;
   setBreakfastChildren: (value: string) => void;
   ota?: boolean;
-  fromEz: boolean;
+  otaDebt?: boolean;
   showCheckinNow?: boolean;
   today?: string;
   roomIds: string[];
@@ -66,7 +66,7 @@ export function SaleFormSide(props: {
     setBreakfastAdults,
     setBreakfastChildren,
     ota,
-    fromEz,
+    otaDebt,
     showCheckinNow,
     today,
     roomIds,
@@ -118,12 +118,25 @@ export function SaleFormSide(props: {
                 <span>{formatVnd(row.amount)}</span>
               </li>
             ))}
-            <li className={`flex justify-between gap-2${ota ? " font-bold" : ""}`}>
-              <span>{ota ? "Công nợ OTA" : quotes.length > 1 ? `Phải thu ${quotes.length} phòng` : "Phải thu"}</span>
-              <span>{formatVnd(bookingTotal)}</span>
-            </li>
-            {ota ? null : (
+            {ota ? (
               <>
+                <li className="flex justify-between gap-2 font-bold">
+                  <span>Công nợ OTA</span>
+                  <span>{formatVnd(otaDebt ? bookingTotal : 0)}</span>
+                </li>
+                {!otaDebt ? (
+                  <li className="flex justify-between gap-2 font-bold">
+                    <span>Phải thu khi check-in</span>
+                    <span>{formatVnd(bookingTotal)}</span>
+                  </li>
+                ) : null}
+              </>
+            ) : (
+              <>
+                <li className="flex justify-between gap-2">
+                  <span>{quotes.length > 1 ? `Phải thu ${quotes.length} phòng` : "Phải thu"}</span>
+                  <span>{formatVnd(bookingTotal)}</span>
+                </li>
                 {depositAmount ? (
                   <li className="flex justify-between gap-2 text-[#1b7a4e]">
                     <span>Đã đặt cọc · {PAYMENT_METHOD_LABEL[payMethod]}</span>
@@ -220,12 +233,11 @@ export function SaleFormSide(props: {
           <input name="bikes" type="number" min={0} defaultValue={defaults.bikes ?? 0} />
         </Field>
       </div>
-      <Field label={fromEz ? "Mã PMS ezCloud" : "Mã PMS (nếu có)"}>
+      <Field label="Mã PMS (nếu có)">
         <input
           name="pmsCode"
           defaultValue={defaults.pmsCode || ""}
-          required={fromEz}
-          placeholder={fromEz ? "EZ-..." : "Để trống — Ops cấp BK-09-1"}
+          placeholder="Để trống — Ops cấp BK-09-1"
         />
       </Field>
       <Field label="Ghi chú">

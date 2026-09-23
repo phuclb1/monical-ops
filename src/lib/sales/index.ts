@@ -40,6 +40,7 @@ export {
   isSaleOrigin,
   isSaleSource,
   isOtaSource,
+  isOtaDebt,
   parseSaleSource,
   formatOpsBookingCode,
   parseOpsBookingCode,

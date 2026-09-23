@@ -46,6 +46,8 @@ CREATE TABLE IF NOT EXISTS room_sales (
   guest_phone TEXT,
   origin TEXT NOT NULL DEFAULT 'ops',
   source TEXT NOT NULL,
+  ota_payment_mode TEXT NOT NULL DEFAULT 'debt',
+  invoice_requested INTEGER NOT NULL DEFAULT 0,
   status TEXT NOT NULL,
   check_in TEXT NOT NULL,
   check_out TEXT NOT NULL,

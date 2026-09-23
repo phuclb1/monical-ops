@@ -17,6 +17,7 @@ export const stays = sqliteTable("stays", {
   pmsBookingOk: integer("pms_booking_ok", { mode: "boolean" }).notNull().default(false),
   pmsCheckinOk: integer("pms_checkin_ok", { mode: "boolean" }).notNull().default(false),
   pmsCheckoutOk: integer("pms_checkout_ok", { mode: "boolean" }).notNull().default(false),
+  invoiceRequested: integer("invoice_requested", { mode: "boolean" }).notNull().default(false),
   invoiceOk: integer("invoice_ok", { mode: "boolean" }).notNull().default(false),
   paymentNote: text("payment_note"),
   checkinAt: text("checkin_at"),

@@ -104,4 +104,7 @@ export const SCHEMA_PATCHES = [
   "UPDATE room_sales SET breakfast_adults = CASE WHEN breakfast = 0 THEN 0 ELSE adults END WHERE breakfast_adults IS NULL",
   "UPDATE room_sales SET breakfast_children = CASE WHEN breakfast = 0 THEN 0 ELSE children END WHERE breakfast_children IS NULL",
   "ALTER TABLE room_sales ADD COLUMN company_paid INTEGER NOT NULL DEFAULT 0",
+  "ALTER TABLE room_sales ADD COLUMN ota_payment_mode TEXT NOT NULL DEFAULT 'debt'",
+  "ALTER TABLE room_sales ADD COLUMN invoice_requested INTEGER NOT NULL DEFAULT 0",
+  "ALTER TABLE stays ADD COLUMN invoice_requested INTEGER NOT NULL DEFAULT 0",
 ];

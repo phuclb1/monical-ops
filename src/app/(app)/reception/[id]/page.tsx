@@ -96,7 +96,11 @@ export default async function StayPage({
         <Confirm id={stay.id} field="pmsBookingOk" label="Đã nhập booking" done={!!stay.pmsBookingOk} />
         <Confirm id={stay.id} field="pmsCheckinOk" label="Đã check-in PMS (bắt đầu 30 phút)" done={!!stay.pmsCheckinOk} />
         <Confirm id={stay.id} field="pmsCheckoutOk" label="Đã check-out PMS" done={!!stay.pmsCheckoutOk} />
-        <Confirm id={stay.id} field="invoiceOk" label="Đã xuất hóa đơn" done={!!stay.invoiceOk} />
+        {stay.invoiceRequested ? (
+          <Confirm id={stay.id} field="invoiceOk" label="Đã xuất hóa đơn" done={!!stay.invoiceOk} />
+        ) : (
+          <p className="text-sm text-[#5c6665]">Khách không yêu cầu xuất hóa đơn</p>
+        )}
       </Card>
 
       <Card>

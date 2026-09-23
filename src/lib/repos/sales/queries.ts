@@ -58,6 +58,8 @@ function toBookingView(id: string, rooms: Awaited<ReturnType<typeof listRoomSale
     guestPhone: first.guestPhone,
     origin: first.origin,
     source: first.source,
+    otaPaymentMode: first.otaPaymentMode,
+    invoiceRequested: first.invoiceRequested,
     pmsCode: first.pmsCode,
     notes: first.notes,
     adults: first.adults,

@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { Btn, Field, PayMethodField } from "@/components/ui";
 import { SALE_SOURCE_GROUPS, SALE_SOURCE_LABEL } from "@/lib/constants";
-import { bookingDue, bookingQuote, catalogRate, isOtaSource, parseMoney, parseDiscountValue, primaryPaymentMethod, rangesOverlap, roomMoveKind } from "@/lib/sales";
+import { bookingDue, bookingQuote, catalogRate, isOtaDebt, isOtaSource, parseMoney, parseDiscountValue, primaryPaymentMethod, rangesOverlap, roomMoveKind } from "@/lib/sales";
 import { extraAmount } from "@/lib/extras";
 import type { PaymentMethod } from "@/lib/types";
 import { BookingRoomLines } from "./booking-lines";
@@ -42,6 +42,8 @@ export function BookingForm({
     guestName?: string;
     guestPhone?: string;
     source?: string;
+    otaPaymentMode?: string;
+    invoiceRequested?: boolean;
     adults?: number;
     children?: number;
     breakfastAdults?: number;
@@ -77,10 +79,14 @@ export function BookingForm({
     Object.fromEntries(lines.map((line) => [line.saleId, parseDiscountState(line.discountKind, line.discountValue)])),
   );
   const [source, setSource] = useState(defaults.source || "walk_in");
+  const [otaPaymentMode, setOtaPaymentMode] = useState<"debt" | "hotel">(
+    defaults.otaPaymentMode === "hotel" ? "hotel" : "debt",
+  );
   const [deposit, setDeposit] = useState(defaults.deposit ? String(defaults.deposit) : "");
   const [payMethod, setPayMethod] = useState<PaymentMethod>(() => primaryPaymentMethod(defaults));
   const ota = isOtaSource(source);
-  const switchedToOta = ota && !isOtaSource(defaults.source);
+  const otaDebt = isOtaDebt(source, otaPaymentMode);
+  const switchedToOtaDebt = otaDebt && !isOtaDebt(defaults.source, defaults.otaPaymentMode);
 
   function stayOf(saleId: string, fallback: StayDates) {
     return dates[saleId] || fallback;
@@ -143,7 +149,7 @@ export function BookingForm({
   const extraRows = extras.map((row) => ({ ...row, amount: extraAmount(row, booked.nights) }));
   const extrasTotal = extraRows.reduce((sum, row) => sum + row.amount, 0);
   const bookingTotal = booked.total + extrasTotal;
-  const depositAmount = switchedToOta ? 0 : parseMoney(deposit);
+  const depositAmount = switchedToOtaDebt ? 0 : parseMoney(deposit);
   const due = bookingDue(bookingTotal, depositAmount);
   const stayAdults = Math.max(1, Number(adults) || 1);
   const stayChildren = Math.max(0, Number(children) || 0);
@@ -194,6 +200,20 @@ export function BookingForm({
           ))}
         </select>
       </Field>
+      {ota ? (
+        <Field label="Hình thức thanh toán OTA">
+          <select name="otaPaymentMode" value={otaPaymentMode} onChange={(e) => setOtaPaymentMode(e.target.value as "debt" | "hotel")}>
+            <option value="debt">Công nợ OTA — OTA đã thu khách</option>
+            <option value="hotel">Thanh toán tại KS — khách trả khi check-in</option>
+          </select>
+        </Field>
+      ) : (
+        <input type="hidden" name="otaPaymentMode" value="debt" />
+      )}
+      <label className="flex items-center gap-2">
+        <input type="checkbox" name="invoiceRequested" value="1" defaultChecked={defaults.invoiceRequested} />
+        <span>Xuất hóa đơn</span>
+      </label>
       <p className="text-xs font-semibold text-[#5c6665]">Khách ở</p>
       <div className="grid grid-cols-2 gap-2">
         <Field label="Người lớn">
@@ -275,7 +295,7 @@ export function BookingForm({
         stayOf={stayOf}
       />
       {ota ? (
-        <input type="hidden" name="deposit" value={switchedToOta ? "0" : String(defaults.deposit || 0)} />
+        <input type="hidden" name="deposit" value={otaDebt ? "0" : String(defaults.deposit || 0)} />
       ) : (
         <>
           <Field label="Đặt cọc — tổng đã thu (₫)">
@@ -297,6 +317,7 @@ export function BookingForm({
         defaults={defaults}
         payMethod={payMethod}
         ota={ota}
+        otaDebt={otaDebt}
         due={due}
       />
       <Btn type="submit" className="w-full">

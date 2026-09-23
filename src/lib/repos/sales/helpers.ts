@@ -19,6 +19,8 @@ export type SaleInput = {
   guestName: string;
   guestPhone?: string;
   source: string;
+  otaPaymentMode?: "debt" | "hotel";
+  invoiceRequested?: boolean;
   checkIn: string;
   checkOut: string;
   adults?: number;

@@ -15,6 +15,7 @@ export const SCHEMA_SQL_OPS = `CREATE TABLE IF NOT EXISTS stays (
   pms_booking_ok INTEGER NOT NULL DEFAULT 0,
   pms_checkin_ok INTEGER NOT NULL DEFAULT 0,
   pms_checkout_ok INTEGER NOT NULL DEFAULT 0,
+  invoice_requested INTEGER NOT NULL DEFAULT 0,
   invoice_ok INTEGER NOT NULL DEFAULT 0,
   payment_note TEXT,
   checkin_at TEXT,

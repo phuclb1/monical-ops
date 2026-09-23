@@ -32,6 +32,7 @@ export type IngestBooking = {
   notes?: string | null;
   pmsCheckin?: boolean;
   pmsCheckout?: boolean;
+  invoiceRequested?: boolean;
   invoiceOk?: boolean;
 };
 
@@ -146,6 +147,7 @@ async function ingestOne(raw: IngestBooking): Promise<IngestResult> {
     pmsBookingOk: true,
     pmsCheckinOk: pmsCheckin,
     pmsCheckoutOk: pmsCheckout,
+    invoiceRequested: raw.invoiceRequested ?? stayRow?.invoiceRequested ?? false,
     invoiceOk: raw.invoiceOk ?? stayRow?.invoiceOk ?? false,
     notes: raw.notes?.trim() || stayRow?.notes || null,
     updatedAt: now,
@@ -207,6 +209,7 @@ async function ingestOne(raw: IngestBooking): Promise<IngestResult> {
     guestPhone: raw.guestPhone?.trim() || saleRow?.guestPhone || null,
     origin: saleRow?.origin === "ops" ? "ops" : origin,
     source: platform,
+    invoiceRequested: raw.invoiceRequested ?? saleRow?.invoiceRequested ?? false,
     status: saleStatus,
     checkIn: raw.arrivalDate,
     checkOut: raw.departureDate,

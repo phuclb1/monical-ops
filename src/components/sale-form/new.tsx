@@ -60,6 +60,7 @@ export function SaleForm({
     pmsCode?: string;
     notes?: string;
     date?: string;
+    invoiceRequested?: boolean;
   };
   submitLabel: string;
   showCheckinNow?: boolean;
@@ -75,11 +76,12 @@ export function SaleForm({
   const [rates, setRates] = useState<Record<string, string>>({});
   const [discounts, setDiscounts] = useState<Record<string, DiscountState>>({});
   const [source, setSource] = useState(defaults.source || "walk_in");
+  const [otaPaymentMode, setOtaPaymentMode] = useState<"debt" | "hotel">("debt");
   const [extras, setExtras] = useState<DraftExtra[]>([]);
   const [deposit, setDeposit] = useState(defaults.deposit ? String(defaults.deposit) : "");
   const [payMethod, setPayMethod] = useState<PaymentMethod>("personal");
   const ota = isOtaSource(source);
-  const [fromEz, setFromEz] = useState(defaults.origin === "ezcloud");
+  const otaDebt = ota && otaPaymentMode === "debt";
   const selectedRooms = rooms.filter((room) => roomIds.includes(room.id));
   const occupancyAdults = useMemo(() => defaultAdultsForRooms(selectedRooms, types), [selectedRooms, types]);
   const [adults, setAdults] = useState(String(defaults.adults ?? occupancyAdults));
@@ -220,9 +222,19 @@ export function SaleForm({
           ))}
         </select>
       </Field>
+      {ota ? (
+        <Field label="Hình thức thanh toán OTA">
+          <select name="otaPaymentMode" value={otaPaymentMode} onChange={(e) => setOtaPaymentMode(e.target.value as "debt" | "hotel")}>
+            <option value="debt">Công nợ OTA — OTA đã thu khách</option>
+            <option value="hotel">Thanh toán tại KS — khách trả khách sạn</option>
+          </select>
+        </Field>
+      ) : (
+        <input type="hidden" name="otaPaymentMode" value="debt" />
+      )}
       <label className="flex items-center gap-2">
-        <input type="checkbox" name="fromEzcloud" value="1" checked={fromEz} onChange={(e) => setFromEz(e.target.checked)} />
-        <span>Từ ezCloud</span>
+        <input type="checkbox" name="invoiceRequested" value="1" defaultChecked={defaults.invoiceRequested} />
+        <span>Xuất hóa đơn</span>
       </label>
       <div className="grid grid-cols-2 gap-2">
         <Field label="Nhận">
@@ -296,7 +308,7 @@ export function SaleForm({
         setBreakfastAdults={setBreakfastAdults}
         setBreakfastChildren={setBreakfastChildren}
         ota={ota}
-        fromEz={fromEz}
+        otaDebt={otaDebt}
         showCheckinNow={showCheckinNow}
         today={today}
         roomIds={roomIds}

@@ -92,6 +92,8 @@ export function saleFromForm(formData: FormData) {
     guestName: String(formData.get("guestName") || ""),
     guestPhone: String(formData.get("guestPhone") || ""),
     source: String(formData.get("source") || "walk_in"),
+    otaPaymentMode: String(formData.get("otaPaymentMode") || "") === "hotel" ? "hotel" as const : "debt" as const,
+    invoiceRequested: String(formData.get("invoiceRequested") || "") === "1",
     checkIn: dates[roomIds[0] || ""]?.checkIn || fallbackIn,
     checkOut: dates[roomIds[0] || ""]?.checkOut || fallbackOut,
     adults: Number(formData.get("adults") || 1),
@@ -108,7 +110,7 @@ export function saleFromForm(formData: FormData) {
     pmsCode: String(formData.get("pmsCode") || ""),
     notes: String(formData.get("notes") || ""),
     checkinNow: String(formData.get("checkinNow") || "") === "1",
-    origin: String(formData.get("fromEzcloud") || "") === "1" ? "ezcloud" : "ops",
+    origin: "ops",
     bookingId: String(formData.get("bookingId") || ""),
     extras: formData.getAll("extraType").map((typeId, index) => ({
       typeId: String(typeId) === "other" ? "" : String(typeId),

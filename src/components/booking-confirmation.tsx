@@ -12,7 +12,7 @@ import {
   SALE_SOURCE_LABEL,
 } from "@/lib/constants";
 import { formatDateNumeric, formatStayStamp } from "@/lib/datetime";
-import { bookingDisplayCode, bookingQuote, formatVndLetter, isOtaSource, parkingLabel } from "@/lib/sales";
+import { bookingDisplayCode, bookingQuote, formatVndLetter, isOtaDebt, isOtaSource, parkingLabel } from "@/lib/sales";
 import type { SaleSource } from "@/lib/types";
 import type { getBooking } from "@/lib/repos";
 
@@ -53,6 +53,7 @@ export function BookingConfirmation({ booking }: { booking: Booking }) {
   const gross = quote.subtotal + quote.breakfastOff + (booking.extrasTotal || 0);
   const afterDiscount = booking.total;
   const ota = isOtaSource(booking.source);
+  const otaDebt = isOtaDebt(booking.source, booking.otaPaymentMode);
 
   return (
     <article className="booking-sheet">
@@ -95,7 +96,9 @@ export function BookingConfirmation({ booking }: { booking: Booking }) {
             </tr>
             <tr>
               <th>Xe</th>
-              <td colSpan={3}>{parkingLabel(booking.cars, booking.bikes)}</td>
+              <td>{parkingLabel(booking.cars, booking.bikes)}</td>
+              <th>Hóa đơn</th>
+              <td>{booking.invoiceRequested ? "Có" : "Không"}</td>
             </tr>
           </tbody>
         </table>
@@ -175,7 +178,7 @@ export function BookingConfirmation({ booking }: { booking: Booking }) {
                 <th>Tổng tiền sau chiết khấu</th>
                 <td className="booking-sheet-num">{formatVndLetter(afterDiscount)}</td>
               </tr>
-              {ota ? (
+              {otaDebt ? (
                 <>
                   {booking.deposit ? (
                     <tr>
@@ -185,6 +188,21 @@ export function BookingConfirmation({ booking }: { booking: Booking }) {
                   ) : null}
                   <tr className="is-strong">
                     <th>Công nợ OTA</th>
+                    <td className="booking-sheet-num">{formatVndLetter(booking.due)}</td>
+                  </tr>
+                </>
+              ) : ota ? (
+                <>
+                  <tr>
+                    <th>Công nợ OTA</th>
+                    <td className="booking-sheet-num">{formatVndLetter(0)}</td>
+                  </tr>
+                  <tr>
+                    <th>Đã thu tại khách sạn</th>
+                    <td className="booking-sheet-num">{formatVndLetter(booking.deposit)}</td>
+                  </tr>
+                  <tr className="is-strong">
+                    <th>Còn khách thanh toán</th>
                     <td className="booking-sheet-num">{formatVndLetter(booking.due)}</td>
                   </tr>
                 </>

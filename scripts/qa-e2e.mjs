@@ -357,14 +357,14 @@ try {
       const visible = await deposit.evaluate((el) => el.type !== "hidden" && el.offsetParent !== null);
       if (visible) throw new Error("Form OTA vẫn hỏi đặt cọc");
     }
-    await must(shot, ["Công nợ OTA", "Agoda"]);
-    await mustNot(shot, ["Đặt cọc", "Thu đủ", "Chưa cọc"]);
+    await must(shot, ["Công nợ OTA", "Agoda", "Xuất hóa đơn"]);
+    await mustNot(shot, ["Đặt cọc", "Thu đủ", "Chưa cọc", "Từ ezCloud"]);
     await Promise.all([
       page.waitForURL(/\/sales\/bookings\//, { timeout: 25000 }),
       page.getByRole("button", { name: /Lưu/ }).click(),
     ]);
     await ready();
-    await must(shot, ["E2E OTA", `P.${room}`, "Công nợ OTA", "Agoda", "Đã giữ"]);
+    await must(shot, ["E2E OTA", `P.${room}`, "Công nợ OTA", "Agoda", "Đã giữ", "Không xuất hóa đơn"]);
     await mustNot(shot, ["Đặt cọc", "Thu đủ", "Chưa cọc", "Còn phải thu"]);
   });
 
@@ -378,6 +378,7 @@ try {
     await page.getByPlaceholder("Xe đón, hoa...").fill("Xe đón sân bay");
     await page.getByPlaceholder("50000").fill("150000");
     await page.getByRole("button", { name: "Thêm phụ thu" }).click();
+    await page.getByRole("checkbox", { name: "Xuất hóa đơn" }).check();
     await page.locator("p").filter({ hasText: "Xe đón sân bay" }).first().waitFor({ timeout: 10000 });
     const now = page.locator('input[name="checkinNow"]');
     if (await now.count()) await now.uncheck();
@@ -387,7 +388,35 @@ try {
       page.getByRole("button", { name: /Lưu/ }).click(),
     ]);
     await ready();
-    await must(shot, ["E2E Phu Thu", `P.${room}`, "Xe đón sân bay", "150.000₫", "Đã giữ"]);
+    await must(shot, ["E2E Phu Thu", `P.${room}`, "Xe đón sân bay", "150.000₫", "Đã giữ", "Yêu cầu xuất hóa đơn"]);
+  });
+
+  await check("E2E-O4", "Booking OTA — khách thanh toán tại khách sạn", async (shot) => {
+    await go("/sales/new");
+    await page.locator('select[name="source"]').selectOption("agoda");
+    await page.locator('select[name="otaPaymentMode"]').selectOption("hotel");
+    const room = await pickOpenRoom();
+    const selectedRoomId = await page.locator('input[name="roomId"]:checked').inputValue();
+    await page.locator(`input[name="rate-${selectedRoomId}"]`).fill("900000");
+    await page.locator('input[name="guestName"]').fill("E2E OTA Tai KS");
+    await page.locator('input[name="guestPhone"]').fill("0900000306");
+    const now = page.locator('input[name="checkinNow"]');
+    if (await now.count()) await now.uncheck();
+    await must(shot, ["Thanh toán tại KS", "Công nợ OTA", "0₫", "Phải thu khi check-in"]);
+    await mustNot(shot, ["Đặt cọc", "Chưa đặt cọc"]);
+    await Promise.all([
+      page.waitForURL(/\/sales\/bookings\//, { timeout: 25000 }),
+      page.getByRole("button", { name: /Lưu/ }).click(),
+    ]);
+    await ready();
+    await must(shot, [
+      "E2E OTA Tai KS",
+      `P.${room}`,
+      "Thanh toán tại KS",
+      "Công nợ OTA 0₫",
+      "Còn khách thanh toán",
+      "Thu thêm — trống = thu đủ",
+    ]);
   });
 
   await check("E2E-O2", "Báo cáo doanh thu OTA chưa trừ hoa hồng", async (shot) => {

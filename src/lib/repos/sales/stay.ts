@@ -19,6 +19,7 @@ export async function syncStayFromSale(
     adults: number;
     children: number;
     breakfast?: boolean;
+    invoiceRequested?: boolean;
     notes: string | null;
   },
   previousRoomId?: string,
@@ -47,6 +48,7 @@ export async function syncStayFromSale(
     adults: sale.adults,
     children: sale.children,
     breakfast: sale.breakfast !== false,
+    invoiceRequested: Boolean(sale.invoiceRequested),
     notes: sale.notes || existing?.notes || null,
     updatedAt: now,
     updatedBy: actorId,

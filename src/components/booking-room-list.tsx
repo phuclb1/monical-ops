@@ -45,8 +45,10 @@ function roomView(row: RoomRow, quote?: QuoteLine) {
 function Totals({
   totals,
   ota,
+  otaHotel,
 }: {
   ota?: boolean;
+  otaHotel?: boolean;
   totals: {
     roomTotal: number;
     discount: number;
@@ -99,6 +101,23 @@ function Totals({
             <span>{formatVnd(totals.due)}</span>
           </li>
         </>
+      ) : otaHotel ? (
+        <>
+          <li className="flex justify-between gap-2">
+            <span>Công nợ OTA</span>
+            <span>{formatVnd(0)}</span>
+          </li>
+          {totals.deposit ? (
+            <li className="is-add">
+              <span>Đã thu tại KS</span>
+              <span>{formatVnd(totals.deposit)}</span>
+            </li>
+          ) : null}
+          <li className="is-due">
+            <span>Còn khách thanh toán</span>
+            <span>{formatVnd(totals.due)}</span>
+          </li>
+        </>
       ) : (
         <>
           <li>
@@ -120,10 +139,12 @@ export function BookingRoomList({
   quotes,
   totals,
   ota,
+  otaHotel,
 }: {
   rooms: RoomRow[];
   quotes: QuoteLine[];
   ota?: boolean;
+  otaHotel?: boolean;
   totals: {
     roomTotal: number;
     discount: number;
@@ -226,7 +247,7 @@ export function BookingRoomList({
           </tbody>
         </table>
       </div>
-      <Totals totals={totals} ota={ota} />
+      <Totals totals={totals} ota={ota} otaHotel={otaHotel} />
     </div>
   );
 }

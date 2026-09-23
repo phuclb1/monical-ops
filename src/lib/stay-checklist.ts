@@ -14,6 +14,7 @@ type StayForChecklist = {
   pmsBookingOk: boolean | number | null;
   pmsCheckinOk: boolean | number | null;
   pmsCheckoutOk: boolean | number | null;
+  invoiceRequested?: boolean | number | null;
   invoiceOk: boolean | number | null;
   registrationDoneAt: string | null;
   room: { hkStatus: string; opsStatus: string } | null;
@@ -77,7 +78,9 @@ export function stayOpsChecklist(stay: StayForChecklist, date?: string): StayOps
   }
   if (board === "departing") {
     return [
-      { key: "invoice", label: "Đã xuất hóa đơn", done: flagged(stay.invoiceOk), required: true },
+      ...(flagged(stay.invoiceRequested)
+        ? [{ key: "invoice", label: "Đã xuất hóa đơn", done: flagged(stay.invoiceOk), required: true }]
+        : []),
       { key: "checkout", label: "Đã check-out PMS", done: flagged(stay.pmsCheckoutOk), required: true },
       { key: "vehicle", label: "Xe / chìa đã ghi nhận", done: hasVehicle, required: false },
       { key: "hk", label: "Đã gửi HK dọn phòng trả", done: hkAfterCheckout, required: true },

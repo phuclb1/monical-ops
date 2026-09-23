@@ -8,6 +8,8 @@ export const roomSales = sqliteTable("room_sales", {
   guestPhone: text("guest_phone"),
   origin: text("origin").notNull().default("ops"),
   source: text("source").notNull(),
+  otaPaymentMode: text("ota_payment_mode").notNull().default("debt"),
+  invoiceRequested: integer("invoice_requested", { mode: "boolean" }).notNull().default(false),
   status: text("status").notNull(),
   checkIn: text("check_in").notNull(),
   checkOut: text("check_out").notNull(),

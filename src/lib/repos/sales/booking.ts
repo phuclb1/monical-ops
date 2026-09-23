@@ -9,7 +9,7 @@ import {
   catalogRate,
   clampBreakfastPax,
   isActiveSaleStatus,
-  isOtaSource,
+  isOtaDebt,
   isSaleSource,
   normalizeDiscount,
   roomMoveKind,
@@ -28,6 +28,8 @@ export async function updateBooking(
     guestName?: string;
     guestPhone?: string;
     source?: string;
+    otaPaymentMode?: "debt" | "hotel";
+    invoiceRequested?: boolean;
     adults?: number;
     children?: number;
     breakfastAdults?: number;
@@ -59,12 +61,16 @@ export async function updateBooking(
   if (!guestName) throw new Error("Nhập tên khách");
   if (data.source !== undefined && data.source !== "" && !isSaleSource(data.source)) throw new Error("Chọn nền tảng booking");
   const source = data.source && isSaleSource(data.source) ? data.source : hit.source;
+  const otaPaymentMode =
+    data.otaPaymentMode === undefined
+      ? hit.otaPaymentMode === "hotel" ? "hotel" : "debt"
+      : data.otaPaymentMode === "hotel" ? "hotel" : "debt";
   const guestPhone = data.guestPhone !== undefined ? data.guestPhone.trim() || null : hit.guestPhone;
   const adults = Math.max(1, data.adults ?? hit.adults ?? 1);
   const children = Math.max(0, data.children ?? hit.children ?? 0);
   const cars = Math.max(0, data.cars ?? hit.cars ?? 0);
   const bikes = Math.max(0, data.bikes ?? hit.bikes ?? 0);
-  const paid = isOtaSource(source) && !isOtaSource(hit.source)
+  const paid = isOtaDebt(source, otaPaymentMode) && !isOtaDebt(hit.source, hit.otaPaymentMode)
     ? { cashPaid: 0, transferPaid: 0, companyPaid: 0, deposit: 0 }
     : paymentOf(
     {
@@ -125,6 +131,8 @@ export async function updateBooking(
       guestName,
       guestPhone,
       source,
+      otaPaymentMode,
+      invoiceRequested: data.invoiceRequested ?? hit.invoiceRequested,
       adults,
       children,
       breakfastAdults: breakfastPax.adults,

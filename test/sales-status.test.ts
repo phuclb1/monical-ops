@@ -11,6 +11,7 @@ import {
   isGanttSaleStatus,
   isLegacyOpsBookingCode,
   isOpsBookingCode,
+  isOtaDebt,
   occupiesNight,
   parseOpsBookingCode,
   isOtaSource,
@@ -42,6 +43,9 @@ test("OTA / walk-in source aliases and booking codes", () => {
   assert.equal(isOtaSource("ota"), true);
   assert.equal(isOtaSource("tiktok"), false);
   assert.equal(isOtaSource("walk_in"), false);
+  assert.equal(isOtaDebt("agoda", "debt"), true);
+  assert.equal(isOtaDebt("agoda", "hotel"), false);
+  assert.equal(isOtaDebt("walk_in", "debt"), false);
   assert.equal(parseSaleSource("dien thoai"), "phone");
   assert.equal(formatOpsBookingCode(3, 9), "BK-09-3");
   assert.deepEqual(parseOpsBookingCode("BK-09-3"), { month: 9, seq: 3 });

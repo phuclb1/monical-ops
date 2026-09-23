@@ -13,9 +13,10 @@ export function BookingQuote(props: {
   defaults: { cashPaid?: number; transferPaid?: number; companyPaid?: number; deposit?: number };
   payMethod: PaymentMethod;
   ota?: boolean;
+  otaDebt?: boolean;
   due: number;
 }) {
-  const { quotes, extraRows, booked, bookingTotal, depositAmount, defaults, payMethod, ota, due } = props;
+  const { quotes, extraRows, booked, bookingTotal, depositAmount, defaults, payMethod, ota, otaDebt, due } = props;
   return (
       <div className="rounded-xl bg-sand px-3 py-2 text-sm">
         <ul className="space-y-1">
@@ -53,16 +54,22 @@ export function BookingQuote(props: {
           ))}
           {ota ? (
             <>
+              <li className="flex justify-between gap-2 font-bold">
+                <span>Công nợ OTA</span>
+                <span>{formatVnd(otaDebt ? due : 0)}</span>
+              </li>
               {depositAmount ? (
                 <li className="flex justify-between gap-2 text-[#1b7a4e]">
-                  <span>Đã thu{paidNote(defaults) ? ` · ${paidNote(defaults)}` : ""}</span>
+                  <span>Đã thu tại KS{paidNote(defaults) ? ` · ${paidNote(defaults)}` : ""}</span>
                   <span>−{formatVnd(depositAmount)}</span>
                 </li>
               ) : null}
-              <li className="flex justify-between gap-2 font-bold">
-                <span>Công nợ OTA</span>
-                <span>{formatVnd(due)}</span>
-              </li>
+              {!otaDebt ? (
+                <li className="flex justify-between gap-2 font-bold">
+                  <span>Còn khách thanh toán</span>
+                  <span>{formatVnd(due)}</span>
+                </li>
+              ) : null}
             </>
           ) : (
             <>

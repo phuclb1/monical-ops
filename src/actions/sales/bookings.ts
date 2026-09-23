@@ -160,6 +160,8 @@ export async function updateBookingAction(formData: FormData) {
       guestName: String(formData.get("guestName") || ""),
       guestPhone: String(formData.get("guestPhone") || ""),
       source: String(formData.get("source") || ""),
+      otaPaymentMode: String(formData.get("otaPaymentMode") || "") === "hotel" ? "hotel" : "debt",
+      invoiceRequested: String(formData.get("invoiceRequested") || "") === "1",
       adults: Number(formData.get("adults") || 1),
       children: Number(formData.get("children") || 0),
       breakfastAdults: Number(formData.get("breakfastAdults") || 0),

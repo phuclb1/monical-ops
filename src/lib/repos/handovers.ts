@@ -65,12 +65,17 @@ export async function buildHandoverDraft() {
   for (const s of stays.filter((x) => stayBoardStatus(x, today) === "inhouse" && x.registrationDueAt && !x.registrationDoneAt)) {
     items.push({ category: "Đăng ký lưu trú chưa xong", refType: "stay", refId: s.id, summary: stayTag(s) });
   }
-  for (const s of stays.filter((x) => stayBoardStatus(x, today) === "departing" && (!x.invoiceOk || !x.pmsCheckoutOk))) {
+  for (const s of stays.filter(
+    (x) => stayBoardStatus(x, today) === "departing" && ((x.invoiceRequested && !x.invoiceOk) || !x.pmsCheckoutOk),
+  )) {
     items.push({
       category: "Khách đi — hóa đơn / PMS",
       refType: "stay",
       refId: s.id,
-      summary: `${stayTag(s)} chưa xác nhận hóa đơn hoặc check-out PMS`,
+      summary: `${stayTag(s)} chưa ${[
+        s.invoiceRequested && !s.invoiceOk ? "xuất hóa đơn" : "",
+        !s.pmsCheckoutOk ? "check-out PMS" : "",
+      ].filter(Boolean).join(" và ")}`,
     });
   }
   for (const s of stays) {

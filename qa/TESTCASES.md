@@ -43,7 +43,7 @@ Tài khoản PRD: chỉ `quanly` / `123456`.
 | **Fail** | 0 |
 | **Skip** | catalog còn skip thao tác tay / PWA (TC-06, 17, 18, 26, 31, 51, 62, 71, 80–82) |
 | **Tỷ lệ pass (đã chạy)** | **100%** |
-| **Ghi chú** | Smoke process HK handoff + tìm booking (TC-13, 72–76, 101, 140–143). E2E `E2E-20260923-1` **27/27 = 100%**. Ca chiều. |
+| **Ghi chú** | Smoke process HK handoff + tìm booking (TC-13, 72–76, 101, 140–143). E2E `E2E-20260923-1` **28/28 = 100%**. Ca chiều. |
 
 PRD gần nhất: `R-20260915-prd3` · Worker `fe86b482-50aa-4ad3-886d-b0d8e5916ccd` · **19/19 = 100%** (26 skip vì PRD chỉ `quanly`, không seed khách/việc).
 
@@ -269,8 +269,9 @@ Khách `E2E Van A` · P.101. Lễ tân `tuyen` · HK `uyen`.
 | E2E-R12 | `/audit` | Lễ tân không vào nhật ký |
 | E2E-R11 | `/handover` | Bàn giao |
 | E2E-R10 | `/shifts` | Cuối ca · Đang mở |
-| E2E-O1 | `/sales/new` nguồn Agoda, phòng trống | Công nợ OTA · không Đặt cọc · không Thu đủ · không Chưa cọc |
-| E2E-X1 | `/sales/new` phòng trống, thêm phụ thu khác | Xe đón sân bay · 150.000₫ trên booking đã lưu |
+| E2E-O1 | `/sales/new` nguồn Agoda, phòng trống | Công nợ OTA · có lựa chọn Xuất hóa đơn · không còn Từ ezCloud · mặc định không xuất |
+| E2E-X1 | `/sales/new` phòng trống, thêm phụ thu khác, tích Xuất hóa đơn | Xe đón sân bay · 150.000₫ · booking ghi Yêu cầu xuất hóa đơn |
+| E2E-O4 | `/sales/new` nguồn Agoda, chọn Thanh toán tại KS | Công nợ OTA 0₫ · phải thu khi check-in · có luồng Thu đủ |
 | E2E-O2 | login `quanly` `/reports/sales` | Doanh thu OTA · trước hoa hồng · E2E OTA · Công nợ OTA |
 | E2E-O3 | login `chusohuu` `/owner` | Doanh thu OTA · chưa trừ hoa hồng · E2E OTA |
 
@@ -284,9 +285,9 @@ Thêm block mới **trên cùng** mỗi lần test.
 
 - Commit: `68ab7c5-dirty`
 - Env: local `http://localhost:3002`
-- Pass / Fail: **27 / 0** · **27/27 = 100%**
+- Pass / Fail: **28 / 0** · **28/28 = 100%**
 - Evidence: `qa/evidence/E2E-20260923-1/`
-- Ghi chú: thêm OTA công nợ (E2E-O1), phụ thu lúc tạo (E2E-X1), doanh thu OTA chưa trừ hoa hồng trên báo cáo quản lý (E2E-O2) và trang chủ sở hữu (E2E-O3).
+- Ghi chú: thêm OTA công nợ (E2E-O1), OTA thanh toán tại KS có công nợ 0₫ và luồng Thu đủ (E2E-O4), phụ thu + lựa chọn xuất hóa đơn lúc tạo (E2E-X1), doanh thu OTA chưa trừ hoa hồng trên báo cáo quản lý (E2E-O2) và trang chủ sở hữu (E2E-O3).
 
 ### R-20260920-3 — 2026-09-20
 
