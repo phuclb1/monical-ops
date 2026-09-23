@@ -4,7 +4,7 @@ import { getDb } from "@/db";
 import * as t from "@/db/schema";
 import { nid, nowISO, todayVN } from "../../datetime";
 import { ensureTodayRoomTasks } from "../../checklist-ops";
-import { bookingQuote, catalogRate, isActiveSaleStatus, isSaleSource } from "../../sales";
+import { bookingQuote, catalogRate, isActiveSaleStatus, isOtaSource, isSaleSource } from "../../sales";
 import type { SaleStatus, SessionUser } from "../../types";
 import { audit } from "../audit";
 import { listRooms, listRoomTypes } from "../rooms";
@@ -43,7 +43,10 @@ export async function createRoomSale(user: SessionUser, data: SaleInput) {
   const pmsCode =
     data.pmsCode?.trim() || (origin === "ops" ? await nextOpsBookingCode(db, now) : "");
   if (!pmsCode) throw new Error("Tích ezCloud thì nhập mã PMS");
-  const paid = paymentOf(data);
+  const paid =
+    !requestedBookingId && isOtaSource(data.source)
+      ? { cashPaid: 0, transferPaid: 0, companyPaid: 0, deposit: 0 }
+      : paymentOf(data);
   const bookingTotal = bookingQuote(
     rooms.map((row) => ({
       rate: row.rate,

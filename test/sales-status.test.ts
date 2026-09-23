@@ -13,6 +13,7 @@ import {
   isOpsBookingCode,
   occupiesNight,
   parseOpsBookingCode,
+  isOtaSource,
   parseSaleSource,
   quoteLinesBySaleId,
   rangesOverlap,
@@ -36,6 +37,11 @@ test("OTA / walk-in source aliases and booking codes", () => {
   assert.equal(parseSaleSource("Traveloka"), "traveloka");
   assert.equal(parseSaleSource("vãng lai"), "walk_in");
   assert.equal(parseSaleSource("fb"), "facebook");
+  assert.equal(parseSaleSource("TikTok"), "tiktok");
+  assert.equal(isOtaSource("agoda"), true);
+  assert.equal(isOtaSource("ota"), true);
+  assert.equal(isOtaSource("tiktok"), false);
+  assert.equal(isOtaSource("walk_in"), false);
   assert.equal(parseSaleSource("dien thoai"), "phone");
   assert.equal(formatOpsBookingCode(3, 9), "BK-09-3");
   assert.deepEqual(parseOpsBookingCode("BK-09-3"), { month: 9, seq: 3 });

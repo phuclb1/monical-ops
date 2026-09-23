@@ -79,6 +79,7 @@ export const SALE_SOURCES = [
   "phone",
   "zalo",
   "facebook",
+  "tiktok",
   "company",
   "ezcloud",
   "booking",

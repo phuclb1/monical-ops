@@ -3,7 +3,7 @@ import { getDb } from "@/db";
 import * as t from "@/db/schema";
 import { nid, nowISO } from "../../datetime";
 import { can } from "../../permissions";
-import { isActiveSaleStatus } from "../../sales";
+import { isActiveSaleStatus, isOtaSource } from "../../sales";
 import type { SessionUser } from "../../types";
 import { audit } from "../audit";
 import { getBooking } from "./queries";
@@ -35,6 +35,7 @@ export async function addBookingExtra(
   const booking = await getBooking(bookingId);
   if (!booking) throw new Error("Không tìm thấy booking");
   if (!booking.rooms.some((row) => isActiveSaleStatus(row.status))) throw new Error("Booking đã đóng, không thêm dịch vụ");
+  if (isOtaSource(booking.source)) throw new Error("Booking OTA không thêm phụ thu");
   const types = await listSaleExtraTypes();
   const type = data.typeId ? types.find((row) => row.id === data.typeId) : undefined;
   const name = (type?.name || data.name || "").trim();

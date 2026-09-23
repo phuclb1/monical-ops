@@ -6,7 +6,7 @@ import { SALE_STATUS_LABEL } from "@/lib/constants";
 import { formatDateNumeric, formatPeriodLabel } from "@/lib/datetime";
 import { can } from "@/lib/permissions";
 import { listBookings } from "@/lib/repos";
-import { formatVnd, paidNote } from "@/lib/sales";
+import { formatVnd, isOtaSource, paidNote } from "@/lib/sales";
 import { parsePeriodQuery, roomRevenueReport, type ReportGrain } from "@/lib/sales-report";
 import type { SaleStatus } from "@/lib/types";
 
@@ -132,7 +132,9 @@ export default async function SalesRevenuePage({
                   <div className="flex flex-col items-end gap-1">
                     <Chip tone={STATUS_TONE[row.status as SaleStatus]}>{SALE_STATUS_LABEL[row.status as SaleStatus]}</Chip>
                     <span className="text-xs font-semibold">{formatVnd(row.total)}</span>
-                    <span className="text-xs text-[#5c6665]">Còn {formatVnd(row.due)}</span>
+                    <span className="text-xs text-[#5c6665]">
+                      {isOtaSource(row.source) ? `Công nợ OTA ${formatVnd(row.due)}` : `Còn ${formatVnd(row.due)}`}
+                    </span>
                   </div>
                 </div>
               </Link>

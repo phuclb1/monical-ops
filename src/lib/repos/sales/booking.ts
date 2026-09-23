@@ -9,6 +9,7 @@ import {
   catalogRate,
   clampBreakfastPax,
   isActiveSaleStatus,
+  isOtaSource,
   isSaleSource,
   normalizeDiscount,
   roomMoveKind,
@@ -63,7 +64,9 @@ export async function updateBooking(
   const children = Math.max(0, data.children ?? hit.children ?? 0);
   const cars = Math.max(0, data.cars ?? hit.cars ?? 0);
   const bikes = Math.max(0, data.bikes ?? hit.bikes ?? 0);
-  const paid = paymentOf(
+  const paid = isOtaSource(source) && !isOtaSource(hit.source)
+    ? { cashPaid: 0, transferPaid: 0, companyPaid: 0, deposit: 0 }
+    : paymentOf(
     {
       guestName,
       source,

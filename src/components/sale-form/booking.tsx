@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { Btn, Field, PayMethodField } from "@/components/ui";
 import { SALE_SOURCE_GROUPS, SALE_SOURCE_LABEL } from "@/lib/constants";
-import { bookingDue, bookingQuote, catalogRate, parseMoney, parseDiscountValue, primaryPaymentMethod, rangesOverlap, roomMoveKind } from "@/lib/sales";
+import { bookingDue, bookingQuote, catalogRate, isOtaSource, parseMoney, parseDiscountValue, primaryPaymentMethod, rangesOverlap, roomMoveKind } from "@/lib/sales";
 import { extraAmount } from "@/lib/extras";
 import type { PaymentMethod } from "@/lib/types";
 import { BookingRoomLines } from "./booking-lines";
@@ -76,8 +76,11 @@ export function BookingForm({
   const [discounts, setDiscounts] = useState<Record<string, DiscountState>>(() =>
     Object.fromEntries(lines.map((line) => [line.saleId, parseDiscountState(line.discountKind, line.discountValue)])),
   );
+  const [source, setSource] = useState(defaults.source || "walk_in");
   const [deposit, setDeposit] = useState(defaults.deposit ? String(defaults.deposit) : "");
   const [payMethod, setPayMethod] = useState<PaymentMethod>(() => primaryPaymentMethod(defaults));
+  const ota = isOtaSource(source);
+  const switchedToOta = ota && !isOtaSource(defaults.source);
 
   function stayOf(saleId: string, fallback: StayDates) {
     return dates[saleId] || fallback;
@@ -140,7 +143,7 @@ export function BookingForm({
   const extraRows = extras.map((row) => ({ ...row, amount: extraAmount(row, booked.nights) }));
   const extrasTotal = extraRows.reduce((sum, row) => sum + row.amount, 0);
   const bookingTotal = booked.total + extrasTotal;
-  const depositAmount = parseMoney(deposit);
+  const depositAmount = switchedToOta ? 0 : parseMoney(deposit);
   const due = bookingDue(bookingTotal, depositAmount);
   const stayAdults = Math.max(1, Number(adults) || 1);
   const stayChildren = Math.max(0, Number(children) || 0);
@@ -179,12 +182,12 @@ export function BookingForm({
         <input name="guestPhone" type="tel" defaultValue={defaults.guestPhone || ""} placeholder="090..." />
       </Field>
       <Field label="Nền tảng">
-        <select name="source" defaultValue={defaults.source || "walk_in"}>
+        <select name="source" value={source} onChange={(e) => setSource(e.target.value)}>
           {SALE_SOURCE_GROUPS.map((group) => (
             <optgroup key={group.label} label={group.label}>
-              {group.values.map((source) => (
-                <option key={source} value={source}>
-                  {SALE_SOURCE_LABEL[source]}
+              {group.values.map((value) => (
+                <option key={value} value={value}>
+                  {SALE_SOURCE_LABEL[value]}
                 </option>
               ))}
             </optgroup>
@@ -271,10 +274,16 @@ export function BookingForm({
         optionsFor={optionsFor}
         stayOf={stayOf}
       />
-      <Field label="Đặt cọc — tổng đã thu (₫)">
-        <input name="deposit" inputMode="numeric" value={deposit} onChange={(e) => setDeposit(e.target.value)} placeholder="0" />
-      </Field>
-      <PayMethodField value={payMethod} onChange={setPayMethod} />
+      {ota ? (
+        <input type="hidden" name="deposit" value={switchedToOta ? "0" : String(defaults.deposit || 0)} />
+      ) : (
+        <>
+          <Field label="Đặt cọc — tổng đã thu (₫)">
+            <input name="deposit" inputMode="numeric" value={deposit} onChange={(e) => setDeposit(e.target.value)} placeholder="0" />
+          </Field>
+          <PayMethodField value={payMethod} onChange={setPayMethod} />
+        </>
+      )}
       <Field label="Ghi chú">
         <textarea name="notes" rows={2} defaultValue={defaults.notes || ""} placeholder="Giờ đến, giường, xe đón..." />
       </Field>
@@ -287,6 +296,7 @@ export function BookingForm({
         depositAmount={depositAmount}
         defaults={defaults}
         payMethod={payMethod}
+        ota={ota}
         due={due}
       />
       <Btn type="submit" className="w-full">

@@ -8,6 +8,7 @@ import {
   bookingQuote,
   catalogRate,
   defaultCheckout,
+  isOtaSource,
   parseMoney,
   parseDiscountValue,
 } from "@/lib/sales";
@@ -68,8 +69,10 @@ export function SaleForm({
   const [breakfast, setBreakfast] = useState<Record<string, boolean>>({});
   const [rates, setRates] = useState<Record<string, string>>({});
   const [discounts, setDiscounts] = useState<Record<string, DiscountState>>({});
+  const [source, setSource] = useState(defaults.source || "walk_in");
   const [deposit, setDeposit] = useState(defaults.deposit ? String(defaults.deposit) : "");
   const [payMethod, setPayMethod] = useState<PaymentMethod>("personal");
+  const ota = isOtaSource(source);
   const [fromEz, setFromEz] = useState(defaults.origin === "ezcloud");
   const selectedRooms = rooms.filter((room) => roomIds.includes(room.id));
   const occupancyAdults = useMemo(() => defaultAdultsForRooms(selectedRooms, types), [selectedRooms, types]);
@@ -94,7 +97,7 @@ export function SaleForm({
   const booked = bookingQuote(quoteInputs);
   const quotes = quoteInputs.map((row, index) => ({ ...row, quote: booked.lines[index] }));
   const bookingTotal = booked.total;
-  const depositAmount = parseMoney(deposit);
+  const depositAmount = ota ? 0 : parseMoney(deposit);
   const due = bookingDue(bookingTotal, depositAmount);
   const stayAdults = Math.max(1, Number(adults) || 1);
   const stayChildren = Math.max(0, Number(children) || 0);
@@ -197,12 +200,12 @@ export function SaleForm({
       {defaults.id ? <input type="hidden" name="id" value={defaults.id} /> : null}
       {defaults.date ? <input type="hidden" name="date" value={defaults.date} /> : null}
       <Field label="Nền tảng">
-        <select name="source" defaultValue={defaults.source || "walk_in"}>
+        <select name="source" value={source} onChange={(e) => setSource(e.target.value)}>
           {SALE_SOURCE_GROUPS.map((group) => (
             <optgroup key={group.label} label={group.label}>
-              {group.values.map((source) => (
-                <option key={source} value={source}>
-                  {SALE_SOURCE_LABEL[source]}
+              {group.values.map((value) => (
+                <option key={value} value={value}>
+                  {SALE_SOURCE_LABEL[value]}
                 </option>
               ))}
             </optgroup>
@@ -281,6 +284,7 @@ export function SaleForm({
         setBreakfastPaxTouched={setBreakfastPaxTouched}
         setBreakfastAdults={setBreakfastAdults}
         setBreakfastChildren={setBreakfastChildren}
+        ota={ota}
         fromEz={fromEz}
         showCheckinNow={showCheckinNow}
         today={today}

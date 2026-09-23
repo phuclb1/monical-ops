@@ -14,7 +14,7 @@ import { formatDateLong, todayVN } from "@/lib/datetime";
 import { extraDetail } from "@/lib/extras";
 import { can } from "@/lib/permissions";
 import { getBooking, listBookingLogs, listRooms, listRoomSales, listRoomTypes, listSaleExtraTypes } from "@/lib/repos";
-import { bookingQuote, formatVnd, isActiveSaleStatus, isOpsBookingCode, paidNote, parkingLabel } from "@/lib/sales";
+import { bookingQuote, formatVnd, isActiveSaleStatus, isOpsBookingCode, isOtaSource, paidNote, parkingLabel } from "@/lib/sales";
 import type { SaleOrigin, SaleSource, SaleStatus } from "@/lib/types";
 
 const STATUS_TONE: Record<SaleStatus, "ok" | "warn" | "danger" | "gold" | "neutral"> = {
@@ -55,6 +55,7 @@ export default async function BookingDetailPage({
   const canNoShow = Boolean(activeRooms.length) && activeRooms.every((row) => row.status === "reserved");
   const readyIn = activeRooms.filter((row) => row.status === "reserved" && today >= row.checkIn);
   const staying = activeRooms.filter((row) => row.status === "inhouse");
+  const ota = isOtaSource(booking.source);
   const activeIds = new Set(activeRooms.map((row) => row.id));
   const busy = sales
     .filter((row) => isActiveSaleStatus(row.status) && !activeIds.has(row.id))
@@ -88,7 +89,13 @@ export default async function BookingDetailPage({
           </div>
           <div className="flex flex-col items-end gap-1">
             <Chip tone={STATUS_TONE[booking.status]}>{SALE_STATUS_LABEL[booking.status]}</Chip>
-            {booking.deposit ? <Chip tone="ok">Đã cọc</Chip> : isActiveSaleStatus(booking.status) ? <Chip tone="warn">Chưa cọc</Chip> : null}
+            {ota ? (
+              <Chip tone="gold">Công nợ OTA</Chip>
+            ) : booking.deposit ? (
+              <Chip tone="ok">Đã cọc</Chip>
+            ) : isActiveSaleStatus(booking.status) ? (
+              <Chip tone="warn">Chưa cọc</Chip>
+            ) : null}
           </div>
         </div>
       </div>
@@ -111,7 +118,7 @@ export default async function BookingDetailPage({
             {booking.discount ? (
               <p className="mt-1 text-sm text-[#1b7a4e]">Chiết khấu −{formatVnd(booking.discount)}</p>
             ) : null}
-            <p className="mt-1 text-sm">Phải thu {formatVnd(booking.total)}</p>
+            {ota ? null : <p className="mt-1 text-sm">Phải thu {formatVnd(booking.total)}</p>}
             {booking.extrasTotal ? (
               <p className="mt-1 text-sm">
                 Phòng {formatVnd(booking.roomTotal)} · dịch vụ {formatVnd(booking.extrasTotal)}
@@ -123,15 +130,29 @@ export default async function BookingDetailPage({
                 {extraDetail(row, booking.nights) ? ` · ${extraDetail(row, booking.nights)}` : ""} · {formatVnd(row.amount)}
               </p>
             ))}
-            {booking.deposit ? (
-              <p className="mt-1 text-sm text-[#1b7a4e]">
-                Đã đặt cọc {formatVnd(booking.deposit)}
-                {paidNote(booking) ? ` · ${paidNote(booking)}` : ""}
-              </p>
+            {ota ? (
+              <>
+                {booking.deposit ? (
+                  <p className="mt-1 text-sm text-[#1b7a4e]">
+                    Đã thu {formatVnd(booking.deposit)}
+                    {paidNote(booking) ? ` · ${paidNote(booking)}` : ""}
+                  </p>
+                ) : null}
+                <p className="mt-1 text-sm font-semibold">Công nợ OTA {formatVnd(booking.due)}</p>
+              </>
             ) : (
-              <p className="mt-1 text-sm text-[#c47b12]">Chưa đặt cọc</p>
+              <>
+                {booking.deposit ? (
+                  <p className="mt-1 text-sm text-[#1b7a4e]">
+                    Đã đặt cọc {formatVnd(booking.deposit)}
+                    {paidNote(booking) ? ` · ${paidNote(booking)}` : ""}
+                  </p>
+                ) : (
+                  <p className="mt-1 text-sm text-[#c47b12]">Chưa đặt cọc</p>
+                )}
+                <p className="mt-1 text-sm font-semibold">Còn phải thu {formatVnd(booking.due)}</p>
+              </>
             )}
-            <p className="mt-1 text-sm font-semibold">Còn phải thu {formatVnd(booking.due)}</p>
             {booking.guestPhone ? <p className="mt-1 text-sm">SĐT {booking.guestPhone}</p> : null}
             {booking.pmsCode ? (
               <p className="mt-1 text-sm">
@@ -139,7 +160,7 @@ export default async function BookingDetailPage({
               </p>
             ) : null}
             {booking.notes ? <p className="mt-2 text-sm text-[#5c6665]">{booking.notes}</p> : null}
-            {firstActive ? (
+            {firstActive && !ota ? (
               <div className="mt-3 border-t border-line pt-3">
                 <p className="mb-2 text-xs font-semibold text-[#5c6665]">Thanh toán</p>
                 <BookingPaymentPanel
@@ -181,6 +202,7 @@ export default async function BookingDetailPage({
             <BookingRoomList
               rooms={booking.rooms}
               quotes={booked.lines}
+              ota={ota}
               totals={{
                 roomTotal: booking.roomTotal,
                 discount: booking.discount,
@@ -202,7 +224,7 @@ export default async function BookingDetailPage({
             />
           </Card>
 
-          {firstActive ? (
+          {firstActive && !ota ? (
             <Fold title="Dịch vụ / phụ thu" hint={booking.extras.length ? `${booking.extras.length}` : undefined}>
               <BookingExtrasPanel
                 bookingId={booking.id}

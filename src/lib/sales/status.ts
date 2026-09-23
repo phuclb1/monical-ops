@@ -1,5 +1,8 @@
+import { SALE_SOURCE_GROUPS } from "../constants";
 import type { SaleOrigin, SaleSource, SaleStatus } from "../types";
 import { ACTIVE_SALE_STATUSES, SALE_SOURCES } from "../types";
+
+const OTA_SOURCES = new Set<string>(SALE_SOURCE_GROUPS.find((group) => group.label === "OTA")?.values ?? []);
 
 export function rangesOverlap(aIn: string, aOut: string, bIn: string, bOut: string) {
   return aIn < bOut && bIn < aOut;
@@ -25,6 +28,10 @@ export function isSaleSource(value: string): value is SaleSource {
   return (SALE_SOURCES as readonly string[]).includes(value);
 }
 
+export function isOtaSource(value: string | null | undefined) {
+  return OTA_SOURCES.has(String(value || ""));
+}
+
 export function parseSaleSource(raw: string | null | undefined): SaleSource {
   const original = String(raw || "").trim().toLowerCase();
   if (isSaleSource(original)) return original;
@@ -40,10 +47,11 @@ export function parseSaleSource(raw: string | null | undefined): SaleSource {
   if (compact.includes("ezcloud") || compact.includes("websitekhachsan")) return "ezcloud";
   if (compact.includes("zalo")) return "zalo";
   if (compact.includes("facebook") || compact === "fb") return "facebook";
+  if (compact.includes("tiktok")) return "tiktok";
   if (compact.includes("walk") || compact.includes("vanglai") || compact.includes("walkin")) return "walk_in";
   if (compact.includes("phone") || compact.includes("dienthoai")) return "phone";
   if (compact.includes("company") || compact.includes("congty") || compact.includes("corporate") || compact.includes("doan")) return "company";
-  if (compact.includes("ota") || compact.includes("tiktok")) return "ota";
+  if (compact.includes("ota")) return "ota";
   return "ota";
 }
 

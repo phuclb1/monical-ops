@@ -11,7 +11,7 @@ import { formatDateLong, todayVN } from "@/lib/datetime";
 import { can } from "@/lib/permissions";
 import { getRoomSale, getRoomDayChecklists, getBooking, listRooms, listRoomHandoff } from "@/lib/repos";
 import { canCheckinAfterStandby, canCheckoutAfterInspect } from "@/lib/room-handoff";
-import { bookingDue, bookingQuote, discountLabel, formatVnd, isOpsBookingCode, paidNote } from "@/lib/sales";
+import { bookingDue, bookingQuote, discountLabel, formatVnd, isOpsBookingCode, isOtaSource, paidNote } from "@/lib/sales";
 import type { SaleOrigin, SaleSource, SaleStatus } from "@/lib/types";
 
 const STATUS_TONE: Record<SaleStatus, "ok" | "warn" | "danger" | "gold" | "neutral"> = {
@@ -54,6 +54,7 @@ export default async function SaleDetailPage({
   const sellable = rooms.filter((room) => room.opsStatus !== "ooo" || room.id === sale.roomId).sort((a, b) => a.number.localeCompare(b.number));
   const taken = new Set(group.map((row) => row.roomId));
   const extraRooms = sellable.filter((room) => !taken.has(room.id) && room.opsStatus !== "ooo");
+  const ota = isOtaSource(sale.source);
 
   return (
     <main className="space-y-3 px-3 py-4">
@@ -93,21 +94,37 @@ export default async function SaleDetailPage({
             Chiết khấu {discountLabel(sale.discountKind, sale.discountValue)} −{formatVnd(quote.discount)}
           </p>
         ) : null}
-        <p className="mt-1 text-sm">Phải thu {formatVnd(booking?.total ?? booked.total)}</p>
+        {ota ? null : <p className="mt-1 text-sm">Phải thu {formatVnd(booking?.total ?? booked.total)}</p>}
         {booking?.extrasTotal ? (
           <p className="mt-1 text-xs text-[#5c6665]">
             Phòng {formatVnd(booking.roomTotal)} · dịch vụ {formatVnd(booking.extrasTotal)}
           </p>
         ) : null}
-        {sale.deposit ? (
-          <p className="mt-1 text-sm text-[#1b7a4e]">
-            Đã đặt cọc {formatVnd(sale.deposit)}
-            {paidNote(sale) ? ` · ${paidNote(sale)}` : ""}
-          </p>
+        {ota ? (
+          <>
+            {sale.deposit ? (
+              <p className="mt-1 text-sm text-[#1b7a4e]">
+                Đã thu {formatVnd(sale.deposit)}
+                {paidNote(sale) ? ` · ${paidNote(sale)}` : ""}
+              </p>
+            ) : null}
+            <p className="mt-1 text-sm font-semibold">
+              Công nợ OTA {formatVnd(booking?.due ?? bookingDue(booked.total, sale.deposit || 0))}
+            </p>
+          </>
         ) : (
-          <p className="mt-1 text-sm text-[#c47b12]">Chưa đặt cọc</p>
+          <>
+            {sale.deposit ? (
+              <p className="mt-1 text-sm text-[#1b7a4e]">
+                Đã đặt cọc {formatVnd(sale.deposit)}
+                {paidNote(sale) ? ` · ${paidNote(sale)}` : ""}
+              </p>
+            ) : (
+              <p className="mt-1 text-sm text-[#c47b12]">Chưa đặt cọc</p>
+            )}
+            <p className="mt-1 text-sm font-semibold">Còn phải thu {formatVnd(booking?.due ?? bookingDue(booked.total, sale.deposit || 0))}</p>
+          </>
         )}
-        <p className="mt-1 text-sm font-semibold">Còn phải thu {formatVnd(booking?.due ?? bookingDue(booked.total, sale.deposit || 0))}</p>
         {sale.guestPhone ? <p className="mt-1 text-sm">SĐT {sale.guestPhone}</p> : null}
         {sale.pmsCode ? <p className="mt-1 text-sm">{isOpsBookingCode(sale.pmsCode) ? "Mã Ops" : "PMS"} {sale.pmsCode}</p> : null}
         {sale.notes ? <p className="mt-2 text-sm text-[#5c6665]">{sale.notes}</p> : null}
@@ -184,7 +201,7 @@ export default async function SaleDetailPage({
 
       {active ? (
         <Link href={`/sales/bookings/${sale.bookingKey}`} className="cta-link w-full">
-          Sửa phòng · cọc · chiết khấu
+          {ota ? "Sửa phòng · chiết khấu" : "Sửa phòng · cọc · chiết khấu"}
         </Link>
       ) : null}
     </main>

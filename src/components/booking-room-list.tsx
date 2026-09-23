@@ -44,7 +44,9 @@ function roomView(row: RoomRow, quote?: QuoteLine) {
 
 function Totals({
   totals,
+  ota,
 }: {
+  ota?: boolean;
   totals: {
     roomTotal: number;
     discount: number;
@@ -84,14 +86,31 @@ function Totals({
         <span>Tổng cộng</span>
         <span>{formatVnd(totals.total)}</span>
       </li>
-      <li>
-        <span>Đã đặt cọc</span>
-        <span>{formatVnd(totals.deposit)}</span>
-      </li>
-      <li className="is-due">
-        <span>Còn lại</span>
-        <span>{formatVnd(totals.due)}</span>
-      </li>
+      {ota ? (
+        <>
+          {totals.deposit ? (
+            <li>
+              <span>Đã thu</span>
+              <span>{formatVnd(totals.deposit)}</span>
+            </li>
+          ) : null}
+          <li className="is-due">
+            <span>Công nợ OTA</span>
+            <span>{formatVnd(totals.due)}</span>
+          </li>
+        </>
+      ) : (
+        <>
+          <li>
+            <span>Đã đặt cọc</span>
+            <span>{formatVnd(totals.deposit)}</span>
+          </li>
+          <li className="is-due">
+            <span>Còn lại</span>
+            <span>{formatVnd(totals.due)}</span>
+          </li>
+        </>
+      )}
     </ul>
   );
 }
@@ -100,9 +119,11 @@ export function BookingRoomList({
   rooms,
   quotes,
   totals,
+  ota,
 }: {
   rooms: RoomRow[];
   quotes: QuoteLine[];
+  ota?: boolean;
   totals: {
     roomTotal: number;
     discount: number;
@@ -205,7 +226,7 @@ export function BookingRoomList({
           </tbody>
         </table>
       </div>
-      <Totals totals={totals} />
+      <Totals totals={totals} ota={ota} />
     </div>
   );
 }

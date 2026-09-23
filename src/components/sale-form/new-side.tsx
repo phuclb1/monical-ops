@@ -30,6 +30,7 @@ export function SaleFormSide(props: {
   setBreakfastPaxTouched: (value: boolean) => void;
   setBreakfastAdults: (value: string) => void;
   setBreakfastChildren: (value: string) => void;
+  ota?: boolean;
   fromEz: boolean;
   showCheckinNow?: boolean;
   today?: string;
@@ -60,6 +61,7 @@ export function SaleFormSide(props: {
     setBreakfastPaxTouched,
     setBreakfastAdults,
     setBreakfastChildren,
+    ota,
     fromEz,
     showCheckinNow,
     today,
@@ -68,10 +70,16 @@ export function SaleFormSide(props: {
   } = props;
   return (
       <div className="sale-form-side card p-4">
-      <Field label="Đặt cọc (₫)">
-        <input name="deposit" inputMode="numeric" value={deposit} onChange={(e) => setDeposit(e.target.value)} placeholder="0" />
-      </Field>
-      {depositAmount ? <PayMethodField value={payMethod} onChange={setPayMethod} /> : <input type="hidden" name="paymentMethod" value={payMethod} />}
+      {ota ? (
+        <input type="hidden" name="deposit" value="0" />
+      ) : (
+        <>
+          <Field label="Đặt cọc (₫)">
+            <input name="deposit" inputMode="numeric" value={deposit} onChange={(e) => setDeposit(e.target.value)} placeholder="0" />
+          </Field>
+          {depositAmount ? <PayMethodField value={payMethod} onChange={setPayMethod} /> : <input type="hidden" name="paymentMethod" value={payMethod} />}
+        </>
+      )}
       <div className="rounded-xl bg-sand px-3 py-2 text-sm">
         {selectedRooms.length && quotes.every((row) => row.quote.nights > 0) ? (
           <ul className="space-y-1">
@@ -97,22 +105,26 @@ export function SaleFormSide(props: {
                 ) : null}
               </li>
             ))}
-            <li className="flex justify-between gap-2">
-              <span>{quotes.length > 1 ? `Phải thu ${quotes.length} phòng` : "Phải thu"}</span>
+            <li className={`flex justify-between gap-2${ota ? " font-bold" : ""}`}>
+              <span>{ota ? "Công nợ OTA" : quotes.length > 1 ? `Phải thu ${quotes.length} phòng` : "Phải thu"}</span>
               <span>{formatVnd(bookingTotal)}</span>
             </li>
-            {depositAmount ? (
-              <li className="flex justify-between gap-2 text-[#1b7a4e]">
-                <span>Đã đặt cọc · {PAYMENT_METHOD_LABEL[payMethod]}</span>
-                <span>−{formatVnd(depositAmount)}</span>
-              </li>
-            ) : (
-              <li className="text-[#c47b12]">Chưa đặt cọc</li>
+            {ota ? null : (
+              <>
+                {depositAmount ? (
+                  <li className="flex justify-between gap-2 text-[#1b7a4e]">
+                    <span>Đã đặt cọc · {PAYMENT_METHOD_LABEL[payMethod]}</span>
+                    <span>−{formatVnd(depositAmount)}</span>
+                  </li>
+                ) : (
+                  <li className="text-[#c47b12]">Chưa đặt cọc</li>
+                )}
+                <li className="flex justify-between gap-2 font-bold">
+                  <span>Còn phải thu</span>
+                  <span>{formatVnd(due)}</span>
+                </li>
+              </>
             )}
-            <li className="flex justify-between gap-2 font-bold">
-              <span>Còn phải thu</span>
-              <span>{formatVnd(due)}</span>
-            </li>
           </ul>
         ) : (
           <p className="text-[#5c6665]">{selectedRooms.length ? "Ngày trả phải sau ngày nhận" : "Chọn phòng để xem tạm tính"}</p>

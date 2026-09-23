@@ -6,7 +6,7 @@ import { SALE_ORIGIN_LABEL, SALE_SOURCE_LABEL, SALE_STATUS_LABEL } from "@/lib/c
 import { formatDateLong, formatDateNumeric } from "@/lib/datetime";
 import { can } from "@/lib/permissions";
 import { listBookings } from "@/lib/repos";
-import { formatVnd, isOpsBookingCode, matchesBookingSearch, paidNote } from "@/lib/sales";
+import { formatVnd, isOpsBookingCode, isOtaSource, matchesBookingSearch, paidNote } from "@/lib/sales";
 import type { SaleOrigin, SaleSource, SaleStatus } from "@/lib/types";
 
 const TABS = [
@@ -146,13 +146,17 @@ export default async function BookingsPage({
                     </div>
                     <div className="flex flex-col items-end gap-1">
                       <Chip tone={STATUS_TONE[row.status]}>{SALE_STATUS_LABEL[row.status]}</Chip>
-                      {row.deposit ? (
+                      {isOtaSource(row.source) ? (
+                        <Chip tone="gold">Công nợ OTA</Chip>
+                      ) : row.deposit ? (
                         <Chip tone="ok">Đã cọc {formatVnd(row.deposit)}{paidNote(row) ? ` · ${paidNote(row)}` : ""}</Chip>
                       ) : row.status === "reserved" || row.status === "inhouse" ? (
                         <Chip tone="warn">Chưa cọc</Chip>
                       ) : null}
                       <span className="text-xs text-[#5c6665]">Phải thu {formatVnd(row.total)}</span>
-                      <span className="text-xs font-semibold">Còn {formatVnd(row.due)}</span>
+                      <span className="text-xs font-semibold">
+                        {isOtaSource(row.source) ? `Công nợ OTA ${formatVnd(row.due)}` : `Còn ${formatVnd(row.due)}`}
+                      </span>
                     </div>
                   </div>
                 </Card>
@@ -192,7 +196,9 @@ export default async function BookingsPage({
                 <p className="text-sm">{SALE_SOURCE_LABEL[row.source as SaleSource] || row.source}</p>
                 <div className="flex flex-col items-start gap-1">
                   <Chip tone={STATUS_TONE[row.status]}>{SALE_STATUS_LABEL[row.status]}</Chip>
-                  {row.deposit ? (
+                  {isOtaSource(row.source) ? (
+                    <Chip tone="gold">Công nợ OTA</Chip>
+                  ) : row.deposit ? (
                     <Chip tone="ok">Đã cọc{paidNote(row) ? ` · ${paidNote(row)}` : ""}</Chip>
                   ) : row.status === "reserved" || row.status === "inhouse" ? (
                     <Chip tone="warn">Chưa cọc</Chip>

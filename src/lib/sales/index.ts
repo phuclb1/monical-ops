@@ -39,6 +39,7 @@ export {
   isGanttSaleStatus,
   isSaleOrigin,
   isSaleSource,
+  isOtaSource,
   parseSaleSource,
   formatOpsBookingCode,
   parseOpsBookingCode,

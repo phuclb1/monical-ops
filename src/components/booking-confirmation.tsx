@@ -12,7 +12,7 @@ import {
   SALE_SOURCE_LABEL,
 } from "@/lib/constants";
 import { formatDateNumeric, formatStayStamp } from "@/lib/datetime";
-import { bookingDisplayCode, bookingQuote, formatVndLetter, parkingLabel } from "@/lib/sales";
+import { bookingDisplayCode, bookingQuote, formatVndLetter, isOtaSource, parkingLabel } from "@/lib/sales";
 import type { SaleSource } from "@/lib/types";
 import type { getBooking } from "@/lib/repos";
 
@@ -52,6 +52,7 @@ export function BookingConfirmation({ booking }: { booking: Booking }) {
   const source = SALE_SOURCE_LABEL[booking.source as SaleSource] || booking.source || "—";
   const gross = quote.subtotal + quote.breakfastOff + (booking.extrasTotal || 0);
   const afterDiscount = booking.total;
+  const ota = isOtaSource(booking.source);
 
   return (
     <article className="booking-sheet">
@@ -174,14 +175,31 @@ export function BookingConfirmation({ booking }: { booking: Booking }) {
                 <th>Tổng tiền sau chiết khấu</th>
                 <td className="booking-sheet-num">{formatVndLetter(afterDiscount)}</td>
               </tr>
-              <tr>
-                <th>Đặt cọc</th>
-                <td className="booking-sheet-num">{formatVndLetter(booking.deposit)}</td>
-              </tr>
-              <tr className="is-strong">
-                <th>Còn phải thanh toán</th>
-                <td className="booking-sheet-num">{formatVndLetter(booking.due)}</td>
-              </tr>
+              {ota ? (
+                <>
+                  {booking.deposit ? (
+                    <tr>
+                      <th>Đã thu</th>
+                      <td className="booking-sheet-num">{formatVndLetter(booking.deposit)}</td>
+                    </tr>
+                  ) : null}
+                  <tr className="is-strong">
+                    <th>Công nợ OTA</th>
+                    <td className="booking-sheet-num">{formatVndLetter(booking.due)}</td>
+                  </tr>
+                </>
+              ) : (
+                <>
+                  <tr>
+                    <th>Đặt cọc</th>
+                    <td className="booking-sheet-num">{formatVndLetter(booking.deposit)}</td>
+                  </tr>
+                  <tr className="is-strong">
+                    <th>Còn phải thanh toán</th>
+                    <td className="booking-sheet-num">{formatVndLetter(booking.due)}</td>
+                  </tr>
+                </>
+              )}
             </tbody>
           </table>
         </div>
