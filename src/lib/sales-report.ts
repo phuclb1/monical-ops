@@ -1,5 +1,5 @@
 import { periodWindow, todayVN, type PeriodGrain } from "./datetime";
-import { salePaid } from "./sales";
+import { isOtaSource, salePaid } from "./sales";
 
 export const PERIOD_GRAINS = ["month", "quarter", "year"] as const;
 export type ReportGrain = (typeof PERIOD_GRAINS)[number];
@@ -32,6 +32,7 @@ type BookingMoney = {
   cashPaid?: number | null;
   transferPaid?: number | null;
   companyPaid?: number | null;
+  source?: string | null;
 };
 
 function moneyOf<T extends BookingMoney>(rows: T[]) {
@@ -44,9 +45,10 @@ function moneyOf<T extends BookingMoney>(rows: T[]) {
       acc.cash += paid.cashPaid;
       acc.transfer += paid.transferPaid;
       acc.company += paid.companyPaid;
+      if (isOtaSource(row.source)) acc.ota += row.total;
       return acc;
     },
-    { total: 0, deposit: 0, due: 0, cash: 0, transfer: 0, company: 0 },
+    { total: 0, deposit: 0, due: 0, cash: 0, transfer: 0, company: 0, ota: 0 },
   );
 }
 

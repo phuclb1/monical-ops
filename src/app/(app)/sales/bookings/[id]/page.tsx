@@ -224,7 +224,7 @@ export default async function BookingDetailPage({
             />
           </Card>
 
-          {firstActive && !ota ? (
+          {firstActive ? (
             <Fold title="Dịch vụ / phụ thu" hint={booking.extras.length ? `${booking.extras.length}` : undefined}>
               <BookingExtrasPanel
                 bookingId={booking.id}

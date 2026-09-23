@@ -117,6 +117,29 @@ async function must(shot, needles) {
   return text;
 }
 
+async function mustNot(shot, needles) {
+  await page.screenshot({ path: shot, fullPage: true });
+  const text = await pageText();
+  const found = needles.filter((n) => text.includes(n));
+  if (found.length) throw new Error(`Không được có: ${found.join(" | ")} · URL ${page.url()}`);
+  return text;
+}
+
+async function pickOpenRoom() {
+  const boxes = page.locator('input[name="roomId"][type="checkbox"]');
+  const n = await boxes.count();
+  if (!n) throw new Error("Không còn phòng trống");
+  const box = boxes.first();
+  const id = await box.getAttribute("value");
+  await box.scrollIntoViewIfNeeded();
+  if (!(await box.isChecked())) await box.check();
+  for (let i = 1; i < n; i += 1) {
+    const item = boxes.nth(i);
+    if (await item.isChecked()) await item.uncheck();
+  }
+  return String(id || "").replace(/^r-/, "");
+}
+
 async function check(id, title, fn) {
   const row = { id, title, result: "fail", evidence: "", note: "" };
   try {
@@ -319,6 +342,66 @@ try {
   await check("E2E-R10", "Cuối ca hiện trên ca đang mở", async (shot) => {
     await go("/shifts");
     await must(shot, ["Cuối ca", "Đang mở"]);
+  });
+
+  await check("E2E-O1", "Booking OTA — công nợ, không cọc, không thu đủ", async (shot) => {
+    await go("/sales/new");
+    await page.locator('select[name="source"]').selectOption("agoda");
+    const room = await pickOpenRoom();
+    await page.locator('input[name="guestName"]').fill("E2E OTA");
+    await page.locator('input[name="guestPhone"]').fill("0900000104");
+    const now = page.locator('input[name="checkinNow"]');
+    if (await now.count()) await now.uncheck();
+    const deposit = page.locator('input[name="deposit"]');
+    if (await deposit.count()) {
+      const visible = await deposit.evaluate((el) => el.type !== "hidden" && el.offsetParent !== null);
+      if (visible) throw new Error("Form OTA vẫn hỏi đặt cọc");
+    }
+    await must(shot, ["Công nợ OTA", "Agoda"]);
+    await mustNot(shot, ["Đặt cọc", "Thu đủ", "Chưa cọc"]);
+    await Promise.all([
+      page.waitForURL(/\/sales\/bookings\//, { timeout: 25000 }),
+      page.getByRole("button", { name: /Lưu/ }).click(),
+    ]);
+    await ready();
+    await must(shot, ["E2E OTA", `P.${room}`, "Công nợ OTA", "Agoda", "Đã giữ"]);
+    await mustNot(shot, ["Đặt cọc", "Thu đủ", "Chưa cọc", "Còn phải thu"]);
+  });
+
+  await check("E2E-X1", "Tạo booking kèm phụ thu", async (shot) => {
+    await go("/sales/new");
+    const room = await pickOpenRoom();
+    await page.locator('input[name="guestName"]').fill("E2E Phu Thu");
+    await page.locator('input[name="guestPhone"]').fill("0900000205");
+    const service = page.locator("label").filter({ hasText: "Dịch vụ" }).locator("select");
+    await service.selectOption("other");
+    await page.getByPlaceholder("Xe đón, hoa...").fill("Xe đón sân bay");
+    await page.getByPlaceholder("50000").fill("150000");
+    await page.getByRole("button", { name: "Thêm phụ thu" }).click();
+    await page.locator("p").filter({ hasText: "Xe đón sân bay" }).first().waitFor({ timeout: 10000 });
+    const now = page.locator('input[name="checkinNow"]');
+    if (await now.count()) await now.uncheck();
+    await must(shot, ["Xe đón sân bay", "150.000₫"]);
+    await Promise.all([
+      page.waitForURL(/\/sales\/bookings\//, { timeout: 25000 }),
+      page.getByRole("button", { name: /Lưu/ }).click(),
+    ]);
+    await ready();
+    await must(shot, ["E2E Phu Thu", `P.${room}`, "Xe đón sân bay", "150.000₫", "Đã giữ"]);
+  });
+
+  await check("E2E-O2", "Báo cáo doanh thu OTA chưa trừ hoa hồng", async (shot) => {
+    await logout();
+    await login("quanly");
+    await go("/reports/sales");
+    await must(shot, ["Doanh thu OTA", "trước hoa hồng", "chưa trừ hoa hồng", "E2E OTA", "Công nợ OTA"]);
+  });
+
+  await check("E2E-O3", "Chủ sở hữu thấy doanh thu OTA", async (shot) => {
+    await logout();
+    await login("chusohuu");
+    await go("/owner");
+    await must(shot, ["DOANH THU OTA", "chưa trừ hoa hồng", "E2E OTA"]);
   });
 } finally {
   await browser.close();

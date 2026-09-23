@@ -10,6 +10,8 @@ import { audit } from "../audit";
 import { listRooms, listRoomTypes } from "../rooms";
 import { assertSaleWindow, paymentOf, saleLineWindow, salePax, type SaleInput, uniqueSaleRoomIds } from "./helpers";
 import { notifyBookingChange } from "./notify";
+import { extraAmount } from "../../extras";
+import { insertSaleExtras, resolveSaleExtras } from "./extras";
 import { applySaleRoomState, syncStayFromSale } from "./stay";
 
 export async function createRoomSale(user: SessionUser, data: SaleInput) {
@@ -47,7 +49,7 @@ export async function createRoomSale(user: SessionUser, data: SaleInput) {
     !requestedBookingId && isOtaSource(data.source)
       ? { cashPaid: 0, transferPaid: 0, companyPaid: 0, deposit: 0 }
       : paymentOf(data);
-  const bookingTotal = bookingQuote(
+  const quote = bookingQuote(
     rooms.map((row) => ({
       rate: row.rate,
       checkIn: row.checkIn,
@@ -56,7 +58,9 @@ export async function createRoomSale(user: SessionUser, data: SaleInput) {
       discountKind: row.discountKind,
       discountValue: row.discountValue,
     })),
-  ).total;
+  );
+  const preparedExtras = requestedBookingId ? [] : await resolveSaleExtras(data.extras || []);
+  const bookingTotal = quote.total + preparedExtras.reduce((sum, row) => sum + extraAmount(row, quote.nights), 0);
   const ids: string[] = [];
   for (const row of rooms) {
     const id = nid();
@@ -99,6 +103,7 @@ export async function createRoomSale(user: SessionUser, data: SaleInput) {
     await audit(user.id, "room_sale", id, "create", null, record);
     ids.push(id);
   }
+  await insertSaleExtras(user, bookingId, preparedExtras);
   await ensureTodayRoomTasks(db, { actorId: user.id });
   const roomLabel = rooms.length === 1 ? `P.${rooms[0].room.number}` : `${rooms.length} phòng`;
   const spanIn = rooms.reduce((min, row) => (row.checkIn < min ? row.checkIn : min), rooms[0].checkIn);

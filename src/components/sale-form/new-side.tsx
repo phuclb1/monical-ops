@@ -14,6 +14,8 @@ export function SaleFormSide(props: {
   setPayMethod: (value: PaymentMethod) => void;
   selectedRooms: Room[];
   quotes: { room: Room; rate: number; quote: { nights: number; gross?: number; subtotal: number; breakfastOff: number; discount: number }; discountKind: string; discountValue: number }[];
+  extraRows?: { key: string; name: string; qty: number; unit: string; unitPrice: number; amount: number }[];
+  extraNights?: number;
   bookingTotal: number;
   due: number;
   defaults: { guestName?: string; guestPhone?: string; cars?: number; bikes?: number; pmsCode?: string; notes?: string; checkIn: string };
@@ -45,6 +47,8 @@ export function SaleFormSide(props: {
     setPayMethod,
     selectedRooms,
     quotes,
+    extraRows = [],
+    extraNights = 0,
     bookingTotal,
     due,
     defaults,
@@ -103,6 +107,15 @@ export function SaleFormSide(props: {
                     <span>−{formatVnd(row.quote.discount)}</span>
                   </div>
                 ) : null}
+              </li>
+            ))}
+            {extraRows.map((row) => (
+              <li key={row.key} className="flex justify-between gap-2">
+                <span>
+                  {row.name}
+                  {row.unit === "night" ? ` · ${row.qty} × ${extraNights} đêm` : row.unit === "kg" ? ` · ${row.qty} kg` : ""}
+                </span>
+                <span>{formatVnd(row.amount)}</span>
               </li>
             ))}
             <li className={`flex justify-between gap-2${ota ? " font-bold" : ""}`}>

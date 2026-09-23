@@ -6,7 +6,7 @@ import { getSession } from "@/lib/auth";
 import { defaultCheckout, isActiveSaleStatus } from "@/lib/sales";
 import { todayVN } from "@/lib/datetime";
 import { can } from "@/lib/permissions";
-import { listRooms, listRoomSales, listRoomTypes, listStays } from "@/lib/repos";
+import { listRooms, listRoomSales, listRoomTypes, listSaleExtraTypes, listStays } from "@/lib/repos";
 
 export default async function NewSalePage({
   searchParams,
@@ -19,7 +19,13 @@ export default async function NewSalePage({
   const { date: rawDate, error } = await searchParams;
   const today = todayVN();
   const date = rawDate && /^\d{4}-\d{2}-\d{2}$/.test(rawDate) ? rawDate : today;
-  const [rooms, types, sales, stays] = await Promise.all([listRooms(), listRoomTypes(), listRoomSales(), listStays()]);
+  const [rooms, types, sales, stays, extraTypes] = await Promise.all([
+    listRooms(),
+    listRoomTypes(),
+    listRoomSales(),
+    listStays(),
+    listSaleExtraTypes(),
+  ]);
   const sellable = rooms.filter((item) => item.opsStatus !== "ooo").sort((a, b) => a.number.localeCompare(b.number));
   const busy = [
     ...sales
@@ -52,6 +58,7 @@ export default async function NewSalePage({
           action={createSaleAction}
           rooms={sellable}
           types={types}
+          extraTypes={extraTypes.filter((row) => row.active)}
           busy={busy}
           today={today}
           showCheckinNow

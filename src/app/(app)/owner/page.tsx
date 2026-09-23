@@ -47,13 +47,14 @@ export default async function OwnerRevenuePage({
         <p className="owner-hero-value">{formatVnd(report.recognizedMoney.total)}</p>
         <p className="mt-1 text-xs text-[#5c6665]">
           {report.recognized.length
-            ? `${report.recognized.length} booking check-in · CK công ty ${formatVnd(report.recognizedMoney.company)} · CK cá nhân ${formatVnd(report.recognizedMoney.transfer)} · tiền mặt ${formatVnd(report.recognizedMoney.cash)}`
+            ? `${report.recognized.length} booking check-in · OTA chưa trừ hoa hồng ${formatVnd(report.recognizedMoney.ota)} · CK công ty ${formatVnd(report.recognizedMoney.company)} · CK cá nhân ${formatVnd(report.recognizedMoney.transfer)} · tiền mặt ${formatVnd(report.recognizedMoney.cash)}`
             : "Chưa có booking check-in trong kỳ"}
         </p>
       </section>
 
       <div className="revenue-stats">
         <Stat label="Doanh thu booking" value={formatVnd(report.booking.total)} />
+        <Stat label="Doanh thu OTA" value={formatVnd(report.booking.ota)} />
         <Stat label="Đã đặt cọc" value={formatVnd(report.booking.deposit)} tone="text-[#1b7a4e]" />
         <Stat label="Phải thu" value={formatVnd(report.booking.due)} tone="text-[#c47b12]" />
         <Stat label="CK công ty" value={formatVnd(report.booking.company)} />

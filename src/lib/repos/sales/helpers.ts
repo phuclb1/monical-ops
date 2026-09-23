@@ -43,6 +43,7 @@ export type SaleInput = {
   notes?: string;
   checkinNow?: boolean;
   origin?: string;
+  extras?: { typeId?: string; name?: string; qty?: number; unitPrice?: number }[];
 };
 
 export function saleLineWindow(data: SaleInput, roomId: string) {

@@ -3,17 +3,20 @@
 import { useEffect, useMemo, useState } from "react";
 import { Field } from "@/components/ui";
 import { SALE_SOURCE_GROUPS, SALE_SOURCE_LABEL } from "@/lib/constants";
+import { extraAmount } from "@/lib/extras";
 import {
   bookingDue,
   bookingQuote,
   catalogRate,
   defaultCheckout,
   isOtaSource,
+  nightsBetween,
   parseMoney,
   parseDiscountValue,
 } from "@/lib/sales";
 import { defaultAdultsForRooms } from "@/lib/rooms-catalog";
 import type { PaymentMethod } from "@/lib/types";
+import { SaleFormExtras, type DraftExtra, type ExtraTypeOption } from "./extras";
 import { SaleFormRooms } from "./new-rooms";
 import { SaleFormSide } from "./new-side";
 import { emptyDiscount, groupRoomsByType, roomOpen, type DiscountState, type Room, type RoomType, type StayDates } from "./shared";
@@ -22,6 +25,7 @@ export function SaleForm({
   action,
   rooms,
   types,
+  extraTypes = [],
   busy = [],
   defaults,
   submitLabel,
@@ -32,6 +36,7 @@ export function SaleForm({
   action: (formData: FormData) => void | Promise<void>;
   rooms: Room[];
   types: RoomType[];
+  extraTypes?: ExtraTypeOption[];
   busy?: { roomId: string; checkIn: string; checkOut: string }[];
   defaults: {
     id?: string;
@@ -70,6 +75,7 @@ export function SaleForm({
   const [rates, setRates] = useState<Record<string, string>>({});
   const [discounts, setDiscounts] = useState<Record<string, DiscountState>>({});
   const [source, setSource] = useState(defaults.source || "walk_in");
+  const [extras, setExtras] = useState<DraftExtra[]>([]);
   const [deposit, setDeposit] = useState(defaults.deposit ? String(defaults.deposit) : "");
   const [payMethod, setPayMethod] = useState<PaymentMethod>("personal");
   const ota = isOtaSource(source);
@@ -96,7 +102,9 @@ export function SaleForm({
   });
   const booked = bookingQuote(quoteInputs);
   const quotes = quoteInputs.map((row, index) => ({ ...row, quote: booked.lines[index] }));
-  const bookingTotal = booked.total;
+  const extraNights = selectedRooms.length ? booked.nights : Math.max(0, nightsBetween(sharedStay.checkIn, sharedStay.checkOut));
+  const extraRows = extras.map((row) => ({ ...row, amount: extraAmount(row, extraNights) }));
+  const bookingTotal = booked.total + extraRows.reduce((sum, row) => sum + row.amount, 0);
   const depositAmount = ota ? 0 : parseMoney(deposit);
   const due = bookingDue(bookingTotal, depositAmount);
   const stayAdults = Math.max(1, Number(adults) || 1);
@@ -259,6 +267,7 @@ export function SaleForm({
         setDiscounts={setDiscounts}
         typeByName={typeByName}
       />
+      <SaleFormExtras types={extraTypes} nights={extraNights} extras={extras} setExtras={setExtras} />
       </div>
       <SaleFormSide
         deposit={deposit}
@@ -268,6 +277,8 @@ export function SaleForm({
         setPayMethod={setPayMethod}
         selectedRooms={selectedRooms}
         quotes={quotes}
+        extraRows={extraRows}
+        extraNights={extraNights}
         bookingTotal={bookingTotal}
         due={due}
         defaults={defaults}
