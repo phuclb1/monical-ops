@@ -10,6 +10,18 @@ export async function requireSales() {
   return user;
 }
 
+export async function requireCancel() {
+  const user = await requireSession();
+  if (!can(user.role, "cancelBooking")) throw new Error("Chỉ quản lý mới hủy booking");
+  return user;
+}
+
+export function assertDepositRefunded(deposit: number, formData: FormData) {
+  if (deposit > 0 && String(formData.get("depositRefunded") || "") !== "1") {
+    throw new Error("Xác nhận đã hoàn cọc trước khi hủy");
+  }
+}
+
 export async function requireRates() {
   const user = await requireSession();
   if (!can(user.role, "manageRates")) throw new Error("Chỉ quản lý sửa giá phòng");

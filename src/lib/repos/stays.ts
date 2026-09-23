@@ -8,6 +8,7 @@ import { audit } from "./audit";
 
 export async function listStays() {
   const db = await getDb();
+  await ensureTodayRoomTasks(db, { actorId: "system" });
   const stays = await db.select().from(t.stays);
   const rooms = await db.select().from(t.rooms);
   const vehicles = await db.select().from(t.vehicles);

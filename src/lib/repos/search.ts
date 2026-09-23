@@ -1,6 +1,8 @@
 import { like, or } from "drizzle-orm";
 import { getDb } from "@/db";
 import * as t from "@/db/schema";
+import { stayBoardStatus } from "../stay-checklist";
+import { todayVN } from "../datetime";
 import { listStays } from "./stays";
 import { listTasks } from "./tasks";
 
@@ -20,6 +22,6 @@ export async function overdueReport() {
   return {
     tasks: tasks.filter((t0) => t0.dueAt && new Date(t0.dueAt).getTime() < now && !["done", "checked"].includes(t0.status)),
     registrations: stays.filter((s) => s.registrationDueAt && !s.registrationDoneAt && new Date(s.registrationDueAt).getTime() < now),
-    checkouts: stays.filter((s) => s.status === "departing" && (!s.invoiceOk || !s.pmsCheckoutOk)),
+    checkouts: stays.filter((s) => stayBoardStatus(s, todayVN()) === "departing" && (!s.invoiceOk || !s.pmsCheckoutOk)),
   };
 }

@@ -9,6 +9,7 @@ import type { SessionUser, ShiftType } from "../types";
 import { pendingHandover } from "./handovers";
 import { receptionDuty, receptionDutyDay } from "./roster";
 import { currentOpenShift } from "./shifts";
+import { stayBoardStatus } from "../stay-checklist";
 
 export const getDashboard = cache(async (user: SessionUser) => {
   const db = await getDb();
@@ -41,8 +42,8 @@ export const getDashboard = cache(async (user: SessionUser) => {
     unread: unreadCount,
     nowTasks: tasks.filter((x) => ["new", "accepted", "in_progress", "blocked"].includes(x.status)),
     overdueTasks: tasks.filter((x) => x.dueAt && new Date(x.dueAt).getTime() < now && !["done", "checked"].includes(x.status)),
-    arriving: stays.filter((s) => s.status === "arriving" && s.arrivalDate === today),
-    departing: stays.filter((s) => s.status === "departing" && s.departureDate === today),
+    arriving: stays.filter((s) => stayBoardStatus(s, today) === "arriving" && s.arrivalDate <= today),
+    departing: stays.filter((s) => stayBoardStatus(s, today) === "departing"),
     noShow: stays.filter((s) => s.status === "no_show"),
     cleaning: rooms.filter((r) => r.hkStatus === "cleaning" || r.opsStatus === "cleaning"),
     ins: rooms.filter((r) => r.hkStatus === "ins" || r.opsStatus === "ins"),

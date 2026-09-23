@@ -68,7 +68,7 @@ export const TASK_TYPES: TaskType[] = [
   {
     kind: "checkout_clean",
     label: "Dọn phòng trả",
-    hint: "Khách đi, cần INS trước khách mới",
+    hint: "Tự tạo sau khi lễ tân hoàn tất trả phòng",
     owner: "hk",
     toDept: "hk",
     priority: "priority",
@@ -145,8 +145,8 @@ export const TASK_TYPES: TaskType[] = [
   },
   {
     kind: "inspect",
-    label: "Kiểm INS",
-    hint: "Checklist phòng sạch BM-06",
+    label: "Kiểm phòng",
+    hint: "Standby trước nhận, hoặc kiểm trước khi lễ tân trả phòng",
     owner: "hk",
     toDept: "hk",
     priority: "priority",
@@ -250,7 +250,7 @@ export const TASK_TYPES: TaskType[] = [
   {
     kind: "checkin",
     label: "Nhận phòng",
-    hint: "Checklist nhận khách theo phòng — tự sinh ngày đến",
+    hint: "Checklist nhận — đăng ký, chìa, PMS. Mở sau khi HK standby xong",
     owner: "reception",
     toDept: "reception",
     priority: "priority",
@@ -263,7 +263,7 @@ export const TASK_TYPES: TaskType[] = [
   {
     kind: "checkout",
     label: "Trả phòng",
-    hint: "Checklist trả khách theo phòng — tự sinh ngày đi",
+    hint: "Checklist trả — hóa đơn, chìa, PMS. Mở sau khi HK kiểm phòng trả",
     owner: "reception",
     toDept: "reception",
     priority: "priority",

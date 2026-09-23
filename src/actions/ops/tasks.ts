@@ -42,10 +42,15 @@ export async function taskStatusAction(formData: FormData) {
       reason: String(formData.get("blockedReason") || ""),
       action: String(formData.get("blockedAction") || ""),
     });
+    const status = String(formData.get("status"));
+    if (status === "done" || status === "checked") {
+      const bundle = await repo.getTask(id);
+      if (bundle?.task) await repo.onHkInspectDone(user, bundle.task);
+    }
   } catch (e) {
     redirect(`/tasks/${id}?error=${encodeURIComponent((e as Error).message)}`);
   }
-  refresh(["/today", "/tasks", `/tasks/${id}`, "/handover"]);
+  refresh(["/today", "/tasks", `/tasks/${id}`, "/handover", "/reception", "/sales", "/rooms"]);
 }
 
 export async function zaloSentAction(formData: FormData) {

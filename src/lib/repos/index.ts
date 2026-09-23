@@ -23,6 +23,7 @@ export { getDashboard } from "./dashboard";
 export { currentOpenShift, openShift, getShiftBundle, closeShift } from "./shifts";
 export { toggleChecklistItem, skipChecklistItem, saveChecklistItem, unfinishedRequired } from "./checklists";
 export { listTasks, getTask, createTask, updateTaskStatus, markZaloSent, saveZaloDraft } from "./tasks";
+export { listRoomHandoff, activeSaleForRoom, requestHkHandoff, onHkInspectDone, spawnCheckoutClean, handoffState } from "./room-handoff";
 export {
   listRooms,
   listRoomTypes,

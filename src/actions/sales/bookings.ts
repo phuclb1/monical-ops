@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import * as repo from "@/lib/repos";
 import { parseDiscountKind, parseDiscountValue, parseMoney, parsePaymentMethod } from "@/lib/sales";
-import { actionBack, fail, refresh, requireSales, saleFromForm } from "./shared";
+import { actionBack, assertDepositRefunded, fail, refresh, requireCancel, requireSales, saleFromForm } from "./shared";
 
 export async function createSaleAction(formData: FormData) {
   const user = await requireSales();
@@ -107,11 +107,14 @@ export async function checkoutSaleAction(formData: FormData) {
 }
 
 export async function cancelSaleAction(formData: FormData) {
-  const user = await requireSales();
+  const user = await requireCancel();
   const id = String(formData.get("id"));
   const back = actionBack(formData, `/sales/${id}`);
+  const asNoShow = String(formData.get("asNoShow") || "") === "1";
   try {
-    await repo.cancelRoomSale(user, id, String(formData.get("asNoShow") || "") === "1");
+    const sale = await repo.getRoomSale(id);
+    if (!asNoShow) assertDepositRefunded(sale?.deposit || 0, formData);
+    await repo.cancelRoomSale(user, id, asNoShow);
   } catch (e) {
     fail(back, e);
   }
@@ -193,11 +196,14 @@ export async function moveGanttSaleAction(formData: FormData) {
 }
 
 export async function cancelBookingAction(formData: FormData) {
-  const user = await requireSales();
+  const user = await requireCancel();
   const bookingId = String(formData.get("bookingId") || "");
   const back = `/sales/bookings/${bookingId}`;
+  const asNoShow = String(formData.get("asNoShow") || "") === "1";
   try {
-    await repo.cancelBooking(user, bookingId, String(formData.get("asNoShow") || "") === "1");
+    const booking = await repo.getBooking(bookingId);
+    if (!asNoShow) assertDepositRefunded(booking?.deposit || 0, formData);
+    await repo.cancelBooking(user, bookingId, asNoShow);
   } catch (e) {
     fail(back, e);
   }

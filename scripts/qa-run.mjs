@@ -143,9 +143,9 @@ try {
     await must(shot, ["Phạm Đức Anh"]);
   });
 
-  await check("TC-13", "Thẻ khách check-in P.105", async (shot) => {
+  await check("TC-13", "Thẻ khách check-in P.105 — giao HK standby", async (shot) => {
     await go("/reception/s-201");
-    await must(shot, ["Nguyễn Thu Hà", "Đang check-in", "Đã nhập booking", "Phòng INS"]);
+    await must(shot, ["Nguyễn Thu Hà", "Đã nhập booking", "Giao việc HK", "Yêu cầu HK kiểm phòng standby"]);
   });
 
   await check("TC-14", "Khách gửi ô tô + timer đăng ký", async (shot) => {
@@ -182,7 +182,7 @@ try {
 
   await check("TC-20", "Bảng việc: thay khăn / dọn phòng / checkout", async (shot) => {
     await go("/tasks");
-    await must(shot, ["Thay 2 khăn tắm P.305", "Dọn phòng khách ở P.202", "Dọn phòng trả P.102", "Nhận P.105", "Trả P.102"]);
+    await must(shot, ["Thay 2 khăn tắm P.305", "Dọn phòng khách ở P.202", "Dọn phòng trả P.102"]);
   });
 
   await check("TC-21", "Quản lý yêu cầu thêm HK (lễ tân thấy việc)", async (shot) => {
@@ -268,7 +268,24 @@ try {
 
   await check("TC-101", "Danh sách đặt phòng / booking", async (shot) => {
     await go("/sales/bookings");
-    await must(shot, ["Đặt phòng", "Đang mở", "Đặng Minh Tuấn", "Công ty An Phú", "Đoàn Minh Châu"]);
+    await must(shot, ["Đặt phòng", "Đang mở / đã trả", "Tìm booking", "Đặng Minh Tuấn", "Công ty An Phú", "Đoàn Minh Châu", "Lê Hoàng Nam"]);
+  });
+
+  await check("TC-140", "Tìm booking theo tên không dấu", async (shot) => {
+    await go("/sales/bookings?q=dang+minh");
+    await must(shot, ["Đặng Minh Tuấn", "kết quả", "Tìm booking"]);
+    const text = await pageText();
+    if (hasText(text, "Công ty An Phú")) throw new Error("Tìm Đặng vẫn ra An Phú");
+  });
+
+  await check("TC-141", "Tìm booking departed theo SĐT", async (shot) => {
+    await go("/sales/bookings?q=0905555666");
+    await must(shot, ["Lê Hoàng Nam", "Đã trả"]);
+  });
+
+  await check("TC-142", "Tìm booking không khớp", async (shot) => {
+    await go("/sales/bookings?q=xyz-khong-co");
+    await must(shot, ["Không có booking khớp", "Tìm booking"]);
   });
 
   await check("TC-114", "Booking 2 phòng Đoàn Minh Châu", async (shot) => {
@@ -283,7 +300,7 @@ try {
 
   await check("TC-108", "Booking Đặng — đã cọc, còn phải thu", async (shot) => {
     await go("/sales/bookings/sale-401");
-    await must(shot, ["Đặng Minh Tuấn", "Đã đặt cọc", "500.000₫", "Còn phải thu", "1.900.000₫", "Thanh toán", "Thu đủ", "Chuyển khoản", "Tiền mặt"]);
+    await must(shot, ["Đặng Minh Tuấn", "Đã đặt cọc", "500.000₫", "Còn phải thu", "1.900.000₫", "Thanh toán", "Thu đủ", "CK cá nhân", "Tiền mặt"]);
   });
 
   await check("TC-110", "Sửa booking: thông tin khách + nhật ký", async (shot) => {
@@ -309,9 +326,12 @@ try {
     }
   });
 
-  await check("TC-111", "Nút hủy booking trên chi tiết", async (shot) => {
+  await check("TC-111", "Lễ tân không hủy booking", async (shot) => {
     await go("/sales/bookings/sale-508");
-    await must(shot, ["Mai Thanh Hà", "Hủy booking", "No-show", "In xác nhận"]);
+    await must(shot, ["Mai Thanh Hà", "In xác nhận"]);
+    const text = await pageText();
+    if (hasText(text, "Hủy booking")) throw new Error("Lễ tân vẫn thấy nút hủy booking");
+    if (hasText(text, "No-show")) throw new Error("Lễ tân vẫn thấy nút no-show");
   });
 
   await check("TC-118", "In phiếu xác nhận booking", async (shot) => {
@@ -345,6 +365,8 @@ try {
 
   await check("TC-95", "Form bán phòng: giá, chiết khấu, mã PMS", async (shot) => {
     await go("/sales/new");
+    await page.locator('input[name="roomId"][type="checkbox"]').first().check();
+    await ready();
     await must(shot, ["Giá / đêm", "Chiết khấu", "Mã PMS", "Ô tô", "Xe máy"]);
   });
 
@@ -355,10 +377,12 @@ try {
 
   await check("TC-109", "Form bán nhiều phòng + cọc / còn thu", async (shot) => {
     await go("/sales/new");
-    await page.locator('input[name="roomId"][type="checkbox"]').nth(1).check();
+    const boxes = page.locator('input[name="roomId"][type="checkbox"]');
+    await boxes.nth(0).check();
+    await boxes.nth(1).check();
     await ready();
     await must(shot, [
-      "Hạng phòng · chọn 1 hoặc nhiều phòng",
+      "Phòng trống",
       "Đã chọn 2 phòng",
       "Chiết khấu",
       "Chưa đặt cọc",
@@ -399,32 +423,34 @@ try {
     }
   });
 
-  await check("TC-72", "Today — task nhận/trả theo phòng", async (shot) => {
+  await check("TC-72", "Today — việc HK theo phòng", async (shot) => {
     await go("/today");
-    await must(shot, ["Nhận P.105", "Trả P.102", "Nhận / trả hôm nay"]);
+    await must(shot, ["Nhận / trả / HK hôm nay", "Dọn phòng khách ở P.202", "Dọn phòng trả P.102"]);
   });
 
-  await check("TC-73", "Bảng việc — nhận P.105 / trả P.102 / nhận P.506", async (shot) => {
+  await check("TC-73", "Bảng việc — dọn khách ở / dọn trả seed", async (shot) => {
     await go("/tasks");
-    await must(shot, ["Nhận P.105", "Trả P.102", "Nhận P.506"]);
+    await must(shot, ["Dọn phòng khách ở P.202", "Dọn phòng trả P.102", "Thay 2 khăn tắm P.305"]);
   });
 
-  await check("TC-74", "Task nhận P.105 có checklist", async (shot) => {
-    await go("/tasks");
-    await page.getByRole("link", { name: /Nhận P\.105/ }).first().click();
-    await page.getByText("Phòng INS").waitFor({ timeout: 15000 });
-    await ready();
-    await must(shot, ["Phòng INS", "Check-in PMS", "Đưa chìa", "Ảnh tuỳ chọn"]);
+  await check("TC-74", "Chỗ bán P.401 inhouse — gửi HK dọn / kiểm trả", async (shot) => {
+    await go("/sales/sale-401");
+    await must(shot, ["Đặng Minh Tuấn", "Giao việc HK", "Yêu cầu HK dọn phòng khách ở", "Yêu cầu HK kiểm phòng trả"]);
   });
 
-  await check("TC-75", "Thẻ khách P.105 cùng checklist nhận", async (shot) => {
+  await check("TC-75", "Thẻ khách P.105 sau PMS — gửi HK dọn / kiểm trả", async (shot) => {
     await go("/reception/s-201");
-    await must(shot, ["Phòng INS / sẵn sàng", "Check-in PMS", "Đưa chìa / thẻ phòng"]);
+    await must(shot, ["Nguyễn Thu Hà", "Giao việc HK", "Yêu cầu HK dọn phòng khách ở", "Yêu cầu HK kiểm phòng trả"]);
   });
 
-  await check("TC-76", "Chỗ bán P.506 có checklist nhận phòng", async (shot) => {
+  await check("TC-76", "Chỗ bán P.506 chờ HK standby rồi mới nhận", async (shot) => {
     await go("/sales/sale-506");
-    await must(shot, ["Công ty An Phú", "Nhận phòng P.506"]);
+    await must(shot, ["Công ty An Phú", "Giao việc HK", "Yêu cầu HK kiểm phòng standby", "Chờ HK hoàn thành kiểm standby rồi mới nhận phòng"]);
+  });
+
+  await check("TC-143", "Booking An Phú link giao việc HK từng chỗ", async (shot) => {
+    await go("/sales/bookings/sale-506");
+    await must(shot, ["Công ty An Phú", "Gửi HK kiểm phòng trên từng chỗ bán", "P.506 · Giao việc HK"]);
   });
 
   await check("TC-130", "Lễ tân chỉ thấy booking mình tạo", async (shot) => {
@@ -489,6 +515,14 @@ try {
     await must(shot, ["Hạng phòng", "Giá thường", "Giá lễ tết", "Sức chứa"]);
   });
 
+  await check("TC-111b", "Quản lý hủy booking — xác nhận hoàn cọc", async (shot) => {
+    await go("/sales/bookings/sale-508");
+    await must(shot, ["Mai Thanh Hà", "Hủy booking", "No-show"]);
+    await page.getByRole("button", { name: "Hủy booking" }).click();
+    await ready();
+    await must(shot, ["Xác nhận đã hoàn cọc", "Đã hoàn cọc", "300.000"]);
+  });
+
   await check("TC-119", "Báo cáo doanh thu bán phòng", async (shot) => {
     await go("/reports/sales");
     await must(shot, [
@@ -500,7 +534,7 @@ try {
       "Đã đặt cọc",
       "Phải thu",
       "Doanh thu ghi nhận",
-      "Tiền chuyển khoản",
+      "CK cá nhân",
       "Tiền mặt",
     ]);
   });
@@ -553,7 +587,7 @@ try {
 
   await check("TC-25", "HK tạo việc", async (shot) => {
     await go("/tasks/new");
-    await must(shot, ["Kiểm INS"]);
+    await must(shot, ["Kiểm phòng"]);
   });
 
   await check("TC-98", "HK không vào bán phòng", async (shot) => {
