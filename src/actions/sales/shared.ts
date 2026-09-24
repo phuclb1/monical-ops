@@ -47,6 +47,7 @@ export function refresh() {
   revalidatePath("/more");
   revalidatePath("/reports");
   revalidatePath("/reports/sales");
+  revalidatePath("/reports/rooms");
   revalidatePath("/notifications");
   revalidatePath("/kitchen");
 }

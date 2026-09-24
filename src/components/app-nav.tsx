@@ -22,11 +22,13 @@ import {
   Tag,
   Sparkles,
   Wallet,
+  LayoutDashboard,
 } from "lucide-react";
 import clsx from "clsx";
 import { PRIMARY_NAV } from "@/lib/nav";
 
 const ICONS: Record<string, typeof CalendarDays> = {
+  "/": LayoutDashboard,
   "/today": CalendarDays,
   "/tasks": ClipboardList,
   "/rooms": DoorOpen,

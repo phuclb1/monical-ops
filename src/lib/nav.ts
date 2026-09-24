@@ -9,10 +9,15 @@ export const PRIMARY_NAV = [
   { href: "/more", label: "Thêm" },
 ] as const;
 
+export const DESKTOP_NAV = [
+  { href: "/", label: "Dashboard" },
+  ...PRIMARY_NAV,
+] as const;
+
 export const MANAGER_NAV = [
+  { href: "/", label: "Dashboard" },
   { href: "/sales/bookings", label: "Đặt phòng" },
-  { href: "/reports/sales", label: "Doanh thu" },
-  { href: "/kitchen", label: "Bếp" },
+  { href: "/reports", label: "Báo cáo" },
   { href: "/tasks", label: "Việc" },
   { href: "/more", label: "Thêm" },
 ] as const;
@@ -31,7 +36,7 @@ export const ACCOUNTING_NAV = [
 export function homePath(role: Role) {
   if (role === "owner") return "/owner";
   if (role === "accounting") return "/accounting";
-  if (role === "manager") return "/sales/bookings";
+  if (role === "manager") return "/";
   return "/today";
 }
 
@@ -50,7 +55,6 @@ export function extraNav(role: Role) {
     { href: "/sales", label: "Sơ đồ phòng", show: can(role, "manageSales") },
     { href: "/sales/bookings", label: "Đặt phòng", show: can(role, "manageSales") },
     { href: "/sales/extras", label: "Dịch vụ kèm", show: can(role, "manageRates") },
-    { href: "/reports/sales", label: "Doanh thu phòng", show: can(role, "viewSalesRevenue") },
     { href: "/kitchen", label: "Bếp / ăn sáng", show: can(role, "viewKitchen") },
     { href: "/shifts", label: "Ca làm việc", show: true },
     { href: "/forms", label: "Biểu mẫu", show: true },

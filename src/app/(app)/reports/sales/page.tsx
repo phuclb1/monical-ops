@@ -1,14 +1,16 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Card, Chip, Empty, Stat, TabChip } from "@/components/ui";
+import { DonutChart, GroupedBarChart, HorizontalBarChart } from "@/components/report-charts";
+import { ReportTabs } from "@/components/report-tabs";
 import { getSession } from "@/lib/auth";
-import { SALE_STATUS_LABEL } from "@/lib/constants";
+import { SALE_SOURCE_LABEL, SALE_STATUS_LABEL } from "@/lib/constants";
 import { formatDateNumeric, formatPeriodLabel } from "@/lib/datetime";
 import { can } from "@/lib/permissions";
 import { listBookings } from "@/lib/repos";
 import { formatVnd, isOtaDebt, isOtaSource, paidNote } from "@/lib/sales";
-import { parsePeriodQuery, roomRevenueReport, type ReportGrain } from "@/lib/sales-report";
-import type { SaleStatus } from "@/lib/types";
+import { parsePeriodQuery, revenueTrend, roomRevenueReport, type ReportGrain } from "@/lib/sales-report";
+import type { SaleSource, SaleStatus } from "@/lib/types";
 
 const GRAINS: { id: ReportGrain; label: string }[] = [
   { id: "month", label: "Tháng" },
@@ -41,6 +43,18 @@ export default async function SalesRevenuePage({
   const year = window.from.slice(0, 4);
   const bookings = await listBookings();
   const report = roomRevenueReport(bookings, window.from, window.to);
+  const trend = revenueTrend(bookings, window.from, window.to, grain);
+  const revenueBySource = new Map<string, number>();
+  for (const booking of report.booked) {
+    revenueBySource.set(booking.source, (revenueBySource.get(booking.source) || 0) + booking.total);
+  }
+  const sourceChart = [...revenueBySource.entries()]
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 6)
+    .map(([source, value]) => ({
+      label: SALE_SOURCE_LABEL[source as SaleSource] || source,
+      value,
+    }));
   const monthChips = Array.from({ length: 12 }, (_, i) => {
     const month = String(i + 1).padStart(2, "0");
     return { date: `${year}-${month}-01`, label: String(i + 1) };
@@ -50,15 +64,14 @@ export default async function SalesRevenuePage({
     <main className="booking-desk space-y-3 px-3 py-4 md:space-y-4">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <h1 className="text-xl font-bold">Doanh thu bán phòng</h1>
+          <h1 className="text-xl font-bold">Báo cáo doanh thu</h1>
           <p className="text-xs text-[#5c6665] md:text-sm">
             Booking theo ngày nhận. Doanh thu OTA là tổng tiền phòng trước hoa hồng. Doanh thu ghi nhận khi khách check-in thành công.
           </p>
         </div>
-        <Link href="/sales/bookings" className="flex min-h-11 items-center text-sm font-semibold text-teal">
-          Đặt phòng
-        </Link>
       </div>
+
+      <ReportTabs active="sales" showSales showWork={can(user.role, "viewReports")} />
 
       <div className="tab-scroller -mx-3 px-3 pb-1">
         {GRAINS.map((item) => (
@@ -110,6 +123,48 @@ export default async function SalesRevenuePage({
         <Stat label="CK cá nhân" value={formatVnd(report.booking.transfer)} />
         <Stat label="Tiền mặt" value={formatVnd(report.booking.cash)} />
       </div>
+
+      <section className="report-charts-grid" aria-label="Biểu đồ doanh thu">
+        <GroupedBarChart
+          title="Xu hướng doanh thu"
+          subtitle="So sánh giá trị booking và doanh thu đã ghi nhận theo ngày hoặc tháng."
+          items={trend.map((item) => ({
+            label: item.label,
+            value: item.booked,
+            secondary: item.recognized,
+          }))}
+          primaryLabel="Booking"
+          secondaryLabel="Đã ghi nhận"
+          formatValue={formatVnd}
+        />
+        <DonutChart
+          title="Tiến độ thu tiền"
+          subtitle="Tỷ trọng số tiền đã thu và còn phải thu trong kỳ."
+          items={[
+            { label: "Đã thu", value: report.booking.deposit },
+            { label: "Phải thu", value: report.booking.due },
+          ]}
+          centerLabel="tổng cần thu"
+          formatValue={formatVnd}
+        />
+        <HorizontalBarChart
+          title="Doanh thu theo nguồn booking"
+          subtitle="6 nguồn có giá trị booking cao nhất."
+          items={sourceChart}
+          formatValue={formatVnd}
+        />
+        <HorizontalBarChart
+          title="Cơ cấu tiền đã thu"
+          subtitle="Phân bổ theo hình thức thanh toán."
+          items={[
+            { label: "CK cá nhân", value: report.booking.transfer },
+            { label: "Tiền mặt", value: report.booking.cash },
+            { label: "CK công ty", value: report.booking.company },
+          ]}
+          formatValue={formatVnd}
+        />
+      </section>
+
       <p className="text-xs text-[#5c6665]">
         {report.recognized.length
           ? `Ghi nhận ${report.recognized.length} booking check-in trong kỳ · OTA chưa trừ hoa hồng ${formatVnd(report.recognizedMoney.ota)} · CK công ty ${formatVnd(report.recognizedMoney.company)} · CK cá nhân ${formatVnd(report.recognizedMoney.transfer)} · tiền mặt ${formatVnd(report.recognizedMoney.cash)}.`

@@ -18,7 +18,7 @@ export function OwnerPeriodBar({
   grain,
   window,
 }: {
-  basePath: "/owner" | "/owner/guests" | "/accounting";
+  basePath: "/owner" | "/owner/guests" | "/accounting" | "/reports/rooms";
   grain: PeriodGrain;
   window: { from: string; prev: string; next: string };
 }) {

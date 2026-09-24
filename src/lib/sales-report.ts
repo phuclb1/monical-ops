@@ -1,4 +1,4 @@
-import { periodWindow, todayVN, type PeriodGrain } from "./datetime";
+import { addDaysVN, addMonthsVN, datesUntil, periodWindow, todayVN, type PeriodGrain } from "./datetime";
 import { isOtaSource, salePaid } from "./sales";
 
 export const PERIOD_GRAINS = ["month", "quarter", "year"] as const;
@@ -63,6 +63,53 @@ export function roomRevenueReport<T extends BookingMoney>(bookings: T[], from: s
     recognized,
     booking: moneyOf(booked),
     recognizedMoney: moneyOf(recognized),
+  };
+}
+
+export function revenueTrend<T extends BookingMoney>(
+  bookings: T[],
+  from: string,
+  to: string,
+  grain: ReportGrain,
+) {
+  const buckets =
+    grain === "month"
+      ? datesUntil(from, to).map((date) => ({
+          key: date,
+          from: date,
+          to: addDaysVN(date, 1),
+          label: String(Number(date.slice(8, 10))),
+        }))
+      : Array.from({ length: grain === "quarter" ? 3 : 12 }, (_, index) => {
+          const date = addMonthsVN(from, index);
+          return {
+            key: date.slice(0, 7),
+            from: date,
+            to: addMonthsVN(date, 1),
+            label: `T${Number(date.slice(5, 7))}`,
+          };
+        });
+  const live = bookings.filter((row) => row.status !== "cancelled" && row.status !== "no_show");
+
+  return buckets.map((bucket) => {
+    const rows = live.filter((row) => row.checkIn >= bucket.from && row.checkIn < bucket.to);
+    const recognized = rows.filter((row) => row.status === "inhouse" || row.status === "departed");
+    return {
+      key: bucket.key,
+      label: bucket.label,
+      booked: rows.reduce((sum, row) => sum + row.total, 0),
+      recognized: recognized.reduce((sum, row) => sum + row.total, 0),
+    };
+  });
+}
+
+export function roomPerformanceSummary(input: { soldNights: number; vacantNights: number; revenue: number }) {
+  const availableNights = Math.max(0, input.soldNights + input.vacantNights);
+  return {
+    availableNights,
+    occupancy: availableNights > 0 ? input.soldNights / availableNights : 0,
+    adr: input.soldNights > 0 ? Math.round(input.revenue / input.soldNights) : 0,
+    revPar: availableNights > 0 ? Math.round(input.revenue / availableNights) : 0,
   };
 }
 

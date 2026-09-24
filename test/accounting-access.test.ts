@@ -50,5 +50,5 @@ test("role khác không vào được view kế toán", async () => {
     departmentCode: "management",
   });
   assert.equal(response.status, 307);
-  assert.equal(new URL(response.headers.get("location") || "").pathname, "/sales/bookings");
+  assert.equal(new URL(response.headers.get("location") || "").pathname, "/");
 });

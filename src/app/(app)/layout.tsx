@@ -4,7 +4,7 @@ import Link from "next/link";
 import { Bell } from "lucide-react";
 import { getSession } from "@/lib/auth";
 import { ROLE_LABEL } from "@/lib/constants";
-import { ACCOUNTING_NAV, extraNav, MANAGER_NAV, OWNER_NAV, PRIMARY_NAV } from "@/lib/nav";
+import { ACCOUNTING_NAV, DESKTOP_NAV, extraNav, MANAGER_NAV, OWNER_NAV, PRIMARY_NAV } from "@/lib/nav";
 import { BottomNav, SideNav } from "@/components/app-nav";
 import { Logo } from "@/components/logo";
 import { PushPrompt } from "@/components/push-prompt";
@@ -19,7 +19,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
   const isolated = owner || accounting;
   const unread = isolated ? 0 : await countUnreadNotifications(user);
   const extras = isolated ? [] : extraNav(user.role);
-  const sideItems = accounting ? ACCOUNTING_NAV : owner ? OWNER_NAV : PRIMARY_NAV;
+  const sideItems = accounting ? ACCOUNTING_NAV : owner ? OWNER_NAV : DESKTOP_NAV;
   const bottomItems = accounting ? ACCOUNTING_NAV : owner ? OWNER_NAV : user.role === "manager" ? MANAGER_NAV : PRIMARY_NAV;
 
   return (

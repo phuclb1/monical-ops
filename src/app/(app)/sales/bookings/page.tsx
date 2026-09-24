@@ -74,8 +74,8 @@ export default async function BookingsPage({
             Sơ đồ phòng
           </Link>
           {can(user.role, "viewSalesRevenue") ? (
-            <Link href="/reports/sales" className="flex min-h-11 items-center text-sm font-semibold text-teal">
-              Doanh thu
+            <Link href="/reports" className="flex min-h-11 items-center text-sm font-semibold text-teal">
+              Báo cáo
             </Link>
           ) : null}
         </div>

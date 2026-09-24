@@ -160,10 +160,10 @@ try {
 
   await check("AC-06", "Role khác không vào được view kế toán", managerPage, async (shot) => {
     await go(managerPage, "/accounting");
-    if (new URL(managerPage.url()).pathname !== "/sales/bookings") {
+    if (new URL(managerPage.url()).pathname !== "/") {
       throw new Error(`Quản lý vẫn vào /accounting: ${managerPage.url()}`);
     }
-    await must(managerPage, shot, ["Đặt phòng"]);
+    await must(managerPage, shot, ["Dashboard"]);
   });
 } finally {
   if (accountPath) {
