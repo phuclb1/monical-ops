@@ -34,6 +34,7 @@ export async function createStaffAction(formData: FormData) {
   try {
     const id = await repo.createStaff(user, {
       username: String(formData.get("username") || ""),
+      email: String(formData.get("email") || ""),
       password: String(formData.get("password") || ""),
       fullName: String(formData.get("fullName") || ""),
       role: String(formData.get("role") || "") as Role,
@@ -53,6 +54,7 @@ export async function updateStaffAction(formData: FormData) {
   try {
     await repo.updateStaff(user, id, {
       fullName: String(formData.get("fullName") || ""),
+      email: String(formData.get("email") || ""),
       role: String(formData.get("role") || "") as Role,
       phone: String(formData.get("phone") || "") || undefined,
     });

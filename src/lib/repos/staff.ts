@@ -1,8 +1,9 @@
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { getDb } from "@/db";
 import * as t from "@/db/schema";
 import { nid, nowISO } from "../datetime";
-import { hashPassword } from "../password";
+import { isValidEmail, normalizeEmail } from "../account";
+import { hashPassword, passwordValidationError } from "../password";
 import { ROLE_DEPT } from "../constants";
 import type { Role, SessionUser } from "../types";
 import { audit } from "./audit";
@@ -20,15 +21,20 @@ export async function getStaff(id: string) {
 
 export async function createStaff(
   actor: SessionUser,
-  data: { username: string; password: string; fullName: string; role: Role; phone?: string },
+  data: { username: string; email: string; password: string; fullName: string; role: Role; phone?: string },
 ) {
   const db = await getDb();
   const username = data.username.trim().toLowerCase();
+  const email = normalizeEmail(data.email);
   if (!/^[a-z0-9._-]{3,32}$/.test(username)) throw new Error("Tài khoản 3–32 ký tự, chỉ chữ thường, số, . _ -");
-  if (data.password.length < 6) throw new Error("Mật khẩu tối thiểu 6 ký tự");
+  if (!isValidEmail(email)) throw new Error("Email không hợp lệ");
+  const passwordError = passwordValidationError(data.password);
+  if (passwordError) throw new Error(passwordError);
   if (!data.fullName.trim()) throw new Error("Nhập họ tên");
   const exists = (await db.select({ id: t.users.id }).from(t.users).where(eq(t.users.username, username)).limit(1))[0];
   if (exists) throw new Error("Tài khoản đã tồn tại");
+  const emailExists = (await db.select({ id: t.users.id }).from(t.users).where(eq(t.users.email, email)).limit(1))[0];
+  if (emailExists) throw new Error("Email đã được dùng cho tài khoản khác");
   const deptCode = ROLE_DEPT[data.role];
   const dept = (await db.select().from(t.departments).where(eq(t.departments.code, deptCode)).limit(1))[0];
   if (!dept) throw new Error("Không tìm thấy bộ phận");
@@ -37,6 +43,7 @@ export async function createStaff(
   await db.insert(t.users).values({
     id,
     username,
+    email,
     passwordHash: await hashPassword(data.password),
     fullName: data.fullName.trim(),
     role: data.role,
@@ -46,18 +53,22 @@ export async function createStaff(
     createdAt: now,
     updatedAt: now,
   });
-  await audit(actor.id, "user", id, "create", null, { username, role: data.role, fullName: data.fullName });
+  await audit(actor.id, "user", id, "create", null, { username, email, role: data.role, fullName: data.fullName });
   return id;
 }
 
 export async function updateStaff(
   actor: SessionUser,
   id: string,
-  data: { fullName: string; role: Role; phone?: string },
+  data: { fullName: string; email: string; role: Role; phone?: string },
 ) {
   const db = await getDb();
   const before = (await db.select().from(t.users).where(eq(t.users.id, id)).limit(1))[0];
   if (!before) throw new Error("Không tìm thấy nhân viên");
+  const email = normalizeEmail(data.email);
+  if (!isValidEmail(email)) throw new Error("Email không hợp lệ");
+  const emailExists = (await db.select({ id: t.users.id }).from(t.users).where(eq(t.users.email, email)).limit(1))[0];
+  if (emailExists && emailExists.id !== id) throw new Error("Email đã được dùng cho tài khoản khác");
   const deptCode = ROLE_DEPT[data.role];
   const dept = (await db.select().from(t.departments).where(eq(t.departments.code, deptCode)).limit(1))[0];
   if (!dept) throw new Error("Không tìm thấy bộ phận");
@@ -65,9 +76,11 @@ export async function updateStaff(
     .update(t.users)
     .set({
       fullName: data.fullName.trim(),
+      email,
       role: data.role,
       departmentId: dept.id,
       phone: data.phone?.trim() || null,
+      ...(before.role !== data.role ? { sessionVersion: sql`${t.users.sessionVersion} + 1` } : {}),
       updatedAt: nowISO(),
     })
     .where(eq(t.users.id, id));
@@ -89,13 +102,18 @@ export async function setStaffActive(actor: SessionUser, id: string, active: boo
 }
 
 export async function resetStaffPassword(actor: SessionUser, id: string, password: string) {
-  if (password.length < 6) throw new Error("Mật khẩu tối thiểu 6 ký tự");
+  const passwordError = passwordValidationError(password);
+  if (passwordError) throw new Error(passwordError);
   const db = await getDb();
   const before = (await db.select().from(t.users).where(eq(t.users.id, id)).limit(1))[0];
   if (!before) throw new Error("Không tìm thấy nhân viên");
   await db
     .update(t.users)
-    .set({ passwordHash: await hashPassword(password), updatedAt: nowISO() })
+    .set({
+      passwordHash: await hashPassword(password),
+      sessionVersion: sql`${t.users.sessionVersion} + 1`,
+      updatedAt: nowISO(),
+    })
     .where(eq(t.users.id, id));
   await audit(actor.id, "user", id, "reset_password", { username: before.username }, { reset: true });
 }

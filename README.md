@@ -32,6 +32,18 @@ Mỗi booking upsert theo `pmsCode` vào **Lễ tân** và **Bán phòng**. `pla
 
 PRD: `npx wrangler secret put INGEST_SECRET` — không để secret trong `wrangler.jsonc`.
 
+## Email khôi phục mật khẩu
+
+Ứng dụng gửi liên kết đặt lại mật khẩu qua Resend. Cấu hình production:
+
+```bash
+npx wrangler secret put RESEND_API_KEY
+npx wrangler secret put PASSWORD_RESET_FROM
+```
+
+`PASSWORD_RESET_FROM` phải là địa chỉ trên domain đã xác minh với Resend, ví dụ `MONICAL Ops <no-reply@monicalhoteldalat.com>`.
+Mỗi tài khoản cần có email riêng; quản lý cập nhật tại **Nhân viên → tài khoản**. Liên kết chỉ dùng một lần, hết hạn sau 30 phút.
+
 ## Chạy local
 
 ```bash

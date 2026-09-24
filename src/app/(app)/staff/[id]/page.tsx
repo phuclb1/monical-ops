@@ -5,6 +5,7 @@ import { Btn, Card, Chip, Field } from "@/components/ui";
 import { getSession } from "@/lib/auth";
 import { DEPT_LABEL, ROLE_DEPT, ROLE_LABEL } from "@/lib/constants";
 import { can } from "@/lib/permissions";
+import { PASSWORD_MIN_LENGTH, PASSWORD_REQUIREMENTS } from "@/lib/password";
 import { getStaff } from "@/lib/repos";
 import { ROLES, type DepartmentCode } from "@/lib/types";
 
@@ -46,6 +47,9 @@ export default async function StaffDetailPage({
           <Field label="Họ tên">
             <input name="fullName" required defaultValue={person.fullName} />
           </Field>
+          <Field label="Email khôi phục mật khẩu">
+            <input name="email" type="email" required autoComplete="email" defaultValue={person.email || ""} />
+          </Field>
           <Field label="Vai trò / bộ phận">
             <select name="role" defaultValue={person.role}>
               {ROLES.map((role) => (
@@ -72,7 +76,15 @@ export default async function StaffDetailPage({
         <form action={resetStaffPasswordAction} className="space-y-2">
           <input type="hidden" name="id" value={person.id} />
           <Field label="Mật khẩu mới">
-            <input name="password" type="password" required minLength={6} placeholder="Tối thiểu 6 ký tự" />
+            <input
+              name="password"
+              type="password"
+              required
+              minLength={PASSWORD_MIN_LENGTH}
+              autoComplete="new-password"
+              aria-describedby="reset-password-help"
+            />
+            <span id="reset-password-help" className="mt-1 block text-xs text-[#6b7372]">{PASSWORD_REQUIREMENTS}.</span>
           </Field>
           <Btn type="submit" variant="ghost" className="w-full">
             Đặt lại mật khẩu

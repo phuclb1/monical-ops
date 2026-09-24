@@ -1,10 +1,12 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-import { homePath, isOwnerPath } from "@/lib/nav";
+import { homePath, isAccountingPath, isOwnerPath } from "@/lib/nav";
 import { readSessionToken } from "@/lib/session-token";
 
 const PUBLIC = [
   "/login",
+  "/forgot-password",
+  "/reset-password",
   "/tin-tuc",
   "/sitemap.xml",
   "/robots.txt",
@@ -12,6 +14,8 @@ const PUBLIC = [
   "/sw.js",
   "/offline.html",
   "/api/auth/login",
+  "/api/auth/forgot-password",
+  "/api/auth/reset-password",
   "/api/ingest",
 ];
 
@@ -53,13 +57,25 @@ export async function proxy(request: NextRequest) {
     url.searchParams.set("next", pathname);
     return withCache(NextResponse.redirect(url), "private, no-store");
   }
-  if (session.role === "owner" && !isOwnerPath(pathname)) {
+  if (session.role === "owner" && !isOwnerPath(pathname) && !pathname.startsWith("/account/")) {
     const url = request.nextUrl.clone();
     url.pathname = "/owner";
     url.search = "";
     return withCache(NextResponse.redirect(url), "private, no-store");
   }
+  if (session.role === "accounting" && !isAccountingPath(pathname) && !pathname.startsWith("/account/")) {
+    const url = request.nextUrl.clone();
+    url.pathname = "/accounting";
+    url.search = "";
+    return withCache(NextResponse.redirect(url), "private, no-store");
+  }
   if (session.role !== "owner" && isOwnerPath(pathname)) {
+    const url = request.nextUrl.clone();
+    url.pathname = homePath(session.role);
+    url.search = "";
+    return withCache(NextResponse.redirect(url), "private, no-store");
+  }
+  if (session.role !== "accounting" && isAccountingPath(pathname)) {
     const url = request.nextUrl.clone();
     url.pathname = homePath(session.role);
     url.search = "";

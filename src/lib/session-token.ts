@@ -16,6 +16,7 @@ export async function signSession(user: SessionUser) {
     role: user.role,
     departmentId: user.departmentId,
     departmentCode: user.departmentCode,
+    sessionVersion: user.sessionVersion,
   })
     .setProtectedHeader({ alg: "HS256" })
     .setIssuedAt()
@@ -33,6 +34,7 @@ export async function readSessionToken(token: string): Promise<SessionUser | nul
       role: payload.role as Role,
       departmentId: String(payload.departmentId),
       departmentCode: payload.departmentCode as DepartmentCode,
+      sessionVersion: Number(payload.sessionVersion || 0),
     };
   } catch {
     return null;

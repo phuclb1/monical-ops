@@ -107,4 +107,17 @@ export const SCHEMA_PATCHES = [
   "ALTER TABLE room_sales ADD COLUMN ota_payment_mode TEXT NOT NULL DEFAULT 'debt'",
   "ALTER TABLE room_sales ADD COLUMN invoice_requested INTEGER NOT NULL DEFAULT 0",
   "ALTER TABLE stays ADD COLUMN invoice_requested INTEGER NOT NULL DEFAULT 0",
+  "ALTER TABLE users ADD COLUMN email TEXT",
+  "CREATE UNIQUE INDEX IF NOT EXISTS users_email ON users (email)",
+  "ALTER TABLE users ADD COLUMN session_version INTEGER NOT NULL DEFAULT 0",
+  `CREATE TABLE IF NOT EXISTS password_reset_tokens (
+  id TEXT PRIMARY KEY,
+  user_id TEXT NOT NULL,
+  token_hash TEXT NOT NULL UNIQUE,
+  expires_at TEXT NOT NULL,
+  used_at TEXT,
+  created_at TEXT NOT NULL
+)`,
+  "CREATE INDEX IF NOT EXISTS password_reset_tokens_user ON password_reset_tokens (user_id)",
+  "CREATE INDEX IF NOT EXISTS password_reset_tokens_expires ON password_reset_tokens (expires_at)",
 ];

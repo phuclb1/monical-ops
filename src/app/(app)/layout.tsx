@@ -4,7 +4,7 @@ import Link from "next/link";
 import { Bell } from "lucide-react";
 import { getSession } from "@/lib/auth";
 import { ROLE_LABEL } from "@/lib/constants";
-import { extraNav, MANAGER_NAV, OWNER_NAV, PRIMARY_NAV } from "@/lib/nav";
+import { ACCOUNTING_NAV, extraNav, MANAGER_NAV, OWNER_NAV, PRIMARY_NAV } from "@/lib/nav";
 import { BottomNav, SideNav } from "@/components/app-nav";
 import { Logo } from "@/components/logo";
 import { PushPrompt } from "@/components/push-prompt";
@@ -15,10 +15,12 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
   const user = await getSession();
   if (!user) redirect("/login");
   const owner = user.role === "owner";
-  const unread = owner ? 0 : await countUnreadNotifications(user);
-  const extras = extraNav(user.role);
-  const sideItems = owner ? OWNER_NAV : PRIMARY_NAV;
-  const bottomItems = owner ? OWNER_NAV : user.role === "manager" ? MANAGER_NAV : PRIMARY_NAV;
+  const accounting = user.role === "accounting";
+  const isolated = owner || accounting;
+  const unread = isolated ? 0 : await countUnreadNotifications(user);
+  const extras = isolated ? [] : extraNav(user.role);
+  const sideItems = accounting ? ACCOUNTING_NAV : owner ? OWNER_NAV : PRIMARY_NAV;
+  const bottomItems = accounting ? ACCOUNTING_NAV : owner ? OWNER_NAV : user.role === "manager" ? MANAGER_NAV : PRIMARY_NAV;
 
   return (
     <div className="md:flex md:min-h-dvh" data-ops-user={user.id}>
@@ -29,7 +31,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
           </div>
           <div>
             <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-burgundy">MONICAL</p>
-            <p className="text-xs text-[#6b5a52]">{owner ? "Chủ sở hữu · laptop" : "Ops · laptop"}</p>
+            <p className="text-xs text-[#6b5a52]">{owner ? "Chủ sở hữu · laptop" : accounting ? "Kế toán · laptop" : "Ops · laptop"}</p>
           </div>
         </div>
         <div className="px-4 pt-4">
@@ -56,9 +58,9 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
             </div>
           </div>
           <p className="hidden text-sm font-semibold text-[#5c4a46] md:block">
-            {owner ? "Doanh thu & khách · chỉ xem" : "Vận hành khách sạn · không thay PMS"}
+            {owner ? "Doanh thu & khách · chỉ xem" : accounting ? "Booking & hóa đơn · chỉ xem" : "Vận hành khách sạn · không thay PMS"}
           </p>
-          {owner ? (
+          {isolated ? (
             <form action={logoutAction} className="md:hidden">
               <button className="flex h-12 items-center rounded-full bg-white px-3 text-sm font-semibold">Đăng xuất</button>
             </form>
@@ -73,7 +75,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
             </Link>
           )}
         </header>
-        {owner ? null : <PushPrompt variant="banner" />}
+        {isolated ? null : <PushPrompt variant="banner" />}
         <div className="page-frame">{children}</div>
         <BottomNav items={bottomItems} />
       </div>

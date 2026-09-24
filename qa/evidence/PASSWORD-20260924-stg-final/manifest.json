@@ -1,0 +1,70 @@
+{
+  "runId": "PASSWORD-20260924-stg-final",
+  "date": "2026-09-24T03:57:33.535Z",
+  "commit": "4505e7c-dirty",
+  "env": "https://ops-staging.monicalhoteldalat.com",
+  "testUser": "qa.password.22199397",
+  "emailDeliveryChecked": false,
+  "pass": 8,
+  "fail": 0,
+  "total": 8,
+  "passRate": "100%",
+  "results": [
+    {
+      "id": "PW-01",
+      "title": "Trang quên mật khẩu và token sai là public",
+      "result": "pass",
+      "evidence": "qa/evidence/PASSWORD-20260924-stg-final/PW-01.png",
+      "note": ""
+    },
+    {
+      "id": "PW-02",
+      "title": "Quản lý không thể tạo mật khẩu thiếu chữ hoa",
+      "result": "pass",
+      "evidence": "qa/evidence/PASSWORD-20260924-stg-final/PW-02.png",
+      "note": ""
+    },
+    {
+      "id": "PW-03",
+      "title": "Quản lý tạo tài khoản với mật khẩu mạnh",
+      "result": "pass",
+      "evidence": "qa/evidence/PASSWORD-20260924-stg-final/PW-03.png",
+      "note": ""
+    },
+    {
+      "id": "PW-04",
+      "title": "Người dùng không thể đổi sang mật khẩu yếu",
+      "result": "pass",
+      "evidence": "qa/evidence/PASSWORD-20260924-stg-final/PW-04.png",
+      "note": ""
+    },
+    {
+      "id": "PW-05",
+      "title": "Đổi mật khẩu thành công; mật khẩu cũ bị từ chối",
+      "result": "pass",
+      "evidence": "qa/evidence/PASSWORD-20260924-stg-final/PW-05.png",
+      "note": ""
+    },
+    {
+      "id": "PW-06",
+      "title": "Quản lý reset mật khẩu người khác và vô hiệu hóa phiên cũ",
+      "result": "pass",
+      "evidence": "qa/evidence/PASSWORD-20260924-stg-final/PW-06.png",
+      "note": ""
+    },
+    {
+      "id": "PW-07",
+      "title": "Đăng nhập được bằng mật khẩu quản lý vừa reset",
+      "result": "pass",
+      "evidence": "qa/evidence/PASSWORD-20260924-stg-final/PW-07.png",
+      "note": ""
+    },
+    {
+      "id": "PW-08",
+      "title": "Yêu cầu email không làm lộ tài khoản tồn tại",
+      "result": "pass",
+      "evidence": "qa/evidence/PASSWORD-20260924-stg-final/PW-08.png",
+      "note": ""
+    }
+  ]
+}

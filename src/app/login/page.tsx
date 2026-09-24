@@ -5,9 +5,9 @@ import { Logo } from "@/components/logo";
 export default async function LoginPage({
   searchParams,
 }: {
-  searchParams: Promise<{ error?: string }>;
+  searchParams: Promise<{ error?: string; reset?: string }>;
 }) {
-  const { error } = await searchParams;
+  const { error, reset } = await searchParams;
   return (
     <main className="min-h-dvh min-h-[100dvh] bg-burgundy md:grid md:grid-cols-[1.1fr_min(440px,42vw)]">
       <section className="flex flex-col justify-center px-5 pb-4 pt-[max(2rem,calc(env(safe-area-inset-top)+0.75rem))] md:px-16 md:pt-8">
@@ -35,9 +35,13 @@ export default async function LoginPage({
             <input name="password" type="password" autoComplete="current-password" required />
           </label>
           {error ? <p className="text-sm font-medium text-[#c23b3b]">Sai tài khoản hoặc mật khẩu.</p> : null}
+          {reset ? <p className="text-sm font-medium text-[#1b7a4e]">Đã đặt lại mật khẩu. Bạn có thể đăng nhập.</p> : null}
           <Btn type="submit" className="w-full">
             Đăng nhập
           </Btn>
+          <Link href="/forgot-password" className="block text-center text-sm font-semibold text-burgundy">
+            Quên mật khẩu?
+          </Link>
         </form>
         <p className="mt-5 text-center text-xs leading-5 text-cream/70 md:text-left md:text-[#6b5a52]">
           <Link href="/tin-tuc" className="font-semibold text-cream underline decoration-cream/40 md:text-burgundy">

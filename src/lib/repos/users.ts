@@ -9,6 +9,7 @@ export const listUsers = cache(async () => {
     .select({
       id: t.users.id,
       username: t.users.username,
+      email: t.users.email,
       fullName: t.users.fullName,
       role: t.users.role,
       departmentId: t.users.departmentId,

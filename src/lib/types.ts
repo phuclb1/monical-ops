@@ -106,6 +106,7 @@ export type SessionUser = {
   role: Role;
   departmentId: string;
   departmentCode: DepartmentCode;
+  sessionVersion: number;
 };
 
 export type FormCode =

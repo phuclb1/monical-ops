@@ -1,10 +1,10 @@
 import type { Role } from "./types";
 
-const ALL: Role[] = ["reception", "hk", "kitchen", "utility", "manager", "accounting"];
+const OPS: Role[] = ["reception", "hk", "kitchen", "utility", "manager"];
 
 export const CAN = {
-  viewToday: ALL,
-  viewTasks: ALL,
+  viewToday: OPS,
+  viewTasks: OPS,
   createTask: ["reception", "hk", "kitchen", "utility", "manager"] as Role[],
   checkTask: ["manager", "reception"] as Role[],
   viewRooms: ["reception", "hk", "utility", "manager"] as Role[],
@@ -15,12 +15,13 @@ export const CAN = {
   viewKitchen: ["kitchen", "reception", "manager"] as Role[],
   editBreakfast: ["reception", "kitchen", "manager"] as Role[],
   confirmBreakfast: ["kitchen", "manager"] as Role[],
-  viewHandover: ALL,
-  acceptHandover: ALL,
-  closeShift: ALL,
-  viewReports: ["manager", "accounting", "reception"] as Role[],
+  viewHandover: OPS,
+  acceptHandover: OPS,
+  closeShift: OPS,
+  viewReports: ["manager", "reception"] as Role[],
   viewSalesRevenue: ["manager"] as Role[],
   viewOwner: ["owner"] as Role[],
+  viewAccounting: ["accounting"] as Role[],
   viewPayments: ["accounting", "manager", "reception"] as Role[],
   viewGuestPii: ["reception", "hk", "manager", "owner"] as Role[],
   manageProcess: ["manager"] as Role[],

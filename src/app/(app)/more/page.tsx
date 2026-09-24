@@ -40,6 +40,9 @@ export default async function MorePage() {
         <p className="font-semibold">{user.fullName}</p>
         <p className="text-sm text-[#5c6665]">{ROLE_LABEL[user.role]}</p>
       </Card>
+      <Link href="/account/password" className="card flex min-h-16 items-center p-4 font-semibold">
+        Đổi mật khẩu
+      </Link>
       <div className="list-cards">
       {[
         ...(user.role === "manager" ? MANAGER_OPS : []),

@@ -1,0 +1,55 @@
+{
+  "runId": "ACCOUNTING-20260924-local-final",
+  "date": "2026-09-24T04:25:24.390Z",
+  "commit": "4505e7c-dirty",
+  "env": "http://localhost:3002",
+  "testUser": "qa.accounting.23904401",
+  "pass": 6,
+  "fail": 0,
+  "total": 6,
+  "passRate": "100%",
+  "results": [
+    {
+      "id": "AC-01",
+      "title": "Quản lý tạo tài khoản kế toán",
+      "result": "pass",
+      "evidence": "qa/evidence/ACCOUNTING-20260924-local-final/AC-01.png",
+      "note": ""
+    },
+    {
+      "id": "AC-02",
+      "title": "Kế toán đăng nhập thẳng vào view riêng",
+      "result": "pass",
+      "evidence": "qa/evidence/ACCOUNTING-20260924-local-final/AC-02.png",
+      "note": ""
+    },
+    {
+      "id": "AC-03",
+      "title": "View kế toán không có PII hoặc liên kết vận hành",
+      "result": "pass",
+      "evidence": "qa/evidence/ACCOUNTING-20260924-local-final/AC-03.png",
+      "note": ""
+    },
+    {
+      "id": "AC-04",
+      "title": "Kế toán bị chặn khỏi mọi URL vận hành",
+      "result": "pass",
+      "evidence": "qa/evidence/ACCOUNTING-20260924-local-final/AC-04.png",
+      "note": ""
+    },
+    {
+      "id": "AC-05",
+      "title": "Kế toán chỉ được mở thêm trang đổi mật khẩu",
+      "result": "pass",
+      "evidence": "qa/evidence/ACCOUNTING-20260924-local-final/AC-05.png",
+      "note": ""
+    },
+    {
+      "id": "AC-06",
+      "title": "Role khác không vào được view kế toán",
+      "result": "pass",
+      "evidence": "qa/evidence/ACCOUNTING-20260924-local-final/AC-06.png",
+      "note": ""
+    }
+  ]
+}

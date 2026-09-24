@@ -107,6 +107,7 @@ export const FIELD_LABEL: Record<string, string> = {
   bookingId: "Booking",
   fullName: "Họ tên",
   username: "Tài khoản",
+  email: "Email",
   role: "Vai trò",
   active: "Hoạt động",
   type: "Loại",

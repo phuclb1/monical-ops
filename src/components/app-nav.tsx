@@ -37,6 +37,7 @@ const ICONS: Record<string, typeof CalendarDays> = {
   "/sales/bookings": BookMarked,
   "/sales/extras": Sparkles,
   "/reports/sales": Wallet,
+  "/accounting": Wallet,
   "/owner": Wallet,
   "/owner/guests": Users,
   "/kitchen": ChefHat,

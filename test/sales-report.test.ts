@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { homePath, MANAGER_NAV } from "../src/lib/nav";
+import { ACCOUNTING_NAV, homePath, isAccountingPath, MANAGER_NAV } from "../src/lib/nav";
 import { roomRevenueReport } from "../src/lib/sales-report";
 
 function row(partial: { checkIn: string; checkOut: string; status: string; total?: number; source?: string }) {
@@ -18,6 +18,14 @@ function row(partial: { checkIn: string; checkOut: string; status: string; total
 test("manager mobile home is the booking list", () => {
   assert.equal(homePath("manager"), "/sales/bookings");
   assert.equal(MANAGER_NAV[0]?.href, "/sales/bookings");
+});
+
+test("kế toán có khu vực điều hướng riêng", () => {
+  assert.equal(homePath("accounting"), "/accounting");
+  assert.equal(ACCOUNTING_NAV[0]?.href, "/accounting");
+  assert.equal(isAccountingPath("/accounting"), true);
+  assert.equal(isAccountingPath("/accounting/anything"), true);
+  assert.equal(isAccountingPath("/reports"), false);
 });
 
 test("revenue is recognized on successful check-in, not checkout", () => {

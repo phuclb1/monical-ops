@@ -14,7 +14,9 @@ export const getSession = cache(async (): Promise<SessionUser | null> => {
   if (!token) return null;
   const session = await readSessionToken(token);
   if (!session) return null;
-  return loadUserSession(session.id);
+  const live = await loadUserSession(session.id);
+  if (!live || live.sessionVersion !== session.sessionVersion) return null;
+  return live;
 });
 
 export async function requireSession(): Promise<SessionUser> {
@@ -40,7 +42,7 @@ export async function clearSessionCookie() {
   store.delete(SESSION_COOKIE);
 }
 
-export const loadUserSession = cache(async (userId: string): Promise<SessionUser | null> => {
+export async function loadUserSession(userId: string): Promise<SessionUser | null> {
   const db = await getDb();
   const rows = await db
     .select({
@@ -48,18 +50,20 @@ export const loadUserSession = cache(async (userId: string): Promise<SessionUser
       username: users.username,
       fullName: users.fullName,
       role: users.role,
+      active: users.active,
       departmentId: users.departmentId,
       departmentCode: departments.code,
+      sessionVersion: users.sessionVersion,
     })
     .from(users)
     .innerJoin(departments, eq(users.departmentId, departments.id))
     .where(eq(users.id, userId))
     .limit(1);
   const row = rows[0];
-  if (!row) return null;
+  if (!row?.active) return null;
   return {
     ...row,
     role: row.role as Role,
     departmentCode: row.departmentCode as DepartmentCode,
   };
-});
+}

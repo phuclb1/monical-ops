@@ -20,16 +20,27 @@ export const MANAGER_NAV = [
 export const OWNER_NAV = [
   { href: "/owner", label: "Doanh thu" },
   { href: "/owner/guests", label: "Khách" },
+  { href: "/account/password", label: "Mật khẩu" },
+] as const;
+
+export const ACCOUNTING_NAV = [
+  { href: "/accounting", label: "Kế toán" },
+  { href: "/account/password", label: "Mật khẩu" },
 ] as const;
 
 export function homePath(role: Role) {
   if (role === "owner") return "/owner";
+  if (role === "accounting") return "/accounting";
   if (role === "manager") return "/sales/bookings";
   return "/today";
 }
 
 export function isOwnerPath(pathname: string) {
   return pathname === "/owner" || pathname.startsWith("/owner/");
+}
+
+export function isAccountingPath(pathname: string) {
+  return pathname === "/accounting" || pathname.startsWith("/accounting/");
 }
 
 export function extraNav(role: Role) {

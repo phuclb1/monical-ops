@@ -5,6 +5,7 @@ import { Btn, Card, Chip, Field } from "@/components/ui";
 import { getSession } from "@/lib/auth";
 import { DEPT_LABEL, ROLE_LABEL } from "@/lib/constants";
 import { can } from "@/lib/permissions";
+import { PASSWORD_MIN_LENGTH, PASSWORD_REQUIREMENTS } from "@/lib/password";
 import { listUsers } from "@/lib/repos";
 import { ROLES, type DepartmentCode, type Role } from "@/lib/types";
 
@@ -42,8 +43,19 @@ export default async function StaffPage({
           <Field label="Tài khoản đăng nhập">
             <input name="username" required autoCapitalize="none" placeholder="nguyenvana" />
           </Field>
+          <Field label="Email">
+            <input name="email" type="email" required autoComplete="email" placeholder="nhanvien@example.com" />
+          </Field>
           <Field label="Mật khẩu tạm">
-            <input name="password" type="password" required minLength={6} placeholder="Tối thiểu 6 ký tự" />
+            <input
+              name="password"
+              type="password"
+              required
+              minLength={PASSWORD_MIN_LENGTH}
+              autoComplete="new-password"
+              aria-describedby="new-password-help"
+            />
+            <span id="new-password-help" className="mt-1 block text-xs text-[#6b7372]">{PASSWORD_REQUIREMENTS}.</span>
           </Field>
           <Field label="Vai trò / bộ phận">
             <select name="role" defaultValue="reception">
@@ -73,6 +85,7 @@ export default async function StaffPage({
                 {person.username} · {ROLE_LABEL[person.role as Role]} ·{" "}
                 {DEPT_LABEL[person.departmentCode as DepartmentCode]}
               </p>
+              <p className="text-xs text-[#6b7372]">{person.email || "Chưa có email"}</p>
             </div>
             <Chip tone={person.active ? "ok" : "danger"}>{person.active ? "Hoạt động" : "Đã khóa"}</Chip>
           </Card>

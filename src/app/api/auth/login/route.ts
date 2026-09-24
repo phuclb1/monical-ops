@@ -5,7 +5,8 @@ import { SESSION_COOKIE } from "@/lib/session-token";
 import { getDb } from "@/db";
 import { users } from "@/db/schema";
 import { homePath } from "@/lib/nav";
-import { verifyPassword } from "@/lib/password";
+import { hashPassword, passwordNeedsRehash, verifyPassword } from "@/lib/password";
+import { nowISO } from "@/lib/datetime";
 
 export async function POST(request: Request) {
   const form = await request.formData();
@@ -15,6 +16,9 @@ export async function POST(request: Request) {
   const row = (await db.select().from(users).where(eq(users.username, username)).limit(1))[0];
   if (!row || !row.active || !(await verifyPassword(password, row.passwordHash))) {
     return NextResponse.redirect(new URL("/login?error=1", request.url), 303);
+  }
+  if (passwordNeedsRehash(row.passwordHash)) {
+    await db.update(users).set({ passwordHash: await hashPassword(password), updatedAt: nowISO() }).where(eq(users.id, row.id));
   }
   const session = await loadUserSession(row.id);
   if (!session) return NextResponse.redirect(new URL("/login?error=1", request.url), 303);
