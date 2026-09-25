@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { eq } from "drizzle-orm";
 import { loadUserSession, signSession } from "@/lib/auth";
-import { SESSION_COOKIE } from "@/lib/session-token";
+import { SESSION_COOKIE, sessionMaxAgeSeconds } from "@/lib/session-token";
 import { getDb } from "@/db";
 import { users } from "@/db/schema";
 import { homePath } from "@/lib/nav";
@@ -29,7 +29,7 @@ export async function POST(request: Request) {
     sameSite: "lax",
     secure: process.env.NODE_ENV === "production",
     path: "/",
-    maxAge: 60 * 60 * 12,
+    maxAge: sessionMaxAgeSeconds(session.role),
   });
   return res;
 }

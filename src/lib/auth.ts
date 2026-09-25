@@ -3,7 +3,7 @@ import { cookies } from "next/headers";
 import { eq } from "drizzle-orm";
 import { getDb } from "@/db";
 import { departments, users } from "@/db/schema";
-import { readSessionToken, SESSION_COOKIE, signSession } from "./session-token";
+import { readSessionToken, SESSION_COOKIE, sessionMaxAgeSeconds, signSession } from "./session-token";
 import type { DepartmentCode, Role, SessionUser } from "./types";
 
 export { readSessionToken, signSession, SESSION_COOKIE };
@@ -33,7 +33,7 @@ export async function setSessionCookie(user: SessionUser) {
     sameSite: "lax",
     secure: process.env.NODE_ENV === "production",
     path: "/",
-    maxAge: 60 * 60 * 12,
+    maxAge: sessionMaxAgeSeconds(user.role),
   });
 }
 
