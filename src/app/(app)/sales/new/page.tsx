@@ -3,10 +3,10 @@ import { redirect } from "next/navigation";
 import { createSaleAction } from "@/actions/sales";
 import { SaleForm } from "@/components/sale-form";
 import { getSession } from "@/lib/auth";
-import { defaultCheckout, isActiveSaleStatus } from "@/lib/sales";
+import { defaultCheckout } from "@/lib/sales";
 import { todayVN } from "@/lib/datetime";
 import { can } from "@/lib/permissions";
-import { listRooms, listRoomSales, listRoomTypes, listSaleExtraTypes, listStays } from "@/lib/repos";
+import { listRoomBusyRanges, listRooms, listRoomTypes, listSaleExtraTypes } from "@/lib/repos";
 
 export default async function NewSalePage({
   searchParams,
@@ -19,22 +19,13 @@ export default async function NewSalePage({
   const { date: rawDate, error } = await searchParams;
   const today = todayVN();
   const date = rawDate && /^\d{4}-\d{2}-\d{2}$/.test(rawDate) ? rawDate : today;
-  const [rooms, types, sales, stays, extraTypes] = await Promise.all([
+  const [rooms, types, busy, extraTypes] = await Promise.all([
     listRooms(),
     listRoomTypes(),
-    listRoomSales(),
-    listStays(),
+    listRoomBusyRanges(),
     listSaleExtraTypes(),
   ]);
   const sellable = rooms.filter((item) => item.opsStatus !== "ooo").sort((a, b) => a.number.localeCompare(b.number));
-  const busy = [
-    ...sales
-      .filter((row) => isActiveSaleStatus(row.status))
-      .map((row) => ({ roomId: row.roomId, checkIn: row.checkIn, checkOut: row.checkOut })),
-    ...stays
-      .filter((row) => row.roomId && ["arriving", "inhouse", "departing"].includes(row.status))
-      .map((row) => ({ roomId: row.roomId as string, checkIn: row.arrivalDate, checkOut: row.departureDate })),
-  ];
 
   return (
     <main className="booking-desk space-y-3 px-3 py-4 md:space-y-4">

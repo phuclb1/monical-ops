@@ -31,6 +31,7 @@ const managerPage = await managerContext.newPage();
 const accountingPage = await accountingContext.newPage();
 const results = [];
 let accountPath = "";
+const made = { direct: "", ota: "", plain: "" };
 
 async function ready(page) {
   await page.waitForLoadState("networkidle", { timeout: 20_000 }).catch(() => {});
@@ -68,6 +69,49 @@ async function must(page, shot, needles) {
   const body = await pageText(page);
   const missing = needles.filter((needle) => !fold(body).includes(fold(needle)));
   if (missing.length) throw new Error(`Thiếu: ${missing.join(" | ")} · URL ${page.url()}`);
+}
+
+async function pickOpenRoom(page) {
+  const boxes = page.locator('input[name="roomId"][type="checkbox"]');
+  const n = await boxes.count();
+  if (!n) throw new Error("Không còn phòng trống");
+  const box = boxes.first();
+  await box.scrollIntoViewIfNeeded();
+  if (!(await box.isChecked())) await box.check();
+  for (let i = 1; i < n; i += 1) {
+    const item = boxes.nth(i);
+    if (await item.isChecked()) await item.uncheck();
+  }
+  return String((await box.getAttribute("value")) || "").replace(/^r-/, "");
+}
+
+async function createCheckedInBooking(page, { guest, phone, source, invoice }) {
+  await go(page, "/sales/new");
+  if (source) await page.locator('select[name="source"]').selectOption(source);
+  const room = await pickOpenRoom(page);
+  await page.locator('input[name="guestName"]').fill(guest);
+  await page.locator('input[name="guestPhone"]').fill(phone);
+  const invoiceBox = page.locator('input[name="invoiceRequested"]');
+  if (invoice) await invoiceBox.check();
+  else if (await invoiceBox.isChecked()) await invoiceBox.uncheck();
+  const now = page.locator('input[name="checkinNow"]');
+  if (await now.count() && !(await now.isChecked())) await now.check();
+  await Promise.all([
+    page.waitForURL(/\/sales\/bookings\//, { timeout: 30_000 }),
+    page.getByRole("button", { name: /Lưu/ }).click(),
+  ]);
+  await ready(page);
+  const text = await pageText(page);
+  const code = text.match(/Mã Ops\s+(BK-\d{2}-\d+)/)?.[1];
+  if (!code) throw new Error(`Không thấy mã Ops của ${guest}`);
+  if (!text.includes("Đang ở")) throw new Error(`${guest} chưa ở trạng thái đang ở`);
+  return { room, code };
+}
+
+async function cardText(page, heading) {
+  const card = page.locator("section.card").filter({ has: page.getByRole("heading", { name: heading }) });
+  await card.first().waitFor({ timeout: 15_000 });
+  return card.first().innerText();
 }
 
 async function check(id, title, page, fn) {
@@ -110,11 +154,62 @@ try {
     await must(accountingPage, shot, [
       "Kế toán",
       "Doanh thu ghi nhận có xuất hóa đơn",
+      "Trực tiếp yêu cầu xuất",
+      "OTA 100%",
+      "100% tiền phòng OTA",
       "Booking nhận trong kỳ",
       "CK công ty",
       "CK cá nhân",
       "Tiền mặt",
+      "Sơ đồ phòng",
     ]);
+  });
+
+  await check("AC-07", "Quản lý tạo booking đã nhận: trực tiếp có xuất, OTA, trực tiếp không xuất", managerPage, async (shot) => {
+    const direct = await createCheckedInBooking(managerPage, {
+      guest: "QA Xuat Hoa Don",
+      phone: "0901000701",
+      invoice: true,
+    });
+    const ota = await createCheckedInBooking(managerPage, {
+      guest: "QA Ota Day Du",
+      phone: "0901000702",
+      source: "agoda",
+      invoice: false,
+    });
+    const plain = await createCheckedInBooking(managerPage, {
+      guest: "QA Khong Xuat",
+      phone: "0901000703",
+      invoice: false,
+    });
+    made.direct = direct.code;
+    made.ota = ota.code;
+    made.plain = plain.code;
+    await must(managerPage, shot, [plain.code, "Đang ở", "Không xuất hóa đơn"]);
+  });
+
+  await check("AC-08", "Báo cáo xuất hóa đơn gồm trực tiếp có yêu cầu và 100% OTA", accountingPage, async (shot) => {
+    if (!made.direct || !made.ota || !made.plain) throw new Error("Chưa có booking để đối chiếu");
+    await go(accountingPage, "/accounting");
+    const invoice = await cardText(accountingPage, /Doanh thu xuất hóa đơn/);
+    const booked = await cardText(accountingPage, /Booking nhận trong kỳ/);
+    const rowOf = (text, code) => {
+      const row = text
+        .split("Booking ")
+        .slice(1)
+        .find((part) => part.startsWith(code) && !/^\d/.test(part.slice(code.length)));
+      if (!row) throw new Error(`Thiếu ${code}`);
+      return row;
+    };
+    const directRow = rowOf(invoice, made.direct);
+    const otaRow = rowOf(invoice, made.ota);
+    if (!directRow.includes("Trực tiếp · yêu cầu xuất")) throw new Error(`${made.direct} không gắn nhãn trực tiếp yêu cầu xuất`);
+    if (!otaRow.includes("OTA · 100% tiền phòng")) throw new Error(`${made.ota} không gắn nhãn OTA 100%`);
+    if (invoice.includes(made.plain)) throw new Error(`${made.plain} không yêu cầu xuất nhưng vẫn vào doanh thu hóa đơn`);
+    const plainRow = rowOf(booked, made.plain);
+    if (!plainRow.includes("Không xuất")) throw new Error(`${made.plain} không còn trong danh sách nhận trong kỳ`);
+    rowOf(booked, made.ota);
+    await accountingPage.screenshot({ path: shot, fullPage: true });
   });
 
   await check("AC-03", "View kế toán không có PII hoặc liên kết vận hành", accountingPage, async (shot) => {
@@ -127,21 +222,25 @@ try {
     const hrefs = await accountingPage.locator("a[href]").evaluateAll((links) =>
       links.map((link) => link.getAttribute("href") || ""),
     );
-    const forbiddenHref = hrefs.find(
-      (href) =>
-        href.startsWith("/sales") ||
-        href.startsWith("/reception") ||
-        href.startsWith("/tasks") ||
-        href.startsWith("/rooms") ||
-        href.startsWith("/staff") ||
-        href.startsWith("/reports"),
-    );
+    const forbiddenHref = hrefs.find((href) => {
+      const path = href.split("?")[0];
+      if (path === "/sales") return false;
+      return (
+        path.startsWith("/sales/") ||
+        path.startsWith("/reception") ||
+        path.startsWith("/tasks") ||
+        path.startsWith("/rooms") ||
+        path.startsWith("/staff") ||
+        path.startsWith("/reports")
+      );
+    });
     if (forbiddenHref) throw new Error(`Có liên kết vận hành: ${forbiddenHref}`);
+    if (!hrefs.some((href) => href.split("?")[0] === "/sales")) throw new Error("Thiếu liên kết sơ đồ phòng");
     await accountingPage.screenshot({ path: shot, fullPage: true });
   });
 
   await check("AC-04", "Kế toán bị chặn khỏi mọi URL vận hành", accountingPage, async (shot) => {
-    const blocked = ["/today", "/tasks", "/rooms", "/handover", "/reports", "/sales/bookings", "/staff", "/notifications"];
+    const blocked = ["/today", "/tasks", "/rooms", "/handover", "/reports", "/sales/bookings", "/sales/new", "/staff", "/notifications"];
     for (const path of blocked) {
       await go(accountingPage, path);
       if (new URL(accountingPage.url()).pathname !== "/accounting") {
@@ -151,7 +250,20 @@ try {
     await must(accountingPage, shot, ["Kế toán", "Booking nhận trong kỳ"]);
   });
 
-  await check("AC-05", "Kế toán chỉ được mở thêm trang đổi mật khẩu", accountingPage, async (shot) => {
+  await check("AC-05", "Sơ đồ phòng của kế toán chỉ xem, che tên, không bán", accountingPage, async (shot) => {
+    await go(accountingPage, "/sales");
+    if (new URL(accountingPage.url()).pathname !== "/sales") {
+      throw new Error(`Không mở được sơ đồ phòng: ${accountingPage.url()}`);
+    }
+    await must(accountingPage, shot, ["Sơ đồ phòng", "Chỉ xem lịch phòng", "QA D***"]);
+    const text = await pageText(accountingPage);
+    const leaked = ["QA Xuat Hoa Don", "Bán phòng", "Kéo tên khách", "Đặt phòng"].filter((value) => text.includes(value));
+    if (leaked.length) throw new Error(`Sơ đồ phòng lộ thao tác hoặc tên khách: ${leaked.join(" | ")}`);
+    const sellLinks = await accountingPage.locator('a[href*="/sales/new"], a[href*="/sales/bookings"]').count();
+    if (sellLinks) throw new Error("Sơ đồ phòng vẫn dẫn tới bán phòng hoặc sửa booking");
+  });
+
+  await check("AC-09", "Kế toán đổi mật khẩu", accountingPage, async (shot) => {
     await go(accountingPage, "/account/password");
     await must(accountingPage, shot, ["Đổi mật khẩu", "Mật khẩu hiện tại", "Mật khẩu mới"]);
     const backHref = await accountingPage.getByRole("link", { name: "← Quay lại" }).getAttribute("href");

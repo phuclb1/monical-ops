@@ -52,6 +52,24 @@ function moneyOf<T extends BookingMoney>(rows: T[]) {
   );
 }
 
+export function isInvoiceRevenueRow(row: { source?: string | null; invoiceRequested?: boolean | number | null }) {
+  return isOtaSource(row.source) || Boolean(row.invoiceRequested);
+}
+
+export function invoiceRevenueReport<T extends BookingMoney & { invoiceRequested?: boolean | number | null }>(rows: T[]) {
+  const included = rows.filter((row) => isInvoiceRevenueRow(row));
+  const direct = included.filter((row) => !isOtaSource(row.source));
+  const ota = included.filter((row) => isOtaSource(row.source));
+  return {
+    rows: included,
+    direct,
+    ota,
+    money: moneyOf(included),
+    directMoney: moneyOf(direct),
+    otaMoney: moneyOf(ota),
+  };
+}
+
 export function roomRevenueReport<T extends BookingMoney>(bookings: T[], from: string, to: string) {
   const live = bookings.filter((row) => row.status !== "cancelled" && row.status !== "no_show");
   const booked = live.filter((row) => row.checkIn >= from && row.checkIn < to);

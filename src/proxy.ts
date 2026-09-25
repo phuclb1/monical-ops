@@ -1,12 +1,13 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-import { homePath, isAccountingPath, isOwnerPath } from "@/lib/nav";
+import { homePath, isAccountingAllowedPath, isAccountingPath, isOwnerPath } from "@/lib/nav";
 import { readSessionToken } from "@/lib/session-token";
 
 const PUBLIC = [
   "/login",
   "/forgot-password",
   "/reset-password",
+  "/kiem-tra-phong",
   "/tin-tuc",
   "/sitemap.xml",
   "/robots.txt",
@@ -40,6 +41,7 @@ export async function proxy(request: NextRequest) {
   if (PUBLIC.some((p) => pathname === p || pathname.startsWith(`${p}/`))) {
     const res = NextResponse.next();
     if (pathname === "/sw.js") return withCache(res, "public, max-age=0, must-revalidate");
+    if (pathname === "/kiem-tra-phong") return withCache(res, "public, max-age=0, must-revalidate");
     if (pathname.startsWith("/tin-tuc") || pathname === "/sitemap.xml" || pathname === "/robots.txt") {
       return withCache(res, "public, s-maxage=3600, stale-while-revalidate=86400");
     }
@@ -63,7 +65,7 @@ export async function proxy(request: NextRequest) {
     url.search = "";
     return withCache(NextResponse.redirect(url), "private, no-store");
   }
-  if (session.role === "accounting" && !isAccountingPath(pathname) && !pathname.startsWith("/account/")) {
+  if (session.role === "accounting" && !isAccountingAllowedPath(pathname)) {
     const url = request.nextUrl.clone();
     url.pathname = "/accounting";
     url.search = "";

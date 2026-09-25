@@ -17,6 +17,7 @@ export function RoomGantt({
   types,
   back,
   group = "floor",
+  readOnly = false,
 }: {
   days: string[];
   today: string;
@@ -25,6 +26,7 @@ export function RoomGantt({
   types: RoomType[];
   back: string;
   group?: GanttGroup;
+  readOnly?: boolean;
 }) {
   const router = useRouter();
   const rootRef = useRef<HTMLDivElement>(null);
@@ -95,7 +97,7 @@ export function RoomGantt({
   }
 
   function onBarDown(event: ReactPointerEvent<HTMLButtonElement>, sale: GanttSale, fromRoomId: string, nightStart: number, visualStart: number, visualEnd: number) {
-    if (event.button !== 0 || pending) return;
+    if (readOnly || event.button !== 0 || pending) return;
     if (sale.status === "departed") return;
     event.preventDefault();
     const bar = event.currentTarget;
@@ -149,7 +151,9 @@ export function RoomGantt({
 
   return (
     <div ref={rootRef} className={`room-gantt-scroll ${drag ? "is-dragging" : ""} ${pending ? "is-pending" : ""}`}>
-      <p className="mb-2 text-xs text-[#5c6665]">Kéo tên khách sang phòng trống hoặc ngày khác. Nâng hạng sẽ hỏi trước khi cộng phải thu.</p>
+      {readOnly ? null : (
+        <p className="mb-2 text-xs text-[#5c6665]">Kéo tên khách sang phòng trống hoặc ngày khác. Nâng hạng sẽ hỏi trước khi cộng phải thu.</p>
+      )}
       {notice ? <p className="mb-2 text-sm text-[#c23b3b]">{notice}</p> : null}
       <div className={`room-gantt ${compact ? "is-month" : ""}`} style={{ minWidth: `calc(4.75rem + ${days.length} * ${cellMin})` }}>
         <div className="room-gantt-head" style={{ gridTemplateColumns: columns }}>
@@ -211,11 +215,13 @@ export function RoomGantt({
                               />
                             );
                           }
+                          const openClass = `room-gantt-cell is-open ${isDrop ? (dropOk ? "is-drop" : "is-drop-bad") : ""} ${day === today ? "is-today" : weekend ? "is-weekend" : ""}`;
+                          if (readOnly) return <div key={day} className={openClass} />;
                           return (
                             <a
                               key={day}
                               href={`/sales/new?room=${row.room.id}&date=${day}`}
-                              className={`room-gantt-cell is-open ${isDrop ? (dropOk ? "is-drop" : "is-drop-bad") : ""} ${day === today ? "is-today" : weekend ? "is-weekend" : ""}`}
+                              className={openClass}
                               title={`Bán P.${row.room.number} · ${day}`}
                             />
                           );
@@ -230,7 +236,7 @@ export function RoomGantt({
                           <button
                             key={bar.sale.id}
                             type="button"
-                            className={`room-gantt-bar ${BAR[tone]} ${dragging ? "is-dragging" : ""} ${checkedOut ? "is-departed" : ""}`}
+                            className={`room-gantt-bar ${BAR[tone]} ${dragging ? "is-dragging" : ""} ${checkedOut ? "is-departed" : ""} ${readOnly ? "is-readonly" : ""}`}
                             style={{
                               left: `calc(${(bar.start / days.length) * 100}% + 1px)`,
                               width: `calc(${(span / days.length) * 100}% - 2px)`,
@@ -238,14 +244,18 @@ export function RoomGantt({
                                 ? { backgroundColor: "#e6e6e6", color: "#5c5c5c", boxShadow: "0 0 0 1px #cfcfcf" }
                                 : {}),
                             }}
-                            title={saleTitle(bar.sale)}
-                            onPointerDown={(event) => onBarDown(event, bar.sale, row.room.id, bar.nightStart, bar.start, bar.end)}
-                            onPointerMove={onBarMove}
-                            onPointerUp={onBarUp}
-                            onPointerCancel={() => setDrag(null)}
-                            onClick={() => {
-                              if (checkedOut) router.push(`/sales/bookings/${bookingKey(bar.sale)}`);
-                            }}
+                            title={readOnly ? `${bar.sale.guestName} · ${bar.sale.checkIn} → ${bar.sale.checkOut}` : saleTitle(bar.sale)}
+                            onPointerDown={readOnly ? undefined : (event) => onBarDown(event, bar.sale, row.room.id, bar.nightStart, bar.start, bar.end)}
+                            onPointerMove={readOnly ? undefined : onBarMove}
+                            onPointerUp={readOnly ? undefined : onBarUp}
+                            onPointerCancel={readOnly ? undefined : () => setDrag(null)}
+                            onClick={
+                              readOnly
+                                ? undefined
+                                : () => {
+                                    if (checkedOut) router.push(`/sales/bookings/${bookingKey(bar.sale)}`);
+                                  }
+                            }
                             disabled={pending}
                           >
                             <span className="min-w-0 truncate">{bar.sale.guestName}</span>

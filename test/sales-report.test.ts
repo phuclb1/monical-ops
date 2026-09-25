@@ -1,10 +1,17 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { ACCOUNTING_NAV, extraNav, homePath, isAccountingPath, MANAGER_NAV } from "../src/lib/nav";
+import { ACCOUNTING_NAV, extraNav, homePath, isAccountingAllowedPath, isAccountingPath, MANAGER_NAV } from "../src/lib/nav";
 import { datesUntil } from "../src/lib/datetime";
-import { revenueTrend, roomPerformanceSummary, roomRevenueReport } from "../src/lib/sales-report";
+import { invoiceRevenueReport, revenueTrend, roomPerformanceSummary, roomRevenueReport } from "../src/lib/sales-report";
 
-function row(partial: { checkIn: string; checkOut: string; status: string; total?: number; source?: string }) {
+function row(partial: {
+  checkIn: string;
+  checkOut: string;
+  status: string;
+  total?: number;
+  source?: string;
+  invoiceRequested?: boolean;
+}) {
   return {
     checkIn: partial.checkIn,
     checkOut: partial.checkOut,
@@ -13,6 +20,7 @@ function row(partial: { checkIn: string; checkOut: string; status: string; total
     due: 0,
     deposit: 0,
     source: partial.source,
+    invoiceRequested: partial.invoiceRequested,
   };
 }
 
@@ -66,12 +74,16 @@ test("report charts cover the full year and group revenue correctly", () => {
   });
 });
 
-test("kế toán có khu vực điều hướng riêng", () => {
+test("kế toán có khu vực điều hướng riêng và xem được sơ đồ phòng", () => {
   assert.equal(homePath("accounting"), "/accounting");
   assert.equal(ACCOUNTING_NAV[0]?.href, "/accounting");
+  assert.equal(ACCOUNTING_NAV.some((item) => item.href === "/sales"), true);
   assert.equal(isAccountingPath("/accounting"), true);
   assert.equal(isAccountingPath("/accounting/anything"), true);
   assert.equal(isAccountingPath("/reports"), false);
+  assert.equal(isAccountingAllowedPath("/sales"), true);
+  assert.equal(isAccountingAllowedPath("/sales/bookings"), false);
+  assert.equal(isAccountingAllowedPath("/sales/new"), false);
 });
 
 test("revenue is recognized on successful check-in, not checkout", () => {
@@ -98,4 +110,21 @@ test("revenue is recognized on successful check-in, not checkout", () => {
     [200, 300, 800],
   );
   assert.equal(report.recognizedMoney.total, 1300);
+});
+
+test("invoice revenue includes direct bookings that request an invoice and all OTA", () => {
+  const invoice = invoiceRevenueReport([
+    row({ checkIn: "2026-09-10", checkOut: "2026-09-11", status: "inhouse", total: 100, source: "walk_in", invoiceRequested: true }),
+    row({ checkIn: "2026-09-11", checkOut: "2026-09-12", status: "departed", total: 200, source: "phone", invoiceRequested: false }),
+    row({ checkIn: "2026-09-12", checkOut: "2026-09-13", status: "inhouse", total: 300, source: "agoda", invoiceRequested: false }),
+    row({ checkIn: "2026-09-13", checkOut: "2026-09-14", status: "inhouse", total: 400, source: "booking", invoiceRequested: true }),
+  ]);
+
+  assert.deepEqual(
+    invoice.rows.map((item) => item.total),
+    [100, 300, 400],
+  );
+  assert.equal(invoice.directMoney.total, 100);
+  assert.equal(invoice.otaMoney.total, 700);
+  assert.equal(invoice.money.total, 800);
 });

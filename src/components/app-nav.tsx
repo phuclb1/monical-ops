@@ -64,7 +64,12 @@ export function BottomNav({ items = PRIMARY_NAV }: { items?: readonly { href: st
   const hrefs = items.map((item) => item.href);
   return (
     <nav className="fixed inset-x-0 bottom-0 z-30 border-t border-line bg-[#fffdf8] pb-[env(safe-area-inset-bottom)] md:hidden">
-      <ul className={clsx("mx-auto grid max-w-md px-1 pt-1", items.length <= 2 ? "grid-cols-2" : "grid-cols-5")}>
+      <ul
+        className={clsx(
+          "mx-auto grid max-w-md px-1 pt-1",
+          items.length <= 2 ? "grid-cols-2" : items.length === 3 ? "grid-cols-3" : "grid-cols-5",
+        )}
+      >
         {items.map((item) => {
           const active = navActive(path, item.href, hrefs);
           const Icon = ICONS[item.href] ?? Menu;

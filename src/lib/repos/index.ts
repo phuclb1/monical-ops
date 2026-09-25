@@ -27,6 +27,7 @@ export { listRoomHandoff, activeSaleForRoom, requestHkHandoff, onHkInspectDone, 
 export {
   listRooms,
   listRoomTypes,
+  listRoomBusyRanges,
   createRoomType,
   updateRoomType,
   deleteRoomType,

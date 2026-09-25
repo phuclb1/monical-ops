@@ -39,13 +39,19 @@ export default async function LoginPage({
           <Btn type="submit" className="w-full">
             Đăng nhập
           </Btn>
+          <Link
+            href="/kiem-tra-phong"
+            className="inline-flex min-h-12 w-full items-center justify-center rounded-xl border border-line bg-white px-4 text-sm font-semibold text-burgundy"
+          >
+            Kiểm tra phòng nhanh
+          </Link>
           <Link href="/forgot-password" className="block text-center text-sm font-semibold text-burgundy">
             Quên mật khẩu?
           </Link>
         </form>
-        <p className="mt-5 text-center text-xs leading-5 text-cream/70 md:text-left md:text-[#6b5a52]">
+        <p className="mt-5 flex flex-wrap justify-center gap-x-3 gap-y-1 text-center text-xs leading-5 text-cream/70 md:justify-start md:text-left md:text-[#6b5a52]">
           <Link href="/tin-tuc" className="font-semibold text-cream underline decoration-cream/40 md:text-burgundy">
-            Tin tức · Top 5 khách sạn Đà Lạt gần trung tâm
+            Tin tức khách sạn
           </Link>
         </p>
       </section>

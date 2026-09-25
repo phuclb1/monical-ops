@@ -4,6 +4,8 @@ import { Btn, Card, Chip, Empty, Field, Stat, TabChip } from "@/components/ui";
 import { getSession } from "@/lib/auth";
 import { SALE_SOURCE_LABEL, SALE_STATUS_LABEL } from "@/lib/constants";
 import { addDaysVN, addMonthsVN, formatDayMonth, formatMonthLong, startOfMonthVN, todayVN } from "@/lib/datetime";
+import { maskName } from "@/lib/mask";
+import { homePath } from "@/lib/nav";
 import { can } from "@/lib/permissions";
 import { salesGantt, roomFocusBoard, listRoomTypes } from "@/lib/repos";
 import { formatVnd, groupByBooking, isSaleOrigin, rollupBookingStatus } from "@/lib/sales";
@@ -90,7 +92,9 @@ export default async function SalesPage({
 }) {
   const user = await getSession();
   if (!user) redirect("/login");
-  if (!can(user.role, "manageSales")) redirect("/more");
+  const manage = can(user.role, "manageSales");
+  if (!manage && !can(user.role, "viewRoomChart")) redirect(homePath(user.role));
+  const showNames = can(user.role, "viewGuestPii");
   const { date: rawDate, error, origin: rawOrigin, focus: rawFocus, view: rawView, group: rawGroup } = await searchParams;
   const today = todayVN();
   const view = parseView(rawView || "");
@@ -110,17 +114,21 @@ export default async function SalesPage({
     if (focus && !hitByRoom.has(sale.roomId)) return false;
     return true;
   });
+  const guestLabel = (name: string) => (showNames ? name : maskName(name, user.role));
   const rangeBookings = groupByBooking(rangeSales).map(({ id, rooms }) => ({
     id,
     rooms,
-    guestName: rooms[0]?.guestName || "",
+    guestName: guestLabel(rooms[0]?.guestName || ""),
     status: rollupBookingStatus(rooms.map((row) => row.status)),
   }));
   const ganttRows = (gantt?.rows || [])
     .filter((row) => !focus || hitByRoom.has(row.room.id))
     .map((row) => ({
       ...row,
-      bars: origin ? row.bars.filter((bar) => bar.sale.origin === origin) : row.bars,
+      bars: (origin ? row.bars.filter((bar) => bar.sale.origin === origin) : row.bars).map((bar) => ({
+        ...bar,
+        sale: { ...bar.sale, guestName: guestLabel(bar.sale.guestName) },
+      })),
     }));
   const salesHref = (extra: Record<string, string | undefined>) => {
     const nextQuery = new URLSearchParams();
@@ -147,8 +155,13 @@ export default async function SalesPage({
       <div className="flex items-start justify-between gap-3 md:items-center">
         <div>
           <h1 className="text-xl font-bold">Sơ đồ phòng</h1>
-          <p className="text-xs text-[#5c6665] md:text-sm">Gantt từ hôm qua. Box booking nửa ngày nhận / nửa ngày trả — cùng ngày có thể ghép khách đi và khách đến. Quản lý booking ở Đặt phòng.</p>
+          <p className="text-xs text-[#5c6665] md:text-sm">
+            {manage
+              ? "Gantt từ hôm qua. Box booking nửa ngày nhận / nửa ngày trả — cùng ngày có thể ghép khách đi và khách đến. Quản lý booking ở Đặt phòng."
+              : "Chỉ xem lịch phòng. Box booking nửa ngày nhận / nửa ngày trả."}
+          </p>
         </div>
+        {manage ? (
         <div className="flex flex-col items-end gap-1 md:flex-row md:items-center md:gap-3">
           <Link href={`/sales/new?date=${today}`} className="cta-link">
             Bán phòng
@@ -162,6 +175,7 @@ export default async function SalesPage({
             </Link>
           ) : null}
         </div>
+        ) : null}
       </div>
       {error ? <p className="text-sm text-[#c23b3b]">{error}</p> : null}
 
@@ -259,6 +273,7 @@ export default async function SalesPage({
             types={types}
             back={salesHref({})}
             group={group}
+            readOnly={!manage}
           />
         ) : (
           <Empty title="Không có phòng khớp bộ lọc" text="Bỏ quick filter để xem Gantt." />
@@ -267,8 +282,9 @@ export default async function SalesPage({
           <h2 className="mb-2 font-bold">Booking trong khung</h2>
           {rangeBookings.length ? (
             <div className="space-y-2">
-              {rangeBookings.map((row) => (
-                <Link key={row.id} href={`/sales/bookings/${row.id}`} className="flex min-h-14 items-center justify-between gap-2 rounded-xl bg-sand px-3 py-2.5">
+              {rangeBookings.map((row) => {
+                const body = (
+                <>
                   <div className="min-w-0">
                     <p className="flex min-w-0 items-center gap-1.5">
                       <span className="truncate font-semibold">
@@ -281,11 +297,22 @@ export default async function SalesPage({
                     </p>
                   </div>
                   <Chip tone={row.status === "inhouse" ? "ok" : row.status === "departed" ? "neutral" : "gold"}>{SALE_STATUS_LABEL[row.status as SaleStatus]}</Chip>
-                </Link>
-              ))}
+                </>
+                );
+                const className = "flex min-h-14 items-center justify-between gap-2 rounded-xl bg-sand px-3 py-2.5";
+                return manage ? (
+                  <Link key={row.id} href={`/sales/bookings/${row.id}`} className={className}>
+                    {body}
+                  </Link>
+                ) : (
+                  <div key={row.id} className={className}>
+                    {body}
+                  </div>
+                );
+              })}
             </div>
           ) : (
-            <Empty title={gantt.sales.length ? "Không khớp bộ lọc" : "Chưa có booking trong khung"} text={gantt.sales.length ? "Bỏ lọc nguồn để xem hết chỗ bán." : "Bấm ô trống trên Gantt để bán."} />
+            <Empty title={gantt.sales.length ? "Không khớp bộ lọc" : "Chưa có booking trong khung"} text={gantt.sales.length ? "Bỏ lọc nguồn để xem hết chỗ bán." : manage ? "Bấm ô trống trên Gantt để bán." : "Đổi khung ngày để xem booking khác."} />
           )}
         </Card>
       </div>

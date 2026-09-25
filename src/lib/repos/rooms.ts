@@ -20,6 +20,36 @@ export const listRoomTypes = cache(async () => {
   return db.select().from(t.roomTypes).orderBy(t.roomTypes.sortOrder, t.roomTypes.name);
 });
 
+export async function listRoomBusyRanges() {
+  const db = await getDb();
+  const [sales, stays] = await Promise.all([
+    db
+      .select({
+        roomId: t.roomSales.roomId,
+        status: t.roomSales.status,
+        checkIn: t.roomSales.checkIn,
+        checkOut: t.roomSales.checkOut,
+      })
+      .from(t.roomSales),
+    db
+      .select({
+        roomId: t.stays.roomId,
+        status: t.stays.status,
+        checkIn: t.stays.arrivalDate,
+        checkOut: t.stays.departureDate,
+      })
+      .from(t.stays),
+  ]);
+  return [
+    ...sales
+      .filter((row) => isActiveSaleStatus(row.status))
+      .map((row) => ({ roomId: row.roomId, checkIn: row.checkIn, checkOut: row.checkOut })),
+    ...stays
+      .filter((row) => row.roomId && ["arriving", "inhouse", "departing"].includes(row.status))
+      .map((row) => ({ roomId: row.roomId as string, checkIn: row.checkIn, checkOut: row.checkOut })),
+  ];
+}
+
 export async function createRoomType(
   actor: SessionUser,
   data: { name: string; adults?: number; baseRate?: number; weekendRate?: number },

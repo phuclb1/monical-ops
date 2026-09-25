@@ -65,7 +65,15 @@ export default async function DashboardPage() {
           <h1 className="text-2xl font-bold">Dashboard</h1>
           <p className="text-sm text-[#6b7372]">{formatDateLong(today)} · Xin chào {user.fullName}</p>
         </div>
-        <Link href="/today" className="cta-link">Vận hành hôm nay</Link>
+        <div className="flex flex-col gap-2 sm:flex-row">
+          <Link
+            href="/kiem-tra-phong"
+            className="inline-flex min-h-11 items-center justify-center whitespace-nowrap rounded-xl border border-line bg-white px-3 text-[13px] font-bold text-teal"
+          >
+            Kiểm tra phòng
+          </Link>
+          <Link href="/today" className="cta-link">Vận hành hôm nay</Link>
+        </div>
       </header>
 
       <section className="dashboard-kpis" aria-label="Chỉ số hôm nay">

@@ -7,8 +7,8 @@ import { formatDateNumeric } from "@/lib/datetime";
 import { homePath } from "@/lib/nav";
 import { can } from "@/lib/permissions";
 import { listBookings } from "@/lib/repos";
-import { formatVnd, isOtaDebt, paidNote, salePaid } from "@/lib/sales";
-import { parsePeriodQuery, roomRevenueReport } from "@/lib/sales-report";
+import { formatVnd, isOtaDebt, isOtaSource, paidNote } from "@/lib/sales";
+import { invoiceRevenueReport, parsePeriodQuery, roomRevenueReport } from "@/lib/sales-report";
 import type { SaleStatus } from "@/lib/types";
 
 const STATUS_TONE: Record<SaleStatus, "ok" | "warn" | "danger" | "gold" | "neutral"> = {
@@ -37,26 +37,15 @@ export default async function AccountingPage({
   const { grain, window } = parsePeriodQuery(rawGrain, rawDate);
   const bookings = await listBookings();
   const report = roomRevenueReport(bookings, window.from, window.to);
-  const invoicedRevenue = report.recognized.filter((row) => row.invoiceRequested);
-  const invoiceMoney = invoicedRevenue.reduce(
-    (sum, row) => {
-      const paid = salePaid(row);
-      sum.total += row.total;
-      sum.company += paid.companyPaid;
-      sum.transfer += paid.transferPaid;
-      sum.cash += paid.cashPaid;
-      sum.due += row.due;
-      return sum;
-    },
-    { total: 0, company: 0, transfer: 0, cash: 0, due: 0 },
-  );
+  const invoice = invoiceRevenueReport(report.recognized);
+  const invoiceMoney = invoice.money;
 
   return (
     <main className="booking-desk space-y-3 px-3 py-4 md:space-y-4">
       <div>
         <h1 className="text-xl font-bold">Kế toán</h1>
         <p className="text-xs text-[#5c6665] md:text-sm">
-          Chỉ xem booking, tiền thanh toán và doanh thu có yêu cầu xuất hóa đơn.
+          Chỉ xem sơ đồ phòng, booking và doanh thu xuất hóa đơn. Doanh thu ghi nhận khi khách đã check-in: booking trực tiếp có yêu cầu xuất, cộng 100% tiền phòng OTA (chưa trừ hoa hồng).
         </p>
       </div>
 
@@ -68,11 +57,13 @@ export default async function AccountingPage({
         </p>
         <p className="owner-hero-value">{formatVnd(invoiceMoney.total)}</p>
         <p className="mt-1 text-xs text-[#5c6665]">
-          {invoicedRevenue.length} booking đã check-in và yêu cầu xuất hóa đơn trong kỳ.
+          {invoice.rows.length} booking đã check-in: {invoice.direct.length} trực tiếp có yêu cầu xuất · {invoice.ota.length} OTA tính 100%.
         </p>
       </section>
 
       <div className="revenue-stats">
+        <Stat label="Trực tiếp yêu cầu xuất" value={formatVnd(invoice.directMoney.total)} />
+        <Stat label="OTA 100%" value={formatVnd(invoice.otaMoney.total)} />
         <Stat label="CK công ty" value={formatVnd(invoiceMoney.company)} />
         <Stat label="CK cá nhân" value={formatVnd(invoiceMoney.transfer)} />
         <Stat label="Tiền mặt" value={formatVnd(invoiceMoney.cash)} />
@@ -113,10 +104,11 @@ export default async function AccountingPage({
       </Card>
 
       <Card>
-        <h2 className="mb-2 font-bold">Doanh thu có xuất hóa đơn ({invoicedRevenue.length})</h2>
-        {invoicedRevenue.length ? (
+        <h2 className="mb-2 font-bold">Doanh thu xuất hóa đơn ({invoice.rows.length})</h2>
+        <p className="mb-2 text-xs text-[#5c6665]">Trực tiếp chỉ khi có yêu cầu xuất. OTA lấy đủ tiền phòng, kể cả booking không đánh dấu xuất hóa đơn.</p>
+        {invoice.rows.length ? (
           <div className="space-y-2">
-            {invoicedRevenue.map((row) => (
+            {invoice.rows.map((row) => (
               <div key={row.id} className="flex items-start justify-between gap-3 rounded-xl bg-sand px-3 py-3">
                 <div>
                   <p className="font-bold">Booking {row.pmsCode || row.id.slice(0, 8)}</p>
@@ -124,6 +116,7 @@ export default async function AccountingPage({
                     Nhận {formatDateNumeric(row.checkIn)} · {row.roomLabel}
                   </p>
                   <p className="mt-1 text-xs text-[#1b7a4e]">{paymentLabel(row)}</p>
+                  <p className="mt-1 text-xs font-semibold">{isOtaSource(row.source) ? "OTA · 100% tiền phòng" : "Trực tiếp · yêu cầu xuất"}</p>
                 </div>
                 <span className="shrink-0 text-sm font-bold">{formatVnd(row.total)}</span>
               </div>

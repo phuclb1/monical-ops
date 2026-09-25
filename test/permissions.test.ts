@@ -10,8 +10,10 @@ test("chỉ quản lý được hủy booking", () => {
   assert.equal(can("reception", "manageSales"), true);
 });
 
-test("kế toán chỉ có quyền vào view kế toán và xem thanh toán", () => {
+test("kế toán chỉ có quyền vào view kế toán, sơ đồ phòng và xem thanh toán", () => {
   assert.equal(can("accounting", "viewAccounting"), true);
+  assert.equal(can("accounting", "viewRoomChart"), true);
+  assert.equal(can("accounting", "manageSales"), false);
   assert.equal(can("accounting", "viewPayments"), true);
   assert.equal(can("accounting", "viewToday"), false);
   assert.equal(can("accounting", "viewTasks"), false);

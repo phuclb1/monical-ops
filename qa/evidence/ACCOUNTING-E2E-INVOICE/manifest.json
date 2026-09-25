@@ -1,0 +1,76 @@
+{
+  "runId": "ACCOUNTING-E2E-INVOICE",
+  "date": "2026-09-24T08:54:30.159Z",
+  "commit": "f3678a5-dirty",
+  "env": "http://localhost:3000",
+  "testUser": "qa.accounting.40042033",
+  "pass": 9,
+  "fail": 0,
+  "total": 9,
+  "passRate": "100%",
+  "results": [
+    {
+      "id": "AC-01",
+      "title": "Quản lý tạo tài khoản kế toán",
+      "result": "pass",
+      "evidence": "qa/evidence/ACCOUNTING-E2E-INVOICE/AC-01.png",
+      "note": ""
+    },
+    {
+      "id": "AC-02",
+      "title": "Kế toán đăng nhập thẳng vào view riêng",
+      "result": "pass",
+      "evidence": "qa/evidence/ACCOUNTING-E2E-INVOICE/AC-02.png",
+      "note": ""
+    },
+    {
+      "id": "AC-07",
+      "title": "Quản lý tạo booking đã nhận: trực tiếp có xuất, OTA, trực tiếp không xuất",
+      "result": "pass",
+      "evidence": "qa/evidence/ACCOUNTING-E2E-INVOICE/AC-07.png",
+      "note": ""
+    },
+    {
+      "id": "AC-08",
+      "title": "Báo cáo xuất hóa đơn gồm trực tiếp có yêu cầu và 100% OTA",
+      "result": "pass",
+      "evidence": "qa/evidence/ACCOUNTING-E2E-INVOICE/AC-08.png",
+      "note": ""
+    },
+    {
+      "id": "AC-03",
+      "title": "View kế toán không có PII hoặc liên kết vận hành",
+      "result": "pass",
+      "evidence": "qa/evidence/ACCOUNTING-E2E-INVOICE/AC-03.png",
+      "note": ""
+    },
+    {
+      "id": "AC-04",
+      "title": "Kế toán bị chặn khỏi mọi URL vận hành",
+      "result": "pass",
+      "evidence": "qa/evidence/ACCOUNTING-E2E-INVOICE/AC-04.png",
+      "note": ""
+    },
+    {
+      "id": "AC-05",
+      "title": "Sơ đồ phòng của kế toán chỉ xem, che tên, không bán",
+      "result": "pass",
+      "evidence": "qa/evidence/ACCOUNTING-E2E-INVOICE/AC-05.png",
+      "note": ""
+    },
+    {
+      "id": "AC-09",
+      "title": "Kế toán đổi mật khẩu",
+      "result": "pass",
+      "evidence": "qa/evidence/ACCOUNTING-E2E-INVOICE/AC-09.png",
+      "note": ""
+    },
+    {
+      "id": "AC-06",
+      "title": "Role khác không vào được view kế toán",
+      "result": "pass",
+      "evidence": "qa/evidence/ACCOUNTING-E2E-INVOICE/AC-06.png",
+      "note": ""
+    }
+  ]
+}

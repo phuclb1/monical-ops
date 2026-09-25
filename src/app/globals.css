@@ -1522,6 +1522,11 @@ label {
   cursor: grabbing;
 }
 
+.room-gantt-bar.is-readonly {
+  cursor: default;
+  touch-action: auto;
+}
+
 .room-gantt-bar.is-departed {
   cursor: pointer;
   background-color: #e6e6e6;

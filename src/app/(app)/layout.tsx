@@ -58,7 +58,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
             </div>
           </div>
           <p className="hidden text-sm font-semibold text-[#5c4a46] md:block">
-            {owner ? "Doanh thu & khách · chỉ xem" : accounting ? "Booking & hóa đơn · chỉ xem" : "Vận hành khách sạn · không thay PMS"}
+            {owner ? "Doanh thu & khách · chỉ xem" : accounting ? "Sơ đồ phòng & hóa đơn · chỉ xem" : "Vận hành khách sạn · không thay PMS"}
           </p>
           {isolated ? (
             <form action={logoutAction} className="md:hidden">

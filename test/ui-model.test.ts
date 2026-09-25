@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { ganttBarTone, ganttSections, quoteTotal, rangeOpen, saleTitle, type GanttRow } from "../src/components/room-gantt/model";
-import { groupRoomsByType, parseDiscountState, roomOpen } from "../src/components/sale-form/shared";
+import { groupRoomsByType, parseDiscountState, roomAvailabilityTable, roomOpen, roomTypeAvailability } from "../src/components/sale-form/shared";
 
 const room = (id: string, number: string, type: string, floor: number): GanttRow["room"] => ({
   id,
@@ -40,6 +40,75 @@ test("sale-form shared: discount parse, grouping, occupancy", () => {
     roomOpen("r1", "2026-09-19", "2026-09-20", [{ roomId: "r1", checkIn: "2026-09-20", checkOut: "2026-09-22" }]),
     true,
   );
+});
+
+test("sale-form shared: room-type availability shows whole stay and each night", () => {
+  const rooms = [
+    { id: "s1", number: "101", type: "Standard" },
+    { id: "s2", number: "102", type: "Standard" },
+    { id: "s3", number: "103", type: "Standard", opsStatus: "ooo" },
+    { id: "d1", number: "201", type: "Deluxe" },
+  ];
+  const types = [
+    { name: "Standard", sortOrder: 1, baseRate: 1, weekendRate: 1 },
+    { name: "Deluxe", sortOrder: 2, baseRate: 1, weekendRate: 1 },
+  ];
+  const busy = [
+    { roomId: "s1", checkIn: "2026-09-20", checkOut: "2026-09-21" },
+    { roomId: "s2", checkIn: "2026-09-19", checkOut: "2026-09-20" },
+  ];
+  const availability = roomTypeAvailability(rooms, types, "2026-09-19", "2026-09-21", busy);
+
+  assert.deepEqual(availability, [
+    {
+      type: "Standard",
+      total: 2,
+      available: 0,
+      nights: [
+        { date: "2026-09-19", available: 1 },
+        { date: "2026-09-20", available: 1 },
+      ],
+    },
+    {
+      type: "Deluxe",
+      total: 1,
+      available: 1,
+      nights: [
+        { date: "2026-09-19", available: 1 },
+        { date: "2026-09-20", available: 1 },
+      ],
+    },
+  ]);
+
+  assert.deepEqual(roomAvailabilityTable(rooms, types, "2026-09-19", "2026-09-21", busy), [
+    {
+      roomId: "s1",
+      number: "101",
+      type: "Standard",
+      nights: [
+        { date: "2026-09-19", available: true },
+        { date: "2026-09-20", available: false },
+      ],
+    },
+    {
+      roomId: "s2",
+      number: "102",
+      type: "Standard",
+      nights: [
+        { date: "2026-09-19", available: false },
+        { date: "2026-09-20", available: true },
+      ],
+    },
+    {
+      roomId: "d1",
+      number: "201",
+      type: "Deluxe",
+      nights: [
+        { date: "2026-09-19", available: true },
+        { date: "2026-09-20", available: true },
+      ],
+    },
+  ]);
 });
 
 test("gantt model: sections, title, quote, open range", () => {

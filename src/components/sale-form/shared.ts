@@ -1,3 +1,4 @@
+import { addDaysVN, datesUntil } from "@/lib/datetime";
 import { rangesOverlap } from "@/lib/sales";
 import type { DiscountKind } from "@/lib/types";
 
@@ -5,6 +6,18 @@ export type Room = { id: string; number: string; type: string; floor?: number; o
 export type RoomType = { name: string; sortOrder: number; baseRate: number; weekendRate: number; adults?: number };
 export type StayDates = { checkIn: string; checkOut: string };
 export type DiscountState = { kind: DiscountKind; value: string };
+export type RoomTypeAvailability = {
+  type: string;
+  total: number;
+  available: number;
+  nights: { date: string; available: number }[];
+};
+export type RoomAvailabilityRow = {
+  roomId: string;
+  number: string;
+  type: string;
+  nights: { date: string; available: boolean }[];
+};
 
 export function emptyDiscount(): DiscountState {
   return { kind: "none", value: "" };
@@ -37,4 +50,48 @@ export function roomOpen(
 ) {
   if (!checkIn || !checkOut || checkOut <= checkIn) return false;
   return !busy.some((row) => row.roomId === roomId && rangesOverlap(checkIn, checkOut, row.checkIn, row.checkOut));
+}
+
+export function roomTypeAvailability(
+  rooms: Room[],
+  types: RoomType[],
+  checkIn: string,
+  checkOut: string,
+  busy: { roomId: string; checkIn: string; checkOut: string }[],
+): RoomTypeAvailability[] {
+  const nights = datesUntil(checkIn, checkOut);
+  if (!nights.length) return [];
+  const sellable = rooms.filter((room) => room.opsStatus !== "ooo");
+  return groupRoomsByType(sellable, types).map((group) => ({
+    type: group.type,
+    total: group.rooms.length,
+    available: group.rooms.filter((room) => roomOpen(room.id, checkIn, checkOut, busy)).length,
+    nights: nights.map((date) => ({
+      date,
+      available: group.rooms.filter((room) => roomOpen(room.id, date, addDaysVN(date, 1), busy)).length,
+    })),
+  }));
+}
+
+export function roomAvailabilityTable(
+  rooms: Room[],
+  types: RoomType[],
+  checkIn: string,
+  checkOut: string,
+  busy: { roomId: string; checkIn: string; checkOut: string }[],
+): RoomAvailabilityRow[] {
+  const nights = datesUntil(checkIn, checkOut);
+  if (!nights.length) return [];
+  const sellable = rooms.filter((room) => room.opsStatus !== "ooo");
+  return groupRoomsByType(sellable, types).flatMap((group) =>
+    group.rooms.map((room) => ({
+      roomId: room.id,
+      number: room.number,
+      type: room.type,
+      nights: nights.map((date) => ({
+        date,
+        available: roomOpen(room.id, date, addDaysVN(date, 1), busy),
+      })),
+    })),
+  );
 }

@@ -19,6 +19,7 @@ import type { PaymentMethod } from "@/lib/types";
 import { SaleFormExtras, type DraftExtra, type ExtraTypeOption } from "./extras";
 import { SaleFormRooms } from "./new-rooms";
 import { SaleFormSide } from "./new-side";
+import { RoomTypeAvailability } from "./room-type-availability";
 import { emptyDiscount, groupRoomsByType, roomOpen, type DiscountState, type Room, type RoomType, type StayDates } from "./shared";
 
 export function SaleForm({
@@ -256,6 +257,13 @@ export function SaleForm({
           />
         </Field>
       </div>
+      <RoomTypeAvailability
+        rooms={rooms}
+        types={types}
+        busy={busy}
+        checkIn={sharedStay.checkIn}
+        checkOut={sharedStay.checkOut}
+      />
       <SaleFormRooms
         allowMultiple={allowMultiple}
         openRooms={openRooms}

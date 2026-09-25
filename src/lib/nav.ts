@@ -30,6 +30,7 @@ export const OWNER_NAV = [
 
 export const ACCOUNTING_NAV = [
   { href: "/accounting", label: "Kế toán" },
+  { href: "/sales", label: "Sơ đồ phòng" },
   { href: "/account/password", label: "Mật khẩu" },
 ] as const;
 
@@ -46,6 +47,10 @@ export function isOwnerPath(pathname: string) {
 
 export function isAccountingPath(pathname: string) {
   return pathname === "/accounting" || pathname.startsWith("/accounting/");
+}
+
+export function isAccountingAllowedPath(pathname: string) {
+  return isAccountingPath(pathname) || pathname.startsWith("/account/") || pathname === "/sales";
 }
 
 export function extraNav(role: Role) {
