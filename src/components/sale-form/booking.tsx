@@ -18,6 +18,7 @@ export function BookingForm({
   busy = [],
   extras = [],
   defaults,
+  requiresApproval = false,
 }: {
   action: (formData: FormData) => void | Promise<void>;
   lines: {
@@ -37,6 +38,7 @@ export function BookingForm({
   types: { name: string; sortOrder: number; baseRate: number; weekendRate: number }[];
   busy?: { roomId: string; checkIn: string; checkOut: string }[];
   extras?: { name: string; qty: number; unitPrice: number; unit: string }[];
+  requiresApproval?: boolean;
   defaults: {
     bookingId: string;
     guestName?: string;
@@ -151,6 +153,22 @@ export function BookingForm({
   const bookingTotal = booked.total + extrasTotal;
   const depositAmount = switchedToOtaDebt ? 0 : parseMoney(deposit);
   const due = bookingDue(bookingTotal, depositAmount);
+  const hasApprovalChange =
+    source !== (defaults.source || "walk_in") ||
+    otaPaymentMode !== (defaults.otaPaymentMode === "hotel" ? "hotel" : "debt") ||
+    depositAmount !== (defaults.deposit || 0) ||
+    lines.some((line) => {
+      const stay = stayOf(line.saleId, { checkIn: line.checkIn, checkOut: line.checkOut });
+      const discount = discounts[line.saleId] || { kind: "none", value: "" };
+      return (
+        (picks[line.saleId] || line.roomId) !== line.roomId ||
+        stay.checkIn !== line.checkIn ||
+        stay.checkOut !== line.checkOut ||
+        (breakfast[line.saleId] !== false) !== (line.breakfast !== false) ||
+        discount.kind !== (line.discountKind || "none") ||
+        parseDiscountValue(discount.kind, discount.value) !== (line.discountValue || 0)
+      );
+    });
   const stayAdults = Math.max(1, Number(adults) || 1);
   const stayChildren = Math.max(0, Number(children) || 0);
   const anyBreakfast = lines.some((line) => breakfast[line.saleId] !== false);
@@ -321,7 +339,7 @@ export function BookingForm({
         due={due}
       />
       <Btn type="submit" className="w-full">
-        Lưu booking
+        {requiresApproval && hasApprovalChange ? "Gửi phê duyệt" : "Lưu booking"}
       </Btn>
     </form>
   );

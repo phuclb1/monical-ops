@@ -20,31 +20,41 @@ import { assertSaleWindow, paymentOf } from "./helpers";
 import { notifyBookingChange } from "./notify";
 import { syncStayFromSale } from "./stay";
 
+export type BookingUpdateInput = {
+  assignments: {
+    saleId: string;
+    roomId: string;
+    checkIn?: string;
+    checkOut?: string;
+    breakfast?: boolean;
+    discountKind?: string;
+    discountValue?: number;
+  }[];
+  guestName?: string;
+  guestPhone?: string;
+  source?: string;
+  otaPaymentMode?: "debt" | "hotel";
+  invoiceRequested?: boolean;
+  adults?: number;
+  children?: number;
+  breakfastAdults?: number;
+  breakfastChildren?: number;
+  cars?: number;
+  bikes?: number;
+  discountKind?: string;
+  discountValue?: number;
+  deposit?: number;
+  cashPaid?: number;
+  transferPaid?: number;
+  companyPaid?: number;
+  paymentMethod?: string;
+  notes?: string;
+};
+
 export async function updateBooking(
   user: SessionUser,
   bookingId: string,
-  data: {
-    assignments: { saleId: string; roomId: string; checkIn?: string; checkOut?: string; breakfast?: boolean; discountKind?: string; discountValue?: number }[];
-    guestName?: string;
-    guestPhone?: string;
-    source?: string;
-    otaPaymentMode?: "debt" | "hotel";
-    invoiceRequested?: boolean;
-    adults?: number;
-    children?: number;
-    breakfastAdults?: number;
-    breakfastChildren?: number;
-    cars?: number;
-    bikes?: number;
-    discountKind?: string;
-    discountValue?: number;
-    deposit?: number;
-    cashPaid?: number;
-    transferPaid?: number;
-    companyPaid?: number;
-    paymentMethod?: string;
-    notes?: string;
-  },
+  data: BookingUpdateInput,
 ) {
   const db = await getDb();
   const [all, rooms, types] = await Promise.all([

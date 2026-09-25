@@ -102,7 +102,9 @@ export default async function TodayPage() {
               <p className="text-[11px]">Đang ở</p>
             </div>
           </div>
-          <p className="mt-2 text-sm text-[#5c6665]">Doanh thu đêm {formatVnd(sales.revenue)}</p>
+          {can(user.role, "viewSalesRevenue") ? (
+            <p className="mt-2 text-sm text-[#5c6665]">Doanh thu đêm {formatVnd(sales.revenue)}</p>
+          ) : null}
           <Link href="/sales" className="cta-link mt-3 w-full">
             Mở sơ đồ bán phòng
           </Link>

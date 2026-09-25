@@ -26,22 +26,25 @@ export async function addRoomsToBookingAction(formData: FormData) {
   const user = await requireSales();
   const id = String(formData.get("id"));
   const roomIds = formData.getAll("roomId").map(String).filter(Boolean);
-  let created: { id: string; bookingId: string };
+  let result: { mode: "applied" | "requested"; bookingId: string };
   try {
-    created = await repo.addRoomsToBooking(user, id, roomIds);
+    result = await repo.submitAddRooms(user, id, roomIds);
   } catch (e) {
     fail(`/sales/${id}`, e);
   }
   refresh();
   revalidatePath(`/sales/${id}`);
-  revalidatePath(`/sales/bookings/${created.bookingId}`);
-  redirect(`/sales/bookings/${created.bookingId}`);
+  revalidatePath(`/sales/bookings/${result.bookingId}`);
+  redirect(`/sales/bookings/${result.bookingId}${result.mode === "requested" ? "?approval=requested" : ""}`);
 }
 
 export async function updateSaleAction(formData: FormData) {
   const user = await requireSales();
   const id = String(formData.get("id"));
   try {
+    if (user.role !== "manager") {
+      throw new Error("Lễ tân sửa ngày và tiền tại trang booking để gửi quản lý duyệt");
+    }
     await repo.updateRoomSale(user, id, saleFromForm(formData));
   } catch (e) {
     fail(`/sales/${id}`, e);
@@ -154,8 +157,9 @@ export async function updateBookingAction(formData: FormData) {
     discountKind: parseDiscountKind(formData.get(`discountKind-${saleId}`)),
     discountValue: parseDiscountValue(formData.get(`discountKind-${saleId}`), formData.get(`discountValue-${saleId}`)),
   }));
+  let result: { mode: "applied" | "requested"; bookingId: string };
   try {
-    await repo.updateBooking(user, bookingId, {
+    result = await repo.submitBookingUpdate(user, bookingId, {
       assignments,
       guestName: String(formData.get("guestName") || ""),
       guestPhone: String(formData.get("guestPhone") || ""),
@@ -177,20 +181,25 @@ export async function updateBookingAction(formData: FormData) {
   }
   refresh();
   revalidatePath(back);
-  redirect(back);
+  redirect(`${back}${result.mode === "requested" ? "?approval=requested" : ""}`);
 }
 
 export async function moveGanttSaleAction(formData: FormData) {
   const user = await requireSales();
   const back = actionBack(formData, "/sales");
   try {
-    await repo.moveGanttSale(user, {
+    const result = await repo.submitGanttMove(user, {
       saleId: String(formData.get("saleId") || ""),
       roomId: String(formData.get("roomId") || ""),
       checkIn: String(formData.get("checkIn") || ""),
       checkOut: String(formData.get("checkOut") || ""),
     });
+    if (result.mode === "requested") {
+      refresh();
+      redirect(`/sales/bookings/${result.bookingId}?approval=requested`);
+    }
   } catch (e) {
+    if ((e as { digest?: string }).digest?.startsWith("NEXT_REDIRECT")) throw e;
     fail(back, e);
   }
   refresh();
@@ -212,4 +221,36 @@ export async function cancelBookingAction(formData: FormData) {
   refresh();
   revalidatePath(back);
   redirect(back);
+}
+
+export async function approveBookingChangeAction(formData: FormData) {
+  const user = await requireSales();
+  const bookingId = String(formData.get("bookingId") || "");
+  const back = `/sales/bookings/${bookingId}`;
+  try {
+    await repo.approveBookingChange(user, String(formData.get("requestId") || ""));
+  } catch (e) {
+    fail(back, e);
+  }
+  refresh();
+  revalidatePath(back);
+  redirect(`${back}?approval=approved`);
+}
+
+export async function rejectBookingChangeAction(formData: FormData) {
+  const user = await requireSales();
+  const bookingId = String(formData.get("bookingId") || "");
+  const back = `/sales/bookings/${bookingId}`;
+  try {
+    await repo.rejectBookingChange(
+      user,
+      String(formData.get("requestId") || ""),
+      String(formData.get("reviewNote") || ""),
+    );
+  } catch (e) {
+    fail(back, e);
+  }
+  refresh();
+  revalidatePath(back);
+  redirect(`${back}?approval=rejected`);
 }

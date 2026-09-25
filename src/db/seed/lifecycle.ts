@@ -21,6 +21,7 @@ export async function resetOpsDemo(db: AppDb) {
   await db.delete(t.guestRequests);
   await db.delete(t.vehicles);
   await db.delete(t.stays);
+  await db.delete(t.bookingChangeRequests);
   await db.delete(t.saleExtras);
   await db.delete(t.roomSales);
   await db.delete(t.shifts);
@@ -43,6 +44,7 @@ export async function wipeAllLocal(db: AppDb) {
   await db.delete(t.guestRequests);
   await db.delete(t.vehicles);
   await db.delete(t.stays);
+  await db.delete(t.bookingChangeRequests);
   await db.delete(t.saleExtras);
   await db.delete(t.roomSales);
   await db.delete(t.shifts);

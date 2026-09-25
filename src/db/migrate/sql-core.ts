@@ -88,4 +88,24 @@ CREATE INDEX IF NOT EXISTS room_sales_room ON room_sales (room_id);
 CREATE INDEX IF NOT EXISTS room_sales_dates ON room_sales (check_in, check_out);
 CREATE INDEX IF NOT EXISTS room_sales_status ON room_sales (status);
 CREATE INDEX IF NOT EXISTS room_sales_booking ON room_sales (booking_id);
+CREATE TABLE IF NOT EXISTS booking_change_requests (
+  id TEXT PRIMARY KEY,
+  booking_id TEXT NOT NULL,
+  kind TEXT NOT NULL,
+  status TEXT NOT NULL DEFAULT 'pending',
+  summary TEXT NOT NULL,
+  before_json TEXT NOT NULL,
+  payload_json TEXT NOT NULL,
+  proposed_json TEXT,
+  requested_by TEXT NOT NULL,
+  requested_at TEXT NOT NULL,
+  reviewed_by TEXT,
+  reviewed_at TEXT,
+  review_note TEXT,
+  applied_at TEXT
+);
+CREATE INDEX IF NOT EXISTS booking_change_requests_booking ON booking_change_requests (booking_id, requested_at);
+CREATE INDEX IF NOT EXISTS booking_change_requests_status ON booking_change_requests (status, requested_at);
+CREATE UNIQUE INDEX IF NOT EXISTS booking_change_requests_one_pending
+  ON booking_change_requests (booking_id) WHERE status = 'pending';
 `;

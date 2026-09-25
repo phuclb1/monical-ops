@@ -63,6 +63,14 @@ export {
   setSaleExtraTypeRates,
   addBookingExtra,
   removeBookingExtra,
+  approveBookingChange,
+  listBookingChangeRequests,
+  rejectBookingChange,
+  submitAddExtra,
+  submitAddRooms,
+  submitBookingUpdate,
+  submitGanttMove,
+  submitRemoveExtra,
 } from "./sales";
 export { listStays, getStay, getRoomDayChecklists, updateStay, addVehicle, addGuestRequest, completeRequest } from "./stays";
 export { pendingHandover, listHandovers, buildHandoverDraft, createHandover, acceptHandover } from "./handovers";

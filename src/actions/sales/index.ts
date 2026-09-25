@@ -11,6 +11,8 @@ export {
   updateBookingAction,
   moveGanttSaleAction,
   cancelBookingAction,
+  approveBookingChangeAction,
+  rejectBookingChangeAction,
 } from "./bookings";
 export {
   saveRoomRatesAction,

@@ -47,6 +47,10 @@ export const AUDIT_ACTIONS = [
   "set_type",
   "rate",
   "clear",
+  "request",
+  "approve",
+  "reject",
+  "conflict",
 ] as const;
 
 export const AUDIT_ENTITY_LABEL: Record<string, string> = {
@@ -95,6 +99,10 @@ export const AUDIT_ACTION_LABEL: Record<string, string> = {
   set_type: "Đổi hạng",
   rate: "Sửa giá",
   clear: "Xóa lịch",
+  request: "Gửi duyệt",
+  approve: "Phê duyệt",
+  reject: "Từ chối",
+  conflict: "Xung đột",
 };
 
 export const FIELD_LABEL: Record<string, string> = {
@@ -157,6 +165,7 @@ export const FIELD_LABEL: Record<string, string> = {
   count: "Số dòng",
   effectiveFrom: "Áp dụng từ",
   reset: "Đặt lại MK",
+  summary: "Nội dung",
 };
 
 export const SKIP_FIELDS = new Set([
@@ -167,6 +176,7 @@ export const SKIP_FIELDS = new Set([
   "updatedAt",
   "updatedBy",
   "createdBy",
+  "requestId",
   "openedAt",
   "openedBy",
   "closedAt",

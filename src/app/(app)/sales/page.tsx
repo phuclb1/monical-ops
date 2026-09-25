@@ -93,6 +93,7 @@ export default async function SalesPage({
   const user = await getSession();
   if (!user) redirect("/login");
   const manage = can(user.role, "manageSales");
+  const showRevenue = can(user.role, "viewSalesRevenue");
   if (!manage && !can(user.role, "viewRoomChart")) redirect(homePath(user.role));
   const showNames = can(user.role, "viewGuestPii");
   const { date: rawDate, error, origin: rawOrigin, focus: rawFocus, view: rawView, group: rawGroup } = await searchParams;
@@ -220,11 +221,11 @@ export default async function SalesPage({
         <p className="mt-2 text-xs font-semibold text-[#5c6665] md:mt-0 md:pb-3 md:text-sm">{rangeLabel}</p>
       </Card>
 
-      <div className="grid grid-cols-2 gap-2 md:grid-cols-4 md:gap-3">
+      <div className={`grid grid-cols-2 gap-2 ${showRevenue ? "md:grid-cols-4" : "md:grid-cols-3"} md:gap-3`}>
         <Stat label="Đêm trống" value={gantt?.vacantNights ?? 0} tone="text-[#1b7a4e]" />
         <Stat label="Đêm đã bán" value={gantt?.soldNights ?? 0} />
         <Stat label="OOO" value={gantt?.ooo ?? 0} tone="text-[#c23b3b]" />
-        <Stat label="Doanh thu khung" value={formatVnd(gantt?.revenue ?? 0)} />
+        {showRevenue ? <Stat label="Doanh thu khung" value={formatVnd(gantt?.revenue ?? 0)} /> : null}
       </div>
 
       <div className="space-y-2 md:rounded-2xl md:border md:border-line md:bg-white/70 md:p-3">

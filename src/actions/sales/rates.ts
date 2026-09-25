@@ -48,8 +48,9 @@ export async function addBookingExtraAction(formData: FormData) {
   const user = await requireSales();
   const bookingId = String(formData.get("bookingId") || "");
   const back = `/sales/bookings/${bookingId}`;
+  let result: { mode: "applied" | "requested"; bookingId: string };
   try {
-    await repo.addBookingExtra(user, bookingId, {
+    result = await repo.submitAddExtra(user, bookingId, {
       typeId: String(formData.get("typeId") || ""),
       name: String(formData.get("name") || ""),
       qty: Number(formData.get("qty") || 1),
@@ -60,7 +61,7 @@ export async function addBookingExtraAction(formData: FormData) {
   }
   refresh();
   revalidatePath(back);
-  redirect(back);
+  redirect(`${back}${result.mode === "requested" ? "?approval=requested" : ""}`);
 }
 
 export async function removeBookingExtraAction(formData: FormData) {
@@ -68,12 +69,13 @@ export async function removeBookingExtraAction(formData: FormData) {
   const extraId = String(formData.get("id") || "");
   const bookingId = String(formData.get("bookingId") || "");
   const back = `/sales/bookings/${bookingId}`;
+  let result: { mode: "applied" | "requested"; bookingId: string };
   try {
-    await repo.removeBookingExtra(user, extraId);
+    result = await repo.submitRemoveExtra(user, bookingId, extraId);
   } catch (e) {
     fail(back, e);
   }
   refresh();
   revalidatePath(back);
-  redirect(back);
+  redirect(`${back}${result.mode === "requested" ? "?approval=requested" : ""}`);
 }

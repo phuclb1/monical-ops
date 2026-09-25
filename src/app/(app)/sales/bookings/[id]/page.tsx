@@ -3,6 +3,7 @@ import { notFound, redirect } from "next/navigation";
 import { addRoomsToBookingAction, updateBookingAction } from "@/actions/sales";
 import { AddBookingRoomsForm, BookingForm } from "@/components/sale-form";
 import { BookingCancelActions } from "@/components/booking-cancel";
+import { BookingApprovals } from "@/components/booking-approvals";
 import { BookingExtrasPanel } from "@/components/booking-extras";
 import { BookingPaymentPanel } from "@/components/booking-payment";
 import { BookingRoomList } from "@/components/booking-room-list";
@@ -13,7 +14,7 @@ import { SALE_ORIGIN_LABEL, SALE_SOURCE_LABEL, SALE_STATUS_LABEL } from "@/lib/c
 import { formatDateLong, todayVN } from "@/lib/datetime";
 import { extraDetail } from "@/lib/extras";
 import { can } from "@/lib/permissions";
-import { getBooking, listBookingLogs, listRooms, listRoomSales, listRoomTypes, listSaleExtraTypes } from "@/lib/repos";
+import { getBooking, listBookingChangeRequests, listBookingLogs, listRooms, listRoomSales, listRoomTypes, listSaleExtraTypes } from "@/lib/repos";
 import { bookingQuote, formatVnd, isActiveSaleStatus, isOpsBookingCode, isOtaDebt, isOtaSource, paidNote, parkingLabel } from "@/lib/sales";
 import type { SaleOrigin, SaleSource, SaleStatus } from "@/lib/types";
 
@@ -30,20 +31,21 @@ export default async function BookingDetailPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ error?: string }>;
+  searchParams: Promise<{ error?: string; approval?: string }>;
 }) {
   const user = await getSession();
   if (!user) redirect("/login");
   if (!can(user.role, "manageSales")) redirect("/more");
   const { id } = await params;
-  const { error } = await searchParams;
-  const [booking, rooms, types, sales, extraTypes, logs] = await Promise.all([
+  const { error, approval } = await searchParams;
+  const [booking, rooms, types, sales, extraTypes, logs, approvals] = await Promise.all([
     getBooking(id),
     listRooms(),
     listRoomTypes(),
     listRoomSales(),
     listSaleExtraTypes(),
     listBookingLogs(id),
+    listBookingChangeRequests(id),
   ]);
   if (!booking) notFound();
   const today = todayVN();
@@ -103,6 +105,21 @@ export default async function BookingDetailPage({
         </div>
       </div>
       {error ? <p className="text-sm text-[#c23b3b]">{error}</p> : null}
+      {approval === "requested" ? (
+        <p className="rounded-xl bg-[#fff1d6] px-3 py-2 text-sm font-semibold text-[#9a5b00]">
+          Đã gửi quản lý duyệt. Booking chưa thay đổi.
+        </p>
+      ) : approval === "approved" ? (
+        <p className="rounded-xl bg-[#e4f5eb] px-3 py-2 text-sm font-semibold text-[#1b7a4e]">
+          Đã duyệt và áp dụng thay đổi vào booking.
+        </p>
+      ) : approval === "rejected" ? (
+        <p className="rounded-xl bg-[#fde8e8] px-3 py-2 text-sm font-semibold text-[#c23b3b]">
+          Đã từ chối đề nghị thay đổi.
+        </p>
+      ) : null}
+
+      <BookingApprovals rows={approvals} role={user.role} />
 
       <div className="booking-desk-grid space-y-3 md:space-y-0">
         <aside className="booking-desk-side space-y-3">
@@ -244,6 +261,11 @@ export default async function BookingDetailPage({
 
           {firstActive ? (
             <Fold title="Dịch vụ / phụ thu" hint={booking.extras.length ? `${booking.extras.length}` : undefined}>
+              {user.role === "reception" ? (
+                <p className="mb-3 rounded-xl bg-[#fff1d6] px-3 py-2 text-xs font-semibold text-[#9a5b00]">
+                  Thêm hoặc xóa phụ thu sẽ gửi quản lý duyệt trước khi áp dụng.
+                </p>
+              ) : null}
               <BookingExtrasPanel
                 bookingId={booking.id}
                 nights={booking.nights}
@@ -256,6 +278,9 @@ export default async function BookingDetailPage({
           {firstActive && extraRooms.length ? (
             <Fold title="Thêm phòng">
               <p className="mb-2 text-xs text-[#5c6665]">Giữ nguyên khách, ngày, nền tảng. Giá theo bảng hạng phòng thêm.</p>
+              {user.role === "reception" ? (
+                <p className="mb-3 text-xs font-semibold text-[#9a5b00]">Thêm phòng cần quản lý duyệt.</p>
+              ) : null}
               <AddBookingRoomsForm action={addRoomsToBookingAction} rooms={extraRooms} saleId={firstActive.id} />
             </Fold>
           ) : null}
@@ -263,6 +288,11 @@ export default async function BookingDetailPage({
           {firstActive ? (
             <Fold title="Sửa booking">
               <p className="mb-2 text-xs text-[#5c6665]">Sửa tên, SĐT, số khách, kênh. Đổi số phòng cùng hạng hoặc nâng hạng. Ngày, ăn sáng và chiết khấu theo từng phòng.</p>
+              {user.role === "reception" ? (
+                <p className="mb-3 rounded-xl bg-[#fff1d6] px-3 py-2 text-xs font-semibold text-[#9a5b00]">
+                  Đổi ngày, phòng, tiền, ăn sáng hoặc chiết khấu sẽ gửi quản lý duyệt. Booking chỉ đổi sau khi được duyệt.
+                </p>
+              ) : null}
               <BookingForm
                 action={updateBookingAction}
                 lines={activeRooms.map((row) => ({
@@ -282,6 +312,7 @@ export default async function BookingDetailPage({
                 types={types}
                 busy={busy}
                 extras={booking.extras}
+                requiresApproval={user.role === "reception"}
                 defaults={{
                   bookingId: booking.id,
                   guestName: booking.guestName,

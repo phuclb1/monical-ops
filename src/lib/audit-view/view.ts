@@ -61,11 +61,11 @@ export function formatAuditWhen(iso: string) {
 }
 
 export function actionTone(action: string): "ok" | "warn" | "danger" | "gold" | "teal" | "neutral" {
-  if (action === "create" || action === "open" || action === "unlock" || action === "done" || action === "accept") return "ok";
-  if (action === "delete" || action === "lock" || action === "cancel" || action === "close") return "danger";
+  if (action === "create" || action === "open" || action === "unlock" || action === "done" || action === "accept" || action === "approve") return "ok";
+  if (action === "delete" || action === "lock" || action === "cancel" || action === "close" || action === "reject") return "danger";
   if (action === "ingest") return "gold";
   if (action === "update" || action === "save" || action === "status" || action === "rate" || action === "rename") return "teal";
-  if (action === "skip" || action === "no_show" || action === "undo") return "warn";
+  if (action === "skip" || action === "no_show" || action === "undo" || action === "request" || action === "conflict") return "warn";
   return "neutral";
 }
 
@@ -78,6 +78,10 @@ export const BOOKING_LOG_ACTION_LABEL: Record<string, string> = {
   cancel: "Hủy",
   no_show: "No-show",
   ingest: "Đồng bộ PMS",
+  request: "Gửi duyệt",
+  approve: "Đã duyệt",
+  reject: "Từ chối",
+  conflict: "Xung đột",
 };
 
 export type AuditLogView = {
