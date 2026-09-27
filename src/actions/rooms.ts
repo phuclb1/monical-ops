@@ -52,9 +52,11 @@ export async function updateRoomTypeAction(formData: FormData) {
   try {
     await repo.updateRoomType(user, String(formData.get("id")), typeFromForm(formData));
   } catch (e) {
+    if ((e as { digest?: string }).digest?.startsWith("NEXT_REDIRECT")) throw e;
     fail(e);
   }
   refresh();
+  redirect("/rooms/manage?ok=type");
 }
 
 export async function deleteRoomTypeAction(formData: FormData) {

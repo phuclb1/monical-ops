@@ -13,7 +13,7 @@ async function reseedLocal() {
   const client = createClient({ url });
   await client.executeMultiple(SCHEMA_SQL);
   const db = drizzle(client, { schema });
-  await syncRoomCatalog(db, { prune: true });
+  await syncRoomCatalog(db, { prune: true, reset: true });
   const rooms = await db.select().from(schema.rooms);
   const types = await db.select().from(schema.roomTypes);
   console.log(`Local: ${types.length} hạng, ${rooms.length} phòng`);

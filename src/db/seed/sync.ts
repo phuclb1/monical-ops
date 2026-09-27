@@ -105,7 +105,7 @@ export async function syncReceptionRoster(db: AppDb) {
   }
 }
 
-export async function syncRoomCatalog(db: AppDb, opts?: { prune?: boolean }) {
+export async function syncRoomCatalog(db: AppDb, opts?: { prune?: boolean; reset?: boolean }) {
   const now = nowISO();
   const types = await db.select().from(t.roomTypes);
   const typeByCode = new Map(types.map((row) => [row.code, row]));
@@ -117,6 +117,8 @@ export async function syncRoomCatalog(db: AppDb, opts?: { prune?: boolean }) {
       await db.insert(t.roomTypes).values(type);
       continue;
     }
+    // Production edits the name in /rooms/manage. A boot-time sync must not put the seed name back.
+    if (!opts?.reset) continue;
     await db
       .update(t.roomTypes)
       .set({ name: type.name, sortOrder: type.sortOrder, code: type.code })
@@ -150,10 +152,10 @@ export async function syncRoomCatalog(db: AppDb, opts?: { prune?: boolean }) {
       });
       continue;
     }
-    await db
-      .update(t.rooms)
-      .set({ floor: floorOf(def.number), type: def.type, updatedAt: now })
-      .where(eq(t.rooms.id, found.id));
+    const floor = floorOf(def.number);
+    const type = opts?.reset ? def.type : found.type;
+    if (found.floor === floor && found.type === type) continue;
+    await db.update(t.rooms).set({ floor, type, updatedAt: now }).where(eq(t.rooms.id, found.id));
   }
 
   if (!opts?.prune) return;
