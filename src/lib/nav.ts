@@ -65,6 +65,7 @@ export function extraNav(role: Role) {
     { href: "/forms", label: "Biểu mẫu", show: true },
     { href: "/incidents", label: "Sự cố", show: true },
     { href: "/reports", label: "Báo cáo", show: can(role, "viewReports") },
+    { href: "/settings", label: "Cấu hình", show: can(role, "manageSettings") },
     { href: "/audit", label: "Nhật ký", show: can(role, "viewAudit") },
     { href: "/staff", label: "Nhân viên", show: can(role, "manageStaff") },
     { href: "/roster", label: "Lịch lễ tân", show: can(role, "manageRoster") },

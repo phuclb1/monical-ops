@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { homePath, isAccountingAllowedPath, isAccountingPath, isOwnerPath } from "@/lib/nav";
-import { readSessionToken } from "@/lib/session-token";
+import { readSessionToken, SESSION_COOKIE } from "@/lib/session-token";
 
 const PUBLIC = [
   "/login",
@@ -51,7 +51,7 @@ export async function proxy(request: NextRequest) {
     return res;
   }
 
-  const token = request.cookies.get("ops_session")?.value;
+  const token = request.cookies.get(SESSION_COOKIE)?.value;
   const session = token ? await readSessionToken(token) : null;
   if (!session) {
     const url = request.nextUrl.clone();

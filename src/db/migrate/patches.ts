@@ -139,4 +139,21 @@ export const SCHEMA_PATCHES = [
   "CREATE INDEX IF NOT EXISTS booking_change_requests_booking ON booking_change_requests (booking_id, requested_at)",
   "CREATE INDEX IF NOT EXISTS booking_change_requests_status ON booking_change_requests (status, requested_at)",
   "CREATE UNIQUE INDEX IF NOT EXISTS booking_change_requests_one_pending ON booking_change_requests (booking_id) WHERE status = 'pending'",
+  `CREATE TABLE IF NOT EXISTS app_settings (
+  key TEXT PRIMARY KEY,
+  value TEXT NOT NULL,
+  updated_at TEXT NOT NULL,
+  updated_by TEXT
+)`,
+  `CREATE TABLE IF NOT EXISTS login_events (
+  id TEXT PRIMARY KEY,
+  user_id TEXT,
+  username TEXT NOT NULL,
+  result TEXT NOT NULL,
+  ip TEXT,
+  user_agent TEXT,
+  browser TEXT,
+  created_at TEXT NOT NULL
+)`,
+  "CREATE INDEX IF NOT EXISTS login_events_created ON login_events (created_at)",
 ];

@@ -1,8 +1,10 @@
 import { cache } from "react";
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { eq } from "drizzle-orm";
 import { getDb } from "@/db";
 import { departments, users } from "@/db/schema";
+import { currentReceptionIpPolicy } from "./repos/access";
+import { receptionIpBlocked } from "./reception-ip";
 import { readSessionToken, SESSION_COOKIE, sessionMaxAgeSeconds, signSession } from "./session-token";
 import type { DepartmentCode, Role, SessionUser } from "./types";
 
@@ -16,6 +18,9 @@ export const getSession = cache(async (): Promise<SessionUser | null> => {
   if (!session) return null;
   const live = await loadUserSession(session.id);
   if (!live || live.sessionVersion !== session.sessionVersion) return null;
+  if (live.role === "reception" && receptionIpBlocked(live.role, await headers(), await currentReceptionIpPolicy())) {
+    return null;
+  }
   return live;
 });
 

@@ -168,6 +168,7 @@ try {
       await ready();
     }
     await must(shot, ["Ca đang làm", "Đầu ca"]);
+    await mustNot(shot, ["Doanh thu đêm"]);
   });
 
   await check("E2E-R2", "Tick 1 mục checklist đầu ca", async (shot) => {
@@ -208,6 +209,7 @@ try {
   await check("E2E-R4", "Sơ đồ ngày hiện booking E2E", async (shot) => {
     await go("/sales");
     await must(shot, [GUEST, `P.${ROOM}`]);
+    await mustNot(shot, ["Doanh thu khung"]);
   });
 
   await check("E2E-S1", "Tìm booking theo tên — tab mặc định gồm đã giữ", async (shot) => {
@@ -332,6 +334,13 @@ try {
     if (text.includes("Nhật ký thao tác") && text.includes("Người làm")) {
       throw new Error("Lễ tân vẫn xem được nhật ký");
     }
+  });
+
+  await check("E2E-R15", "Lễ tân không vào báo cáo doanh thu bằng URL trực tiếp", async (shot) => {
+    await go("/reports/sales");
+    const pathname = new URL(page.url()).pathname;
+    if (pathname === "/reports/sales") throw new Error("Lễ tân vẫn vào được /reports/sales");
+    await mustNot(shot, ["Báo cáo doanh thu", "Doanh thu booking", "Doanh thu ghi nhận"]);
   });
 
   await check("E2E-R11", "Bàn giao còn trang gom việc", async (shot) => {

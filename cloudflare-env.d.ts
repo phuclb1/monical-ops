@@ -4,6 +4,7 @@ interface CloudflareEnv {
   VAPID_SUBJECT: string;
   NEXT_PUBLIC_VAPID_PUBLIC_KEY: string;
   SESSION_SECRET?: string;
+  RECEPTION_ALLOWED_IP?: string;
   INGEST_SECRET?: string;
   RESEND_API_KEY?: string;
   PASSWORD_RESET_FROM?: string;

@@ -15,7 +15,7 @@ import {
   formatAuditWhen,
 } from "@/lib/audit-view";
 import { can } from "@/lib/permissions";
-import { listAuditLogs, listUsers } from "@/lib/repos";
+import { listAuditLogs, listRooms, listUsers } from "@/lib/repos";
 
 function hrefWith(params: Record<string, string | undefined>) {
   const search = new URLSearchParams();
@@ -24,6 +24,17 @@ function hrefWith(params: Record<string, string | undefined>) {
   }
   const text = search.toString();
   return text ? `/audit?${text}` : "/audit";
+}
+
+function friendlyReference(
+  key: string,
+  value: string,
+  rooms: Record<string, string>,
+  people: Record<string, string>,
+) {
+  if (key === "roomId" && rooms[value]) return `P.${rooms[value]}`;
+  if (["assignedTo", "acceptedBy", "doneBy"].includes(key) && people[value]) return people[value];
+  return value;
 }
 
 export default async function AuditPage({
@@ -35,10 +46,13 @@ export default async function AuditPage({
   if (!user) redirect("/login");
   if (!can(user.role, "viewAudit")) redirect("/more");
   const { entity, action, actor, before } = await searchParams;
-  const [{ rows, nextBefore }, people] = await Promise.all([
+  const [{ rows, nextBefore }, people, rooms] = await Promise.all([
     listAuditLogs({ entity: entity || undefined, action: action || undefined, actorId: actor || undefined, before: before || undefined }),
     listUsers(),
+    listRooms(),
   ]);
+  const roomNames = Object.fromEntries(rooms.map((room) => [room.id, room.number]));
+  const peopleNames = Object.fromEntries(people.map((person) => [person.id, person.fullName]));
 
   return (
     <main className="space-y-3 px-3 py-4">
@@ -129,17 +143,19 @@ export default async function AuditPage({
                         <p className="text-xs font-semibold text-[#5c6665]">{change.label}</p>
                         {change.kind === "add" ? (
                           <p>
-                            Thêm: <b>{change.after}</b>
+                            Thêm: <b>{friendlyReference(change.key, change.after, roomNames, peopleNames)}</b>
                           </p>
                         ) : change.kind === "remove" ? (
                           <p>
-                            Xóa: <b>{change.before}</b>
+                            Xóa: <b>{friendlyReference(change.key, change.before, roomNames, peopleNames)}</b>
                           </p>
                         ) : (
                           <p>
-                            <span className="text-[#8a7a72] line-through">{change.before}</span>
+                            <span className="text-[#8a7a72] line-through">
+                              {friendlyReference(change.key, change.before, roomNames, peopleNames)}
+                            </span>
                             {" → "}
-                            <b>{change.after}</b>
+                            <b>{friendlyReference(change.key, change.after, roomNames, peopleNames)}</b>
                           </p>
                         )}
                       </li>

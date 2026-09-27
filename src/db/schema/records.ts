@@ -70,6 +70,24 @@ export const auditLogs = sqliteTable("audit_logs", {
   createdAt: text("created_at").notNull(),
 });
 
+export const appSettings = sqliteTable("app_settings", {
+  key: text("key").primaryKey(),
+  value: text("value").notNull(),
+  updatedAt: text("updated_at").notNull(),
+  updatedBy: text("updated_by"),
+});
+
+export const loginEvents = sqliteTable("login_events", {
+  id: text("id").primaryKey(),
+  userId: text("user_id"),
+  username: text("username").notNull(),
+  result: text("result").notNull(),
+  ip: text("ip"),
+  userAgent: text("user_agent"),
+  browser: text("browser"),
+  createdAt: text("created_at").notNull(),
+});
+
 export const pushSubscriptions = sqliteTable("push_subscriptions", {
   id: text("id").primaryKey(),
   userId: text("user_id").notNull(),

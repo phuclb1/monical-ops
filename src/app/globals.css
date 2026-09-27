@@ -1619,6 +1619,7 @@ label {
   color: #111;
   font-size: 12px;
   line-height: 1.4;
+  container-type: inline-size;
 }
 
 .booking-sheet-head {
@@ -1806,6 +1807,53 @@ label {
   background: #fff;
 }
 
+.booking-sheet-page:last-child {
+  display: flex;
+  flex-direction: column;
+  min-height: calc(100cqi * 277 / 190);
+}
+
+.booking-sheet-sign {
+  margin-top: auto;
+  padding-top: 1rem;
+  padding-bottom: 0.2rem;
+  break-inside: avoid;
+  page-break-inside: avoid;
+}
+
+.booking-sheet-sign p {
+  margin: 0;
+}
+
+.booking-sheet-sign .booking-sheet-sign-ack {
+  margin-bottom: 0.75rem;
+}
+
+.booking-sheet-sign-block {
+  width: 14.5rem;
+  margin-left: auto;
+  text-align: center;
+}
+
+.booking-sheet-sign .booking-sheet-sign-role {
+  margin-top: 0.45rem;
+  font-weight: 800;
+}
+
+.booking-sheet-sign-hint {
+  font-size: 11px;
+  font-style: italic;
+}
+
+.booking-sheet-sign-space {
+  height: 4.25rem;
+}
+
+.booking-sheet-sign .booking-sheet-sign-name {
+  font-weight: 700;
+  letter-spacing: 0.03em;
+}
+
 body:has(.booking-print) .pwa-install {
   display: none !important;
 }
@@ -1854,6 +1902,10 @@ body:has(.booking-print) .pwa-install {
     border-top: 0;
     break-before: page;
     page-break-before: always;
+  }
+
+  .booking-sheet-page:last-child {
+    min-height: 268mm;
   }
 
   a {
@@ -1978,6 +2030,41 @@ body:has(.booking-print) .pwa-install {
 
 .breakfast-legend .breakfast-dot:first-child {
   margin-left: 0;
+}
+
+.login-history {
+  overflow-x: auto;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 1rem;
+}
+
+.login-history table {
+  width: 100%;
+  min-width: 40rem;
+  border-collapse: collapse;
+}
+
+.login-history th,
+.login-history td {
+  padding: 0.7rem 0.85rem;
+  text-align: left;
+  vertical-align: middle;
+  border-bottom: 1px solid var(--line);
+  font-size: 13px;
+}
+
+.login-history th {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #5c6665;
+  background: #fff8ee;
+}
+
+.login-history tr:last-child td {
+  border-bottom: 0;
 }
 
 .breakfast-table {

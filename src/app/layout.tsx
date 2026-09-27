@@ -36,6 +36,11 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       <body className="min-h-full bg-sand font-sans text-ink">
         <PwaBoot />
         {children}
+        <script
+          type="module"
+          src="https://static.cloudflareinsights.com/beacon.min.js"
+          data-cf-beacon='{"token": "05bacc66e32843c5af5ae8014545bdff"}'
+        />
       </body>
     </html>
   );

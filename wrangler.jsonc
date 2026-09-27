@@ -35,7 +35,8 @@
     "NEXT_PUBLIC_HOTEL_NAME": "MONICAL hotel dalat",
     "NEXT_PUBLIC_APP_URL": "https://platform.monicalhoteldalat.com",
     "NEXT_PUBLIC_VAPID_PUBLIC_KEY": "BB5b4KJ43Tmex5SVN1wDfoBwuyf2g63XM3wMVna9Sm2BEEwwO__XUs9zNKsffkm40zI1cyewYmEIe3IpqQwqeQw",
-    "VAPID_SUBJECT": "https://platform.monicalhoteldalat.com"
+    "VAPID_SUBJECT": "https://platform.monicalhoteldalat.com",
+    "RECEPTION_ALLOWED_IP": "117.2.80.239"
   },
   "env": {
     "staging": {
@@ -60,7 +61,8 @@
         "NEXT_PUBLIC_HOTEL_NAME": "MONICAL hotel dalat",
         "NEXT_PUBLIC_APP_URL": "https://ops-staging.monicalhoteldalat.com",
         "NEXT_PUBLIC_VAPID_PUBLIC_KEY": "BB5b4KJ43Tmex5SVN1wDfoBwuyf2g63XM3wMVna9Sm2BEEwwO__XUs9zNKsffkm40zI1cyewYmEIe3IpqQwqeQw",
-        "VAPID_SUBJECT": "https://ops-staging.monicalhoteldalat.com"
+        "VAPID_SUBJECT": "https://ops-staging.monicalhoteldalat.com",
+        "RECEPTION_ALLOWED_IP": "171.251.234.3"
       }
     }
   }

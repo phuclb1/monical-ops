@@ -1,11 +1,14 @@
 "use server";
 
+import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { eq, sql } from "drizzle-orm";
 import { clearSessionCookie, loadUserSession, requireSession, setSessionCookie } from "@/lib/auth";
 import { getDb } from "@/db";
 import { users } from "@/db/schema";
 import { homePath } from "@/lib/nav";
+import { clientIp, receptionIpBlocked } from "@/lib/reception-ip";
+import { currentReceptionIpPolicy, recordLogin } from "@/lib/repos/access";
 import { hashPassword, passwordNeedsRehash, passwordValidationError, verifyPassword } from "@/lib/password";
 import { nowISO } from "@/lib/datetime";
 import { audit } from "@/lib/repos";
@@ -14,8 +17,12 @@ export async function loginAction(formData: FormData) {
   const username = String(formData.get("username") || "").trim().toLowerCase();
   const password = String(formData.get("password") || "");
   const db = await getDb();
+  const headerStore = await headers();
+  const ip = clientIp(headerStore);
+  const userAgent = headerStore.get("user-agent");
   const row = (await db.select().from(users).where(eq(users.username, username)).limit(1))[0];
   if (!row || !row.active || !(await verifyPassword(password, row.passwordHash))) {
+    await recordLogin({ userId: row?.id ?? null, username, result: "denied", ip, userAgent });
     redirect("/login?error=1");
   }
   if (passwordNeedsRehash(row.passwordHash)) {
@@ -23,6 +30,12 @@ export async function loginAction(formData: FormData) {
   }
   const session = await loadUserSession(row.id);
   if (!session) redirect("/login?error=1");
+  const policy = await currentReceptionIpPolicy();
+  if (receptionIpBlocked(session.role, headerStore, policy)) {
+    await recordLogin({ userId: session.id, username, result: "ip", ip, userAgent });
+    redirect("/login?error=ip");
+  }
+  await recordLogin({ userId: session.id, username, result: "ok", ip, userAgent });
   await setSessionCookie(session);
   redirect(homePath(session.role));
 }

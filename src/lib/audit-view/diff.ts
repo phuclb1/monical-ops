@@ -1,4 +1,19 @@
-import { DISCOUNT_KIND_LABEL, SALE_ORIGIN_LABEL, SALE_SOURCE_LABEL, SALE_STATUS_LABEL } from "../constants";
+import {
+  DEPT_LABEL,
+  DISCOUNT_KIND_LABEL,
+  HK_LABEL,
+  PAYMENT_METHOD_LABEL,
+  PRIORITY_LABEL,
+  REQUEST_KIND_LABEL,
+  ROLE_LABEL,
+  SALE_ORIGIN_LABEL,
+  SALE_SOURCE_LABEL,
+  SALE_STATUS_LABEL,
+  SHIFT_LABEL,
+  STAY_LABEL,
+  TASK_STATUS_LABEL,
+} from "../constants";
+import { TZ } from "../datetime";
 import { FIELD_LABEL, SKIP_FIELDS } from "./labels";
 
 export type AuditChange = {
@@ -17,11 +32,65 @@ export function asRecord(value: unknown): Record<string, unknown> | null {
 const ENUM_LABEL: Record<string, Record<string, string>> = {
   source: SALE_SOURCE_LABEL,
   origin: SALE_ORIGIN_LABEL,
-  status: SALE_STATUS_LABEL,
+  status: {
+    ...SALE_STATUS_LABEL,
+    ...STAY_LABEL,
+    ...TASK_STATUS_LABEL,
+    open: "Đang mở",
+    closed: "Đã đóng",
+  },
   discountKind: DISCOUNT_KIND_LABEL,
+  role: ROLE_LABEL,
+  departmentCode: DEPT_LABEL,
+  type: SHIFT_LABEL,
+  priority: PRIORITY_LABEL,
+  hkStatus: HK_LABEL,
+  opsStatus: {
+    vacant_clean: "Phòng trống sạch",
+    vacant_dirty: "Phòng trống bẩn",
+    occupied: "Có khách",
+    cleaning: "Đang dọn",
+    waiting_inspect: "Chờ kiểm phòng",
+    ins: "Đã kiểm phòng",
+    ooo: "Ngưng sử dụng",
+  },
+  otaPaymentMode: {
+    debt: "OTA đã thu khách",
+    hotel: "Khách thanh toán tại khách sạn",
+  },
+  paymentMethod: PAYMENT_METHOD_LABEL,
+  unit: {
+    night: "Theo đêm",
+    once: "Một lần",
+    kg: "Kilôgam",
+  },
+  kind: {
+    ...REQUEST_KIND_LABEL,
+    catalog: "Theo danh mục",
+    custom: "Tùy chỉnh",
+  },
 };
 
-const MONEY_FIELDS = new Set(["deposit", "cashPaid", "transferPaid", "companyPaid", "rate", "discountValue", "unitPrice"]);
+const MONEY_FIELDS = new Set([
+  "deposit",
+  "cashPaid",
+  "transferPaid",
+  "companyPaid",
+  "rate",
+  "discountValue",
+  "unitPrice",
+  "amount",
+  "subtotal",
+  "total",
+  "due",
+]);
+const DATE_FIELDS = new Set(["checkIn", "checkOut", "arrivalDate", "departureDate", "date", "effectiveFrom"]);
+const DATE_TIME_FIELDS = new Set(["dueAt"]);
+
+function formatDateOnly(value: string) {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+  return match ? `${match[3]}/${match[2]}/${match[1]}` : value;
+}
 
 export function formatAuditValue(value: unknown, key?: string): string {
   if (value === null || value === undefined || value === "") return "—";
@@ -32,6 +101,17 @@ export function formatAuditValue(value: unknown, key?: string): string {
     return String(value);
   }
   if (typeof value === "string") {
+    if (key && DATE_FIELDS.has(key)) return formatDateOnly(value);
+    if (key && DATE_TIME_FIELDS.has(key) && !Number.isNaN(Date.parse(value))) {
+      return new Intl.DateTimeFormat("vi-VN", {
+        timeZone: TZ,
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+      }).format(new Date(value));
+    }
     if (value.startsWith("data:image")) return "(ảnh)";
     if (value.length > 160) return `${value.slice(0, 157)}…`;
     return value;
@@ -42,6 +122,14 @@ export function formatAuditValue(value: unknown, key?: string): string {
   } catch {
     return String(value);
   }
+}
+
+function formatChangeValue(value: unknown, key: string, row: Record<string, unknown> | null) {
+  if (key === "discountValue" && typeof value === "number") {
+    if (row?.discountKind === "percent") return `${value}%`;
+    if (row?.discountKind === "none") return "—";
+  }
+  return formatAuditValue(value, key);
 }
 
 export function auditChanges(before: unknown, after: unknown): AuditChange[] {
@@ -72,8 +160,8 @@ export function auditChanges(before: unknown, after: unknown): AuditChange[] {
     rows.push({
       key,
       label: FIELD_LABEL[key] || key,
-      before: formatAuditValue(left, key),
-      after: formatAuditValue(right, key),
+      before: formatChangeValue(left, key, prev),
+      after: formatChangeValue(right, key, next),
       kind: left === undefined ? "add" : right === undefined ? "remove" : "change",
     });
   }

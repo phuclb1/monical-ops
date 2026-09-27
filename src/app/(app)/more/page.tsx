@@ -22,6 +22,7 @@ const LINKS = [
   { href: "/forms", label: "Biểu mẫu điện tử", show: () => true },
   { href: "/incidents", label: "Sự cố", show: () => true },
   { href: "/reports", label: "Báo cáo", show: (r: Parameters<typeof can>[0]) => can(r, "viewReports") || can(r, "viewSalesRevenue") },
+  { href: "/settings", label: "Cấu hình — IP lễ tân và lịch sử đăng nhập", show: (r: Parameters<typeof can>[0]) => can(r, "manageSettings") },
   { href: "/audit", label: "Nhật ký thao tác — ai làm gì, thêm / sửa", show: (r: Parameters<typeof can>[0]) => can(r, "viewAudit") },
   { href: "/notifications", label: "Thông báo + push điện thoại", show: () => true },
   { href: "/staff", label: "Nhân viên — tài khoản", show: (r: Parameters<typeof can>[0]) => can(r, "manageStaff") },

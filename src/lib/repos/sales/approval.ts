@@ -263,7 +263,8 @@ async function markConflict(
     .where(eq(t.bookingChangeRequests.id, request.id));
   await audit(user.id, "booking", request.bookingId, "conflict", undefined, {
     requestId: request.id,
-    summary: message,
+    summary: request.summary,
+    reason: message,
   });
 }
 
@@ -347,7 +348,8 @@ export async function rejectBookingChange(user: SessionUser, requestId: string, 
     .where(eq(t.bookingChangeRequests.id, request.id));
   await audit(user.id, "booking", request.bookingId, "reject", undefined, {
     requestId: request.id,
-    summary: `${request.summary} · ${reason}`,
+    summary: request.summary,
+    reason,
   });
   await notify({
     userId: request.requestedBy,

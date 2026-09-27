@@ -26,6 +26,8 @@
     "qa:run": "node scripts/qa-run.mjs",
     "qa:e2e": "node scripts/qa-e2e.mjs",
     "qa:e2e:staging": "OPS_URL=https://ops-staging.monicalhoteldalat.com OPS_RECEPTION_USER=ngan.lt OPS_HK_USER=uyen.hk QA_RUN_ID=E2E-$(date -u +%Y%m%d)-stg node scripts/qa-e2e.mjs",
+    "qa:e2e:approval": "node scripts/qa-booking-approval-e2e.mjs",
+    "qa:e2e:approval:staging": "OPS_URL=https://ops-staging.monicalhoteldalat.com OPS_RECEPTION_USER=ngan.lt OPS_MANAGER_USER=quanly QA_RUN_ID=APPROVAL-$(date -u +%Y%m%d%H%M%S)-stg node scripts/qa-booking-approval-e2e.mjs",
     "qa:e2e:password": "node scripts/qa-password-e2e.mjs",
     "qa:e2e:password:staging": "OPS_URL=https://ops-staging.monicalhoteldalat.com QA_RUN_ID=PASSWORD-$(date -u +%Y%m%d)-stg node scripts/qa-password-e2e.mjs",
     "qa:e2e:accounting": "node scripts/qa-accounting-e2e.mjs",

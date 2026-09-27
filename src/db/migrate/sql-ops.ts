@@ -259,4 +259,21 @@ CREATE TABLE IF NOT EXISTS sale_extras (
   created_by TEXT
 );
 CREATE INDEX IF NOT EXISTS sale_extras_booking ON sale_extras (booking_id);
+CREATE TABLE IF NOT EXISTS app_settings (
+  key TEXT PRIMARY KEY,
+  value TEXT NOT NULL,
+  updated_at TEXT NOT NULL,
+  updated_by TEXT
+);
+CREATE TABLE IF NOT EXISTS login_events (
+  id TEXT PRIMARY KEY,
+  user_id TEXT,
+  username TEXT NOT NULL,
+  result TEXT NOT NULL,
+  ip TEXT,
+  user_agent TEXT,
+  browser TEXT,
+  created_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS login_events_created ON login_events (created_at);
 `;

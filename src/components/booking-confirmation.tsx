@@ -11,7 +11,7 @@ import {
   HOTEL_WEBSITE,
   SALE_SOURCE_LABEL,
 } from "@/lib/constants";
-import { formatDateNumeric, formatStayStamp } from "@/lib/datetime";
+import { formatDateNumeric, formatStayStamp, todayVN } from "@/lib/datetime";
 import { bookingDisplayCode, bookingQuote, formatVndLetter, isOtaDebt, isOtaSource, parkingLabel } from "@/lib/sales";
 import type { SaleSource } from "@/lib/types";
 import type { getBooking } from "@/lib/repos";
@@ -24,6 +24,11 @@ function money(value: number) {
 
 function pax(adults: number, children: number) {
   return children ? `${adults} NL / ${children} TE` : `${adults} NL`;
+}
+
+function signPlaceDate(iso = todayVN()) {
+  const [year, month, day] = iso.split("-");
+  return `Đà Lạt, ngày ${Number(day)} tháng ${Number(month)} năm ${year}`;
 }
 
 function SheetHead() {
@@ -224,6 +229,7 @@ export function BookingConfirmation({ booking }: { booking: Booking }) {
       </section>
 
       <section className="booking-sheet-page">
+        <div className="booking-sheet-body">
         <SheetHead />
         <h2>ĐIỀU KHOẢN &amp; CHÍNH SÁCH</h2>
         <h3>I. Thời gian nhận phòng và trả phòng</h3>
@@ -273,6 +279,20 @@ export function BookingConfirmation({ booking }: { booking: Booking }) {
           Thời gian trả phòng: {CHECK_OUT_TIME} {depart}
         </p>
         <p>Yêu cầu thêm xin gửi mail tới {HOTEL_EMAIL}. Cảm ơn quý khách đã sử dụng dịch vụ của chúng tôi.</p>
+        </div>
+
+        <footer className="booking-sheet-sign">
+          <p className="booking-sheet-sign-ack">
+            Quý khách xác nhận đã đọc và đồng ý với các điều khoản, chính sách nêu trên.
+          </p>
+          <div className="booking-sheet-sign-block">
+            <p className="booking-sheet-sign-date">{signPlaceDate()}</p>
+            <p className="booking-sheet-sign-role">Khách hàng</p>
+            <p className="booking-sheet-sign-hint">(Ký và ghi rõ họ tên)</p>
+            <div className="booking-sheet-sign-space" aria-hidden="true" />
+            <p className="booking-sheet-sign-name">{guest}</p>
+          </div>
+        </footer>
       </section>
     </article>
   );

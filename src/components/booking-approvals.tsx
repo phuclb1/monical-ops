@@ -63,7 +63,7 @@ export function BookingApprovals({
                 {row.reviewedAt ? (
                   <p className="mt-2 text-xs text-[#5c6665]">
                     {row.reviewedByName} · {formatAuditWhen(row.reviewedAt)}
-                    {row.reviewNote ? ` · ${row.reviewNote}` : ""}
+                    {row.reviewNote ? ` · Lý do: ${row.reviewNote}` : ""}
                   </p>
                 ) : null}
                 {row.status === "pending" && role === "manager" ? (

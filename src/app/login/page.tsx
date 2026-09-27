@@ -34,7 +34,11 @@ export default async function LoginPage({
             Mật khẩu
             <input name="password" type="password" autoComplete="current-password" required />
           </label>
-          {error ? <p className="text-sm font-medium text-[#c23b3b]">Sai tài khoản hoặc mật khẩu.</p> : null}
+          {error === "ip" ? (
+            <p className="text-sm font-medium text-[#c23b3b]">Tài khoản lễ tân chỉ đăng nhập được từ máy quầy.</p>
+          ) : error ? (
+            <p className="text-sm font-medium text-[#c23b3b]">Sai tài khoản hoặc mật khẩu.</p>
+          ) : null}
           {reset ? <p className="text-sm font-medium text-[#1b7a4e]">Đã đặt lại mật khẩu. Bạn có thể đăng nhập.</p> : null}
           <Btn type="submit" className="w-full">
             Đăng nhập

@@ -29,6 +29,38 @@ test("patch-only after object only reports provided keys", () => {
   assert.equal(rows[0].key, "rate");
 });
 
+test("booking audit values use user-friendly labels, dates and discount units", () => {
+  const rows = auditChanges(
+    {
+      checkIn: "2026-09-25",
+      source: "walk_in",
+      otaPaymentMode: "debt",
+      discountKind: "percent",
+      discountValue: 5,
+    },
+    {
+      checkIn: "2026-09-27",
+      source: "agoda",
+      otaPaymentMode: "hotel",
+      discountKind: "percent",
+      discountValue: 10,
+    },
+  );
+  assert.deepEqual(
+    rows.map(({ label, before, after }) => ({ label, before, after })),
+    [
+      { label: "Ngày nhận phòng", before: "25/09/2026", after: "27/09/2026" },
+      { label: "Kênh đặt phòng", before: "Vãng lai", after: "Agoda" },
+      {
+        label: "Hình thức thanh toán OTA",
+        before: "OTA đã thu khách",
+        after: "Khách thanh toán tại khách sạn",
+      },
+      { label: "Mức chiết khấu", before: "5%", after: "10%" },
+    ],
+  );
+});
+
 test("audit target, href, actor, tone", () => {
   assert.equal(auditTarget("room", { number: "105" }, null), "P.105");
   assert.equal(auditTarget("user", null, { fullName: "Lan" }), "Lan");

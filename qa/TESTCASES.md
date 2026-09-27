@@ -275,11 +275,34 @@ Khách `E2E Van A` · P.101. Lễ tân `tuyen` · HK `uyen`.
 | E2E-O2 | login `quanly` `/reports/sales` | Doanh thu OTA · trước hoa hồng · E2E OTA · Công nợ OTA |
 | E2E-O3 | login `chusohuu` `/owner` | Doanh thu OTA · chưa trừ hoa hồng · E2E OTA |
 
+### E2E — phê duyệt sửa booking (`npm run qa:e2e:approval:staging`)
+
+Chạy độc lập trên staging bằng lễ tân `ngan.lt` và quản lý `quanly`. Runner tự tạo rồi hủy booking kiểm thử để trả phòng về trạng thái trống.
+
+| ID | Làm gì | Kỳ vọng |
+|---|---|---|
+| APP-A1 | Lễ tân tạo booking có cọc 100.000₫ | Booking được tạo trên một phòng trống |
+| APP-A2 | Lễ tân đổi cọc thành 200.000₫ | Nút thành `Gửi phê duyệt`; booking vẫn giữ 100.000₫ |
+| APP-A3 | Quản lý mở đề nghị và thử từ chối trống lý do | Chỉ có `Chấp nhận` / `Từ chối`; lý do bắt buộc |
+| APP-A4 | Quản lý từ chối có lý do | Booking vẫn giữ 100.000₫; lý do và `Gửi duyệt` / `Từ chối` có trong nhật ký |
+| APP-A5 | Lễ tân gửi lại đề nghị đổi cọc thành 300.000₫ | Booking chưa đổi khi đang chờ |
+| APP-A6 | Quản lý chấp nhận | Booking đổi thành 300.000₫; nhật ký có `Đã duyệt` |
+| APP-A7 | Lễ tân xem kết quả | Thấy lịch sử gửi, từ chối, lý do và duyệt; không có nút quản lý |
+| APP-A8 | Quản lý hủy booking E2E | Booking được hủy để giải phóng phòng staging |
+
 ---
 
 ## Lịch sử run
 
 Thêm block mới **trên cùng** mỗi lần test.
+
+### APPROVAL-20260925152725-stg — 2026-09-25
+
+- Commit: `9a42c61-dirty`
+- Env: staging `https://ops-staging.monicalhoteldalat.com`
+- Pass / Fail: **8 / 0** · **8/8 = 100%**
+- Evidence: `qa/evidence/APPROVAL-20260925152725-stg/`
+- Ghi chú: lễ tân gửi duyệt khi đổi tiền; quản lý từ chối bắt buộc lý do; gửi lại và chấp nhận; booking chỉ đổi sau duyệt; toàn bộ thao tác có trong nhật ký; runner đã hủy booking E2E để giải phóng phòng.
 
 ### E2E-20260923-1 — 2026-09-23
 
