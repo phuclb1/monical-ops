@@ -12,22 +12,44 @@ const MANAGER_OPS = [
   { href: "/handover", label: "Bàn giao ca" },
 ];
 
-const LINKS = [
-  { href: "/reception", label: "Lễ tân — khách & đăng ký lưu trú", show: (r: Parameters<typeof can>[0]) => can(r, "viewReception") || r === "hk" },
-  { href: "/sales", label: "Bán phòng — sơ đồ trống / giữ / nhận", show: (r: Parameters<typeof can>[0]) => can(r, "manageSales") },
-  { href: "/sales/bookings", label: "Đặt phòng — booking / nhiều phòng", show: (r: Parameters<typeof can>[0]) => can(r, "manageSales") },
-  { href: "/sales/extras", label: "Dịch vụ kèm — phụ thu / giặt sấy / đệm", show: (r: Parameters<typeof can>[0]) => can(r, "manageRates") },
-  { href: "/kitchen", label: "Bếp — báo cáo ăn sáng / dự báo", show: (r: Parameters<typeof can>[0]) => can(r, "viewKitchen") },
-  { href: "/shifts", label: "Ca làm việc & checklist", show: () => true },
-  { href: "/forms", label: "Biểu mẫu điện tử", show: () => true },
-  { href: "/incidents", label: "Sự cố", show: () => true },
-  { href: "/reports", label: "Báo cáo", show: (r: Parameters<typeof can>[0]) => can(r, "viewReports") || can(r, "viewSalesRevenue") },
-  { href: "/settings", label: "Cấu hình — IP lễ tân và lịch sử đăng nhập", show: (r: Parameters<typeof can>[0]) => can(r, "manageSettings") },
-  { href: "/audit", label: "Nhật ký thao tác — ai làm gì, thêm / sửa", show: (r: Parameters<typeof can>[0]) => can(r, "viewAudit") },
-  { href: "/notifications", label: "Thông báo + push điện thoại", show: () => true },
-  { href: "/staff", label: "Nhân viên — tài khoản", show: (r: Parameters<typeof can>[0]) => can(r, "manageStaff") },
-  { href: "/roster", label: "Lịch lễ tân — xếp 1 lần đến khi đổi", show: (r: Parameters<typeof can>[0]) => can(r, "manageRoster") },
-  { href: "/rooms/manage", label: "Hạng phòng — giá thường / lễ tết / sức chứa", show: (r: Parameters<typeof can>[0]) => can(r, "manageRooms") },
+const SECTIONS = [
+  {
+    title: "Quản lý",
+    links: [
+      { href: "/reports", label: "Báo cáo", show: (r: Parameters<typeof can>[0]) => can(r, "viewReports") || can(r, "viewSalesRevenue") },
+    ],
+  },
+  {
+    title: "Phòng",
+    links: [
+      { href: "/sales", label: "Sơ đồ phòng — trống / giữ / nhận", show: (r: Parameters<typeof can>[0]) => can(r, "manageSales") },
+      { href: "/sales/bookings", label: "Đặt phòng — booking / nhiều phòng", show: (r: Parameters<typeof can>[0]) => can(r, "manageSales") },
+      { href: "/rooms/manage", label: "Hạng phòng — giá thường / lễ tết / sức chứa", show: (r: Parameters<typeof can>[0]) => can(r, "manageRooms") },
+    ],
+  },
+  {
+    title: "Điều hành",
+    links: [
+      { href: "/reception", label: "Lễ tân — khách & đăng ký lưu trú", show: (r: Parameters<typeof can>[0]) => can(r, "viewReception") || r === "hk" },
+      { href: "/sales/extras", label: "Dịch vụ kèm — phụ thu / giặt sấy / đệm", show: (r: Parameters<typeof can>[0]) => can(r, "manageRates") },
+      { href: "/kitchen", label: "Bếp — báo cáo ăn sáng / dự báo", show: (r: Parameters<typeof can>[0]) => can(r, "viewKitchen") },
+      { href: "/shifts", label: "Ca làm việc & checklist", show: () => true },
+      { href: "/forms", label: "Biểu mẫu điện tử", show: () => true },
+      { href: "/incidents", label: "Sự cố", show: () => true },
+      { href: "/audit", label: "Nhật ký thao tác — ai làm gì, thêm / sửa", show: (r: Parameters<typeof can>[0]) => can(r, "viewAudit") },
+      { href: "/notifications", label: "Thông báo + push điện thoại", show: () => true },
+    ],
+  },
+  {
+    title: "Cài đặt",
+    links: [
+      {
+        href: "/settings",
+        label: "Cài đặt — cấu hình, lịch lễ tân, nhân viên",
+        show: (r: Parameters<typeof can>[0]) => can(r, "manageSettings") || can(r, "manageStaff") || can(r, "manageRoster"),
+      },
+    ],
+  },
 ];
 
 export default async function MorePage() {
@@ -43,16 +65,31 @@ export default async function MorePage() {
       <Link href="/account/password" className="card flex min-h-16 items-center p-4 font-semibold">
         Đổi mật khẩu
       </Link>
-      <div className="list-cards">
-      {[
-        ...(user.role === "manager" ? MANAGER_OPS : []),
-        ...LINKS.filter((l) => l.show(user.role)),
-      ].map((l) => (
-        <Link key={l.href} href={l.href} className="card mb-2 flex min-h-16 items-center p-4 font-semibold md:mb-0">
-          {l.label}
-        </Link>
-      ))}
-      </div>
+      {user.role === "manager" ? (
+        <div className="list-cards">
+          {MANAGER_OPS.map((l) => (
+            <Link key={l.href} href={l.href} className="card mb-2 flex min-h-16 items-center p-4 font-semibold md:mb-0">
+              {l.label}
+            </Link>
+          ))}
+        </div>
+      ) : null}
+      {SECTIONS.map((section) => {
+        const links = section.links.filter((l) => l.show(user.role));
+        if (!links.length) return null;
+        return (
+          <section key={section.title} className="space-y-2">
+            <p className="px-1 text-[11px] font-bold uppercase tracking-wider text-[#8a7a72]">{section.title}</p>
+            <div className="list-cards">
+              {links.map((l) => (
+                <Link key={l.href} href={l.href} className="card mb-2 flex min-h-16 items-center p-4 font-semibold md:mb-0">
+                  {l.label}
+                </Link>
+              ))}
+            </div>
+          </section>
+        );
+      })}
       <Card>
         <p className="text-sm leading-6 text-[#5c6665]">
           MONICAL Ops không gọi ezCloudhotel. Agent crawl PMS rồi POST vào <code className="text-xs">/api/ingest/pms</code>.

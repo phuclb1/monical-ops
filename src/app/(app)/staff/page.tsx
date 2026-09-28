@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createStaffAction } from "@/actions/staff";
+import { SettingsNav } from "@/components/settings-nav";
 import { Btn, Card, Chip, Field } from "@/components/ui";
 import { getSession } from "@/lib/auth";
 import { DEPT_LABEL, ROLE_LABEL } from "@/lib/constants";
@@ -31,6 +32,7 @@ export default async function StaffPage({
           Lịch lễ tân
         </Link>
       </div>
+      <SettingsNav role={user.role} current="/staff" />
       {error ? <p className="text-sm text-[#c23b3b]">{error}</p> : null}
 
       <div className="md:grid md:grid-cols-[360px_minmax(0,1fr)] md:items-start md:gap-4">

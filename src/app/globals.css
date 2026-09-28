@@ -248,6 +248,10 @@
   text-align: center;
 }
 
+.report-bars-column:hover .report-bars-track i {
+  filter: brightness(1.12);
+}
+
 .report-bars-track {
   display: flex;
   align-items: flex-end;
@@ -329,22 +333,73 @@
   margin-top: 1rem;
 }
 
+.report-chart-tip {
+  position: fixed;
+  z-index: 40;
+  display: grid;
+  gap: 0.12rem;
+  min-width: max-content;
+  padding: 0.4rem 0.55rem;
+  border-radius: 0.7rem;
+  background: #3d2a2a;
+  color: #fff8ee;
+  font-size: 0.75rem;
+  line-height: 1.35;
+  pointer-events: none;
+  box-shadow: 0 8px 24px rgb(61 42 42 / 22%);
+}
+
+.report-chart-tip p {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  white-space: nowrap;
+}
+
+.report-chart-tip i {
+  width: 0.45rem;
+  height: 0.45rem;
+  flex: none;
+  border-radius: 0.15rem;
+}
+
 .report-donut {
   display: grid;
   width: 9.5rem;
   height: 9.5rem;
   place-items: center;
-  border-radius: 50%;
+}
+
+.report-donut > * {
+  grid-area: 1 / 1;
+}
+
+.report-donut-svg {
+  width: 9.5rem;
+  height: 9.5rem;
+}
+
+.report-donut-slice {
+  cursor: pointer;
+}
+
+.report-donut-svg:hover .report-donut-slice {
+  opacity: 0.45;
+}
+
+.report-donut-svg .report-donut-slice:hover {
+  opacity: 1;
 }
 
 .report-donut > div {
   display: grid;
-  width: 6.4rem;
-  height: 6.4rem;
+  width: 5.4rem;
+  height: 5.4rem;
   place-content: center;
   border-radius: 50%;
   background: var(--card);
   text-align: center;
+  pointer-events: none;
 }
 
 .report-donut strong {

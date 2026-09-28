@@ -4,7 +4,7 @@ import Link from "next/link";
 import { Bell } from "lucide-react";
 import { getSession } from "@/lib/auth";
 import { ROLE_LABEL } from "@/lib/constants";
-import { ACCOUNTING_NAV, DESKTOP_NAV, extraNav, MANAGER_NAV, OWNER_NAV, PRIMARY_NAV } from "@/lib/nav";
+import { ACCOUNTING_NAV, flatSidebar, MANAGER_NAV, OWNER_NAV, PRIMARY_NAV, sidebarNav } from "@/lib/nav";
 import { BottomNav, SideNav } from "@/components/app-nav";
 import { Logo } from "@/components/logo";
 import { PushPrompt } from "@/components/push-prompt";
@@ -18,8 +18,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
   const accounting = user.role === "accounting";
   const isolated = owner || accounting;
   const unread = isolated ? 0 : await countUnreadNotifications(user);
-  const extras = isolated ? [] : extraNav(user.role);
-  const sideItems = accounting ? ACCOUNTING_NAV : owner ? OWNER_NAV : DESKTOP_NAV;
+  const sideModel = accounting ? flatSidebar(ACCOUNTING_NAV) : owner ? flatSidebar(OWNER_NAV) : sidebarNav(user.role);
   const bottomItems = accounting ? ACCOUNTING_NAV : owner ? OWNER_NAV : user.role === "manager" ? MANAGER_NAV : PRIMARY_NAV;
 
   return (
@@ -38,7 +37,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
           <p className="text-sm font-bold">{user.fullName}</p>
           <p className="text-xs text-[#6b5a52]">{ROLE_LABEL[user.role]}</p>
         </div>
-        <SideNav extras={extras} items={sideItems} />
+        <SideNav model={sideModel} />
         <form action={logoutAction} className="border-t border-line p-3">
           <button className="w-full rounded-xl border border-line bg-white py-2.5 text-sm font-semibold">Đăng xuất</button>
         </form>

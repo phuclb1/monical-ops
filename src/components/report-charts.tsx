@@ -1,4 +1,4 @@
-import type { CSSProperties } from "react";
+import { HoverSlice, HoverTip, type TipLine } from "@/components/chart-tip";
 import { Card } from "@/components/ui";
 
 const CHART_COLORS = ["#5c1a1b", "#d59a46", "#74ad8e", "#8c6bb1", "#4f86a6", "#c46f52"];
@@ -44,25 +44,32 @@ export function GroupedBarChart({
       </div>
       <div className="report-bars-scroll">
         <div className="report-bars" style={{ minWidth }} role="img" aria-label={title}>
-          {items.map((item) => (
-            <div className="report-bars-column" key={item.label}>
-              <div className="report-bars-track">
-                <i
-                  className="is-primary"
-                  style={{ height: `${Math.max(item.value ? 3 : 1, (item.value / max) * 100)}%` }}
-                  title={`${primaryLabel}: ${formatValue(item.value)}`}
-                />
-                {secondaryLabel ? (
+          {items.map((item) => {
+            const lines: TipLine[] = [
+              { text: item.hint ? `${item.label} · ${item.hint}` : item.label },
+              { swatch: "var(--burgundy)", text: `${primaryLabel}: ${formatValue(item.value)}` },
+            ];
+            if (secondaryLabel) {
+              lines.push({ swatch: "#d59a46", text: `${secondaryLabel}: ${formatValue(item.secondary || 0)}` });
+            }
+            return (
+              <HoverTip className="report-bars-column" key={item.label} lines={lines}>
+                <div className="report-bars-track">
                   <i
-                    className="is-secondary"
-                    style={{ height: `${Math.max(item.secondary ? 3 : 1, ((item.secondary || 0) / max) * 100)}%` }}
-                    title={`${secondaryLabel}: ${formatValue(item.secondary || 0)}`}
+                    className="is-primary"
+                    style={{ height: `${Math.max(item.value ? 3 : 1, (item.value / max) * 100)}%` }}
                   />
-                ) : null}
-              </div>
-              <span title={item.hint}>{item.label}</span>
-            </div>
-          ))}
+                  {secondaryLabel ? (
+                    <i
+                      className="is-secondary"
+                      style={{ height: `${Math.max(item.secondary ? 3 : 1, ((item.secondary || 0) / max) * 100)}%` }}
+                    />
+                  ) : null}
+                </div>
+                <span>{item.label}</span>
+              </HoverTip>
+            );
+          })}
         </div>
       </div>
     </Card>
@@ -90,7 +97,15 @@ export function HorizontalBarChart({
       </div>
       <div className="report-horizontal-chart" role="img" aria-label={title}>
         {items.length ? items.map((item, index) => (
-          <div className="report-horizontal-row" key={item.label}>
+          <HoverTip
+            className="report-horizontal-row"
+            key={item.label}
+            lines={[
+              { swatch: CHART_COLORS[index % CHART_COLORS.length], text: item.label },
+              { text: formatValue(item.value) },
+              ...(item.hint ? [{ text: item.hint }] : []),
+            ]}
+          >
             <div className="report-horizontal-meta">
               <span>{item.label}</span>
               <strong>{formatValue(item.value)}</strong>
@@ -104,7 +119,7 @@ export function HorizontalBarChart({
               />
             </div>
             {item.hint ? <p>{item.hint}</p> : null}
-          </div>
+          </HoverTip>
         )) : <p className="py-6 text-center text-sm text-[#6b7372]">Chưa có dữ liệu trong kỳ</p>}
       </div>
     </Card>
@@ -125,17 +140,22 @@ export function DonutChart({
   formatValue?: (value: number) => string;
 }) {
   const total = items.reduce((sum, item) => sum + Math.max(0, item.value), 0);
-  const stops = items
-    .map((item, index) => {
-      if (item.value <= 0 || total <= 0) return null;
-      const start = items.slice(0, index).reduce((sum, previous) => sum + Math.max(0, previous.value), 0) / total * 100;
-      const end = start + (item.value / total) * 100;
-      return `${CHART_COLORS[index % CHART_COLORS.length]} ${start}% ${end}%`;
-    })
-    .filter((stop): stop is string => Boolean(stop));
-  const style: CSSProperties = {
-    background: stops.length ? `conic-gradient(${stops.join(", ")})` : "#eee5da",
-  };
+  let cursor = 0;
+  const slices = items.flatMap((item, index) => {
+    if (item.value <= 0 || total <= 0) return [];
+    const start = cursor;
+    cursor += item.value / total;
+    return [{ item, index, start, end: cursor }];
+  });
+
+  function lines(item: ReportChartItem, index: number): TipLine[] {
+    return [
+      { swatch: CHART_COLORS[index % CHART_COLORS.length], text: item.label },
+      { text: formatValue(item.value) },
+      { text: total ? `${((item.value / total) * 100).toFixed(1)}%` : "0%" },
+      ...(item.hint ? [{ text: item.hint }] : []),
+    ];
+  }
 
   return (
     <Card className="report-chart-card">
@@ -144,7 +164,21 @@ export function DonutChart({
         {subtitle ? <p className="text-xs text-[#6b7372]">{subtitle}</p> : null}
       </div>
       <div className="report-donut-layout">
-        <div className="report-donut" style={style} role="img" aria-label={title}>
+        <div className="report-donut" role="img" aria-label={title}>
+          <svg className="report-donut-svg" viewBox="0 0 120 120">
+            {slices.length ? (
+              slices.map((slice) => (
+                <HoverSlice
+                  key={slice.item.label}
+                  d={donutSlice(slice.start, slice.end)}
+                  fill={CHART_COLORS[slice.index % CHART_COLORS.length]}
+                  lines={lines(slice.item, slice.index)}
+                />
+              ))
+            ) : (
+              <circle cx="60" cy="60" r="46" fill="#eee5da" />
+            )}
+          </svg>
           <div>
             <strong>{formatValue(total)}</strong>
             <span>{centerLabel}</span>
@@ -152,15 +186,34 @@ export function DonutChart({
         </div>
         <div className="report-donut-legend">
           {items.map((item, index) => (
-            <div key={item.label}>
+            <HoverTip key={item.label} lines={lines(item, index)}>
               <i style={{ background: CHART_COLORS[index % CHART_COLORS.length] }} />
               <span>{item.label}</span>
               <strong>{formatValue(item.value)}</strong>
               <small>{total ? `${((item.value / total) * 100).toFixed(1)}%` : "0%"}</small>
-            </div>
+            </HoverTip>
           ))}
         </div>
       </div>
     </Card>
   );
+}
+
+function donutSlice(start: number, end: number) {
+  const center = 60;
+  const outer = 46;
+  const inner = 31;
+  const sweep = end - start;
+  if (sweep >= 0.999) {
+    return `M ${center} ${center - outer} A ${outer} ${outer} 0 1 1 ${center} ${center + outer} A ${outer} ${outer} 0 1 1 ${center} ${center - outer} M ${center} ${center - inner} A ${inner} ${inner} 0 1 0 ${center} ${center + inner} A ${inner} ${inner} 0 1 0 ${center} ${center - inner}`;
+  }
+  const a0 = start * Math.PI * 2 - Math.PI / 2;
+  const a1 = end * Math.PI * 2 - Math.PI / 2;
+  const large = sweep > 0.5 ? 1 : 0;
+  const point = (radius: number, angle: number) => [center + radius * Math.cos(angle), center + radius * Math.sin(angle)];
+  const [x0, y0] = point(outer, a0);
+  const [x1, y1] = point(outer, a1);
+  const [x2, y2] = point(inner, a1);
+  const [x3, y3] = point(inner, a0);
+  return `M ${x0} ${y0} A ${outer} ${outer} 0 ${large} 1 ${x1} ${y1} L ${x2} ${y2} A ${inner} ${inner} 0 ${large} 0 ${x3} ${y3} Z`;
 }

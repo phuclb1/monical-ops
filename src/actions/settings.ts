@@ -12,8 +12,8 @@ export async function saveAccessSettingsAction(formData: FormData) {
   const enabled = formData.get("restrict") === "on";
   const ip = String(formData.get("ip") || "");
   const error = receptionIpInputError(enabled, ip);
-  if (error) redirect(`/settings?error=${encodeURIComponent(error)}`);
+  if (error) redirect(`/settings/access?error=${encodeURIComponent(error)}`);
   await saveReceptionIpPolicy(user.id, enabled, ip);
   await audit(user.id, "settings", "reception_ip", "save", undefined, { enabled, ip: ip.trim() });
-  redirect("/settings?saved=1");
+  redirect("/settings/access?saved=1");
 }

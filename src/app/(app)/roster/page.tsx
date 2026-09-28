@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { clearTomorrowRosterAction, saveTomorrowRosterAction, saveWeekRosterAction } from "@/actions/roster";
+import { SettingsNav } from "@/components/settings-nav";
 import { Btn, Card, Chip, Field } from "@/components/ui";
 import { getSession } from "@/lib/auth";
 import { SHIFT_LABEL } from "@/lib/constants";
@@ -67,6 +68,7 @@ export default async function RosterPage({
         <h1 className="text-xl font-bold">Lịch lễ tân</h1>
         <p className="text-xs text-[#5c6665]">Xếp một lần. Lịch chạy từ ngày lưu đến khi bạn lưu lịch mới.</p>
       </div>
+      <SettingsNav role={user.role} current="/roster" />
       {error ? <p className="text-sm text-[#c23b3b]">{error}</p> : null}
       {okText ? <p className="text-sm text-[#1b7a4e]">{okText}</p> : null}
 

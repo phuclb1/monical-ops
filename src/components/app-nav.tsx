@@ -23,9 +23,10 @@ import {
   Sparkles,
   Wallet,
   LayoutDashboard,
+  Settings,
 } from "lucide-react";
 import clsx from "clsx";
-import { PRIMARY_NAV } from "@/lib/nav";
+import { PRIMARY_NAV, type NavLink, type SidebarModel } from "@/lib/nav";
 
 const ICONS: Record<string, typeof CalendarDays> = {
   "/": LayoutDashboard,
@@ -49,14 +50,21 @@ const ICONS: Record<string, typeof CalendarDays> = {
   "/reports": BarChart3,
   "/audit": ScrollText,
   "/staff": Users,
+  "/roster": CalendarDays,
   "/rooms/manage": Tag,
   "/notifications": Bell,
+  "/settings": Settings,
 };
 
 function navActive(path: string, href: string, others: string[]) {
   if (path === href) return true;
   if (!path.startsWith(`${href}/`)) return false;
   return !others.some((other) => other !== href && other.length > href.length && (path === other || path.startsWith(`${other}/`)));
+}
+
+function linkActive(path: string, item: NavLink, hrefs: string[]) {
+  if (navActive(path, item.href, hrefs)) return true;
+  return (item.match ?? []).some((root) => path === root || path.startsWith(`${root}/`));
 }
 
 export function BottomNav({ items = PRIMARY_NAV }: { items?: readonly { href: string; label: string }[] }) {
@@ -94,58 +102,55 @@ export function BottomNav({ items = PRIMARY_NAV }: { items?: readonly { href: st
   );
 }
 
-export function SideNav({
-  extras,
-  items = PRIMARY_NAV,
-}: {
-  extras: { href: string; label: string }[];
-  items?: readonly { href: string; label: string }[];
-}) {
+function SideLinks({ items, hrefs, path }: { items: NavLink[]; hrefs: string[]; path: string }) {
+  return items.map((item) => {
+    const active = linkActive(path, item, hrefs);
+    const Icon = ICONS[item.href] ?? Menu;
+    return (
+      <Link
+        key={item.href}
+        href={item.href}
+        prefetch
+        className={clsx(
+          "flex min-h-11 items-center gap-3 rounded-xl px-3 text-sm font-semibold",
+          active ? "bg-burgundy text-cream" : "text-[#3d2a2a] hover:bg-white",
+        )}
+      >
+        <Icon size={18} />
+        {item.label}
+      </Link>
+    );
+  });
+}
+
+export function SideNav({ model }: { model: SidebarModel }) {
   const path = usePathname();
-  const primary = items.filter((item) => item.href !== "/more");
-  const extraHrefs = extras.map((item) => item.href);
-  const primaryHrefs = primary.map((item) => item.href);
+  const hrefs = [
+    ...model.blocks.flatMap((block) => block.items.map((item) => item.href)),
+    ...model.footer.map((item) => item.href),
+  ];
   return (
-    <nav className="flex flex-1 flex-col gap-1 overflow-y-auto px-3 py-3">
-      {primary.map((item) => {
-        const active = navActive(path, item.href, primaryHrefs);
-        const Icon = ICONS[item.href] ?? Menu;
-        return (
-          <Link
-            key={item.href}
-            href={item.href}
-            prefetch
-            className={clsx(
-              "flex min-h-11 items-center gap-3 rounded-xl px-3 text-sm font-semibold",
-              active ? "bg-burgundy text-cream" : "text-[#3d2a2a] hover:bg-white",
-            )}
-          >
-            <Icon size={18} />
-            {item.label}
-          </Link>
-        );
-      })}
-      {extras.length ? (
-        <>
-          <p className="mt-3 px-3 text-[11px] font-bold uppercase tracking-wider text-[#8a7a72]">Điều hành</p>
-          {extras.map((item) => {
-            const active = navActive(path, item.href, extraHrefs);
-            const Icon = ICONS[item.href] ?? Menu;
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                className={clsx(
-                  "flex min-h-11 items-center gap-3 rounded-xl px-3 text-sm font-semibold",
-                  active ? "bg-burgundy text-cream" : "text-[#3d2a2a] hover:bg-white",
-                )}
-              >
-                <Icon size={18} />
-                {item.label}
-              </Link>
-            );
-          })}
-        </>
+    <nav className="flex min-h-0 flex-1 flex-col px-3 py-3">
+      <div className="flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto">
+        {model.blocks.map((block, index) =>
+          block.kind === "links" ? (
+            <SideLinks key={`links-${index}`} items={block.items} hrefs={hrefs} path={path} />
+          ) : (
+            <div key={block.label}>
+              <p className="mt-3 px-3 pb-1 text-[11px] font-bold uppercase tracking-wider text-[#8a7a72]">{block.label}</p>
+              <div className="flex flex-col gap-1">
+                <SideLinks items={block.items} hrefs={hrefs} path={path} />
+              </div>
+            </div>
+          ),
+        )}
+      </div>
+      {model.footer.length ? (
+        <div className="border-t border-line pt-3">
+          <div className="flex flex-col gap-1">
+            <SideLinks items={model.footer} hrefs={hrefs} path={path} />
+          </div>
+        </div>
       ) : null}
     </nav>
   );
