@@ -72,4 +72,20 @@ test("date, money, room, breakfast and discount edits require approval", () => {
     }),
     true,
   );
+  assert.equal(
+    bookingChangeRequiresApproval(booking, {
+      assignments: [base],
+      deposit: 100_000,
+      checkinPaid: 0,
+    }),
+    false,
+  );
+  assert.equal(
+    bookingChangeRequiresApproval(booking, {
+      assignments: [base],
+      deposit: 100_000,
+      checkinPaid: 50_000,
+    }),
+    true,
+  );
 });

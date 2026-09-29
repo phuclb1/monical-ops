@@ -36,6 +36,12 @@ export function bookingDue(total: number, deposit: number) {
   return Math.max(0, Math.round(total || 0) - Math.max(0, Math.round(deposit || 0)));
 }
 
+export function collectedSplit(deposit: number, checkinPaid?: number | null) {
+  const total = Math.max(0, Math.round(deposit || 0));
+  const checkin = Math.min(total, Math.max(0, Math.round(checkinPaid || 0)));
+  return { hold: total - checkin, checkin, total };
+}
+
 export function isPaymentMethod(value: string): value is PaymentMethod {
   return (PAYMENT_METHODS as readonly string[]).includes(value);
 }

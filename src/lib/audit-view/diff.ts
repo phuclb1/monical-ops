@@ -73,6 +73,7 @@ const ENUM_LABEL: Record<string, Record<string, string>> = {
 
 const MONEY_FIELDS = new Set([
   "deposit",
+  "checkinPaid",
   "cashPaid",
   "transferPaid",
   "companyPaid",

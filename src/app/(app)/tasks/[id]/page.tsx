@@ -8,9 +8,9 @@ import { DEPT_LABEL, PRIORITY_LABEL, TASK_STATUS_LABEL } from "@/lib/constants";
 import { taskTypeLabel } from "@/lib/task-types";
 import { formatDateTime } from "@/lib/datetime";
 import { getTask } from "@/lib/repos";
-import { appOrigin, rewriteLocalhostUrl } from "@/lib/site";
-import { buildZaloMessage } from "@/lib/zalo";
 import type { DepartmentCode, TaskPriority, TaskStatus } from "@/lib/types";
+import { loadZaloPublicStatus } from "@/lib/zalo-session";
+import { messageFromTask } from "@/lib/zalo-task";
 
 export default async function TaskDetailPage({
   params,
@@ -27,18 +27,8 @@ export default async function TaskDetailPage({
   if (!data) notFound();
   const { task, history, users, room, checklist } = data;
   const assignee = users.find((u) => u.id === task.assigneeId);
-  const origin = await appOrigin();
-  const built = buildZaloMessage({
-    room: room?.number,
-    area: task.area,
-    priority: task.priority as TaskPriority,
-    content: task.content,
-    dueAt: task.dueAt,
-    assignee: assignee?.fullName,
-    dept: task.toDept as DepartmentCode,
-    url: `${origin}/tasks/${task.id}`,
-  });
-  const message = task.zaloMessage ? rewriteLocalhostUrl(task.zaloMessage, origin) : built;
+  const zalo = await loadZaloPublicStatus();
+  const message = await messageFromTask(data);
 
   return (
     <main className="space-y-3 px-3 py-4">
@@ -96,7 +86,13 @@ export default async function TaskDetailPage({
 
       <Card>
         <h2 className="mb-2 font-bold">Gửi Zalo</h2>
-        <ZaloShare id={task.id} message={message} />
+        <ZaloShare
+          id={task.id}
+          message={message}
+          ready={zalo.connected && Boolean(zalo.groupId)}
+          groupName={zalo.groupName}
+          senderPhone={zalo.phone}
+        />
       </Card>
 
       <Card>

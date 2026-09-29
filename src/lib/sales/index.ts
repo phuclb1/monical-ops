@@ -23,6 +23,7 @@ export {
   bookingDisplayCode,
   bookingPdfFilename,
   bookingDue,
+  collectedSplit,
   isPaymentMethod,
   parsePaymentMethod,
   salePaid,

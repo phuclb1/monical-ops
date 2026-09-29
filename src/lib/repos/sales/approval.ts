@@ -3,6 +3,7 @@ import { getDb } from "@/db";
 import * as t from "@/db/schema";
 import { nid, nowISO } from "../../datetime";
 import { can } from "../../permissions";
+import { collectedSplit } from "../../sales";
 import type { SessionUser } from "../../types";
 import { notify } from "@/modules/notifications/models/notifications";
 import { audit } from "../audit";
@@ -65,23 +66,33 @@ function snapshotBooking(booking: BookingView) {
         unit: row.unit,
       }))
       .sort((a, b) => a.id.localeCompare(b.id)),
+    checkinPaid: booking.checkinPaid || 0,
   };
 }
 
 function same(a: unknown, b: unknown) {
-  return JSON.stringify(a) === JSON.stringify(b);
+  return JSON.stringify(withCheckin(a)) === JSON.stringify(withCheckin(b));
+}
+
+function withCheckin(value: unknown) {
+  const record = value && typeof value === "object" ? { ...(value as Record<string, unknown>) } : {};
+  const checkinPaid = Number(record.checkinPaid) || 0;
+  delete record.checkinPaid;
+  return { ...record, checkinPaid };
 }
 
 export function bookingChangeRequiresApproval(
   booking: Pick<
     BookingView,
-    "source" | "otaPaymentMode" | "deposit" | "cashPaid" | "transferPaid" | "companyPaid" | "rooms"
+    "source" | "otaPaymentMode" | "deposit" | "checkinPaid" | "cashPaid" | "transferPaid" | "companyPaid" | "rooms"
   >,
   data: BookingUpdateInput,
 ) {
   if (data.source !== undefined && data.source !== booking.source) return true;
   if (data.otaPaymentMode !== undefined && data.otaPaymentMode !== booking.otaPaymentMode) return true;
-  if (data.deposit !== undefined && data.deposit !== booking.deposit) return true;
+  const paid = collectedSplit(booking.deposit, booking.checkinPaid);
+  if (data.deposit !== undefined && data.deposit !== paid.hold) return true;
+  if (data.checkinPaid !== undefined && data.checkinPaid !== paid.checkin) return true;
   if (data.cashPaid !== undefined && data.cashPaid !== booking.cashPaid) return true;
   if (data.transferPaid !== undefined && data.transferPaid !== booking.transferPaid) return true;
   if (data.companyPaid !== undefined && data.companyPaid !== booking.companyPaid) return true;
@@ -116,7 +127,9 @@ function updateSummary(booking: BookingView, data: BookingUpdateInput) {
       labels.add("sửa chiết khấu");
     }
   }
-  if (data.deposit !== undefined && data.deposit !== booking.deposit) labels.add("điều chỉnh tiền đã thu");
+  const paid = collectedSplit(booking.deposit, booking.checkinPaid);
+  if (data.deposit !== undefined && data.deposit !== paid.hold) labels.add("điều chỉnh tiền đã thu");
+  if (data.checkinPaid !== undefined && data.checkinPaid !== paid.checkin) labels.add("sửa thu check-in");
   if (data.source !== undefined && data.source !== booking.source) labels.add("đổi nguồn booking");
   if (data.otaPaymentMode !== undefined && data.otaPaymentMode !== booking.otaPaymentMode) labels.add("đổi công nợ OTA");
   return labels.size ? [...labels].join(" · ") : "sửa thông tin booking";

@@ -1,0 +1,85 @@
+{
+  "runId": "APPROVAL-20260929092032-local",
+  "date": "2026-09-29T02:21:18.918Z",
+  "commit": "b0e7482-dirty",
+  "env": "http://localhost:3010",
+  "guest": "E2E Duyet 092032-local",
+  "room": "406",
+  "bookingUrl": "/sales/bookings/c38aecec-edc0-43c2-852f-0730e6c107f0",
+  "pass": 10,
+  "fail": 0,
+  "total": 10,
+  "passRate": "100%",
+  "results": [
+    {
+      "id": "APP-A1",
+      "title": "Lễ tân tạo booking kiểm thử với cọc 100.000₫",
+      "result": "pass",
+      "evidence": "qa/evidence/APPROVAL-20260929092032-local/APP-A1.png",
+      "note": ""
+    },
+    {
+      "id": "APP-A2",
+      "title": "Đổi tiền hiện nút Gửi phê duyệt và chưa áp dụng booking",
+      "result": "pass",
+      "evidence": "qa/evidence/APPROVAL-20260929092032-local/APP-A2.png",
+      "note": ""
+    },
+    {
+      "id": "APP-A3",
+      "title": "Quản lý chỉ thấy Chấp nhận/Từ chối và lý do là bắt buộc",
+      "result": "pass",
+      "evidence": "qa/evidence/APPROVAL-20260929092032-local/APP-A3.png",
+      "note": ""
+    },
+    {
+      "id": "APP-A4",
+      "title": "Quản lý từ chối, lý do và lịch sử được lưu",
+      "result": "pass",
+      "evidence": "qa/evidence/APPROVAL-20260929092032-local/APP-A4.png",
+      "note": ""
+    },
+    {
+      "id": "APP-A5",
+      "title": "Lễ tân gửi lại đề nghị điều chỉnh tiền",
+      "result": "pass",
+      "evidence": "qa/evidence/APPROVAL-20260929092032-local/APP-A5.png",
+      "note": ""
+    },
+    {
+      "id": "APP-A6",
+      "title": "Quản lý chấp nhận đề nghị",
+      "result": "pass",
+      "evidence": "qa/evidence/APPROVAL-20260929092032-local/APP-A6.png",
+      "note": ""
+    },
+    {
+      "id": "APP-A7",
+      "title": "Lễ tân thấy kết quả duyệt và toàn bộ lịch sử",
+      "result": "pass",
+      "evidence": "qa/evidence/APPROVAL-20260929092032-local/APP-A7.png",
+      "note": ""
+    },
+    {
+      "id": "APP-A9",
+      "title": "Lễ tân đổi phòng và ngày trả; phiếu duyệt ghi từ đâu sang đâu, booking chưa đổi",
+      "result": "pass",
+      "evidence": "qa/evidence/APPROVAL-20260929092032-local/APP-A9.png",
+      "note": ""
+    },
+    {
+      "id": "APP-A10",
+      "title": "Quản lý thấy nội dung sửa rồi chấp nhận; booking đổi sang phòng và ngày mới",
+      "result": "pass",
+      "evidence": "qa/evidence/APPROVAL-20260929092032-local/APP-A10.png",
+      "note": ""
+    },
+    {
+      "id": "APP-A8",
+      "title": "Dọn dữ liệu: quản lý hủy booking kiểm thử",
+      "result": "pass",
+      "evidence": "qa/evidence/APPROVAL-20260929092032-local/APP-A8.png",
+      "note": ""
+    }
+  ]
+}

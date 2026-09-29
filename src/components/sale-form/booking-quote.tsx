@@ -10,13 +10,14 @@ export function BookingQuote(props: {
   booked: { nights: number };
   bookingTotal: number;
   depositAmount: number;
+  checkinAmount?: number;
   defaults: { cashPaid?: number; transferPaid?: number; companyPaid?: number; deposit?: number };
   payMethod: PaymentMethod;
   ota?: boolean;
   otaDebt?: boolean;
   due: number;
 }) {
-  const { quotes, extraRows, booked, bookingTotal, depositAmount, defaults, payMethod, ota, otaDebt, due } = props;
+  const { quotes, extraRows, booked, bookingTotal, depositAmount, checkinAmount = 0, defaults, payMethod, ota, otaDebt, due } = props;
   return (
       <div className="rounded-xl bg-sand px-3 py-2 text-sm">
         <ul className="space-y-1">
@@ -60,8 +61,14 @@ export function BookingQuote(props: {
               </li>
               {depositAmount ? (
                 <li className="flex justify-between gap-2 text-[#1b7a4e]">
-                  <span>Đã thu tại KS{paidNote(defaults) ? ` · ${paidNote(defaults)}` : ""}</span>
+                  <span>Đặt cọc{paidNote(defaults) ? ` · ${paidNote(defaults)}` : ""}</span>
                   <span>−{formatVnd(depositAmount)}</span>
+                </li>
+              ) : null}
+              {checkinAmount ? (
+                <li className="flex justify-between gap-2 text-[#1b7a4e]">
+                  <span>Thu đủ khi check-in</span>
+                  <span>−{formatVnd(checkinAmount)}</span>
                 </li>
               ) : null}
               {!otaDebt ? (
@@ -79,12 +86,18 @@ export function BookingQuote(props: {
               </li>
               {depositAmount ? (
                 <li className="flex justify-between gap-2 text-[#1b7a4e]">
-                  <span>Đã đặt cọc{paidNote(defaults) ? ` · ${paidNote(defaults)}` : ` · ${PAYMENT_METHOD_LABEL[payMethod]}`}</span>
+                  <span>Đặt cọc{paidNote(defaults) ? ` · ${paidNote(defaults)}` : ` · ${PAYMENT_METHOD_LABEL[payMethod]}`}</span>
                   <span>−{formatVnd(depositAmount)}</span>
                 </li>
               ) : (
                 <li className="text-[#c47b12]">Chưa đặt cọc</li>
               )}
+              {checkinAmount ? (
+                <li className="flex justify-between gap-2 text-[#1b7a4e]">
+                  <span>Thu đủ khi check-in</span>
+                  <span>−{formatVnd(checkinAmount)}</span>
+                </li>
+              ) : null}
               <li className="flex justify-between gap-2 font-bold">
                 <span>Còn phải thu</span>
                 <span>{formatVnd(due)}</span>

@@ -69,6 +69,7 @@ function toBookingView(id: string, rooms: Awaited<ReturnType<typeof listRoomSale
     cars: first.cars || 0,
     bikes: first.bikes || 0,
     deposit: paid.deposit,
+    checkinPaid: Math.max(0, Math.round(first.checkinPaid || 0)),
     cashPaid: paid.cashPaid,
     transferPaid: paid.transferPaid,
     companyPaid: paid.companyPaid,

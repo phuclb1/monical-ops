@@ -4,6 +4,7 @@ import type { Role } from "@/lib/types";
 
 const ITEMS = [
   { href: "/settings/access", label: "Cấu hình", allow: "manageSettings" },
+  { href: "/settings/zalo", label: "Zalo", allow: "manageSettings" },
   { href: "/roster", label: "Lịch lễ tân", allow: "manageRoster" },
   { href: "/staff", label: "Nhân viên", allow: "manageStaff" },
 ] as const;

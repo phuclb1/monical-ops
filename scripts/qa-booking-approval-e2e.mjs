@@ -92,6 +92,7 @@ async function pickOpenRoom() {
 async function openEdit() {
   await page.locator("summary").filter({ hasText: "Sửa booking" }).click();
   await page.locator('input[name="deposit"]').waitFor({ state: "visible", timeout: 15000 });
+  await page.getByText("Thu đủ khi check-in (₫)", { exact: true }).waitFor({ timeout: 15000 });
 }
 
 async function requestDeposit(amount) {
@@ -233,6 +234,36 @@ try {
       ["Đã duyệt", "Đã từ chối", "Đã đặt cọc 300.000₫", "Gửi duyệt", "Từ chối", rejectReason],
       ["Chấp nhận", "Xác nhận từ chối"],
     );
+  });
+
+  await check("APP-A9", "Sửa riêng thu check-in, đặt cọc chưa đổi và chưa áp dụng", async () => {
+    await login(receptionUser);
+    await go(bookingUrl);
+    await openEdit();
+    await page.locator('input[name="checkinPaid"]').fill("50000");
+    await page.getByRole("button", { name: "Gửi phê duyệt", exact: true }).waitFor();
+    await Promise.all([
+      page.waitForURL(/approval=requested/, { timeout: 30000 }),
+      page.getByRole("button", { name: "Gửi phê duyệt", exact: true }).click(),
+    ]);
+    await ready();
+    await assertText(["sửa thu check-in", "Đã đặt cọc 300.000₫", "Chờ quản lý duyệt"], ["Thu đủ khi check-in 50.000₫"]);
+  });
+
+  await check("APP-A10", "Quản lý duyệt thu check-in; đặt cọc giữ nguyên", async () => {
+    await login(managerUser);
+    await go(bookingUrl);
+    const pending = page.locator("article").filter({ hasText: "Chờ quản lý duyệt" }).first();
+    await pending.waitFor({ timeout: 15000 });
+    if (!(await pending.innerText()).includes("sửa thu check-in")) {
+      throw new Error("Phiếu duyệt không ghi sửa thu check-in");
+    }
+    await Promise.all([
+      page.waitForURL(/approval=approved/, { timeout: 30000 }),
+      pending.getByRole("button", { name: "Chấp nhận", exact: true }).click(),
+    ]);
+    await ready();
+    await assertText(["Thu đủ khi check-in 50.000₫", "Đã đặt cọc 300.000₫", "Đã duyệt"]);
   });
 
   await check("APP-A8", "Dọn dữ liệu: quản lý hủy booking kiểm thử", async () => {

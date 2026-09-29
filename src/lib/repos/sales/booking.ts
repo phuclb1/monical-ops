@@ -9,6 +9,7 @@ import {
   catalogRate,
   clampBreakfastPax,
   isActiveSaleStatus,
+  collectedSplit,
   isOtaDebt,
   isSaleSource,
   normalizeDiscount,
@@ -44,6 +45,7 @@ export type BookingUpdateInput = {
   discountKind?: string;
   discountValue?: number;
   deposit?: number;
+  checkinPaid?: number;
   cashPaid?: number;
   transferPaid?: number;
   companyPaid?: number;
@@ -80,7 +82,11 @@ export async function updateBooking(
   const children = Math.max(0, data.children ?? hit.children ?? 0);
   const cars = Math.max(0, data.cars ?? hit.cars ?? 0);
   const bikes = Math.max(0, data.bikes ?? hit.bikes ?? 0);
-  const paid = isOtaDebt(source, otaPaymentMode) && !isOtaDebt(hit.source, hit.otaPaymentMode)
+  const currentSplit = collectedSplit(hit.deposit, hit.checkinPaid);
+  const clearPaid = isOtaDebt(source, otaPaymentMode) && !isOtaDebt(hit.source, hit.otaPaymentMode);
+  const hold = clearPaid ? 0 : Math.max(0, Math.round(data.deposit ?? currentSplit.hold));
+  const checkinPaid = clearPaid ? 0 : Math.max(0, Math.round(data.checkinPaid ?? currentSplit.checkin));
+  const paid = clearPaid
     ? { cashPaid: 0, transferPaid: 0, companyPaid: 0, deposit: 0 }
     : paymentOf(
     {
@@ -89,7 +95,7 @@ export async function updateBooking(
       checkIn: hit.checkIn,
       checkOut: hit.checkOut,
       rate: hit.rate,
-      deposit: data.deposit,
+      deposit: hold + checkinPaid,
       cashPaid: data.cashPaid,
       transferPaid: data.transferPaid,
       companyPaid: data.companyPaid,
@@ -156,6 +162,7 @@ export async function updateBooking(
       discountKind,
       discountValue,
       deposit: paid.deposit,
+      checkinPaid,
       cashPaid: paid.cashPaid,
       transferPaid: paid.transferPaid,
       companyPaid: paid.companyPaid,

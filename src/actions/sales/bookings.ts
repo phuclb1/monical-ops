@@ -173,6 +173,7 @@ export async function updateBookingAction(formData: FormData) {
       cars: Math.max(0, Number(formData.get("cars") || 0) || 0),
       bikes: Math.max(0, Number(formData.get("bikes") || 0) || 0),
       deposit: parseMoney(formData.get("deposit")),
+      checkinPaid: parseMoney(formData.get("checkinPaid")),
       paymentMethod: parsePaymentMethod(formData.get("paymentMethod")),
       notes: String(formData.get("notes") || ""),
     });

@@ -15,7 +15,7 @@ import { formatDateLong, todayVN } from "@/lib/datetime";
 import { extraDetail } from "@/lib/extras";
 import { can } from "@/lib/permissions";
 import { getBooking, listBookingChangeRequests, listBookingLogs, listRooms, listRoomSales, listRoomTypes, listSaleExtraTypes } from "@/lib/repos";
-import { bookingQuote, formatVnd, isActiveSaleStatus, isOpsBookingCode, isOtaDebt, isOtaSource, paidNote, parkingLabel } from "@/lib/sales";
+import { bookingQuote, collectedSplit, formatVnd, isActiveSaleStatus, isOpsBookingCode, isOtaDebt, isOtaSource, paidNote, parkingLabel } from "@/lib/sales";
 import type { SaleOrigin, SaleSource, SaleStatus } from "@/lib/types";
 
 const STATUS_TONE: Record<SaleStatus, "ok" | "warn" | "danger" | "gold" | "neutral"> = {
@@ -59,6 +59,7 @@ export default async function BookingDetailPage({
   const staying = activeRooms.filter((row) => row.status === "inhouse");
   const ota = isOtaSource(booking.source);
   const otaDebt = isOtaDebt(booking.source, booking.otaPaymentMode);
+  const paidSplit = collectedSplit(booking.deposit, booking.checkinPaid);
   const activeIds = new Set(activeRooms.map((row) => row.id));
   const busy = sales
     .filter((row) => isActiveSaleStatus(row.status) && !activeIds.has(row.id))
@@ -163,26 +164,31 @@ export default async function BookingDetailPage({
             ) : ota ? (
               <>
                 <p className="mt-1 text-sm">Công nợ OTA {formatVnd(0)}</p>
-                {booking.deposit ? (
+                {paidSplit.hold ? (
                   <p className="mt-1 text-sm text-[#1b7a4e]">
-                    Đã thu tại KS {formatVnd(booking.deposit)}
+                    Đặt cọc {formatVnd(paidSplit.hold)}
                     {paidNote(booking) ? ` · ${paidNote(booking)}` : ""}
                   </p>
-                ) : (
-                  <p className="mt-1 text-sm text-[#c47b12]">Chưa thu tại KS</p>
-                )}
+                ) : null}
+                {paidSplit.checkin ? (
+                  <p className="mt-1 text-sm text-[#1b7a4e]">Thu đủ khi check-in {formatVnd(paidSplit.checkin)}</p>
+                ) : null}
+                {!paidSplit.total ? <p className="mt-1 text-sm text-[#c47b12]">Chưa thu tại KS</p> : null}
                 <p className="mt-1 text-sm font-semibold">Còn khách thanh toán {formatVnd(booking.due)}</p>
               </>
             ) : (
               <>
-                {booking.deposit ? (
+                {paidSplit.hold ? (
                   <p className="mt-1 text-sm text-[#1b7a4e]">
-                    Đã đặt cọc {formatVnd(booking.deposit)}
+                    Đã đặt cọc {formatVnd(paidSplit.hold)}
                     {paidNote(booking) ? ` · ${paidNote(booking)}` : ""}
                   </p>
                 ) : (
                   <p className="mt-1 text-sm text-[#c47b12]">Chưa đặt cọc</p>
                 )}
+                {paidSplit.checkin ? (
+                  <p className="mt-1 text-sm text-[#1b7a4e]">Thu đủ khi check-in {formatVnd(paidSplit.checkin)}</p>
+                ) : null}
                 <p className="mt-1 text-sm font-semibold">Còn phải thu {formatVnd(booking.due)}</p>
               </>
             )}
@@ -327,6 +333,7 @@ export default async function BookingDetailPage({
                   cars: booking.cars,
                   bikes: booking.bikes,
                   deposit: booking.deposit,
+                  checkinPaid: booking.checkinPaid,
                   cashPaid: booking.cashPaid,
                   transferPaid: booking.transferPaid,
                   companyPaid: booking.companyPaid,

@@ -288,6 +288,8 @@ Chạy độc lập trên staging bằng lễ tân `ngan.lt` và quản lý `qua
 | APP-A5 | Lễ tân gửi lại đề nghị đổi cọc thành 300.000₫ | Booking chưa đổi khi đang chờ |
 | APP-A6 | Quản lý chấp nhận | Booking đổi thành 300.000₫; nhật ký có `Đã duyệt` |
 | APP-A7 | Lễ tân xem kết quả | Thấy lịch sử gửi, từ chối, lý do và duyệt; không có nút quản lý |
+| APP-A9 | Lễ tân nhập 50.000₫ vào ô thu check-in, không đổi ô đặt cọc | Phiếu duyệt ghi sửa thu check-in; booking vẫn chỉ hiện đặt cọc 300.000₫ |
+| APP-A10 | Quản lý chấp nhận | Hiện cả Đã đặt cọc 300.000₫ và Thu đủ khi check-in 50.000₫ |
 | APP-A8 | Quản lý hủy booking E2E | Booking được hủy để giải phóng phòng staging |
 
 ---
@@ -295,6 +297,14 @@ Chạy độc lập trên staging bằng lễ tân `ngan.lt` và quản lý `qua
 ## Lịch sử run
 
 Thêm block mới **trên cùng** mỗi lần test.
+
+### APPROVAL-20260929093012-split — 2026-09-29
+
+- Commit: local dirty
+- Env: local `http://localhost:3010`
+- Pass / Fail: **10 / 0** · **10/10 = 100%**
+- Evidence: `qa/evidence/APPROVAL-20260929093012-split/`
+- Ghi chú: form sửa booking tách đặt cọc và thu đủ khi check-in. APP-A9/A10 sửa riêng khoản check-in 50.000₫, đặt cọc 300.000₫ giữ nguyên sau khi duyệt.
 
 ### APPROVAL-20260925152725-stg — 2026-09-25
 

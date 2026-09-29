@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { Btn, Field, PayMethodField } from "@/components/ui";
 import { SALE_SOURCE_GROUPS, SALE_SOURCE_LABEL } from "@/lib/constants";
-import { bookingDue, bookingQuote, catalogRate, isOtaDebt, isOtaSource, parseMoney, parseDiscountValue, primaryPaymentMethod, rangesOverlap, roomMoveKind } from "@/lib/sales";
+import { bookingDue, bookingQuote, catalogRate, collectedSplit, isOtaDebt, isOtaSource, parseMoney, parseDiscountValue, primaryPaymentMethod, rangesOverlap, roomMoveKind } from "@/lib/sales";
 import { extraAmount } from "@/lib/extras";
 import type { PaymentMethod } from "@/lib/types";
 import { BookingRoomLines } from "./booking-lines";
@@ -53,6 +53,7 @@ export function BookingForm({
     cars?: number;
     bikes?: number;
     deposit?: number;
+    checkinPaid?: number;
     cashPaid?: number;
     transferPaid?: number;
     companyPaid?: number;
@@ -84,7 +85,9 @@ export function BookingForm({
   const [otaPaymentMode, setOtaPaymentMode] = useState<"debt" | "hotel">(
     defaults.otaPaymentMode === "hotel" ? "hotel" : "debt",
   );
-  const [deposit, setDeposit] = useState(defaults.deposit ? String(defaults.deposit) : "");
+  const initialPaid = collectedSplit(defaults.deposit || 0, defaults.checkinPaid);
+  const [deposit, setDeposit] = useState(initialPaid.hold ? String(initialPaid.hold) : "");
+  const [checkinPaid, setCheckinPaid] = useState(initialPaid.checkin ? String(initialPaid.checkin) : "");
   const [payMethod, setPayMethod] = useState<PaymentMethod>(() => primaryPaymentMethod(defaults));
   const ota = isOtaSource(source);
   const otaDebt = isOtaDebt(source, otaPaymentMode);
@@ -151,12 +154,15 @@ export function BookingForm({
   const extraRows = extras.map((row) => ({ ...row, amount: extraAmount(row, booked.nights) }));
   const extrasTotal = extraRows.reduce((sum, row) => sum + row.amount, 0);
   const bookingTotal = booked.total + extrasTotal;
-  const depositAmount = switchedToOtaDebt ? 0 : parseMoney(deposit);
+  const holdAmount = switchedToOtaDebt ? 0 : parseMoney(deposit);
+  const checkinAmount = switchedToOtaDebt ? 0 : parseMoney(checkinPaid);
+  const depositAmount = holdAmount + checkinAmount;
   const due = bookingDue(bookingTotal, depositAmount);
   const hasApprovalChange =
     source !== (defaults.source || "walk_in") ||
     otaPaymentMode !== (defaults.otaPaymentMode === "hotel" ? "hotel" : "debt") ||
-    depositAmount !== (defaults.deposit || 0) ||
+    holdAmount !== initialPaid.hold ||
+    checkinAmount !== initialPaid.checkin ||
     lines.some((line) => {
       const stay = stayOf(line.saleId, { checkIn: line.checkIn, checkOut: line.checkOut });
       const discount = discounts[line.saleId] || { kind: "none", value: "" };
@@ -312,13 +318,20 @@ export function BookingForm({
         optionsFor={optionsFor}
         stayOf={stayOf}
       />
-      {ota ? (
-        <input type="hidden" name="deposit" value={otaDebt ? "0" : String(defaults.deposit || 0)} />
+      {otaDebt ? (
+        <>
+          <input type="hidden" name="deposit" value="0" />
+          <input type="hidden" name="checkinPaid" value="0" />
+        </>
       ) : (
         <>
-          <Field label="Đặt cọc — tổng đã thu (₫)">
+          <Field label="Đặt cọc (₫)">
             <input name="deposit" inputMode="numeric" value={deposit} onChange={(e) => setDeposit(e.target.value)} placeholder="0" />
           </Field>
+          <Field label="Thu đủ khi check-in (₫)">
+            <input name="checkinPaid" inputMode="numeric" value={checkinPaid} onChange={(e) => setCheckinPaid(e.target.value)} placeholder="0" />
+          </Field>
+          <p className="-mt-1 text-xs text-[#5c6665]">Hai khoản tách riêng. Nhập sai khoản nào thì sửa đúng khoản đó.</p>
           <PayMethodField value={payMethod} onChange={setPayMethod} />
         </>
       )}
@@ -331,7 +344,8 @@ export function BookingForm({
         extraRows={extraRows}
         booked={booked}
         bookingTotal={bookingTotal}
-        depositAmount={depositAmount}
+        depositAmount={holdAmount}
+        checkinAmount={checkinAmount}
         defaults={defaults}
         payMethod={payMethod}
         ota={ota}

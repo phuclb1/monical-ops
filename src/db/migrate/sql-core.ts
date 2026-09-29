@@ -69,6 +69,7 @@ CREATE TABLE IF NOT EXISTS room_sales (
   discount_kind TEXT NOT NULL DEFAULT 'none',
   discount_value INTEGER NOT NULL DEFAULT 0,
   deposit INTEGER NOT NULL DEFAULT 0,
+  checkin_paid INTEGER NOT NULL DEFAULT 0,
   cash_paid INTEGER NOT NULL DEFAULT 0,
   transfer_paid INTEGER NOT NULL DEFAULT 0,
   company_paid INTEGER NOT NULL DEFAULT 0,
