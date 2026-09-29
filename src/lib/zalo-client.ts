@@ -6,6 +6,7 @@ import {
   type ZaloCredentials,
 } from "@/lib/zalo-session";
 import { normalizeZaloPhone, zaloPhonesMatch } from "@/lib/zalo";
+import { zaloOutbound } from "@/lib/zalo-templates";
 
 const ZALO_UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:133.0) Gecko/20100101 Firefox/133.0";
 
@@ -108,7 +109,7 @@ export async function sendZaloToGroup(actorId: string, groupId: string, message:
   return withZaloSession(actorId, async (api) => {
     await api.keepAlive().catch(() => undefined);
     const { ThreadType } = await import("zca-js");
-    await api.sendMessage(message, groupId, ThreadType.Group);
+    await api.sendMessage(zaloOutbound(message), groupId, ThreadType.Group);
   });
 }
 

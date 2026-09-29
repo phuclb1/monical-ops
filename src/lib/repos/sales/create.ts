@@ -13,6 +13,7 @@ import { notifyBookingChange } from "./notify";
 import { extraAmount } from "../../extras";
 import { insertSaleExtras, resolveSaleExtras } from "./extras";
 import { applySaleRoomState, syncStayFromSale } from "./stay";
+import { dispatchBookingZalo } from "@/lib/zalo-notify";
 
 export async function createRoomSale(user: SessionUser, data: SaleInput) {
   const guestName = data.guestName.trim();
@@ -119,6 +120,9 @@ export async function createRoomSale(user: SessionUser, data: SaleInput) {
     title: `${existing ? "Thêm phòng" : "Đặt phòng"} · ${guestName}`,
     body: `${user.fullName} · ${roomLabel} · ${spanIn} → ${spanOut} · ${bookingTotal.toLocaleString("vi-VN")}₫`,
   });
+  if (!requestedBookingId) {
+    await dispatchBookingZalo(user.id, "booking_created", bookingId).catch((error) => console.error("zalo booking", error));
+  }
   return { id: ids[0], bookingId };
 }
 

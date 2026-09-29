@@ -8,6 +8,7 @@ import type { SessionUser } from "../../types";
 import { audit } from "../audit";
 import { assertSaleWindow, paymentOf, type SaleInput, uniqueSaleRoomIds } from "./helpers";
 import { bookingCreatedBy, notifyBookingChange } from "./notify";
+import { dispatchBookingZalo } from "@/lib/zalo-notify";
 import { syncStayFromSale } from "./stay";
 
 export async function updateRoomSale(user: SessionUser, id: string, data: SaleInput) {
@@ -80,4 +81,5 @@ export async function updateRoomSale(user: SessionUser, id: string, data: SaleIn
     title: `Sửa booking · ${guestName}`,
     body: `${user.fullName} · ${before.checkIn} → ${data.checkOut}`,
   });
+  await dispatchBookingZalo(user.id, "booking_updated", bookingId).catch((error) => console.error("zalo booking", error));
 }

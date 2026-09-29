@@ -23,6 +23,7 @@ import type { SessionUser } from "../../types";
 import { audit } from "../audit";
 import { assertSaleWindow, paymentOf } from "./helpers";
 import { notifyBookingChange } from "./notify";
+import { dispatchBookingZalo } from "@/lib/zalo-notify";
 import { syncStayFromSale } from "./stay";
 
 export type BookingUpdateInput = {
@@ -204,5 +205,6 @@ export async function updateBooking(
     title: `Sửa booking · ${guestName}`,
     body: `${user.fullName} · ${active.length} phòng`,
   });
+  await dispatchBookingZalo(user.id, "booking_updated", key).catch((error) => console.error("zalo booking", error));
   return key;
 }

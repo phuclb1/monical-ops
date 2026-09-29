@@ -2,8 +2,9 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { listZaloGroupsAction, saveZaloGroupAction } from "@/actions/zalo";
+import { listZaloGroupsAction, saveZaloGroupSlotAction, saveZaloMessageAction, sendZaloMessageTestAction, sendZaloTestAction } from "@/actions/zalo";
 import { Btn, Field } from "@/components/ui";
+import type { ZaloGroupSlot } from "@/lib/zalo-messages";
 
 export function ZaloConnectButton() {
   const router = useRouter();
@@ -79,10 +80,146 @@ export function ZaloConnectButton() {
   );
 }
 
-export function ZaloGroupPicker({ currentId, currentName }: { currentId: string; currentName: string }) {
+export function ZaloGroupManager({
+  connected,
+  groups,
+}: {
+  connected: boolean;
+  groups: { slot: ZaloGroupSlot; label: string; groupId: string; groupName: string }[];
+}) {
+  const [options, setOptions] = useState<{ id: string; name: string; members: number }[] | null>(null);
+  const [error, setError] = useState("");
+  const [pending, setPending] = useState(false);
+
+  async function load() {
+    setPending(true);
+    setError("");
+    const result = await listZaloGroupsAction();
+    setPending(false);
+    if (!result.ok) {
+      setError(result.error);
+      return;
+    }
+    setOptions(result.groups);
+  }
+
+  return (
+    <div className="space-y-4">
+      <Btn type="button" variant="ghost" onClick={load} disabled={!connected || pending}>
+        {pending ? "Đang tải nhóm..." : "Tải danh sách nhóm Zalo"}
+      </Btn>
+      {!connected ? <p className="text-sm text-[#5c6665]">Kết nối Zalo rồi mới chọn được nhóm.</p> : null}
+      {error ? <p className="text-sm font-medium text-[#c23b3b]">{error}</p> : null}
+      {groups.map((slot) => {
+        const choices = options ? [...options] : [];
+        if (slot.groupId && !choices.some((group) => group.id === slot.groupId)) {
+          choices.unshift({ id: slot.groupId, name: slot.groupName || slot.groupId, members: 0 });
+        }
+        return (
+          <form key={slot.slot} action={saveZaloGroupSlotAction} className="space-y-3 border-t border-line pt-3">
+            <input type="hidden" name="slot" value={slot.slot} />
+            <div>
+              <h3 className="font-bold">{slot.label}</h3>
+              <p className="text-sm text-[#5c6665]">{slot.groupName ? `Đang chọn: ${slot.groupName}` : "Chưa chọn nhóm Zalo."}</p>
+            </div>
+            <Field label="Nhóm Zalo">
+              <select name="groupId" defaultValue={slot.groupId}>
+                <option value="">Chưa chọn</option>
+                {choices.map((group) => (
+                  <option key={group.id} value={group.id}>
+                    {group.name}
+                    {group.members ? ` (${group.members})` : ""}
+                  </option>
+                ))}
+              </select>
+            </Field>
+            <Btn type="submit">Lưu {slot.label.toLowerCase()}</Btn>
+          </form>
+        );
+      })}
+    </div>
+  );
+}
+
+export function ZaloMessageManager({
+  messages,
+}: {
+  messages: {
+    id: string;
+    name: string;
+    kind: "schedule" | "trigger";
+    eventLabel: string;
+    enabled: boolean;
+    group: ZaloGroupSlot;
+    time: string;
+    template: string;
+    fields: string;
+  }[];
+}) {
+  return (
+    <div className="space-y-4">
+      {messages.map((message) => (
+        <form key={message.id} action={saveZaloMessageAction} className="space-y-3 border-t border-line pt-3">
+          <input type="hidden" name="id" value={message.id} />
+          <div>
+            <h3 className="font-bold">{message.name}</h3>
+            <p className="text-xs leading-5 text-[#5c6665]">
+              {message.kind === "schedule" ? "Tin tự động, mỗi ngày vào giờ đã chọn." : `Tin theo điều kiện: ${message.eventLabel}.`}
+            </p>
+          </div>
+          <label className="flex min-h-12 items-center gap-3 rounded-xl border border-line bg-white px-3 py-2">
+            <input type="checkbox" name="enabled" defaultChecked={message.enabled} />
+            <span className="text-sm font-semibold">Bật gửi tin này</span>
+          </label>
+          <Field label="Gửi vào nhóm">
+            <select name="group" defaultValue={message.group}>
+              <option value="reception">Nhóm lễ tân</option>
+              <option value="booking">Nhóm booking</option>
+            </select>
+          </Field>
+          {message.kind === "schedule" ? (
+            <Field label="Giờ gửi hằng ngày">
+              <input type="time" name="time" defaultValue={message.time} required />
+            </Field>
+          ) : null}
+          <Field label="Mẫu tin">
+            <textarea name="template" rows={5} defaultValue={message.template} />
+          </Field>
+          <p className="text-xs text-[#5c6665]">Chỗ điền: {message.fields}</p>
+          <div className="flex flex-wrap gap-2">
+            <Btn type="submit">Lưu tin</Btn>
+          </div>
+        </form>
+      ))}
+      {messages.map((message) => (
+        <form key={`${message.id}-test`} action={sendZaloMessageTestAction}>
+          <input type="hidden" name="id" value={message.id} />
+          <Btn type="submit" variant="ghost">
+            Gửi thử {message.name.toLowerCase()}
+          </Btn>
+        </form>
+      ))}
+    </div>
+  );
+}
+
+export function ZaloTestSend({
+  connected,
+  groups: savedGroups,
+}: {
+  connected: boolean;
+  groups: { slot: ZaloGroupSlot; label: string; groupId: string; groupName: string }[];
+}) {
   const [groups, setGroups] = useState<{ id: string; name: string; members: number }[] | null>(null);
   const [error, setError] = useState("");
   const [pending, setPending] = useState(false);
+  const saved = savedGroups.filter((group) => group.groupId);
+  const options = groups ? [...groups] : [];
+  for (const group of saved) {
+    if (!options.some((item) => item.id === group.groupId)) {
+      options.push({ id: group.groupId, name: `${group.label}: ${group.groupName || group.groupId}`, members: 0 });
+    }
+  }
 
   async function load() {
     setPending(true);
@@ -98,29 +235,30 @@ export function ZaloGroupPicker({ currentId, currentName }: { currentId: string;
 
   return (
     <div className="space-y-3">
-      <p className="text-sm">Nhóm đang chọn: {currentName || "Chưa chọn"}</p>
-      <Btn type="button" variant="ghost" onClick={load} disabled={pending}>
-        {pending ? "Đang tải nhóm..." : "Tải danh sách nhóm"}
+      <Btn type="button" variant="ghost" onClick={load} disabled={!connected || pending}>
+        {pending ? "Đang tải nhóm..." : "Tải nhóm để chọn chỗ gửi"}
       </Btn>
       {error ? <p className="text-sm font-medium text-[#c23b3b]">{error}</p> : null}
-      {groups ? (
-        groups.length === 0 ? (
-          <p className="text-sm text-[#5c6665]">Tài khoản này chưa có nhóm nào.</p>
-        ) : (
-          <form action={saveZaloGroupAction} className="space-y-3">
-            <Field label="Nhóm nhận tin việc">
-              <select name="groupId" defaultValue={currentId || groups[0]?.id}>
-                {groups.map((group) => (
-                  <option key={group.id} value={group.id}>
-                    {group.name} ({group.members})
-                  </option>
-                ))}
-              </select>
-            </Field>
-            <Btn type="submit">Lưu nhóm</Btn>
-          </form>
-        )
-      ) : null}
+      <form action={sendZaloTestAction} className="space-y-3">
+        <Field label="Nhóm nhận tin thử">
+          <select name="groupId" defaultValue={options[0]?.id || ""} disabled={!connected}>
+            <option value="">Chưa chọn</option>
+            {options.map((group) => (
+              <option key={group.id} value={group.id}>
+                {group.name}
+                {group.members ? ` (${group.members})` : ""}
+              </option>
+            ))}
+          </select>
+        </Field>
+        <Field label="Nội dung">
+          <textarea name="message" rows={3} defaultValue="Đây là tin thử. Nếu nhóm nhận được dòng này thì đường gửi Zalo đang chạy." />
+        </Field>
+        <Btn type="submit" disabled={!connected}>
+          Gửi thử
+        </Btn>
+      </form>
+      {!connected ? <p className="text-sm text-[#5c6665]">Kết nối Zalo trước khi gửi thử.</p> : null}
     </div>
   );
 }

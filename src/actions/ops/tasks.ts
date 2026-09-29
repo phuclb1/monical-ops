@@ -2,8 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { requireSession } from "@/lib/auth";
-import { sendZaloToGroup } from "@/lib/zalo-client";
-import { loadZaloCredentials } from "@/lib/zalo-session";
+import { sendZaloChannel } from "@/lib/zalo-notify";
 import { messageFromTask } from "@/lib/zalo-task";
 import type { TaskStatus } from "@/lib/types";
 import * as repo from "@/lib/repos";
@@ -60,15 +59,14 @@ export async function sendZaloAction(formData: FormData) {
   const user = await requireSession();
   const id = String(formData.get("id") || "");
   try {
-    const stored = await loadZaloCredentials();
-    if (!stored?.groupId) throw new Error("Quản lý chưa chọn nhóm Zalo trong Cài đặt.");
     const data = await repo.getTask(id);
     if (!data) throw new Error("Không tìm thấy việc");
     const message = await messageFromTask(data);
-    await sendZaloToGroup(user.id, stored.groupId, message);
+    const result = await sendZaloChannel(user.id, "task", { noiDung: message });
+    if (!result.sent) throw new Error("Quản lý chưa chọn nhóm việc trong Cài đặt Zalo.");
     await repo.saveZaloDraft(id, message);
     await repo.markZaloSent(user, id);
-    await repo.audit(user.id, "task", id, "zalo_send", undefined, { groupId: stored.groupId });
+    await repo.audit(user.id, "task", id, "zalo_send", undefined, { groupId: result.channel.groupId });
   } catch (error) {
     redirect(`/tasks/${id}?error=${encodeURIComponent(error instanceof Error ? error.message : "Không gửi được Zalo")}`);
   }

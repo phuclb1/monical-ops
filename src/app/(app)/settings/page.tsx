@@ -13,7 +13,7 @@ const LINKS = [
   {
     href: "/settings/zalo",
     label: "Zalo",
-    text: "Số gửi tin, phiên đăng nhập và nhóm nhận việc.",
+    text: "Số gửi, phiên đăng nhập, nhóm lễ tân, nhóm booking và tin nhắn.",
     show: (role: Parameters<typeof can>[0]) => can(role, "manageSettings"),
   },
   {

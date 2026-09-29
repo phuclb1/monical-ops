@@ -18,6 +18,7 @@ const PUBLIC = [
   "/api/auth/forgot-password",
   "/api/auth/reset-password",
   "/api/ingest",
+  "/api/zalo/cron",
 ];
 
 function withCache(res: NextResponse, value: string) {

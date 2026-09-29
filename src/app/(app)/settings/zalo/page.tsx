@@ -1,36 +1,49 @@
 import { redirect } from "next/navigation";
 import { disconnectZaloAction, saveZaloPhoneAction } from "@/actions/zalo";
 import { SettingsNav } from "@/components/settings-nav";
-import { ZaloConnectButton, ZaloGroupPicker } from "@/components/zalo-settings";
-import { Btn, Card, Field } from "@/components/ui";
+import { ZaloConnectButton, ZaloGroupManager, ZaloMessageManager, ZaloTestSend } from "@/components/zalo-settings";
+import { Btn, Card, Field, TabChip } from "@/components/ui";
 import { getSession } from "@/lib/auth";
 import { formatDateTime } from "@/lib/datetime";
 import { can } from "@/lib/permissions";
 import { loadZaloPublicStatus } from "@/lib/zalo-session";
+import { ZALO_GROUP_SLOTS, ZALO_MESSAGE_DEFS } from "@/lib/zalo-messages";
 
-const SAVED = {
+const SAVED: Record<string, string> = {
   phone: "Đã lưu số Zalo.",
-  group: "Đã lưu nhóm nhận tin.",
+  booking: "Đã lưu nhóm booking.",
+  reception: "Đã lưu nhóm lễ tân.",
+  "daily-reception": "Đã lưu bản tin lễ tân.",
+  "daily-breakfast": "Đã lưu báo cáo ăn sáng.",
+  "booking-created": "Đã lưu tin booking mới.",
+  "booking-updated": "Đã lưu tin sửa booking.",
+  test: "Đã gửi tin thử.",
   cleared: "Đã xóa phiên Zalo.",
+};
+
+const EVENT_LABEL = {
+  booking_created: "khi có booking mới",
+  booking_updated: "khi sửa booking",
 } as const;
 
 export default async function ZaloSettingsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ error?: string; saved?: string }>;
+  searchParams: Promise<{ error?: string; saved?: string; tab?: string }>;
 }) {
   const user = await getSession();
   if (!user) redirect("/login");
   if (!can(user.role, "manageSettings")) redirect("/settings");
-  const { error, saved } = await searchParams;
+  const { error, saved, tab } = await searchParams;
+  const current = tab === "messages" ? "messages" : "groups";
   const zalo = await loadZaloPublicStatus();
-  const savedText = saved && saved in SAVED ? SAVED[saved as keyof typeof SAVED] : "";
+  const savedText = saved ? SAVED[saved] || "" : "";
 
   return (
     <main className="space-y-3 px-3 py-4">
       <div>
         <h1 className="text-xl font-bold">Zalo</h1>
-        <p className="text-xs text-[#5c6665]">Số gửi tin và nhóm nhận việc. Phiên đăng nhập được lưu trong cơ sở dữ liệu.</p>
+        <p className="text-xs text-[#5c6665]">Nhóm và nội dung tin cấu hình riêng.</p>
       </div>
       <SettingsNav role={user.role} current="/settings/zalo" />
       {error ? <p className="text-sm font-medium text-[#c23b3b]">{error}</p> : null}
@@ -71,13 +84,72 @@ export default async function ZaloSettingsPage({
         ) : null}
       </Card>
 
+      <div className="tab-scroller -mx-3 px-3 pb-1">
+        <TabChip href="/settings/zalo?tab=groups" active={current === "groups"}>
+          Nhóm
+        </TabChip>
+        <TabChip href="/settings/zalo?tab=messages" active={current === "messages"}>
+          Tin
+        </TabChip>
+      </div>
+
+      {current === "groups" ? (
+        <Card>
+          <h2 className="mb-2 font-bold">Nhóm Zalo</h2>
+          <p className="mb-3 text-xs leading-5 text-[#5c6665]">Chọn nhóm lễ tân và nhóm booking trên Zalo. Tin sẽ gửi vào nhóm được gán ở tab Tin.</p>
+          <ZaloGroupManager
+            connected={zalo.connected}
+            groups={ZALO_GROUP_SLOTS.map((slot) => {
+              const savedGroup = zalo.groups.find((item) => item.slot === slot.slot);
+              return {
+                slot: slot.slot,
+                label: slot.label,
+                groupId: savedGroup?.groupId || "",
+                groupName: savedGroup?.groupName || "",
+              };
+            })}
+          />
+        </Card>
+      ) : (
+        <Card>
+          <h2 className="mb-2 font-bold">Tin nhắn</h2>
+          <p className="mb-3 text-xs leading-5 text-[#5c6665]">
+            Bản tin lễ tân và báo cáo ăn sáng gửi mỗi ngày vào giờ đã chọn, giờ Việt Nam. Ăn sáng mặc định 05:00. Tin booking gửi khi tạo mới hoặc khi sửa.
+          </p>
+          <ZaloMessageManager
+            messages={zalo.messages.map((message) => {
+              const def = ZALO_MESSAGE_DEFS.find((item) => item.id === message.id);
+              return {
+                id: message.id,
+                name: message.name,
+                kind: message.kind,
+                eventLabel: message.event ? EVENT_LABEL[message.event] : "",
+                enabled: message.enabled,
+                group: message.group,
+                time: message.time,
+                template: message.template,
+                fields: def?.fields || "",
+              };
+            })}
+          />
+        </Card>
+      )}
+
       <Card>
-        <h2 className="mb-2 font-bold">Nhóm nhận tin</h2>
-        {zalo.connected ? (
-          <ZaloGroupPicker currentId={zalo.groupId} currentName={zalo.groupName} />
-        ) : (
-          <p className="text-sm text-[#5c6665]">Kết nối Zalo xong mới chọn được nhóm.</p>
-        )}
+        <h2 className="mb-2 font-bold">Gửi thử</h2>
+        <p className="mb-3 text-xs leading-5 text-[#5c6665]">Tin thử đi vào nhóm thật.</p>
+        <ZaloTestSend
+          connected={zalo.connected}
+          groups={ZALO_GROUP_SLOTS.map((slot) => {
+            const savedGroup = zalo.groups.find((item) => item.slot === slot.slot);
+            return {
+              slot: slot.slot,
+              label: slot.label,
+              groupId: savedGroup?.groupId || "",
+              groupName: savedGroup?.groupName || "",
+            };
+          })}
+        />
       </Card>
     </main>
   );

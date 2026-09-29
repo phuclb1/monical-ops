@@ -24,7 +24,7 @@ export function ZaloShare({
     <div className="space-y-2">
       <pre className="whitespace-pre-wrap rounded-xl bg-[#f4efe6] p-3 text-[13px] leading-5">{message}</pre>
       <p className="text-xs leading-5 text-[#5c6665]">
-        {senderPhone ? `Gửi từ ${senderPhone}` : "Chưa cấu hình số gửi"}
+        Tin gửi{senderPhone ? ` từ ${senderPhone}` : ""}
         {groupName ? ` vào nhóm ${groupName}` : ""}.
       </p>
       {ready ? (
@@ -35,7 +35,7 @@ export function ZaloShare({
           </Btn>
         </form>
       ) : (
-        <p className="text-sm text-[#5c6665]">Quản lý cần kết nối Zalo và chọn nhóm trong Cài đặt thì tin mới gửi được.</p>
+        <p className="text-sm text-[#5c6665]">Quản lý cần kết nối Zalo và chọn nhóm việc trong Cài đặt thì tin mới gửi được.</p>
       )}
       <Btn type="button" variant="ghost" className="w-full" onClick={copy}>
         Sao chép
