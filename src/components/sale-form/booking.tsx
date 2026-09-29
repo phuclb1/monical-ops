@@ -1,9 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Btn, Field, PayMethodField } from "@/components/ui";
+import { Btn, Field, MoneyMethodField } from "@/components/ui";
 import { SALE_SOURCE_GROUPS, SALE_SOURCE_LABEL } from "@/lib/constants";
-import { bookingDue, bookingQuote, catalogRate, collectedSplit, isOtaDebt, isOtaSource, parseMoney, parseDiscountValue, primaryPaymentMethod, rangesOverlap, roomMoveKind } from "@/lib/sales";
+import { bookingDue, bookingPayMethods, bookingQuote, catalogRate, collectedSplit, isOtaDebt, isOtaSource, parseMoney, parseDiscountValue, rangesOverlap, roomMoveKind } from "@/lib/sales";
 import { extraAmount } from "@/lib/extras";
 import type { PaymentMethod } from "@/lib/types";
 import { BookingRoomLines } from "./booking-lines";
@@ -54,6 +54,7 @@ export function BookingForm({
     bikes?: number;
     deposit?: number;
     checkinPaid?: number;
+    checkinMethod?: string;
     cashPaid?: number;
     transferPaid?: number;
     companyPaid?: number;
@@ -86,9 +87,11 @@ export function BookingForm({
     defaults.otaPaymentMode === "hotel" ? "hotel" : "debt",
   );
   const initialPaid = collectedSplit(defaults.deposit || 0, defaults.checkinPaid);
+  const storedMethods = bookingPayMethods({ ...defaults, checkinPaid: initialPaid.checkin });
   const [deposit, setDeposit] = useState(initialPaid.hold ? String(initialPaid.hold) : "");
   const [checkinPaid, setCheckinPaid] = useState(initialPaid.checkin ? String(initialPaid.checkin) : "");
-  const [payMethod, setPayMethod] = useState<PaymentMethod>(() => primaryPaymentMethod(defaults));
+  const [payMethod, setPayMethod] = useState<PaymentMethod>(storedMethods.deposit);
+  const [checkinPayMethod, setCheckinPayMethod] = useState<PaymentMethod>(storedMethods.checkin);
   const ota = isOtaSource(source);
   const otaDebt = isOtaDebt(source, otaPaymentMode);
   const switchedToOtaDebt = otaDebt && !isOtaDebt(defaults.source, defaults.otaPaymentMode);
@@ -163,6 +166,8 @@ export function BookingForm({
     otaPaymentMode !== (defaults.otaPaymentMode === "hotel" ? "hotel" : "debt") ||
     holdAmount !== initialPaid.hold ||
     checkinAmount !== initialPaid.checkin ||
+    (holdAmount > 0 && payMethod !== storedMethods.deposit) ||
+    (checkinAmount > 0 && checkinPayMethod !== storedMethods.checkin) ||
     lines.some((line) => {
       const stay = stayOf(line.saleId, { checkIn: line.checkIn, checkOut: line.checkOut });
       const discount = discounts[line.saleId] || { kind: "none", value: "" };
@@ -325,14 +330,25 @@ export function BookingForm({
         </>
       ) : (
         <>
-          <Field label="Đặt cọc (₫)">
-            <input name="deposit" inputMode="numeric" value={deposit} onChange={(e) => setDeposit(e.target.value)} placeholder="0" />
-          </Field>
-          <Field label="Thu đủ khi check-in (₫)">
-            <input name="checkinPaid" inputMode="numeric" value={checkinPaid} onChange={(e) => setCheckinPaid(e.target.value)} placeholder="0" />
-          </Field>
+          <MoneyMethodField
+            label="Đặt cọc (₫)"
+            name="deposit"
+            value={deposit}
+            onChange={setDeposit}
+            methodName="paymentMethod"
+            method={payMethod}
+            onMethodChange={setPayMethod}
+          />
+          <MoneyMethodField
+            label="Thu đủ khi check-in (₫)"
+            name="checkinPaid"
+            value={checkinPaid}
+            onChange={setCheckinPaid}
+            methodName="checkinPaymentMethod"
+            method={checkinPayMethod}
+            onMethodChange={setCheckinPayMethod}
+          />
           <p className="-mt-1 text-xs text-[#5c6665]">Hai khoản tách riêng. Nhập sai khoản nào thì sửa đúng khoản đó.</p>
-          <PayMethodField value={payMethod} onChange={setPayMethod} />
         </>
       )}
       <Field label="Ghi chú">
@@ -346,8 +362,8 @@ export function BookingForm({
         bookingTotal={bookingTotal}
         depositAmount={holdAmount}
         checkinAmount={checkinAmount}
-        defaults={defaults}
-        payMethod={payMethod}
+        depositPayMethod={payMethod}
+        checkinPayMethod={checkinPayMethod}
         ota={ota}
         otaDebt={otaDebt}
         due={due}

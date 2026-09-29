@@ -38,6 +38,7 @@ export type SaleInput = {
   discounts?: Record<string, { kind?: string; value?: number }>;
   deposit?: number;
   checkinPaid?: number;
+  checkinMethod?: string;
   cashPaid?: number;
   transferPaid?: number;
   companyPaid?: number;

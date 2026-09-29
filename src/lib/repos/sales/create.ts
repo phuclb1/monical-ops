@@ -4,7 +4,7 @@ import { getDb } from "@/db";
 import * as t from "@/db/schema";
 import { nid, nowISO, todayVN } from "../../datetime";
 import { ensureTodayRoomTasks } from "../../checklist-ops";
-import { bookingQuote, catalogRate, isActiveSaleStatus, isOtaSource, isSaleSource } from "../../sales";
+import { bookingQuote, catalogRate, isActiveSaleStatus, isOtaSource, isSaleSource, parsePaymentMethod } from "../../sales";
 import type { SaleStatus, SessionUser } from "../../types";
 import { audit } from "../audit";
 import { listRooms, listRoomTypes } from "../rooms";
@@ -89,6 +89,7 @@ export async function createRoomSale(user: SessionUser, data: SaleInput) {
       discountValue: row.discountValue,
       deposit: paid.deposit,
       checkinPaid: Math.max(0, Math.round(data.checkinPaid || 0)),
+      checkinMethod: Math.max(0, Math.round(data.checkinPaid || 0)) ? data.checkinMethod || parsePaymentMethod(data.paymentMethod) : "",
       cashPaid: paid.cashPaid,
       transferPaid: paid.transferPaid,
       companyPaid: paid.companyPaid,
@@ -165,6 +166,7 @@ export async function addRoomsToBooking(user: SessionUser, saleId: string, roomI
     discounts: Object.fromEntries(ids.map((id) => [id, { kind: "none", value: 0 }])),
     deposit: before.deposit,
     checkinPaid: before.checkinPaid,
+    checkinMethod: before.checkinMethod,
     cashPaid: before.cashPaid,
     transferPaid: before.transferPaid,
     companyPaid: before.companyPaid,

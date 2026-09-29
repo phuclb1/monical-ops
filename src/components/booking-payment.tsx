@@ -49,7 +49,7 @@ export function BookingPaymentPanel({
           placeholder={String(due)}
         />
       </label>
-      <PayMethodField value={method} onChange={setMethod} />
+      <PayMethodField label="Hình thức thu đủ" value={method} onChange={setMethod} />
       {note ? <p className="text-xs text-[#5c6665]">Đã thu {note}</p> : null}
       {extra && extra < due ? <p className="text-xs text-[#5c6665]">Sau lần này còn {formatVnd(due - extra)}</p> : null}
       <Btn type="submit" className="w-full">

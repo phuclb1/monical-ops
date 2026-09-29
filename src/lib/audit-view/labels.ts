@@ -159,6 +159,7 @@ export const FIELD_LABEL: Record<string, string> = {
   discountValue: "Mức chiết khấu",
   deposit: "Đặt cọc / đã thu",
   checkinPaid: "Thu đủ khi check-in",
+  checkinMethod: "Hình thức thu check-in",
   cashPaid: "Đã thu tiền mặt",
   transferPaid: "Đã thu chuyển khoản cá nhân",
   companyPaid: "Đã thu chuyển khoản công ty",

@@ -10,6 +10,10 @@ import {
   clampBreakfastPax,
   isActiveSaleStatus,
   collectedSplit,
+  isPaymentMethod,
+  paidFromParts,
+  parsePaymentMethod,
+  depositMethodOf,
   isOtaDebt,
   isSaleSource,
   normalizeDiscount,
@@ -46,6 +50,7 @@ export type BookingUpdateInput = {
   discountValue?: number;
   deposit?: number;
   checkinPaid?: number;
+  checkinPaymentMethod?: string;
   cashPaid?: number;
   transferPaid?: number;
   companyPaid?: number;
@@ -86,23 +91,36 @@ export async function updateBooking(
   const clearPaid = isOtaDebt(source, otaPaymentMode) && !isOtaDebt(hit.source, hit.otaPaymentMode);
   const hold = clearPaid ? 0 : Math.max(0, Math.round(data.deposit ?? currentSplit.hold));
   const checkinPaid = clearPaid ? 0 : Math.max(0, Math.round(data.checkinPaid ?? currentSplit.checkin));
+  const holdMethod = data.paymentMethod
+    ? parsePaymentMethod(data.paymentMethod)
+    : depositMethodOf(hit, currentSplit.checkin, hit.checkinMethod);
+  const storedCheckin = hit.checkinMethod || "";
+  const checkinMethod = clearPaid || !checkinPaid
+    ? ""
+    : data.checkinPaymentMethod
+      ? parsePaymentMethod(data.checkinPaymentMethod)
+      : isPaymentMethod(storedCheckin)
+        ? storedCheckin
+        : holdMethod;
   const paid = clearPaid
     ? { cashPaid: 0, transferPaid: 0, companyPaid: 0, deposit: 0 }
-    : paymentOf(
-    {
-      guestName,
-      source,
-      checkIn: hit.checkIn,
-      checkOut: hit.checkOut,
-      rate: hit.rate,
-      deposit: hold + checkinPaid,
-      cashPaid: data.cashPaid,
-      transferPaid: data.transferPaid,
-      companyPaid: data.companyPaid,
-      paymentMethod: data.paymentMethod,
-    },
-    hit,
-  );
+    : data.paymentMethod || data.checkinPaymentMethod
+      ? paidFromParts(hold, holdMethod, checkinPaid, checkinMethod || holdMethod)
+      : paymentOf(
+        {
+          guestName,
+          source,
+          checkIn: hit.checkIn,
+          checkOut: hit.checkOut,
+          rate: hit.rate,
+          deposit: hold + checkinPaid,
+          cashPaid: data.cashPaid,
+          transferPaid: data.transferPaid,
+          companyPaid: data.companyPaid,
+          paymentMethod: data.paymentMethod,
+        },
+        hit,
+      );
   const notes = data.notes !== undefined ? data.notes.trim() || null : undefined;
   const roomById = new Map(rooms.map((room) => [room.id, room]));
   const nextBySale = new Map(data.assignments.map((row) => [row.saleId, row]));
@@ -163,6 +181,7 @@ export async function updateBooking(
       discountValue,
       deposit: paid.deposit,
       checkinPaid,
+      checkinMethod,
       cashPaid: paid.cashPaid,
       transferPaid: paid.transferPaid,
       companyPaid: paid.companyPaid,

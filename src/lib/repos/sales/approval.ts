@@ -3,7 +3,7 @@ import { getDb } from "@/db";
 import * as t from "@/db/schema";
 import { nid, nowISO } from "../../datetime";
 import { can } from "../../permissions";
-import { collectedSplit } from "../../sales";
+import { bookingPayMethods, collectedSplit, parsePaymentMethod } from "../../sales";
 import type { SessionUser } from "../../types";
 import { notify } from "@/modules/notifications/models/notifications";
 import { audit } from "../audit";
@@ -67,6 +67,7 @@ function snapshotBooking(booking: BookingView) {
       }))
       .sort((a, b) => a.id.localeCompare(b.id)),
     checkinPaid: booking.checkinPaid || 0,
+    checkinMethod: booking.checkinMethod || "",
   };
 }
 
@@ -77,14 +78,27 @@ function same(a: unknown, b: unknown) {
 function withCheckin(value: unknown) {
   const record = value && typeof value === "object" ? { ...(value as Record<string, unknown>) } : {};
   const checkinPaid = Number(record.checkinPaid) || 0;
+  const checkinMethod = typeof record.checkinMethod === "string" ? record.checkinMethod : "";
   delete record.checkinPaid;
-  return { ...record, checkinPaid };
+  delete record.checkinMethod;
+  return { ...record, checkinPaid, checkinMethod };
+}
+
+function payMethodChange(booking: Parameters<typeof bookingPayMethods>[0] & { deposit: number; checkinPaid?: number | null }, data: BookingUpdateInput) {
+  const current = bookingPayMethods(booking);
+  const paid = collectedSplit(booking.deposit, booking.checkinPaid);
+  const hold = data.deposit !== undefined ? data.deposit : paid.hold;
+  const checkin = data.checkinPaid !== undefined ? data.checkinPaid : paid.checkin;
+  return {
+    deposit: Boolean(data.paymentMethod && hold > 0 && parsePaymentMethod(data.paymentMethod) !== current.deposit),
+    checkin: Boolean(data.checkinPaymentMethod && checkin > 0 && parsePaymentMethod(data.checkinPaymentMethod) !== current.checkin),
+  };
 }
 
 export function bookingChangeRequiresApproval(
   booking: Pick<
     BookingView,
-    "source" | "otaPaymentMode" | "deposit" | "checkinPaid" | "cashPaid" | "transferPaid" | "companyPaid" | "rooms"
+    "source" | "otaPaymentMode" | "deposit" | "checkinPaid" | "checkinMethod" | "cashPaid" | "transferPaid" | "companyPaid" | "rooms"
   >,
   data: BookingUpdateInput,
 ) {
@@ -93,6 +107,8 @@ export function bookingChangeRequiresApproval(
   const paid = collectedSplit(booking.deposit, booking.checkinPaid);
   if (data.deposit !== undefined && data.deposit !== paid.hold) return true;
   if (data.checkinPaid !== undefined && data.checkinPaid !== paid.checkin) return true;
+  const methods = payMethodChange(booking, data);
+  if (methods.deposit || methods.checkin) return true;
   if (data.cashPaid !== undefined && data.cashPaid !== booking.cashPaid) return true;
   if (data.transferPaid !== undefined && data.transferPaid !== booking.transferPaid) return true;
   if (data.companyPaid !== undefined && data.companyPaid !== booking.companyPaid) return true;
@@ -130,6 +146,9 @@ function updateSummary(booking: BookingView, data: BookingUpdateInput) {
   const paid = collectedSplit(booking.deposit, booking.checkinPaid);
   if (data.deposit !== undefined && data.deposit !== paid.hold) labels.add("điều chỉnh tiền đã thu");
   if (data.checkinPaid !== undefined && data.checkinPaid !== paid.checkin) labels.add("sửa thu check-in");
+  const methods = payMethodChange(booking, data);
+  if (methods.deposit) labels.add("đổi hình thức đặt cọc");
+  if (methods.checkin) labels.add("đổi hình thức thu check-in");
   if (data.source !== undefined && data.source !== booking.source) labels.add("đổi nguồn booking");
   if (data.otaPaymentMode !== undefined && data.otaPaymentMode !== booking.otaPaymentMode) labels.add("đổi công nợ OTA");
   return labels.size ? [...labels].join(" · ") : "sửa thông tin booking";

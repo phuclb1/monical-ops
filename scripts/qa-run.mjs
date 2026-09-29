@@ -317,9 +317,9 @@ try {
       "Xe máy",
       "Đổi số phòng cùng hạng hoặc nâng hạng",
       "Đặt cọc",
+      "Thu đủ khi check-in",
       "Chiết khấu",
       "Lưu booking",
-      "Hình thức",
     ]);
     if (!(await page.locator('input[name="guestName"]').count())) {
       throw new Error("Form sửa booking thiếu ô tên khách");

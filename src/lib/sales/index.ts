@@ -28,9 +28,13 @@ export {
   parsePaymentMethod,
   salePaid,
   paidFromMethod,
+  paidFromParts,
+  depositMethodOf,
+  bookingPayMethods,
   applyPaidAmount,
   primaryPaymentMethod,
   paidNote,
+  paidMethodLabel,
   discountLabel,
 } from "./money";
 export {

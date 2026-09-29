@@ -1,7 +1,7 @@
 "use client";
 
 import { PAYMENT_METHOD_LABEL } from "@/lib/constants";
-import { formatVnd, paidNote } from "@/lib/sales";
+import { formatVnd } from "@/lib/sales";
 import type { PaymentMethod } from "@/lib/types";
 
 export function BookingQuote(props: {
@@ -11,13 +11,15 @@ export function BookingQuote(props: {
   bookingTotal: number;
   depositAmount: number;
   checkinAmount?: number;
-  defaults: { cashPaid?: number; transferPaid?: number; companyPaid?: number; deposit?: number };
-  payMethod: PaymentMethod;
+  depositPayMethod: PaymentMethod;
+  checkinPayMethod: PaymentMethod;
   ota?: boolean;
   otaDebt?: boolean;
   due: number;
 }) {
-  const { quotes, extraRows, booked, bookingTotal, depositAmount, checkinAmount = 0, defaults, payMethod, ota, otaDebt, due } = props;
+  const { quotes, extraRows, booked, bookingTotal, depositAmount, checkinAmount = 0, depositPayMethod, checkinPayMethod, ota, otaDebt, due } = props;
+  const depositSuffix = ` · ${PAYMENT_METHOD_LABEL[depositPayMethod]}`;
+  const checkinSuffix = ` · ${PAYMENT_METHOD_LABEL[checkinPayMethod]}`;
   return (
       <div className="rounded-xl bg-sand px-3 py-2 text-sm">
         <ul className="space-y-1">
@@ -61,13 +63,13 @@ export function BookingQuote(props: {
               </li>
               {depositAmount ? (
                 <li className="flex justify-between gap-2 text-[#1b7a4e]">
-                  <span>Đặt cọc{paidNote(defaults) ? ` · ${paidNote(defaults)}` : ""}</span>
+                  <span>Đặt cọc{depositSuffix}</span>
                   <span>−{formatVnd(depositAmount)}</span>
                 </li>
               ) : null}
               {checkinAmount ? (
                 <li className="flex justify-between gap-2 text-[#1b7a4e]">
-                  <span>Thu đủ khi check-in</span>
+                  <span>Thu đủ khi check-in{checkinSuffix}</span>
                   <span>−{formatVnd(checkinAmount)}</span>
                 </li>
               ) : null}
@@ -86,7 +88,7 @@ export function BookingQuote(props: {
               </li>
               {depositAmount ? (
                 <li className="flex justify-between gap-2 text-[#1b7a4e]">
-                  <span>Đặt cọc{paidNote(defaults) ? ` · ${paidNote(defaults)}` : ` · ${PAYMENT_METHOD_LABEL[payMethod]}`}</span>
+                  <span>Đặt cọc{depositSuffix}</span>
                   <span>−{formatVnd(depositAmount)}</span>
                 </li>
               ) : (
@@ -94,7 +96,7 @@ export function BookingQuote(props: {
               )}
               {checkinAmount ? (
                 <li className="flex justify-between gap-2 text-[#1b7a4e]">
-                  <span>Thu đủ khi check-in</span>
+                  <span>Thu đủ khi check-in{checkinSuffix}</span>
                   <span>−{formatVnd(checkinAmount)}</span>
                 </li>
               ) : null}

@@ -10,12 +10,12 @@ import { BookingRoomList } from "@/components/booking-room-list";
 import { BookingLog } from "@/components/booking-log";
 import { Card, Chip, Fold } from "@/components/ui";
 import { getSession } from "@/lib/auth";
-import { SALE_ORIGIN_LABEL, SALE_SOURCE_LABEL, SALE_STATUS_LABEL } from "@/lib/constants";
+import { PAYMENT_METHOD_LABEL, SALE_ORIGIN_LABEL, SALE_SOURCE_LABEL, SALE_STATUS_LABEL } from "@/lib/constants";
 import { formatDateLong, todayVN } from "@/lib/datetime";
 import { extraDetail } from "@/lib/extras";
 import { can } from "@/lib/permissions";
 import { getBooking, listBookingChangeRequests, listBookingLogs, listRooms, listRoomSales, listRoomTypes, listSaleExtraTypes } from "@/lib/repos";
-import { bookingQuote, collectedSplit, formatVnd, isActiveSaleStatus, isOpsBookingCode, isOtaDebt, isOtaSource, paidNote, parkingLabel } from "@/lib/sales";
+import { bookingPayMethods, bookingQuote, collectedSplit, formatVnd, isActiveSaleStatus, isOpsBookingCode, isOtaDebt, isOtaSource, paidNote, parkingLabel } from "@/lib/sales";
 import type { SaleOrigin, SaleSource, SaleStatus } from "@/lib/types";
 
 const STATUS_TONE: Record<SaleStatus, "ok" | "warn" | "danger" | "gold" | "neutral"> = {
@@ -60,6 +60,9 @@ export default async function BookingDetailPage({
   const ota = isOtaSource(booking.source);
   const otaDebt = isOtaDebt(booking.source, booking.otaPaymentMode);
   const paidSplit = collectedSplit(booking.deposit, booking.checkinPaid);
+  const payMethods = bookingPayMethods(booking);
+  const holdSuffix = ` · ${PAYMENT_METHOD_LABEL[payMethods.deposit]}`;
+  const checkinSuffix = ` · ${PAYMENT_METHOD_LABEL[payMethods.checkin]}`;
   const activeIds = new Set(activeRooms.map((row) => row.id));
   const busy = sales
     .filter((row) => isActiveSaleStatus(row.status) && !activeIds.has(row.id))
@@ -167,11 +170,11 @@ export default async function BookingDetailPage({
                 {paidSplit.hold ? (
                   <p className="mt-1 text-sm text-[#1b7a4e]">
                     Đặt cọc {formatVnd(paidSplit.hold)}
-                    {paidNote(booking) ? ` · ${paidNote(booking)}` : ""}
+                    {holdSuffix}
                   </p>
                 ) : null}
                 {paidSplit.checkin ? (
-                  <p className="mt-1 text-sm text-[#1b7a4e]">Thu đủ khi check-in {formatVnd(paidSplit.checkin)}</p>
+                  <p className="mt-1 text-sm text-[#1b7a4e]">Thu đủ khi check-in {formatVnd(paidSplit.checkin)}{checkinSuffix}</p>
                 ) : null}
                 {!paidSplit.total ? <p className="mt-1 text-sm text-[#c47b12]">Chưa thu tại KS</p> : null}
                 <p className="mt-1 text-sm font-semibold">Còn khách thanh toán {formatVnd(booking.due)}</p>
@@ -181,13 +184,13 @@ export default async function BookingDetailPage({
                 {paidSplit.hold ? (
                   <p className="mt-1 text-sm text-[#1b7a4e]">
                     Đã đặt cọc {formatVnd(paidSplit.hold)}
-                    {paidNote(booking) ? ` · ${paidNote(booking)}` : ""}
+                    {holdSuffix}
                   </p>
                 ) : (
                   <p className="mt-1 text-sm text-[#c47b12]">Chưa đặt cọc</p>
                 )}
                 {paidSplit.checkin ? (
-                  <p className="mt-1 text-sm text-[#1b7a4e]">Thu đủ khi check-in {formatVnd(paidSplit.checkin)}</p>
+                  <p className="mt-1 text-sm text-[#1b7a4e]">Thu đủ khi check-in {formatVnd(paidSplit.checkin)}{checkinSuffix}</p>
                 ) : null}
                 <p className="mt-1 text-sm font-semibold">Còn phải thu {formatVnd(booking.due)}</p>
               </>
@@ -334,6 +337,7 @@ export default async function BookingDetailPage({
                   bikes: booking.bikes,
                   deposit: booking.deposit,
                   checkinPaid: booking.checkinPaid,
+                  checkinMethod: booking.checkinMethod,
                   cashPaid: booking.cashPaid,
                   transferPaid: booking.transferPaid,
                   companyPaid: booking.companyPaid,

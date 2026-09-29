@@ -122,19 +122,75 @@ export function Field({
   );
 }
 
+export function MoneyMethodField({
+  label,
+  name,
+  value,
+  onChange,
+  methodName,
+  method,
+  onMethodChange,
+  placeholder = "0",
+}: {
+  label: string;
+  name: string;
+  value: string;
+  onChange: (value: string) => void;
+  methodName: string;
+  method: PaymentMethod;
+  onMethodChange: (value: PaymentMethod) => void;
+  placeholder?: string;
+}) {
+  return (
+    <div>
+      <span className="mb-1.5 block text-xs font-semibold text-[#5c6665]">{label}</span>
+      <div className="flex items-center gap-2">
+        <input
+          name={name}
+          inputMode="numeric"
+          value={value}
+          onChange={(event) => onChange(event.target.value)}
+          placeholder={placeholder}
+          className="min-w-0 flex-1"
+          style={{ width: "auto" }}
+        />
+        <select
+          name={methodName}
+          aria-label={`Hình thức ${label.replace(" (₫)", "")}`}
+          value={method}
+          onChange={(event) => {
+            const next = event.target.value;
+            if (next === "cash" || next === "company" || next === "personal") onMethodChange(next);
+          }}
+          className="shrink-0"
+          style={{ width: "10.75rem" }}
+        >
+          {PAYMENT_METHODS.map((item) => (
+            <option key={item} value={item}>
+              {PAYMENT_METHOD_LABEL[item]}
+            </option>
+          ))}
+        </select>
+      </div>
+    </div>
+  );
+}
+
 export function PayMethodField({
   name = "paymentMethod",
+  label = "Hình thức",
   value,
   onChange,
 }: {
   name?: string;
+  label?: string;
   value?: PaymentMethod;
   onChange?: (value: PaymentMethod) => void;
 }) {
   const current = value || "personal";
   return (
     <fieldset>
-      <legend className="mb-1.5 block text-xs font-semibold text-[#5c6665]">Hình thức</legend>
+      <legend className="mb-1.5 block text-xs font-semibold text-[#5c6665]">{label}</legend>
       <div className="grid grid-cols-1 gap-2">
         {PAYMENT_METHODS.map((method) => (
           <label key={method} className="flex min-h-11 items-center gap-2 rounded-xl border border-line bg-white px-3 text-sm font-semibold">

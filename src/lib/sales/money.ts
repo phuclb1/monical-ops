@@ -111,11 +111,45 @@ export function applyPaidAmount(current: PaidSplit, nextDeposit: number, method:
   };
 }
 
+export function paidFromParts(hold: number, holdMethod: PaymentMethod, checkin: number, checkinMethod: PaymentMethod) {
+  const depositPart = paidFromMethod(hold, holdMethod);
+  const checkinPart = paidFromMethod(checkin, checkinMethod);
+  return {
+    cashPaid: depositPart.cashPaid + checkinPart.cashPaid,
+    transferPaid: depositPart.transferPaid + checkinPart.transferPaid,
+    companyPaid: depositPart.companyPaid + checkinPart.companyPaid,
+    deposit: depositPart.deposit + checkinPart.deposit,
+  };
+}
+
+export function depositMethodOf(row: PaidSplit, checkinPaid?: number | null, checkinMethod?: string | null): PaymentMethod {
+  const total = salePaid(row);
+  const method = parsePaymentMethod(checkinMethod || primaryPaymentMethod(total));
+  const checkin = paidFromMethod(Math.min(total.deposit, Math.max(0, Math.round(checkinPaid || 0))), method);
+  const rest = {
+    cashPaid: Math.max(0, total.cashPaid - checkin.cashPaid),
+    transferPaid: Math.max(0, total.transferPaid - checkin.transferPaid),
+    companyPaid: Math.max(0, total.companyPaid - checkin.companyPaid),
+    deposit: Math.max(0, total.deposit - checkin.deposit),
+  };
+  if (!rest.deposit) return method;
+  return primaryPaymentMethod(rest);
+}
+
 export function primaryPaymentMethod(row: PaidSplit): PaymentMethod {
   const paid = salePaid(row);
   if (paid.companyPaid >= paid.transferPaid && paid.companyPaid >= paid.cashPaid && paid.companyPaid > 0) return "company";
   if (paid.cashPaid >= paid.transferPaid && paid.cashPaid > 0) return "cash";
   return "personal";
+}
+
+export function bookingPayMethods(row: PaidSplit & { checkinPaid?: number | null; checkinMethod?: string | null }) {
+  const fallback = primaryPaymentMethod(row);
+  const checkin = isPaymentMethod(String(row.checkinMethod || "")) ? row.checkinMethod as PaymentMethod : fallback;
+  return {
+    deposit: depositMethodOf(row, row.checkinPaid, checkin),
+    checkin,
+  };
 }
 
 export function paidNote(row: PaidSplit) {
@@ -124,6 +158,15 @@ export function paidNote(row: PaidSplit) {
   if (paid.companyPaid) parts.push(`CK công ty ${formatVnd(paid.companyPaid)}`);
   if (paid.transferPaid) parts.push(`CK cá nhân ${formatVnd(paid.transferPaid)}`);
   if (paid.cashPaid) parts.push(`tiền mặt ${formatVnd(paid.cashPaid)}`);
+  return parts.join(" · ");
+}
+
+export function paidMethodLabel(row: PaidSplit) {
+  const paid = salePaid(row);
+  const parts: string[] = [];
+  if (paid.companyPaid) parts.push("CK công ty");
+  if (paid.transferPaid) parts.push("CK cá nhân");
+  if (paid.cashPaid) parts.push("tiền mặt");
   return parts.join(" · ");
 }
 

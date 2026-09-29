@@ -175,6 +175,7 @@ export async function updateBookingAction(formData: FormData) {
       deposit: parseMoney(formData.get("deposit")),
       checkinPaid: parseMoney(formData.get("checkinPaid")),
       paymentMethod: parsePaymentMethod(formData.get("paymentMethod")),
+      checkinPaymentMethod: parsePaymentMethod(formData.get("checkinPaymentMethod")),
       notes: String(formData.get("notes") || ""),
     });
   } catch (e) {

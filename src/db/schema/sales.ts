@@ -20,6 +20,7 @@ export const roomSales = sqliteTable("room_sales", {
   discountValue: integer("discount_value").notNull().default(0),
   deposit: integer("deposit").notNull().default(0),
   checkinPaid: integer("checkin_paid").notNull().default(0),
+  checkinMethod: text("checkin_method").notNull().default(""),
   cashPaid: integer("cash_paid").notNull().default(0),
   transferPaid: integer("transfer_paid").notNull().default(0),
   companyPaid: integer("company_paid").notNull().default(0),

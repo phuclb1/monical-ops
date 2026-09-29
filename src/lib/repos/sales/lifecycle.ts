@@ -4,7 +4,7 @@ import * as t from "@/db/schema";
 import { nowISO, todayVN } from "../../datetime";
 import { ensureTodayRoomTasks } from "../../checklist-ops";
 import { can } from "../../permissions";
-import { applyPaidAmount, collectedSplit, isActiveSaleStatus, parsePaymentMethod, salePaid } from "../../sales";
+import { applyPaidAmount, collectedSplit, isActiveSaleStatus, isPaymentMethod, parsePaymentMethod, salePaid } from "../../sales";
 import type { SaleStatus, SessionUser } from "../../types";
 import { audit } from "../audit";
 import { bookingCreatedBy, notifyBookingChange } from "./notify";
@@ -31,15 +31,23 @@ export async function recordBookingPayment(
   } else {
     next = current.deposit + amount;
   }
-  const paid = applyPaidAmount(current, next, parsePaymentMethod(data.paymentMethod));
+  const method = parsePaymentMethod(data.paymentMethod);
+  const paid = applyPaidAmount(current, next, method);
   const added = Math.max(0, paid.deposit - current.deposit);
   const checkinPaid = collectedSplit(paid.deposit, (booking.checkinPaid || 0) + added).checkin;
+  const previousMethod = isPaymentMethod(booking.checkinMethod || "") ? booking.checkinMethod : "";
+  const checkinMethod = !checkinPaid
+    ? ""
+    : !previousMethod || !(booking.checkinPaid || 0) || previousMethod === method
+      ? method
+      : previousMethod;
   const db = await getDb();
   const now = nowISO();
   for (const row of active) {
     const patch = {
       deposit: paid.deposit,
       checkinPaid,
+      checkinMethod,
       cashPaid: paid.cashPaid,
       transferPaid: paid.transferPaid,
       companyPaid: paid.companyPaid,
@@ -47,7 +55,7 @@ export async function recordBookingPayment(
       updatedBy: user.id,
     };
     await db.update(t.roomSales).set(patch).where(eq(t.roomSales.id, row.id));
-    await audit(user.id, "room_sale", row.id, "update", { deposit: row.deposit, checkinPaid: row.checkinPaid, cashPaid: row.cashPaid, transferPaid: row.transferPaid, companyPaid: row.companyPaid }, patch);
+    await audit(user.id, "room_sale", row.id, "update", { deposit: row.deposit, checkinPaid: row.checkinPaid, checkinMethod: row.checkinMethod, cashPaid: row.cashPaid, transferPaid: row.transferPaid, companyPaid: row.companyPaid }, patch);
   }
   return booking.id;
 }
