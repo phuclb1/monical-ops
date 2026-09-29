@@ -1,10 +1,13 @@
 import { auditActorName } from "@/lib/audit-view/view";
+import { SALE_SOURCE_LABEL } from "@/lib/constants";
 import { breakfastDay } from "@/lib/breakfast-report";
 import { addDaysVN, todayVN } from "@/lib/datetime";
 import { listRooms, listRoomTypes } from "@/lib/repos/rooms";
 import { listBookingLogs } from "@/lib/repos/sales/logs";
 import { getBooking, listBookings, listRoomSales } from "@/lib/repos/sales/queries";
 import { listUsers } from "@/lib/repos/users";
+import { collectedSplit, isOtaDebt } from "@/lib/sales";
+import type { SaleSource } from "@/lib/types";
 import { sendZaloToGroup } from "@/lib/zalo-client";
 import { claimZaloSchedule, loadZaloGroups, loadZaloMessages, zaloChannel } from "@/lib/zalo-session";
 import { scheduleIsDue, type ZaloMessageEvent } from "@/lib/zalo-messages";
@@ -65,12 +68,21 @@ export async function dispatchBookingZalo(actorId: string, event: ZaloMessageEve
     staffName(editorId),
     event === "booking_updated" ? recentEditText(bookingId, actorId) : Promise.resolve(""),
   ]);
+  const source = SALE_SOURCE_LABEL[booking.source as SaleSource] || booking.source;
+  const deposit = collectedSplit(booking.deposit, booking.checkinPaid).hold;
+  const dueAtCheckin = isOtaDebt(booking.source, booking.otaPaymentMode) ? 0 : booking.due;
   const vars = bookingZaloVars({
     code: booking.pmsCode || booking.id,
+    source,
     guest: booking.guestName,
     rooms: booking.roomLabel,
     hang: zaloRoomCategories(booking.rooms),
     invoice: Boolean(booking.invoiceRequested),
+    roomSubtotal: booking.subtotal,
+    discount: booking.discount,
+    afterDiscount: booking.roomTotal,
+    deposit,
+    dueAtCheckin,
     createdBy,
     editedBy,
     edited: edits,
@@ -137,10 +149,16 @@ export async function sendMessagePreview(actorId: string, messageId: string) {
       ? await scheduleVars(message.id, today)
       : bookingZaloVars({
           code: "TEST",
+          source: "Zalo",
           guest: "Khách thử",
           rooms: "P.101",
           hang: "Deluxe",
           invoice: true,
+          roomSubtotal: 2_000_000,
+          discount: 200_000,
+          afterDiscount: 1_800_000,
+          deposit: 500_000,
+          dueAtCheckin: 1_300_000,
           createdBy: "Minh Quản lý",
           editedBy: "Ngân Lễ tân",
           edited: "Ngày nhận phòng: 29/09/2026 → 30/09/2026",
@@ -160,10 +178,16 @@ export async function sendChannelPreview(actorId: string, key: ZaloChannelKey) {
       "booking",
       bookingZaloVars({
         code: "TEST",
+        source: "Zalo",
         guest: "Khách thử",
         rooms: "P.101",
         hang: "Deluxe",
         invoice: true,
+        roomSubtotal: 2_000_000,
+        discount: 200_000,
+        afterDiscount: 1_800_000,
+        deposit: 500_000,
+        dueAtCheckin: 1_300_000,
         createdBy: "Minh Quản lý",
         editedBy: "Ngân Lễ tân",
         edited: "",

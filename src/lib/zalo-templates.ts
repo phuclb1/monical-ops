@@ -8,8 +8,8 @@ export const ZALO_CHANNEL_DEFS = [
     key: "booking",
     label: "Nhóm booking",
     hint: "Gửi khi tạo booking.",
-    fields: "{{ma}} {{khach}} {{phong}} {{hang}} {{nhan}} {{tra}} {{phaiThu}} {{hoaDon}} {{tao}}",
-    template: "Đã tạo booking {{ma}}\nKhách: {{khach}}\nPhòng: {{phong}}\nHạng: {{hang}}\nNhận {{nhan}} · trả {{tra}}\nPhải thu: {{phaiThu}}\nXuất hóa đơn: {{hoaDon}}\nNgười tạo: {{tao}}",
+    fields: "{{nguon}} {{ma}} {{khach}} {{phong}} {{hang}} {{nhan}} {{tra}} {{tongPhong}} {{chietKhau}} {{tongSauCk}} {{datCoc}} {{conPhaiThu}} {{hoaDon}} {{tao}}",
+    template: "Booking mới từ nguồn {{nguon}} {{ma}}\nKhách: {{khach}}\nPhòng: {{phong}}\nHạng: {{hang}}\nNhận {{nhan}} · trả {{tra}}\nTổng phòng: {{tongPhong}}\nChiết khấu: {{chietKhau}}\nTổng sau chiết khấu: {{tongSauCk}}\nĐặt cọc: {{datCoc}}\nCòn phải thu khi check-in: {{conPhaiThu}}\nXuất hóa đơn: {{hoaDon}}\nNgười tạo: {{tao}}",
   },
   {
     key: "reception",
@@ -113,6 +113,12 @@ export function bookingZaloVars(input: {
   rooms: string;
   hang: string;
   invoice: boolean;
+  source: string;
+  roomSubtotal: number;
+  discount: number;
+  afterDiscount: number;
+  deposit: number;
+  dueAtCheckin: number;
   createdBy: string;
   editedBy: string;
   edited: string;
@@ -122,11 +128,17 @@ export function bookingZaloVars(input: {
 }) {
   return {
     ma: input.code,
+    nguon: input.source || "—",
     khach: input.guest,
     phong: input.rooms,
     hang: input.hang || "—",
     nhan: formatDateNumeric(input.checkIn),
     tra: formatDateNumeric(input.checkOut),
+    tongPhong: formatVnd(input.roomSubtotal),
+    chietKhau: formatVnd(input.discount),
+    tongSauCk: formatVnd(input.afterDiscount),
+    datCoc: formatVnd(input.deposit),
+    conPhaiThu: formatVnd(input.dueAtCheckin),
     phaiThu: formatVnd(input.due),
     hoaDon: input.invoice ? "Có" : "Không",
     tao: input.createdBy || "—",

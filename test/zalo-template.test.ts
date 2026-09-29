@@ -20,24 +20,35 @@ test("tin không gắn Trợ Lý Monical ở đầu", () => {
 
 test("mẫu booking và lễ tân điền đúng chỗ", () => {
   const booking = renderZaloTemplate(
-    "Đã tạo booking {{ma}}\nKhách: {{khach}}\nHạng: {{hang}}\nPhải thu: {{phaiThu}}\nXuất hóa đơn: {{hoaDon}}\nNgười tạo: {{tao}}",
+    "Booking mới từ nguồn {{nguon}} {{ma}}\nKhách: {{khach}}\nHạng: {{hang}}\nTổng phòng: {{tongPhong}}\nChiết khấu: {{chietKhau}}\nTổng sau chiết khấu: {{tongSauCk}}\nĐặt cọc: {{datCoc}}\nCòn phải thu khi check-in: {{conPhaiThu}}\nXuất hóa đơn: {{hoaDon}}\nNgười tạo: {{tao}}",
     bookingZaloVars({
       code: "BK1",
+      source: "Zalo",
       guest: "Lan",
       rooms: "P.101",
       hang: "Deluxe",
       invoice: true,
+      roomSubtotal: 2_000_000,
+      discount: 200_000,
+      afterDiscount: 1_800_000,
+      deposit: 500_000,
+      dueAtCheckin: 1_300_000,
       createdBy: "Minh Quản lý",
       editedBy: "Ngân Lễ tân",
       edited: "",
       checkIn: "2026-09-29",
       checkOut: "2026-09-30",
-      due: 500000,
+      due: 1_300_000,
     }),
   );
-  assert.match(booking, /BK1/);
+  assert.match(booking, /Booking mới từ nguồn Zalo BK1/);
   assert.match(booking, /Lan/);
   assert.match(booking, /Deluxe/);
+  assert.match(booking, /Tổng phòng: 2\.000\.000₫/);
+  assert.match(booking, /Chiết khấu: 200\.000₫/);
+  assert.match(booking, /Tổng sau chiết khấu: 1\.800\.000₫/);
+  assert.match(booking, /Đặt cọc: 500\.000₫/);
+  assert.match(booking, /Còn phải thu khi check-in: 1\.300\.000₫/);
   assert.match(booking, /Xuất hóa đơn: Có/);
   assert.match(booking, /Người tạo: Minh Quản lý/);
   assert.match(booking, /500\.000₫/);

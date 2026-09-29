@@ -41,5 +41,5 @@ test("nhóm và tin đọc từ cấu hình cũ khi chưa có bản mới", () =
   assert.equal(created?.event, "booking_created");
   assert.equal(created?.group, "booking");
   const updated = messages.find((item) => item.id === "booking-updated");
-  assert.match(updated?.template || "", /^Đã sửa booking/);
+  assert.equal(updated?.template, "Sửa booking {{ma}}\n{{suaGi}}");
 });
