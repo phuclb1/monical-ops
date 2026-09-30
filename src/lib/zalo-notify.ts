@@ -1,3 +1,6 @@
+import { and, desc, eq } from "drizzle-orm";
+import { getDb } from "@/db";
+import * as t from "@/db/schema";
 import { auditActorName } from "@/lib/audit-view/view";
 import { SALE_SOURCE_LABEL } from "@/lib/constants";
 import { breakfastDay } from "@/lib/breakfast-report";
@@ -18,6 +21,7 @@ import {
   receptionDigest,
   receptionZaloVars,
   renderZaloTemplate,
+  zaloBreakfastLabel,
   zaloOutbound,
   zaloRoomCategories,
   type ZaloChannelKey,
@@ -35,6 +39,19 @@ async function staffName(userId: string) {
   if (!userId) return "—";
   const person = (await listUsers()).find((item) => item.id === userId);
   return auditActorName(userId, person?.fullName);
+}
+
+async function pendingRequester(bookingId: string) {
+  const db = await getDb();
+  const row = (
+    await db
+      .select({ requestedBy: t.bookingChangeRequests.requestedBy })
+      .from(t.bookingChangeRequests)
+      .where(and(eq(t.bookingChangeRequests.bookingId, bookingId), eq(t.bookingChangeRequests.status, "pending")))
+      .orderBy(desc(t.bookingChangeRequests.requestedAt))
+      .limit(1)
+  )[0];
+  return row?.requestedBy || "";
 }
 
 async function recentEditText(bookingId: string, actorId: string) {
@@ -62,10 +79,13 @@ export async function dispatchBookingZalo(actorId: string, event: ZaloMessageEve
   if (!booking) return;
   const first = [...booking.rooms].sort((a, b) => a.createdAt.localeCompare(b.createdAt))[0];
   const creatorId = first?.createdBy || actorId;
-  const editorId = event === "booking_updated" ? actorId : "";
-  const [createdBy, editedBy, edits] = await Promise.all([
+  const requesterId = event === "booking_updated" ? await pendingRequester(bookingId) : "";
+  const editorId = event === "booking_updated" ? requesterId || actorId : "";
+  const approverId = event === "booking_updated" && requesterId ? actorId : "";
+  const [createdBy, editedBy, approvedBy, edits] = await Promise.all([
     staffName(creatorId),
     staffName(editorId),
+    staffName(approverId),
     event === "booking_updated" ? recentEditText(bookingId, actorId) : Promise.resolve(""),
   ]);
   const source = SALE_SOURCE_LABEL[booking.source as SaleSource] || booking.source;
@@ -83,8 +103,10 @@ export async function dispatchBookingZalo(actorId: string, event: ZaloMessageEve
     afterDiscount: booking.roomTotal,
     deposit,
     dueAtCheckin,
+    breakfast: zaloBreakfastLabel(booking.rooms),
     createdBy,
     editedBy,
+    approvedBy: approverId ? approvedBy : "Không cần duyệt",
     edited: edits,
     checkIn: booking.checkIn,
     checkOut: booking.checkOut,
@@ -159,8 +181,10 @@ export async function sendMessagePreview(actorId: string, messageId: string) {
           afterDiscount: 1_800_000,
           deposit: 500_000,
           dueAtCheckin: 1_300_000,
+          breakfast: "Có",
           createdBy: "Minh Quản lý",
           editedBy: "Ngân Lễ tân",
+          approvedBy: "Minh Quản lý",
           edited: "Ngày nhận phòng: 29/09/2026 → 30/09/2026",
           checkIn: today,
           checkOut: addDaysVN(today, 1),
@@ -188,8 +212,10 @@ export async function sendChannelPreview(actorId: string, key: ZaloChannelKey) {
         afterDiscount: 1_800_000,
         deposit: 500_000,
         dueAtCheckin: 1_300_000,
+        breakfast: "Có",
         createdBy: "Minh Quản lý",
         editedBy: "Ngân Lễ tân",
+        approvedBy: "Minh Quản lý",
         edited: "",
         checkIn: today,
         checkOut: addDaysVN(today, 1),

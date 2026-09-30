@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import * as repo from "@/lib/repos";
-import { parseDiscountKind, parseDiscountValue, parseMoney, parsePaymentMethod } from "@/lib/sales";
+import { parseCommissionKind, parseCommissionValue, parseDiscountKind, parseDiscountValue, parseMoney, parsePaymentMethod } from "@/lib/sales";
 import { actionBack, assertDepositRefunded, fail, refresh, requireCancel, requireSales, saleFromForm } from "./shared";
 
 export async function createSaleAction(formData: FormData) {
@@ -165,6 +165,8 @@ export async function updateBookingAction(formData: FormData) {
       guestPhone: String(formData.get("guestPhone") || ""),
       source: String(formData.get("source") || ""),
       otaPaymentMode: String(formData.get("otaPaymentMode") || "") === "hotel" ? "hotel" : "debt",
+      otaCommissionKind: parseCommissionKind(formData.get("otaCommissionKind")),
+      otaCommissionValue: parseCommissionValue(formData.get("otaCommissionKind"), formData.get("otaCommissionValue")),
       invoiceRequested: String(formData.get("invoiceRequested") || "") === "1",
       adults: Number(formData.get("adults") || 1),
       children: Number(formData.get("children") || 0),

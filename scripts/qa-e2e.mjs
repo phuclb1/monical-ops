@@ -428,18 +428,18 @@ try {
     ]);
   });
 
-  await check("E2E-O2", "Báo cáo doanh thu OTA chưa trừ hoa hồng", async (shot) => {
+  await check("E2E-O2", "Báo cáo doanh thu OTA sau hoa hồng", async (shot) => {
     await logout();
     await login("quanly");
     await go("/reports/sales");
-    await must(shot, ["Doanh thu OTA", "trước hoa hồng", "chưa trừ hoa hồng", "E2E OTA", "Công nợ OTA"]);
+    await must(shot, ["OTA sau hoa hồng", "phải trả hoa hồng", "phải thu đối tác", "OTA đã thu tại KS", "E2E OTA", "Công nợ OTA"]);
   });
 
   await check("E2E-O3", "Chủ sở hữu thấy doanh thu OTA", async (shot) => {
     await logout();
     await login("chusohuu");
     await go("/owner");
-    await must(shot, ["DOANH THU OTA", "chưa trừ hoa hồng", "E2E OTA"]);
+    await must(shot, ["OTA sau hoa hồng", "Công nợ đối tác", "phải trả hoa hồng", "E2E OTA"]);
   });
 } finally {
   await browser.close();

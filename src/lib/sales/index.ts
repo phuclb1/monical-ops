@@ -16,6 +16,11 @@ export {
 } from "./quote";
 export { isHolidayNight } from "./quote";
 export {
+  normalizeCommission,
+  parseCommissionKind,
+  parseCommissionValue,
+  commissionAmount,
+  parseCommissionPercent,
   parseMoney,
   formatVnd,
   formatVndLetter,

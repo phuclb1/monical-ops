@@ -1,5 +1,5 @@
 import { addDaysVN, addMonthsVN, datesUntil, periodWindow, todayVN, type PeriodGrain } from "./datetime";
-import { isOtaSource, salePaid } from "./sales";
+import { commissionAmount, isOtaDebt, isOtaSource, salePaid } from "./sales";
 
 export const PERIOD_GRAINS = ["month", "quarter", "year"] as const;
 export type ReportGrain = (typeof PERIOD_GRAINS)[number];
@@ -33,7 +33,56 @@ type BookingMoney = {
   transferPaid?: number | null;
   companyPaid?: number | null;
   source?: string | null;
+  otaPaymentMode?: string | null;
+  otaCommissionPercent?: number | null;
+  otaCommissionKind?: string | null;
+  otaCommissionValue?: number | null;
 };
+
+function feeOf(row: BookingMoney) {
+  if (!isOtaSource(row.source)) return 0;
+  const kind = row.otaCommissionKind === "amount" ? "amount" : "percent";
+  const value = row.otaCommissionValue || (kind === "percent" ? row.otaCommissionPercent || 0 : 0);
+  return commissionAmount(row.total, kind, value);
+}
+
+function recognizedBreakdown<T extends BookingMoney>(rows: T[]) {
+  const pay = { cash: 0, transfer: 0, company: 0 };
+  let otaGross = 0;
+  let commission = 0;
+  let partnerGross = 0;
+  let collectedGross = 0;
+  let collectedCommission = 0;
+  for (const row of rows) {
+    if (isOtaSource(row.source)) {
+      const fee = feeOf(row);
+      otaGross += row.total;
+      commission += fee;
+      if (isOtaDebt(row.source, row.otaPaymentMode)) {
+        partnerGross += row.total;
+      } else {
+        collectedGross += row.total;
+        collectedCommission += fee;
+      }
+      continue;
+    }
+    const paid = salePaid(row);
+    pay.cash += paid.cashPaid;
+    pay.transfer += paid.transferPaid;
+    pay.company += paid.companyPaid;
+  }
+  return {
+    pay,
+    ota: {
+      gross: otaGross,
+      commission,
+      net: otaGross - commission,
+      partnerNet: partnerGross - (commission - collectedCommission),
+      collectedGross,
+      collectedCommission,
+    },
+  };
+}
 
 function moneyOf<T extends BookingMoney>(rows: T[]) {
   return rows.reduce(
@@ -70,17 +119,19 @@ export function invoiceRevenueReport<T extends BookingMoney & { invoiceRequested
   };
 }
 
-export function roomRevenueReport<T extends BookingMoney>(bookings: T[], from: string, to: string) {
-  const live = bookings.filter((row) => row.status !== "cancelled" && row.status !== "no_show");
-  const booked = live.filter((row) => row.checkIn >= from && row.checkIn < to);
-  const recognized = live.filter(
-    (row) => (row.status === "inhouse" || row.status === "departed") && row.checkIn >= from && row.checkIn < to,
-  );
+function countsAsBookingRevenue(status: string) {
+  return status !== "cancelled" && status !== "no_show";
+}
+
+export function roomRevenueReport<T extends BookingMoney>(bookings: T[], from: string, to: string, today = todayVN()) {
+  const booked = bookings.filter((row) => countsAsBookingRevenue(row.status) && row.checkIn >= from && row.checkIn < to);
+  const recognized = booked.filter((row) => row.checkIn <= today);
   return {
     booked,
     recognized,
     booking: moneyOf(booked),
     recognizedMoney: moneyOf(recognized),
+    recognizedSplit: recognizedBreakdown(recognized),
   };
 }
 
@@ -89,6 +140,7 @@ export function revenueTrend<T extends BookingMoney>(
   from: string,
   to: string,
   grain: ReportGrain,
+  today = todayVN(),
 ) {
   const buckets =
     grain === "month"
@@ -107,11 +159,11 @@ export function revenueTrend<T extends BookingMoney>(
             label: `T${Number(date.slice(5, 7))}`,
           };
         });
-  const live = bookings.filter((row) => row.status !== "cancelled" && row.status !== "no_show");
+  const live = bookings.filter((row) => countsAsBookingRevenue(row.status));
 
   return buckets.map((bucket) => {
     const rows = live.filter((row) => row.checkIn >= bucket.from && row.checkIn < bucket.to);
-    const recognized = rows.filter((row) => row.status === "inhouse" || row.status === "departed");
+    const recognized = rows.filter((row) => row.checkIn <= today);
     return {
       key: bucket.key,
       label: bucket.label,

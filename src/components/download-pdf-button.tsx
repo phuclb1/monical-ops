@@ -15,6 +15,12 @@ export function DownloadPdfButton({ filename }: { filename: string }) {
     );
     if (!nodes.length) return;
     setBusy(true);
+    const fit = document.querySelector<HTMLElement>(".booking-sheet-fit");
+    const frame = document.querySelector<HTMLElement>(".booking-sheet-frame");
+    const previousZoom = fit?.style.zoom;
+    const previousOverflow = frame?.style.overflow;
+    if (fit) fit.style.zoom = "1";
+    if (frame) frame.style.overflow = "visible";
     try {
       const html2canvas = (await import("html2canvas")).default;
       const { jsPDF } = await import("jspdf");
@@ -48,6 +54,8 @@ export function DownloadPdfButton({ filename }: { filename: string }) {
       }
       pdf.save(filename.endsWith(".pdf") ? filename : `${filename}.pdf`);
     } finally {
+      if (fit) fit.style.zoom = previousZoom || "";
+      if (frame) frame.style.overflow = previousOverflow || "";
       setBusy(false);
     }
   }

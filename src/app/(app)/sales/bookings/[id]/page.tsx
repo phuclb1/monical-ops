@@ -15,7 +15,7 @@ import { formatDateLong, todayVN } from "@/lib/datetime";
 import { extraDetail } from "@/lib/extras";
 import { can } from "@/lib/permissions";
 import { getBooking, listBookingChangeRequests, listBookingLogs, listRooms, listRoomSales, listRoomTypes, listSaleExtraTypes } from "@/lib/repos";
-import { bookingPayMethods, bookingQuote, collectedSplit, formatVnd, isActiveSaleStatus, isOpsBookingCode, isOtaDebt, isOtaSource, paidNote, parkingLabel } from "@/lib/sales";
+import { bookingPayMethods, bookingQuote, collectedSplit, commissionAmount, formatVnd, isActiveSaleStatus, isOpsBookingCode, isOtaDebt, isOtaSource, paidNote, parkingLabel } from "@/lib/sales";
 import type { SaleOrigin, SaleSource, SaleStatus } from "@/lib/types";
 
 const STATUS_TONE: Record<SaleStatus, "ok" | "warn" | "danger" | "gold" | "neutral"> = {
@@ -141,6 +141,14 @@ export default async function BookingDetailPage({
             ) : null}
             {booking.discount ? (
               <p className="mt-1 text-sm text-[#1b7a4e]">Chiết khấu −{formatVnd(booking.discount)}</p>
+            ) : null}
+            {ota ? (
+              <p className="mt-1 text-sm text-[#c47b12]">
+                Hoa hồng{" "}
+                {booking.otaCommissionKind === "amount"
+                  ? formatVnd(commissionAmount(booking.total, "amount", booking.otaCommissionValue))
+                  : `${booking.otaCommissionValue || booking.otaCommissionPercent || 0}% · ${formatVnd(commissionAmount(booking.total, "percent", booking.otaCommissionValue || booking.otaCommissionPercent))}`}
+              </p>
             ) : null}
             {otaDebt ? null : <p className="mt-1 text-sm">{ota ? "Phải thu khi check-in" : "Phải thu"} {formatVnd(booking.total)}</p>}
             {booking.extrasTotal ? (
@@ -299,7 +307,7 @@ export default async function BookingDetailPage({
               <p className="mb-2 text-xs text-[#5c6665]">Sửa tên, SĐT, số khách, kênh. Đổi số phòng cùng hạng hoặc nâng hạng. Ngày, ăn sáng và chiết khấu theo từng phòng.</p>
               {user.role === "reception" ? (
                 <p className="mb-3 rounded-xl bg-[#fff1d6] px-3 py-2 text-xs font-semibold text-[#9a5b00]">
-                  Đổi ngày, phòng, tiền, ăn sáng hoặc chiết khấu sẽ gửi quản lý duyệt. Booking chỉ đổi sau khi được duyệt.
+                  Đổi ngày, phòng, tiền, ăn sáng, chiết khấu hoặc hoa hồng OTA sẽ gửi quản lý duyệt. Booking chỉ đổi sau khi được duyệt.
                 </p>
               ) : null}
               <BookingForm
@@ -328,6 +336,9 @@ export default async function BookingDetailPage({
                   guestPhone: booking.guestPhone || "",
                   source: booking.source,
                   otaPaymentMode: booking.otaPaymentMode,
+                  otaCommissionKind: booking.otaCommissionKind,
+                  otaCommissionValue: booking.otaCommissionValue,
+                  otaCommissionPercent: booking.otaCommissionPercent,
                   invoiceRequested: booking.invoiceRequested,
                   adults: booking.adults,
                   children: booking.children,

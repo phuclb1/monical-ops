@@ -6,7 +6,9 @@ import { can } from "../../permissions";
 import { bookingPayMethods, collectedSplit, parsePaymentMethod } from "../../sales";
 import type { SessionUser } from "../../types";
 import { notify } from "@/modules/notifications/models/notifications";
+import { approvalChanges } from "../../booking-approval-diff";
 import { audit } from "../audit";
+import { listRooms } from "../rooms";
 import { listUsers } from "../users";
 import { type BookingUpdateInput, updateBooking } from "./booking";
 import { addRoomsToBooking } from "./create";
@@ -30,6 +32,8 @@ function snapshotBooking(booking: BookingView) {
     guestPhone: booking.guestPhone,
     source: booking.source,
     otaPaymentMode: booking.otaPaymentMode,
+    otaCommissionKind: booking.otaCommissionKind === "amount" ? "amount" : "percent",
+    otaCommissionValue: booking.otaCommissionValue || 0,
     invoiceRequested: booking.invoiceRequested,
     adults: booking.adults,
     children: booking.children,
@@ -98,12 +102,14 @@ function payMethodChange(booking: Parameters<typeof bookingPayMethods>[0] & { de
 export function bookingChangeRequiresApproval(
   booking: Pick<
     BookingView,
-    "source" | "otaPaymentMode" | "deposit" | "checkinPaid" | "checkinMethod" | "cashPaid" | "transferPaid" | "companyPaid" | "rooms"
+    "source" | "otaPaymentMode" | "otaCommissionKind" | "otaCommissionValue" | "deposit" | "checkinPaid" | "checkinMethod" | "cashPaid" | "transferPaid" | "companyPaid" | "rooms"
   >,
   data: BookingUpdateInput,
 ) {
   if (data.source !== undefined && data.source !== booking.source) return true;
   if (data.otaPaymentMode !== undefined && data.otaPaymentMode !== booking.otaPaymentMode) return true;
+  if (data.otaCommissionKind !== undefined && data.otaCommissionKind !== (booking.otaCommissionKind === "amount" ? "amount" : "percent")) return true;
+  if (data.otaCommissionValue !== undefined && data.otaCommissionValue !== (booking.otaCommissionValue || 0)) return true;
   const paid = collectedSplit(booking.deposit, booking.checkinPaid);
   if (data.deposit !== undefined && data.deposit !== paid.hold) return true;
   if (data.checkinPaid !== undefined && data.checkinPaid !== paid.checkin) return true;
@@ -151,6 +157,10 @@ function updateSummary(booking: BookingView, data: BookingUpdateInput) {
   if (methods.checkin) labels.add("đổi hình thức thu check-in");
   if (data.source !== undefined && data.source !== booking.source) labels.add("đổi nguồn booking");
   if (data.otaPaymentMode !== undefined && data.otaPaymentMode !== booking.otaPaymentMode) labels.add("đổi công nợ OTA");
+  if (
+    (data.otaCommissionKind !== undefined && data.otaCommissionKind !== (booking.otaCommissionKind === "amount" ? "amount" : "percent")) ||
+    (data.otaCommissionValue !== undefined && data.otaCommissionValue !== (booking.otaCommissionValue || 0))
+  ) labels.add("sửa hoa hồng OTA");
   return labels.size ? [...labels].join(" · ") : "sửa thông tin booking";
 }
 
@@ -396,18 +406,21 @@ export async function listBookingChangeRequests(bookingId: string) {
   const booking = await getBooking(bookingId);
   const key = booking?.id || bookingId;
   const db = await getDb();
-  const [rows, users] = await Promise.all([
+  const [rows, users, rooms] = await Promise.all([
     db
       .select()
       .from(t.bookingChangeRequests)
       .where(eq(t.bookingChangeRequests.bookingId, key))
       .orderBy(desc(t.bookingChangeRequests.requestedAt)),
     listUsers(),
+    listRooms(),
   ]);
   const names = new Map(users.map((person) => [person.id, person.fullName]));
+  const roomNumbers = new Map(rooms.map((room) => [room.id, room.number]));
   return rows.map((row) => ({
     ...row,
     requestedByName: names.get(row.requestedBy) || row.requestedBy,
     reviewedByName: row.reviewedBy ? names.get(row.reviewedBy) || row.reviewedBy : null,
+    changes: approvalChanges(row.beforeJson, row.payloadJson, roomNumbers),
   }));
 }

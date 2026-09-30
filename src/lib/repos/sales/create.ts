@@ -4,7 +4,7 @@ import { getDb } from "@/db";
 import * as t from "@/db/schema";
 import { nid, nowISO, todayVN } from "../../datetime";
 import { ensureTodayRoomTasks } from "../../checklist-ops";
-import { bookingQuote, catalogRate, isActiveSaleStatus, isOtaSource, isSaleSource, parsePaymentMethod } from "../../sales";
+import { bookingQuote, catalogRate, isActiveSaleStatus, isOtaSource, isSaleSource, normalizeCommission, parsePaymentMethod } from "../../sales";
 import type { SaleStatus, SessionUser } from "../../types";
 import { audit } from "../audit";
 import { listRooms, listRoomTypes } from "../rooms";
@@ -75,6 +75,7 @@ export async function createRoomSale(user: SessionUser, data: SaleInput) {
       origin,
       source: data.source,
       otaPaymentMode: data.otaPaymentMode === "hotel" ? "hotel" : "debt",
+      ...normalizeCommission(isOtaSource(data.source), data.otaCommissionKind, data.otaCommissionValue),
       invoiceRequested: Boolean(data.invoiceRequested),
       status,
       checkIn: row.checkIn,
@@ -155,6 +156,8 @@ export async function addRoomsToBooking(user: SessionUser, saleId: string, roomI
     guestPhone: before.guestPhone || "",
     source: before.source,
     otaPaymentMode: before.otaPaymentMode === "hotel" ? "hotel" : "debt",
+    otaCommissionKind: before.otaCommissionKind === "amount" ? "amount" : "percent",
+    otaCommissionValue: before.otaCommissionValue || (before.otaCommissionKind === "amount" ? 0 : before.otaCommissionPercent || 0),
     invoiceRequested: before.invoiceRequested,
     checkIn: before.checkIn,
     checkOut: before.checkOut,

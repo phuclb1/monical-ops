@@ -11,6 +11,13 @@ function row(partial: {
   total?: number;
   source?: string;
   invoiceRequested?: boolean;
+  otaPaymentMode?: "debt" | "hotel";
+  otaCommissionPercent?: number;
+  otaCommissionKind?: "percent" | "amount";
+  otaCommissionValue?: number;
+  cashPaid?: number;
+  transferPaid?: number;
+  companyPaid?: number;
 }) {
   return {
     checkIn: partial.checkIn,
@@ -18,8 +25,15 @@ function row(partial: {
     status: partial.status,
     total: partial.total ?? 1_000_000,
     due: 0,
-    deposit: 0,
+    deposit: (partial.cashPaid || 0) + (partial.transferPaid || 0) + (partial.companyPaid || 0),
+    cashPaid: partial.cashPaid,
+    transferPaid: partial.transferPaid,
+    companyPaid: partial.companyPaid,
     source: partial.source,
+    otaPaymentMode: partial.otaPaymentMode,
+    otaCommissionPercent: partial.otaCommissionPercent,
+    otaCommissionKind: partial.otaCommissionKind,
+    otaCommissionValue: partial.otaCommissionValue,
     invoiceRequested: partial.invoiceRequested,
   };
 }
@@ -59,19 +73,20 @@ test("report charts cover the full year and group revenue correctly", () => {
     "2026-09-01",
     "2026-10-01",
     "month",
+    "2026-09-10",
   );
 
   assert.deepEqual(trend.find((item) => item.label === "10"), {
     key: "2026-09-10",
     label: "10",
     booked: 100,
-    recognized: 0,
+    recognized: 100,
   });
   assert.deepEqual(trend.find((item) => item.label === "11"), {
     key: "2026-09-11",
     label: "11",
     booked: 200,
-    recognized: 200,
+    recognized: 0,
   });
 });
 
@@ -87,7 +102,7 @@ test("kế toán có khu vực điều hướng riêng và xem được sơ đ�
   assert.equal(isAccountingAllowedPath("/sales/new"), false);
 });
 
-test("revenue is recognized on successful check-in, not checkout", () => {
+test("revenue is recognized on the check-in date when the booking is not cancelled", () => {
   const report = roomRevenueReport(
     [
       row({ checkIn: "2026-09-10", checkOut: "2026-09-12", status: "reserved", total: 100 }),
@@ -95,22 +110,67 @@ test("revenue is recognized on successful check-in, not checkout", () => {
       row({ checkIn: "2026-09-12", checkOut: "2026-10-01", status: "departed", total: 300 }),
       row({ checkIn: "2026-08-30", checkOut: "2026-09-02", status: "departed", total: 400 }),
       row({ checkIn: "2026-09-08", checkOut: "2026-09-09", status: "cancelled", total: 500 }),
+      row({ checkIn: "2026-09-14", checkOut: "2026-09-15", status: "no_show", total: 600 }),
       row({ checkIn: "2026-09-15", checkOut: "2026-09-16", status: "reserved", total: 700, source: "agoda" }),
-      row({ checkIn: "2026-09-16", checkOut: "2026-09-17", status: "inhouse", total: 800, source: "booking" }),
+      row({ checkIn: "2026-09-16", checkOut: "2026-09-17", status: "reserved", total: 800, source: "booking" }),
     ],
     "2026-09-01",
     "2026-10-01",
+    "2026-09-12",
   );
 
   assert.equal(report.booked.length, 5);
   assert.equal(report.booking.total, 2100);
   assert.equal(report.booking.ota, 1500);
-  assert.equal(report.recognizedMoney.ota, 800);
+  assert.equal(report.recognizedMoney.ota, 0);
   assert.deepEqual(
     report.recognized.map((item) => item.total),
-    [200, 300, 800],
+    [100, 200, 300],
   );
-  assert.equal(report.recognizedMoney.total, 1300);
+  assert.equal(report.recognizedMoney.total, 600);
+});
+
+test("recognized month splits direct collections and OTA after commission", () => {
+  const report = roomRevenueReport(
+    [
+      row({ checkIn: "2026-09-10", checkOut: "2026-09-11", status: "reserved", total: 1_000, source: "agoda", otaPaymentMode: "debt", otaCommissionPercent: 15 }),
+      row({
+        checkIn: "2026-09-11",
+        checkOut: "2026-09-12",
+        status: "reserved",
+        total: 2_000,
+        source: "booking",
+        otaPaymentMode: "hotel",
+        otaCommissionKind: "amount",
+        otaCommissionValue: 300,
+        companyPaid: 2_000,
+      }),
+      row({
+        checkIn: "2026-09-12",
+        checkOut: "2026-09-13",
+        status: "reserved",
+        total: 500,
+        source: "walk_in",
+        transferPaid: 300,
+        cashPaid: 200,
+      }),
+      row({ checkIn: "2026-09-20", checkOut: "2026-09-21", status: "reserved", total: 800, source: "agoda", otaPaymentMode: "debt" }),
+    ],
+    "2026-09-01",
+    "2026-10-01",
+    "2026-09-12",
+  );
+
+  assert.equal(report.booking.total, 4_300);
+  assert.equal(report.recognizedMoney.total, 3_500);
+  assert.equal(report.recognizedSplit.pay.transfer, 300);
+  assert.equal(report.recognizedSplit.pay.cash, 200);
+  assert.equal(report.recognizedSplit.pay.company, 0);
+  assert.equal(report.recognizedSplit.ota.commission, 450);
+  assert.equal(report.recognizedSplit.ota.net, 2_550);
+  assert.equal(report.recognizedSplit.ota.partnerNet, 850);
+  assert.equal(report.recognizedSplit.ota.collectedGross, 2_000);
+  assert.equal(report.recognizedSplit.ota.collectedCommission, 300);
 });
 
 test("invoice revenue includes direct bookings that request an invoice and all OTA", () => {

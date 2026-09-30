@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
 import { BookingConfirmation } from "@/components/booking-confirmation";
+import { BookingSheetFrame } from "@/components/booking-sheet-frame";
 import { PrintToolbar } from "@/components/print-toolbar";
 import { getSession } from "@/lib/auth";
 import { HOTEL_LETTERHEAD } from "@/lib/constants";
@@ -28,7 +29,9 @@ export default async function BookingPrintPage({ params }: { params: Promise<{ i
   return (
     <main className="booking-print">
       <PrintToolbar backHref={`/sales/bookings/${booking.id}`} filename={pdfName} fileBaseName={fileBaseName} />
-      <BookingConfirmation booking={booking} />
+      <BookingSheetFrame>
+        <BookingConfirmation booking={booking} />
+      </BookingSheetFrame>
     </main>
   );
 }

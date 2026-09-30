@@ -38,8 +38,8 @@ export const ZALO_MESSAGE_DEFS = [
     kind: "trigger" as const,
     event: "booking_created" as const,
     group: "booking" as const,
-    fields: "{{nguon}} {{ma}} {{khach}} {{phong}} {{hang}} {{nhan}} {{tra}} {{tongPhong}} {{chietKhau}} {{tongSauCk}} {{datCoc}} {{conPhaiThu}} {{hoaDon}} {{tao}}",
-    template: "Booking mới từ nguồn {{nguon}} {{ma}}\nKhách: {{khach}}\nPhòng: {{phong}}\nHạng: {{hang}}\nNhận {{nhan}} · trả {{tra}}\nTổng phòng: {{tongPhong}}\nChiết khấu: {{chietKhau}}\nTổng sau chiết khấu: {{tongSauCk}}\nĐặt cọc: {{datCoc}}\nCòn phải thu khi check-in: {{conPhaiThu}}\nXuất hóa đơn: {{hoaDon}}\nNgười tạo: {{tao}}",
+    fields: "{{ma}} {{khach}} {{phong}} {{nhan}} {{tra}} {{anSang}} {{tong}} {{tongSauCk}} {{coc}} {{phaiThu}} {{tao}}",
+    template: "Đã tạo booking {{ma}}\nKhách: {{khach}}\nPhòng: {{phong}}\nNhận {{nhan}} · trả {{tra}}\nĂn sáng: {{anSang}}\nTổng: {{tong}}\nTổng sau chiết khấu: {{tongSauCk}}\nCọc: {{coc}}\nPhải thu: {{phaiThu}}\nNgười tạo: {{tao}}",
   },
   {
     id: "booking-updated",
@@ -47,8 +47,8 @@ export const ZALO_MESSAGE_DEFS = [
     kind: "trigger" as const,
     event: "booking_updated" as const,
     group: "booking" as const,
-    fields: "{{ma}} {{suaGi}}",
-    template: "Sửa booking {{ma}}\n{{suaGi}}",
+    fields: "{{ma}} {{suaGi}} {{sua}} {{duyet}}",
+    template: "Sửa booking {{ma}}\n{{suaGi}}\nNgười sửa: {{sua}}\nNgười duyệt: {{duyet}}",
   },
 ] as const;
 
@@ -57,6 +57,8 @@ const PREVIOUS_MESSAGE_TEMPLATES: Record<string, string[]> = {
     "Đã tạo booking {{ma}}\nKhách: {{khach}}\nPhòng: {{phong}}\nNhận {{nhan}} · trả {{tra}}\nPhải thu: {{phaiThu}}",
     "Đã tạo booking {{ma}}\nKhách: {{khach}}\nPhòng: {{phong}}\nHạng: {{hang}}\nNhận {{nhan}} · trả {{tra}}\nPhải thu: {{phaiThu}}\nXuất hóa đơn: {{hoaDon}}",
     "Đã tạo booking {{ma}}\nKhách: {{khach}}\nPhòng: {{phong}}\nHạng: {{hang}}\nNhận {{nhan}} · trả {{tra}}\nPhải thu: {{phaiThu}}\nXuất hóa đơn: {{hoaDon}}\nNgười tạo: {{tao}}",
+    "Đã tạo booking {{ma}}\nKhách: {{khach}}\nPhòng: {{phong}}\nNhận {{nhan}} · trả {{tra}}\nPhải thu: {{phaiThu}}\nNgười tạo: {{tao}}",
+    "Booking mới từ nguồn {{nguon}} {{ma}}\nKhách: {{khach}}\nPhòng: {{phong}}\nHạng: {{hang}}\nNhận {{nhan}} · trả {{tra}}\nTổng phòng: {{tongPhong}}\nChiết khấu: {{chietKhau}}\nTổng sau chiết khấu: {{tongSauCk}}\nĐặt cọc: {{datCoc}}\nCòn phải thu khi check-in: {{conPhaiThu}}\nXuất hóa đơn: {{hoaDon}}\nNgười tạo: {{tao}}",
   ],
   "booking-updated": [
     "Đã sửa booking {{ma}}\nKhách: {{khach}}\nPhòng: {{phong}}\nNhận {{nhan}} · trả {{tra}}\nPhải thu: {{phaiThu}}",
@@ -64,6 +66,7 @@ const PREVIOUS_MESSAGE_TEMPLATES: Record<string, string[]> = {
     "Đã sửa booking {{ma}}\nKhách: {{khach}}\nPhòng: {{phong}}\nHạng: {{hang}}\nNhận {{nhan}} · trả {{tra}}\nPhải thu: {{phaiThu}}\nXuất hóa đơn: {{hoaDon}}\nNgười tạo: {{tao}}\nNgười sửa: {{sua}}",
     "Đã sửa booking {{ma}}\nKhách: {{khach}}\nPhòng: {{phong}}\nHạng: {{hang}}\nNhận {{nhan}} · trả {{tra}}\nPhải thu: {{phaiThu}}\nXuất hóa đơn: {{hoaDon}}\nNgười tạo: {{tao}}\nNgười sửa: {{sua}}\nSửa:\n{{suaGi}}",
     "Sửa booking từ nguồn {{nguon}} {{ma}}\nKhách: {{khach}}\nPhòng: {{phong}}\nHạng: {{hang}}\nNhận {{nhan}} · trả {{tra}}\nTổng phòng: {{tongPhong}}\nChiết khấu: {{chietKhau}}\nTổng sau chiết khấu: {{tongSauCk}}\nĐặt cọc: {{datCoc}}\nCòn phải thu khi check-in: {{conPhaiThu}}\nXuất hóa đơn: {{hoaDon}}\nNgười tạo: {{tao}}\nNgười sửa: {{sua}}\nSửa:\n{{suaGi}}",
+    "Sửa booking {{ma}}\n{{suaGi}}",
   ],
 };
 
@@ -170,6 +173,8 @@ function ensureActorLines(id: string, template: string) {
   if (id === "booking-updated") {
     if (!/\{\{\s*ma\s*\}\}/.test(text)) text = `Sửa booking {{ma}}\n${text}`;
     if (!/\{\{\s*suaGi\s*\}\}/.test(text)) text = `${text}\n{{suaGi}}`;
+    if (!/\{\{\s*sua\s*\}\}/.test(text)) text = `${text}\nNgười sửa: {{sua}}`;
+    if (!/\{\{\s*duyet\s*\}\}/.test(text)) text = `${text}\nNgười duyệt: {{duyet}}`;
   }
   return text;
 }

@@ -1,6 +1,45 @@
 import type { PaymentMethod } from "../types";
 import { PAYMENT_METHODS } from "../types";
 
+export type CommissionKind = "percent" | "amount";
+
+export function parseCommissionKind(value: FormDataEntryValue | string | null | undefined): CommissionKind {
+  return String(value || "") === "amount" ? "amount" : "percent";
+}
+
+export function commissionAmount(total: number, kind: string | null | undefined, value: number | null | undefined) {
+  const safeTotal = Math.max(0, Math.round(total || 0));
+  if (parseCommissionKind(kind) === "amount") return Math.min(safeTotal, Math.max(0, Math.round(value || 0)));
+  const percent = Math.min(100, Math.max(0, Math.round(value || 0)));
+  return Math.round(safeTotal * percent / 100);
+}
+
+export function normalizeCommission(ota: boolean, kind: string | null | undefined, value: number | null | undefined) {
+  if (!ota) return { otaCommissionKind: "percent" as const, otaCommissionValue: 0, otaCommissionPercent: 0 };
+  const otaCommissionKind = parseCommissionKind(kind);
+  const otaCommissionValue = otaCommissionKind === "percent"
+    ? Math.min(100, Math.max(0, Math.round(value || 0)))
+    : Math.max(0, Math.round(value || 0));
+  return {
+    otaCommissionKind,
+    otaCommissionValue,
+    otaCommissionPercent: otaCommissionKind === "percent" ? otaCommissionValue : 0,
+  };
+}
+
+export function parseCommissionValue(kind: FormDataEntryValue | string | null | undefined, raw: FormDataEntryValue | string | null | undefined) {
+  if (parseCommissionKind(kind) === "percent") return parseCommissionPercent(raw);
+  return parseMoney(raw);
+}
+
+export function parseCommissionPercent(value: FormDataEntryValue | string | null | undefined) {
+  const raw = String(value ?? "").replace("%", "").replace(",", ".").trim();
+  if (!raw) return 0;
+  const n = Number(raw);
+  if (!Number.isFinite(n) || n < 0) return 0;
+  return Math.min(100, Math.round(n));
+}
+
 export function parseMoney(value: FormDataEntryValue | string | null | undefined) {
   const digits = String(value ?? "").replace(/[^\d]/g, "");
   if (!digits) return 0;

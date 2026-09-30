@@ -54,6 +54,10 @@ const ENUM_LABEL: Record<string, Record<string, string>> = {
     ins: "Đã kiểm phòng",
     ooo: "Ngưng sử dụng",
   },
+  otaCommissionKind: {
+    percent: "%",
+    amount: "Số tiền",
+  },
   otaPaymentMode: {
     debt: "OTA đã thu khách",
     hotel: "Khách thanh toán tại khách sạn",
@@ -98,6 +102,7 @@ export function formatAuditValue(value: unknown, key?: string): string {
   if (key && typeof value === "string" && ENUM_LABEL[key]?.[value]) return ENUM_LABEL[key][value];
   if (typeof value === "boolean") return value ? "Có" : "Không";
   if (typeof value === "number") {
+    if (key === "otaCommissionPercent") return `${value}%`;
     if (key && MONEY_FIELDS.has(key)) return `${value.toLocaleString("vi-VN")}₫`;
     return String(value);
   }
@@ -126,6 +131,11 @@ export function formatAuditValue(value: unknown, key?: string): string {
 }
 
 function formatChangeValue(value: unknown, key: string, row: Record<string, unknown> | null) {
+  if (key === "otaCommissionValue" && typeof value === "number") {
+    if (row?.otaCommissionKind === "amount") return formatAuditValue(value, "deposit");
+    return `${value}%`;
+  }
+  if (key === "otaCommissionPercent" && typeof value === "number") return `${value}%`;
   if (key === "discountValue" && typeof value === "number") {
     if (row?.discountKind === "percent") return `${value}%`;
     if (row?.discountKind === "none") return "—";

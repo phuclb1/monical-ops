@@ -8,8 +8,8 @@ export const ZALO_CHANNEL_DEFS = [
     key: "booking",
     label: "Nhóm booking",
     hint: "Gửi khi tạo booking.",
-    fields: "{{nguon}} {{ma}} {{khach}} {{phong}} {{hang}} {{nhan}} {{tra}} {{tongPhong}} {{chietKhau}} {{tongSauCk}} {{datCoc}} {{conPhaiThu}} {{hoaDon}} {{tao}}",
-    template: "Booking mới từ nguồn {{nguon}} {{ma}}\nKhách: {{khach}}\nPhòng: {{phong}}\nHạng: {{hang}}\nNhận {{nhan}} · trả {{tra}}\nTổng phòng: {{tongPhong}}\nChiết khấu: {{chietKhau}}\nTổng sau chiết khấu: {{tongSauCk}}\nĐặt cọc: {{datCoc}}\nCòn phải thu khi check-in: {{conPhaiThu}}\nXuất hóa đơn: {{hoaDon}}\nNgười tạo: {{tao}}",
+    fields: "{{ma}} {{khach}} {{phong}} {{nhan}} {{tra}} {{anSang}} {{tong}} {{tongSauCk}} {{coc}} {{phaiThu}} {{tao}}",
+    template: "Đã tạo booking {{ma}}\nKhách: {{khach}}\nPhòng: {{phong}}\nNhận {{nhan}} · trả {{tra}}\nĂn sáng: {{anSang}}\nTổng: {{tong}}\nTổng sau chiết khấu: {{tongSauCk}}\nCọc: {{coc}}\nPhải thu: {{phaiThu}}\nNgười tạo: {{tao}}",
   },
   {
     key: "reception",
@@ -119,8 +119,10 @@ export function bookingZaloVars(input: {
   afterDiscount: number;
   deposit: number;
   dueAtCheckin: number;
+  breakfast: string;
   createdBy: string;
   editedBy: string;
+  approvedBy: string;
   edited: string;
   checkIn: string;
   checkOut: string;
@@ -135,16 +137,29 @@ export function bookingZaloVars(input: {
     nhan: formatDateNumeric(input.checkIn),
     tra: formatDateNumeric(input.checkOut),
     tongPhong: formatVnd(input.roomSubtotal),
+    tong: formatVnd(input.roomSubtotal),
     chietKhau: formatVnd(input.discount),
     tongSauCk: formatVnd(input.afterDiscount),
     datCoc: formatVnd(input.deposit),
+    coc: formatVnd(input.deposit),
+    anSang: input.breakfast || "Không",
     conPhaiThu: formatVnd(input.dueAtCheckin),
     phaiThu: formatVnd(input.due),
     hoaDon: input.invoice ? "Có" : "Không",
     tao: input.createdBy || "—",
     sua: input.editedBy || "—",
+    duyet: input.approvedBy || "Không cần duyệt",
     suaGi: input.edited || "Không thấy mục sửa trong nhật ký.",
   };
+}
+
+export function zaloBreakfastLabel(rooms: { breakfast?: boolean | null; room?: { number?: string | null } | null }[]) {
+  const rows = [...rooms].sort((a, b) => (a.room?.number || "").localeCompare(b.room?.number || "", "vi"));
+  if (!rows.length) return "Không";
+  const eats = (row: (typeof rows)[number]) => row.breakfast !== false;
+  if (rows.every(eats)) return "Có";
+  if (rows.every((row) => !eats(row))) return "Không";
+  return rows.map((row) => `P.${row.room?.number || "—"} ${eats(row) ? "có" : "không"}`).join(", ");
 }
 
 export function bookingEditSummary(

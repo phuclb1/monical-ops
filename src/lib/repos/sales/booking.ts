@@ -15,7 +15,9 @@ import {
   parsePaymentMethod,
   depositMethodOf,
   isOtaDebt,
+  isOtaSource,
   isSaleSource,
+  normalizeCommission,
   normalizeDiscount,
   roomMoveKind,
 } from "../../sales";
@@ -40,6 +42,9 @@ export type BookingUpdateInput = {
   guestPhone?: string;
   source?: string;
   otaPaymentMode?: "debt" | "hotel";
+  otaCommissionPercent?: number;
+  otaCommissionKind?: "percent" | "amount";
+  otaCommissionValue?: number;
   invoiceRequested?: boolean;
   adults?: number;
   children?: number;
@@ -83,6 +88,11 @@ export async function updateBooking(
     data.otaPaymentMode === undefined
       ? hit.otaPaymentMode === "hotel" ? "hotel" : "debt"
       : data.otaPaymentMode === "hotel" ? "hotel" : "debt";
+  const commission = normalizeCommission(
+    isOtaSource(source),
+    data.otaCommissionKind ?? hit.otaCommissionKind,
+    data.otaCommissionValue ?? (hit.otaCommissionValue || hit.otaCommissionPercent || 0),
+  );
   const guestPhone = data.guestPhone !== undefined ? data.guestPhone.trim() || null : hit.guestPhone;
   const adults = Math.max(1, data.adults ?? hit.adults ?? 1);
   const children = Math.max(0, data.children ?? hit.children ?? 0);
@@ -167,6 +177,7 @@ export async function updateBooking(
       guestPhone,
       source,
       otaPaymentMode,
+      ...commission,
       invoiceRequested: data.invoiceRequested ?? hit.invoiceRequested,
       adults,
       children,

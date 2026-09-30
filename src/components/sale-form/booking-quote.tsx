@@ -15,9 +15,11 @@ export function BookingQuote(props: {
   checkinPayMethod: PaymentMethod;
   ota?: boolean;
   otaDebt?: boolean;
+  commissionLabel?: string;
+  commissionAmount?: number;
   due: number;
 }) {
-  const { quotes, extraRows, booked, bookingTotal, depositAmount, checkinAmount = 0, depositPayMethod, checkinPayMethod, ota, otaDebt, due } = props;
+  const { quotes, extraRows, booked, bookingTotal, depositAmount, checkinAmount = 0, depositPayMethod, checkinPayMethod, ota, otaDebt, commissionLabel = "Hoa hồng", commissionAmount = 0, due } = props;
   const depositSuffix = ` · ${PAYMENT_METHOD_LABEL[depositPayMethod]}`;
   const checkinSuffix = ` · ${PAYMENT_METHOD_LABEL[checkinPayMethod]}`;
   return (
@@ -57,6 +59,10 @@ export function BookingQuote(props: {
           ))}
           {ota ? (
             <>
+              <li className="flex justify-between gap-2 text-[#c47b12]">
+                <span>{commissionLabel}</span>
+                <span>{formatVnd(commissionAmount)}</span>
+              </li>
               <li className="flex justify-between gap-2 font-bold">
                 <span>Công nợ OTA</span>
                 <span>{formatVnd(otaDebt ? due : 0)}</span>

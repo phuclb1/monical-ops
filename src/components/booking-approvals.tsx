@@ -6,6 +6,12 @@ import { formatAuditWhen } from "@/lib/audit-view";
 import type { Role } from "@/lib/types";
 import { Btn, Card, Chip, Field } from "@/components/ui";
 
+type ApprovalChange = {
+  label: string;
+  before: string;
+  after: string;
+};
+
 type ApprovalRow = {
   id: string;
   bookingId: string;
@@ -16,6 +22,7 @@ type ApprovalRow = {
   reviewedAt: string | null;
   reviewedByName: string | null;
   reviewNote: string | null;
+  changes?: ApprovalChange[];
 };
 
 const STATUS = {
@@ -60,6 +67,20 @@ export function BookingApprovals({
                   </div>
                   <Chip tone={status.tone}>{status.label}</Chip>
                 </div>
+                {row.changes?.length ? (
+                  <ul className="mt-2 space-y-1.5 rounded-lg bg-sand px-2.5 py-2">
+                    {row.changes.map((change) => (
+                      <li key={`${change.label}-${change.before}-${change.after}`} className="text-xs leading-5">
+                        <p className="text-[#5c6665]">{change.label}</p>
+                        <p className="font-semibold">
+                          <span className="font-medium text-[#8a7a72]">{change.before}</span>
+                          <span className="mx-1 font-medium text-[#8a7a72]">→</span>
+                          {change.after}
+                        </p>
+                      </li>
+                    ))}
+                  </ul>
+                ) : null}
                 {row.reviewedAt ? (
                   <p className="mt-2 text-xs text-[#5c6665]">
                     {row.reviewedByName} · {formatAuditWhen(row.reviewedAt)}
@@ -106,6 +127,18 @@ export function BookingApprovals({
                 Từ chối thay đổi?
               </h2>
               <p className="mt-1 text-sm text-[#5c6665]">{rejecting.summary}</p>
+              {rejecting.changes?.length ? (
+                <ul className="space-y-1 text-sm">
+                  {rejecting.changes.map((change) => (
+                    <li key={`${change.label}-${change.before}-${change.after}`}>
+                      <span className="text-[#5c6665]">{change.label}: </span>
+                      <span className="font-medium text-[#8a7a72]">{change.before}</span>
+                      <span className="mx-1 text-[#8a7a72]">→</span>
+                      <span className="font-semibold">{change.after}</span>
+                    </li>
+                  ))}
+                </ul>
+              ) : null}
             </div>
             <Field label="Lý do từ chối">
               <textarea name="reviewNote" required autoFocus rows={3} placeholder="Nhập lý do để lễ tân biết" />

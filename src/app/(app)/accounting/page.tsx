@@ -45,7 +45,7 @@ export default async function AccountingPage({
       <div>
         <h1 className="text-xl font-bold">Kế toán</h1>
         <p className="text-xs text-[#5c6665] md:text-sm">
-          Chỉ xem sơ đồ phòng, booking và doanh thu xuất hóa đơn. Doanh thu ghi nhận khi khách đã check-in: booking trực tiếp có yêu cầu xuất, cộng 100% tiền phòng OTA (chưa trừ hoa hồng).
+          Chỉ xem sơ đồ phòng, booking và doanh thu xuất hóa đơn. Doanh thu tự ghi nhận khi đến ngày nhận và booking không hủy: booking trực tiếp có yêu cầu xuất, cộng 100% tiền phòng OTA (chưa trừ hoa hồng).
         </p>
       </div>
 
@@ -57,7 +57,7 @@ export default async function AccountingPage({
         </p>
         <p className="owner-hero-value">{formatVnd(invoiceMoney.total)}</p>
         <p className="mt-1 text-xs text-[#5c6665]">
-          {invoice.rows.length} booking đã check-in: {invoice.direct.length} trực tiếp có yêu cầu xuất · {invoice.ota.length} OTA tính 100%.
+          {invoice.rows.length} booking đã đến ngày nhận, chưa hủy: {invoice.direct.length} trực tiếp có yêu cầu xuất · {invoice.ota.length} OTA tính 100%.
         </p>
       </section>
 

@@ -34,6 +34,8 @@ export function SaleFormSide(props: {
   setBreakfastChildren: (value: string) => void;
   ota?: boolean;
   otaDebt?: boolean;
+  commissionLabel?: string;
+  commissionAmount?: number;
   showCheckinNow?: boolean;
   today?: string;
   roomIds: string[];
@@ -67,6 +69,8 @@ export function SaleFormSide(props: {
     setBreakfastChildren,
     ota,
     otaDebt,
+    commissionLabel = "Hoa hồng",
+    commissionAmount = 0,
     showCheckinNow,
     today,
     roomIds,
@@ -120,6 +124,10 @@ export function SaleFormSide(props: {
             ))}
             {ota ? (
               <>
+                <li className="flex justify-between gap-2 text-[#c47b12]">
+                  <span>{commissionLabel}</span>
+                  <span>{formatVnd(commissionAmount)}</span>
+                </li>
                 <li className="flex justify-between gap-2 font-bold">
                   <span>Công nợ OTA</span>
                   <span>{formatVnd(otaDebt ? bookingTotal : 0)}</span>

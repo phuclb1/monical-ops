@@ -2,7 +2,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireSession } from "@/lib/auth";
 import { can } from "@/lib/permissions";
-import { parseDiscountKind, parseDiscountValue, parseMoney, parsePaymentMethod } from "@/lib/sales";
+import { parseCommissionKind, parseCommissionValue, parseDiscountKind, parseDiscountValue, parseMoney, parsePaymentMethod } from "@/lib/sales";
 
 export async function requireSales() {
   const user = await requireSession();
@@ -94,6 +94,8 @@ export function saleFromForm(formData: FormData) {
     guestPhone: String(formData.get("guestPhone") || ""),
     source: String(formData.get("source") || "walk_in"),
     otaPaymentMode: String(formData.get("otaPaymentMode") || "") === "hotel" ? "hotel" as const : "debt" as const,
+    otaCommissionKind: parseCommissionKind(formData.get("otaCommissionKind")),
+    otaCommissionValue: parseCommissionValue(formData.get("otaCommissionKind"), formData.get("otaCommissionValue")),
     invoiceRequested: String(formData.get("invoiceRequested") || "") === "1",
     checkIn: dates[roomIds[0] || ""]?.checkIn || fallbackIn,
     checkOut: dates[roomIds[0] || ""]?.checkOut || fallbackOut,

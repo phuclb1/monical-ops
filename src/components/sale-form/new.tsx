@@ -11,11 +11,13 @@ import {
   defaultCheckout,
   isOtaSource,
   nightsBetween,
+  formatVnd,
   parseMoney,
   parseDiscountValue,
 } from "@/lib/sales";
 import { defaultAdultsForRooms } from "@/lib/rooms-catalog";
 import type { PaymentMethod } from "@/lib/types";
+import { OtaCommissionFields, type CommissionKind } from "./commission";
 import { SaleFormExtras, type DraftExtra, type ExtraTypeOption } from "./extras";
 import { SaleFormRooms } from "./new-rooms";
 import { SaleFormSide } from "./new-side";
@@ -78,11 +80,16 @@ export function SaleForm({
   const [discounts, setDiscounts] = useState<Record<string, DiscountState>>({});
   const [source, setSource] = useState(defaults.source || "walk_in");
   const [otaPaymentMode, setOtaPaymentMode] = useState<"debt" | "hotel">("debt");
+  const [commissionKind, setCommissionKind] = useState<CommissionKind>("percent");
+  const [commission, setCommission] = useState("");
   const [extras, setExtras] = useState<DraftExtra[]>([]);
   const [deposit, setDeposit] = useState(defaults.deposit ? String(defaults.deposit) : "");
   const [payMethod, setPayMethod] = useState<PaymentMethod>("personal");
   const ota = isOtaSource(source);
   const otaDebt = ota && otaPaymentMode === "debt";
+  const commissionValue = commissionKind === "percent"
+    ? Math.min(100, Math.max(0, Math.round(Number(commission) || 0)))
+    : parseMoney(commission);
   const selectedRooms = rooms.filter((room) => roomIds.includes(room.id));
   const occupancyAdults = useMemo(() => defaultAdultsForRooms(selectedRooms, types), [selectedRooms, types]);
   const [adults, setAdults] = useState(String(defaults.adults ?? occupancyAdults));
@@ -108,6 +115,12 @@ export function SaleForm({
   const extraNights = selectedRooms.length ? booked.nights : Math.max(0, nightsBetween(sharedStay.checkIn, sharedStay.checkOut));
   const extraRows = extras.map((row) => ({ ...row, amount: extraAmount(row, extraNights) }));
   const bookingTotal = booked.total + extraRows.reduce((sum, row) => sum + row.amount, 0);
+  const commissionAmount = ota
+    ? commissionKind === "amount"
+      ? Math.min(bookingTotal, commissionValue)
+      : Math.round(bookingTotal * commissionValue / 100)
+    : 0;
+  const commissionLabel = commissionKind === "amount" ? "Hoa hồng" : `Hoa hồng ${commissionValue}%`;
   const depositAmount = ota ? 0 : parseMoney(deposit);
   const due = bookingDue(bookingTotal, depositAmount);
   const stayAdults = Math.max(1, Number(adults) || 1);
@@ -224,14 +237,22 @@ export function SaleForm({
         </select>
       </Field>
       {ota ? (
-        <Field label="Hình thức thanh toán OTA">
-          <select name="otaPaymentMode" value={otaPaymentMode} onChange={(e) => setOtaPaymentMode(e.target.value as "debt" | "hotel")}>
-            <option value="debt">Công nợ OTA — OTA đã thu khách</option>
-            <option value="hotel">Thanh toán tại KS — khách trả khách sạn</option>
-          </select>
-        </Field>
+        <>
+          <Field label="Hình thức thanh toán OTA">
+            <select name="otaPaymentMode" value={otaPaymentMode} onChange={(e) => setOtaPaymentMode(e.target.value as "debt" | "hotel")}>
+              <option value="debt">Công nợ OTA — OTA đã thu khách</option>
+              <option value="hotel">Thanh toán tại KS — khách trả khách sạn</option>
+            </select>
+          </Field>
+          <OtaCommissionFields kind={commissionKind} value={commission} onKind={setCommissionKind} onValue={setCommission} />
+          <p className="-mt-1 text-xs text-[#5c6665]">Hoa hồng phải trả đối tác: {formatVnd(commissionAmount)}</p>
+        </>
       ) : (
-        <input type="hidden" name="otaPaymentMode" value="debt" />
+        <>
+          <input type="hidden" name="otaPaymentMode" value="debt" />
+          <input type="hidden" name="otaCommissionKind" value="percent" />
+          <input type="hidden" name="otaCommissionValue" value="0" />
+        </>
       )}
       <label className="flex items-center gap-2">
         <input type="checkbox" name="invoiceRequested" value="1" defaultChecked={defaults.invoiceRequested} />
@@ -317,6 +338,8 @@ export function SaleForm({
         setBreakfastChildren={setBreakfastChildren}
         ota={ota}
         otaDebt={otaDebt}
+        commissionLabel={commissionLabel}
+        commissionAmount={commissionAmount}
         showCheckinNow={showCheckinNow}
         today={today}
         roomIds={roomIds}

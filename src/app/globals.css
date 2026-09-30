@@ -1646,6 +1646,30 @@ label {
   padding: 1rem 1rem 2rem;
 }
 
+.booking-sheet-frame {
+  width: 100%;
+  max-width: 52rem;
+  min-width: 0;
+  margin: 0 auto;
+  overflow: hidden;
+}
+
+.booking-sheet-fit {
+  width: 52rem;
+}
+
+@media screen {
+  body:has(.booking-print) {
+    overflow-x: hidden;
+  }
+
+  .booking-sheet-fit:not([data-fit]) {
+    visibility: hidden;
+    height: 0;
+    overflow: hidden;
+  }
+}
+
 .print-toolbar {
   max-width: 52rem;
   margin: 0 auto 1rem;
@@ -1932,6 +1956,20 @@ body:has(.booking-print) .pwa-install {
 
   .booking-print {
     padding: 0;
+  }
+
+  .booking-sheet-frame {
+    max-width: none;
+    overflow: visible;
+  }
+
+  .booking-sheet-fit,
+  .booking-sheet-fit:not([data-fit]) {
+    width: auto !important;
+    height: auto !important;
+    overflow: visible !important;
+    zoom: 1 !important;
+    visibility: visible;
   }
 
   .booking-sheet {

@@ -22,6 +22,30 @@ const booking = {
   ],
 } as unknown as Parameters<typeof bookingChangeRequiresApproval>[0];
 
+test("changing OTA commission requires approval", () => {
+  assert.equal(
+    bookingChangeRequiresApproval(
+      { ...booking, source: "agoda", otaCommissionKind: "percent", otaCommissionValue: 15 },
+      {
+        assignments: [
+          {
+            saleId: "sale-1",
+            roomId: "room-101",
+            checkIn: "2026-09-25",
+            checkOut: "2026-09-27",
+            breakfast: true,
+            discountKind: "none",
+            discountValue: 0,
+          },
+        ],
+        otaCommissionKind: "amount",
+        otaCommissionValue: 200_000,
+      },
+    ),
+    true,
+  );
+});
+
 test("ordinary guest detail edits do not require approval", () => {
   assert.equal(
     bookingChangeRequiresApproval(booking, {

@@ -20,6 +20,9 @@ export type SaleInput = {
   guestPhone?: string;
   source: string;
   otaPaymentMode?: "debt" | "hotel";
+  otaCommissionPercent?: number;
+  otaCommissionKind?: "percent" | "amount";
+  otaCommissionValue?: number;
   invoiceRequested?: boolean;
   checkIn: string;
   checkOut: string;

@@ -3,9 +3,10 @@
 import { useEffect, useState } from "react";
 import { Btn, Field, MoneyMethodField } from "@/components/ui";
 import { SALE_SOURCE_GROUPS, SALE_SOURCE_LABEL } from "@/lib/constants";
-import { bookingDue, bookingPayMethods, bookingQuote, catalogRate, collectedSplit, isOtaDebt, isOtaSource, parseMoney, parseDiscountValue, rangesOverlap, roomMoveKind } from "@/lib/sales";
+import { bookingDue, bookingPayMethods, bookingQuote, catalogRate, collectedSplit, formatVnd, isOtaDebt, isOtaSource, parseMoney, parseDiscountValue, rangesOverlap, roomMoveKind } from "@/lib/sales";
 import { extraAmount } from "@/lib/extras";
 import type { PaymentMethod } from "@/lib/types";
+import { OtaCommissionFields, type CommissionKind } from "./commission";
 import { BookingRoomLines } from "./booking-lines";
 import { BookingQuote } from "./booking-quote";
 import { parseDiscountState, type DiscountState, type StayDates } from "./shared";
@@ -45,6 +46,9 @@ export function BookingForm({
     guestPhone?: string;
     source?: string;
     otaPaymentMode?: string;
+    otaCommissionPercent?: number;
+    otaCommissionKind?: string;
+    otaCommissionValue?: number;
     invoiceRequested?: boolean;
     adults?: number;
     children?: number;
@@ -86,6 +90,11 @@ export function BookingForm({
   const [otaPaymentMode, setOtaPaymentMode] = useState<"debt" | "hotel">(
     defaults.otaPaymentMode === "hotel" ? "hotel" : "debt",
   );
+  const [commissionKind, setCommissionKind] = useState<CommissionKind>(defaults.otaCommissionKind === "amount" ? "amount" : "percent");
+  const [commission, setCommission] = useState(() => {
+    const value = defaults.otaCommissionValue || (defaults.otaCommissionKind === "amount" ? 0 : defaults.otaCommissionPercent || 0);
+    return value ? String(value) : "";
+  });
   const initialPaid = collectedSplit(defaults.deposit || 0, defaults.checkinPaid);
   const storedMethods = bookingPayMethods({ ...defaults, checkinPaid: initialPaid.checkin });
   const [deposit, setDeposit] = useState(initialPaid.hold ? String(initialPaid.hold) : "");
@@ -94,6 +103,9 @@ export function BookingForm({
   const [checkinPayMethod, setCheckinPayMethod] = useState<PaymentMethod>(storedMethods.checkin);
   const ota = isOtaSource(source);
   const otaDebt = isOtaDebt(source, otaPaymentMode);
+  const commissionValue = commissionKind === "percent"
+    ? Math.min(100, Math.max(0, Math.round(Number(commission) || 0)))
+    : parseMoney(commission);
   const switchedToOtaDebt = otaDebt && !isOtaDebt(defaults.source, defaults.otaPaymentMode);
 
   function stayOf(saleId: string, fallback: StayDates) {
@@ -157,6 +169,14 @@ export function BookingForm({
   const extraRows = extras.map((row) => ({ ...row, amount: extraAmount(row, booked.nights) }));
   const extrasTotal = extraRows.reduce((sum, row) => sum + row.amount, 0);
   const bookingTotal = booked.total + extrasTotal;
+  const commissionAmount = ota
+    ? commissionKind === "amount"
+      ? Math.min(bookingTotal, commissionValue)
+      : Math.round(bookingTotal * commissionValue / 100)
+    : 0;
+  const commissionLabel = commissionKind === "amount" ? "Hoa hồng" : `Hoa hồng ${commissionValue}%`;
+  const savedCommissionKind = defaults.otaCommissionKind === "amount" ? "amount" : "percent";
+  const savedCommissionValue = defaults.otaCommissionValue || (savedCommissionKind === "percent" ? defaults.otaCommissionPercent || 0 : 0);
   const holdAmount = switchedToOtaDebt ? 0 : parseMoney(deposit);
   const checkinAmount = switchedToOtaDebt ? 0 : parseMoney(checkinPaid);
   const depositAmount = holdAmount + checkinAmount;
@@ -164,6 +184,8 @@ export function BookingForm({
   const hasApprovalChange =
     source !== (defaults.source || "walk_in") ||
     otaPaymentMode !== (defaults.otaPaymentMode === "hotel" ? "hotel" : "debt") ||
+    commissionKind !== savedCommissionKind ||
+    commissionValue !== savedCommissionValue ||
     holdAmount !== initialPaid.hold ||
     checkinAmount !== initialPaid.checkin ||
     (holdAmount > 0 && payMethod !== storedMethods.deposit) ||
@@ -230,14 +252,22 @@ export function BookingForm({
         </select>
       </Field>
       {ota ? (
-        <Field label="Hình thức thanh toán OTA">
-          <select name="otaPaymentMode" value={otaPaymentMode} onChange={(e) => setOtaPaymentMode(e.target.value as "debt" | "hotel")}>
-            <option value="debt">Công nợ OTA — OTA đã thu khách</option>
-            <option value="hotel">Thanh toán tại KS — khách trả khi check-in</option>
-          </select>
-        </Field>
+        <>
+          <Field label="Hình thức thanh toán OTA">
+            <select name="otaPaymentMode" value={otaPaymentMode} onChange={(e) => setOtaPaymentMode(e.target.value as "debt" | "hotel")}>
+              <option value="debt">Công nợ OTA — OTA đã thu khách</option>
+              <option value="hotel">Thanh toán tại KS — khách trả khi check-in</option>
+            </select>
+          </Field>
+          <OtaCommissionFields kind={commissionKind} value={commission} onKind={setCommissionKind} onValue={setCommission} />
+          <p className="-mt-1 text-xs text-[#5c6665]">Hoa hồng phải trả đối tác: {formatVnd(commissionAmount)}</p>
+        </>
       ) : (
-        <input type="hidden" name="otaPaymentMode" value="debt" />
+        <>
+          <input type="hidden" name="otaPaymentMode" value="debt" />
+          <input type="hidden" name="otaCommissionKind" value="percent" />
+          <input type="hidden" name="otaCommissionValue" value="0" />
+        </>
       )}
       <label className="flex items-center gap-2">
         <input type="checkbox" name="invoiceRequested" value="1" defaultChecked={defaults.invoiceRequested} />
@@ -366,6 +396,8 @@ export function BookingForm({
         checkinPayMethod={checkinPayMethod}
         ota={ota}
         otaDebt={otaDebt}
+        commissionLabel={commissionLabel}
+        commissionAmount={commissionAmount}
         due={due}
       />
       <Btn type="submit" className="w-full">

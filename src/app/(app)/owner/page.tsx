@@ -36,7 +36,7 @@ export default async function OwnerRevenuePage({
       <div>
         <h1 className="text-xl font-bold">Doanh thu</h1>
         <p className="text-xs text-[#5c6665] md:text-sm">
-          Booking theo ngày nhận. Doanh thu ghi nhận khi khách check-in thành công.
+          Theo ngày nhận trong kỳ. Đến ngày nhận mà không hủy thì ghi nhận. OTA sau hoa hồng là tiền phòng sau hoa hồng. Công nợ đối tác gồm phải trả hoa hồng và phải thu net chưa về. OTA đã thu tại KS là tiền khách trả tại khách sạn.
         </p>
       </div>
 
@@ -47,20 +47,21 @@ export default async function OwnerRevenuePage({
         <p className="owner-hero-value">{formatVnd(report.recognizedMoney.total)}</p>
         <p className="mt-1 text-xs text-[#5c6665]">
           {report.recognized.length
-            ? `${report.recognized.length} booking check-in · OTA chưa trừ hoa hồng ${formatVnd(report.recognizedMoney.ota)} · CK công ty ${formatVnd(report.recognizedMoney.company)} · CK cá nhân ${formatVnd(report.recognizedMoney.transfer)} · tiền mặt ${formatVnd(report.recognizedMoney.cash)}`
-            : "Chưa có booking check-in trong kỳ"}
+            ? `${report.recognized.length} booking đã đến ngày nhận · CK cá nhân ${formatVnd(report.recognizedSplit.pay.transfer)} · CK công ty ${formatVnd(report.recognizedSplit.pay.company)} · tiền mặt ${formatVnd(report.recognizedSplit.pay.cash)} · OTA sau hoa hồng ${formatVnd(report.recognizedSplit.ota.net)}`
+            : "Chưa có booking đến ngày nhận trong kỳ"}
         </p>
       </section>
 
       <div className="revenue-stats">
-        <Stat label="Doanh thu booking" value={formatVnd(report.booking.total)} />
-        <Stat label="Doanh thu OTA" value={formatVnd(report.booking.ota)} />
-        <Stat label="Đã đặt cọc" value={formatVnd(report.booking.deposit)} tone="text-[#1b7a4e]" />
-        <Stat label="Phải thu" value={formatVnd(report.booking.due)} tone="text-[#c47b12]" />
-        <Stat label="CK công ty" value={formatVnd(report.booking.company)} />
-        <Stat label="CK cá nhân" value={formatVnd(report.booking.transfer)} />
-        <Stat label="Tiền mặt" value={formatVnd(report.booking.cash)} />
-        <Stat label="Booking nhận" value={String(report.booked.length)} />
+        <Stat label="Doanh thu tổng booking" value={formatVnd(report.booking.total)} />
+        <Stat label="Doanh thu tổng ghi nhận" value={formatVnd(report.recognizedMoney.total)} />
+        <Stat label="Ghi nhận CK cá nhân" value={formatVnd(report.recognizedSplit.pay.transfer)} />
+        <Stat label="Ghi nhận CK công ty" value={formatVnd(report.recognizedSplit.pay.company)} />
+        <Stat label="Ghi nhận tiền mặt" value={formatVnd(report.recognizedSplit.pay.cash)} />
+        <Stat label="OTA sau hoa hồng" value={formatVnd(report.recognizedSplit.ota.net)} />
+        <Stat label="Phải trả hoa hồng" value={formatVnd(report.recognizedSplit.ota.commission)} tone="text-[#c47b12]" />
+        <Stat label="Phải thu đối tác" value={formatVnd(report.recognizedSplit.ota.partnerNet)} tone="text-[#c47b12]" />
+        <Stat label="OTA đã thu tại KS" value={formatVnd(report.recognizedSplit.ota.collectedGross)} />
       </div>
 
       <Card>

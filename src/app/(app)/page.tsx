@@ -53,7 +53,7 @@ export default async function DashboardPage() {
     { label: "Khách đến", value: String(data.arriving.length), hint: "Theo ngày nhận" },
     { label: "Khách đi", value: String(data.departing.length), hint: "Theo ngày trả" },
     revenueVisible
-      ? { label: "Doanh thu hôm nay", value: formatVnd(todayReport.recognizedMoney.total), hint: "Đã check-in" }
+      ? { label: "Doanh thu hôm nay", value: formatVnd(todayReport.recognizedMoney.total), hint: "Đến ngày nhận, chưa hủy" }
       : { label: "Việc đang mở", value: String(data.nowTasks.length), hint: `${data.overdueTasks.length} quá hạn` },
   ];
 
