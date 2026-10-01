@@ -6,12 +6,12 @@ import { BookingCancelActions } from "@/components/booking-cancel";
 import { RoomHandoffPanel } from "@/components/room-handoff";
 import { Card, Chip } from "@/components/ui";
 import { getSession } from "@/lib/auth";
-import { SALE_ORIGIN_LABEL, SALE_SOURCE_LABEL, SALE_STATUS_LABEL } from "@/lib/constants";
+import { PAYMENT_METHOD_LABEL, SALE_ORIGIN_LABEL, SALE_SOURCE_LABEL, SALE_STATUS_LABEL } from "@/lib/constants";
 import { formatDateLong, todayVN } from "@/lib/datetime";
 import { can } from "@/lib/permissions";
 import { getRoomSale, getRoomDayChecklists, getBooking, listRooms, listRoomHandoff } from "@/lib/repos";
 import { canCheckinAfterStandby, canCheckoutAfterInspect } from "@/lib/room-handoff";
-import { bookingDue, bookingQuote, discountLabel, formatVnd, isOpsBookingCode, isOtaDebt, isOtaSource, paidNote } from "@/lib/sales";
+import { bookingDue, bookingPayMethods, bookingQuote, collectedSplit, depositRefundAllowed, discountLabel, formatVnd, isActiveSaleStatus, isOpsBookingCode, isOtaDebt, isOtaSource, paidNote, refundParts } from "@/lib/sales";
 import type { SaleOrigin, SaleSource, SaleStatus } from "@/lib/types";
 
 const STATUS_TONE: Record<SaleStatus, "ok" | "warn" | "danger" | "gold" | "neutral"> = {
@@ -48,6 +48,10 @@ export default async function SaleDetailPage({
   });
   const today = todayVN();
   const active = sale.status === "reserved" || sale.status === "inhouse";
+  const otherActive = sale.peers.some((row) => isActiveSaleStatus(row.status));
+  const hold = otherActive ? 0 : collectedSplit(sale.deposit || 0, sale.checkinPaid).hold;
+  const canRefund = hold > 0 && depositRefundAllowed(sale.checkIn, today);
+  const refunds = refundParts(sale);
   const group = [sale, ...sale.peers].sort((a, b) => (a.room?.number || "").localeCompare(b.room?.number || ""));
   const booked = bookingQuote(group);
   const quote = booked.lines[group.findIndex((row) => row.id === sale.id)] || booked.lines[0];
@@ -141,6 +145,11 @@ export default async function SaleDetailPage({
             <p className="mt-1 text-sm font-semibold">Còn phải thu {formatVnd(booking?.due ?? bookingDue(booked.total, sale.deposit || 0))}</p>
           </>
         )}
+        {refunds.map((part) => (
+          <p key={part.method} className="mt-1 text-sm font-semibold text-[#c23b3b]">
+            Hoàn tiền {formatVnd(part.amount)} từ {PAYMENT_METHOD_LABEL[part.method]}
+          </p>
+        ))}
         {sale.guestPhone ? <p className="mt-1 text-sm">SĐT {sale.guestPhone}</p> : null}
         {sale.pmsCode ? <p className="mt-1 text-sm">{isOpsBookingCode(sale.pmsCode) ? "Mã Ops" : "PMS"} {sale.pmsCode}</p> : null}
         {sale.notes ? <p className="mt-2 text-sm text-[#5c6665]">{sale.notes}</p> : null}
@@ -210,8 +219,10 @@ export default async function SaleDetailPage({
           kind="sale"
           id={sale.id}
           guestName={sale.guestName}
-          deposit={sale.deposit || 0}
+          deposit={hold}
           canNoShow={sale.status === "reserved"}
+          canRefund={canRefund}
+          accountLabel={PAYMENT_METHOD_LABEL[bookingPayMethods(sale).deposit]}
           variant="block"
         />
       ) : null}

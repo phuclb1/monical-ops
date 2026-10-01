@@ -4,7 +4,7 @@ import * as t from "@/db/schema";
 import { nowISO, todayVN } from "../../datetime";
 import { ensureTodayRoomTasks } from "../../checklist-ops";
 import { can } from "../../permissions";
-import { applyPaidAmount, collectedSplit, isActiveSaleStatus, isPaymentMethod, parsePaymentMethod, salePaid } from "../../sales";
+import { applyPaidAmount, collectedSplit, depositRefundSplit, isActiveSaleStatus, isPaymentMethod, parsePaymentMethod, salePaid } from "../../sales";
 import type { SaleStatus, SessionUser } from "../../types";
 import { audit } from "../audit";
 import { bookingCreatedBy, notifyBookingChange } from "./notify";
@@ -64,7 +64,7 @@ function assertCanCancel(user: SessionUser) {
   if (!can(user.role, "cancelBooking")) throw new Error("Chỉ quản lý mới hủy booking");
 }
 
-export async function cancelBooking(user: SessionUser, bookingId: string, asNoShow = false) {
+export async function cancelBooking(user: SessionUser, bookingId: string, asNoShow = false, opts?: { refundDeposit?: boolean }) {
   assertCanCancel(user);
   const booking = await getBooking(bookingId);
   if (!booking) throw new Error("Không tìm thấy booking");
@@ -74,7 +74,7 @@ export async function cancelBooking(user: SessionUser, bookingId: string, asNoSh
     throw new Error("No-show chỉ khi mọi phòng còn giữ chỗ");
   }
   for (const row of active) {
-    await cancelRoomSale(user, row.id, asNoShow, { silent: true });
+    await cancelRoomSale(user, row.id, asNoShow, { silent: true, refundDeposit: Boolean(opts?.refundDeposit) });
   }
   const createdBy = [...booking.rooms].sort((a, b) => a.createdAt.localeCompare(b.createdAt))[0]?.createdBy;
   await notifyBookingChange({
@@ -152,7 +152,7 @@ export async function checkoutBooking(user: SessionUser, bookingId: string) {
   return booking.id;
 }
 
-export async function cancelRoomSale(user: SessionUser, id: string, asNoShow = false, opts?: { silent?: boolean }) {
+export async function cancelRoomSale(user: SessionUser, id: string, asNoShow = false, opts?: { silent?: boolean; refundDeposit?: boolean }) {
   assertCanCancel(user);
   const db = await getDb();
   const before = (await db.select().from(t.roomSales).where(eq(t.roomSales.id, id)).limit(1))[0];
@@ -160,13 +160,16 @@ export async function cancelRoomSale(user: SessionUser, id: string, asNoShow = f
   if (!isActiveSaleStatus(before.status)) throw new Error("Chỗ đã đóng");
   if (asNoShow && before.status !== "reserved") throw new Error("No-show chỉ áp dụng chỗ đang giữ");
   const status: SaleStatus = asNoShow ? "no_show" : "cancelled";
+  const refund = !asNoShow && opts?.refundDeposit
+    ? { ...depositRefundSplit(before), refundedAt: todayVN() }
+    : {};
   await db
     .update(t.roomSales)
-    .set({ status, updatedAt: nowISO(), updatedBy: user.id })
+    .set({ status, ...refund, updatedAt: nowISO(), updatedBy: user.id })
     .where(eq(t.roomSales.id, id));
   await syncStayFromSale(user.id, { ...before, status });
   await ensureTodayRoomTasks(db, { actorId: user.id });
-  await audit(user.id, "room_sale", id, asNoShow ? "no_show" : "cancel", before, { status });
+  await audit(user.id, "room_sale", id, asNoShow ? "no_show" : "cancel", before, { status, ...refund });
   if (opts?.silent) return;
   const bookingId = before.bookingId || before.id;
   await notifyBookingChange({

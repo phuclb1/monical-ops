@@ -95,7 +95,6 @@ export const SCHEMA_PATCHES = [
   "ALTER TABLE room_sales ADD COLUMN discount_value INTEGER DEFAULT 0",
   "ALTER TABLE room_sales ADD COLUMN cash_paid INTEGER NOT NULL DEFAULT 0",
   "ALTER TABLE room_sales ADD COLUMN transfer_paid INTEGER NOT NULL DEFAULT 0",
-  "UPDATE room_sales SET transfer_paid = deposit WHERE deposit > 0 AND cash_paid = 0 AND transfer_paid = 0",
   "ALTER TABLE room_types ADD COLUMN adults INTEGER DEFAULT 0",
   "ALTER TABLE room_sales ADD COLUMN cars INTEGER DEFAULT 0",
   "ALTER TABLE room_sales ADD COLUMN bikes INTEGER DEFAULT 0",
@@ -161,4 +160,8 @@ export const SCHEMA_PATCHES = [
   created_at TEXT NOT NULL
 )`,
   "CREATE INDEX IF NOT EXISTS login_events_created ON login_events (created_at)",
+  "ALTER TABLE room_sales ADD COLUMN refund_cash INTEGER NOT NULL DEFAULT 0",
+  "ALTER TABLE room_sales ADD COLUMN refund_transfer INTEGER NOT NULL DEFAULT 0",
+  "ALTER TABLE room_sales ADD COLUMN refund_company INTEGER NOT NULL DEFAULT 0",
+  "ALTER TABLE room_sales ADD COLUMN refunded_at TEXT",
 ];

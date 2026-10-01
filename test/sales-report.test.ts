@@ -19,6 +19,10 @@ function row(partial: {
   cashPaid?: number;
   transferPaid?: number;
   companyPaid?: number;
+  refundCash?: number;
+  refundTransfer?: number;
+  refundCompany?: number;
+  refundedAt?: string;
 }) {
   return {
     checkIn: partial.checkIn,
@@ -30,6 +34,10 @@ function row(partial: {
     cashPaid: partial.cashPaid,
     transferPaid: partial.transferPaid,
     companyPaid: partial.companyPaid,
+    refundCash: partial.refundCash,
+    refundTransfer: partial.refundTransfer,
+    refundCompany: partial.refundCompany,
+    refundedAt: partial.refundedAt,
     source: partial.source,
     otaPaymentMode: partial.otaPaymentMode,
     otaCommissionPercent: partial.otaCommissionPercent,
@@ -252,6 +260,50 @@ test("cash flow splits inclusive VAT and OTA receivable or hotel commission paya
   assert.equal(report.totals.receivable, 918_000);
   assert.equal(report.totals.payable, 300_000);
   assert.equal(report.totals.guestDue, 980_000);
+  assert.equal(report.totals.refundCount, 0);
+});
+
+test("cash flow records a deposit refund on the account and date it was returned", () => {
+  const report = cashFlowReport(
+    [
+      row({
+        checkIn: "2026-09-10",
+        checkOut: "2026-09-11",
+        status: "reserved",
+        source: "walk_in",
+        transferPaid: 300_000,
+      }),
+      row({
+        checkIn: "2026-10-20",
+        checkOut: "2026-10-21",
+        status: "cancelled",
+        source: "phone",
+        transferPaid: 500_000,
+        refundTransfer: 500_000,
+        refundedAt: "2026-09-02",
+      }),
+      row({
+        checkIn: "2026-09-03",
+        checkOut: "2026-09-04",
+        status: "cancelled",
+        source: "walk_in",
+        refundCash: 100_000,
+        refundedAt: "2026-08-01",
+      }),
+    ],
+    "2026-09-01",
+    "2026-10-01",
+    "2026-09-12",
+  );
+
+  assert.equal(report.totals.count, 1);
+  assert.equal(report.totals.refundCount, 1);
+  assert.equal(report.rows.length, 2);
+  assert.equal(report.rows[1].flow.refund, true);
+  assert.equal(report.rows[1].flow.gross, 0);
+  assert.equal(report.rows[1].flow.transfer, -500_000);
+  assert.equal(report.rows[1].flow.cash, 0);
+  assert.equal(report.totals.transfer, 300_000 - 500_000);
 });
 
 test("invoice revenue includes direct bookings that request an invoice and all OTA", () => {

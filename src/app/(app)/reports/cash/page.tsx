@@ -21,6 +21,12 @@ function hrefFor(grain: ReportGrain, date: string) {
   return `/reports/cash?grain=${grain}&date=${date}`;
 }
 
+function formatFlowVnd(value: number) {
+  const amount = Math.round(value || 0);
+  const body = new Intl.NumberFormat("vi-VN").format(Math.abs(amount));
+  return amount < 0 ? `−${body}₫` : `${body}₫`;
+}
+
 export default async function CashFlowPage({
   searchParams,
 }: {
@@ -45,7 +51,7 @@ export default async function CashFlowPage({
       <div>
         <h1 className="text-xl font-bold">Báo cáo dòng tiền</h1>
         <p className="text-xs text-[#5c6665] md:text-sm">
-          Theo ngày nhận trong kỳ, gồm booking chưa đến ngày nhận. Giá booking đã gồm VAT 8%; VAT tách riêng để khấu trừ sau. Tiền mặt, CK cá nhân và CK công ty là tiền đã thu. OTA công nợ thành phải thu sau hoa hồng. OTA thu tại khách sạn giữ tiền đã thu và ghi hoa hồng vào phải trả.
+          Theo ngày nhận trong kỳ, gồm booking chưa đến ngày nhận. Giá booking đã gồm VAT 8%; VAT tách riêng để khấu trừ sau. Tiền mặt, CK cá nhân và CK công ty là tiền đã thu. Hoàn cọc ghi âm vào đúng tài khoản đã nhận, theo ngày hoàn. OTA công nợ thành phải thu sau hoa hồng. OTA thu tại khách sạn giữ tiền đã thu và ghi hoa hồng vào phải trả.
         </p>
       </div>
 
@@ -95,23 +101,23 @@ export default async function CashFlowPage({
         <Stat label="Tổng gồm VAT" value={formatVnd(totals.gross)} />
         <Stat label="Chưa VAT" value={formatVnd(totals.net)} />
         <Stat label="VAT 8%" value={formatVnd(totals.vat)} />
-        <Stat label="Tiền mặt" value={formatVnd(totals.cash)} />
-        <Stat label="CK cá nhân" value={formatVnd(totals.transfer)} />
-        <Stat label="CK công ty" value={formatVnd(totals.company)} />
+        <Stat label="Tiền mặt" value={formatFlowVnd(totals.cash)} />
+        <Stat label="CK cá nhân" value={formatFlowVnd(totals.transfer)} />
+        <Stat label="CK công ty" value={formatFlowVnd(totals.company)} />
         <Stat label="Phải thu OTA" value={formatVnd(totals.receivable)} tone="text-[#c47b12]" />
         <Stat label="Phải trả hoa hồng" value={formatVnd(totals.payable)} tone="text-[#c47b12]" />
         <Stat label="Khách còn nợ" value={formatVnd(totals.guestDue)} />
       </div>
 
       <p className="text-xs text-[#5c6665]">
-        {totals.count
-          ? `${totals.count} booking nhận trong kỳ, ${totals.recognizedCount} đã đến ngày ghi nhận.`
+        {totals.count || totals.refundCount
+          ? `${totals.count} booking nhận trong kỳ${totals.refundCount ? ` · ${totals.refundCount} hoàn cọc` : ""}${totals.count ? `, ${totals.recognizedCount} đã đến ngày ghi nhận` : ""}.`
           : "Chưa có booking nhận trong kỳ. Đổi tháng / quý / năm."}
       </p>
 
       <Card className="!p-0">
         <div className="px-4 pt-4">
-          <h2 className="mb-2 font-bold">Chi tiết booking ({totals.count})</h2>
+          <h2 className="mb-2 font-bold">Chi tiết ({report.rows.length})</h2>
         </div>
         {report.rows.length ? (
           <div className="cash-flow-scroll">
@@ -138,7 +144,7 @@ export default async function CashFlowPage({
               </thead>
               <tbody>
                 {report.rows.map(({ booking, flow }) => (
-                  <tr key={booking.id}>
+                  <tr key={`${booking.id}-${flow.refund ? "refund" : "stay"}`}>
                     <td>
                       <Link href={`/sales/bookings/${booking.id}`} className="font-bold text-teal">
                         {booking.guestName}
@@ -148,16 +154,20 @@ export default async function CashFlowPage({
                     <td>{SALE_SOURCE_LABEL[booking.source as SaleSource] || booking.source}</td>
                     <td>{CASH_FLOW_KIND_LABEL[flow.kind]}</td>
                     <td>{formatDateNumeric(booking.createdAt)}</td>
-                    <td>{formatDateNumeric(booking.checkIn)}</td>
+                    <td>{formatDateNumeric(flow.refund ? booking.refundedAt || booking.checkIn : booking.checkIn)}</td>
                     <td>
-                      <Chip tone={flow.recognized ? "ok" : "gold"}>{flow.recognized ? "Đã ghi nhận" : "Chưa ghi nhận"}</Chip>
+                      {flow.refund ? (
+                        <Chip tone="danger">Hoàn cọc</Chip>
+                      ) : (
+                        <Chip tone={flow.recognized ? "ok" : "gold"}>{flow.recognized ? "Đã ghi nhận" : "Chưa ghi nhận"}</Chip>
+                      )}
                     </td>
                     <td className="is-num">{formatVnd(flow.gross)}</td>
                     <td className="is-num">{formatVnd(flow.net)}</td>
                     <td className="is-num">{formatVnd(flow.vat)}</td>
-                    <td className="is-num">{formatVnd(flow.cash)}</td>
-                    <td className="is-num">{formatVnd(flow.transfer)}</td>
-                    <td className="is-num">{formatVnd(flow.company)}</td>
+                    <td className="is-num">{formatFlowVnd(flow.cash)}</td>
+                    <td className="is-num">{formatFlowVnd(flow.transfer)}</td>
+                    <td className="is-num">{formatFlowVnd(flow.company)}</td>
                     <td className="is-num">{formatVnd(flow.receivable)}</td>
                     <td className="is-num">{formatVnd(flow.payable)}</td>
                     <td className="is-num">{formatVnd(flow.guestDue)}</td>
@@ -176,9 +186,9 @@ export default async function CashFlowPage({
                   <td className="is-num">{formatVnd(totals.gross)}</td>
                   <td className="is-num">{formatVnd(totals.net)}</td>
                   <td className="is-num">{formatVnd(totals.vat)}</td>
-                  <td className="is-num">{formatVnd(totals.cash)}</td>
-                  <td className="is-num">{formatVnd(totals.transfer)}</td>
-                  <td className="is-num">{formatVnd(totals.company)}</td>
+                  <td className="is-num">{formatFlowVnd(totals.cash)}</td>
+                  <td className="is-num">{formatFlowVnd(totals.transfer)}</td>
+                  <td className="is-num">{formatFlowVnd(totals.company)}</td>
                   <td className="is-num">{formatVnd(totals.receivable)}</td>
                   <td className="is-num">{formatVnd(totals.payable)}</td>
                   <td className="is-num">{formatVnd(totals.guestDue)}</td>

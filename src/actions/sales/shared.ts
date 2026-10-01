@@ -1,8 +1,9 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireSession } from "@/lib/auth";
+import { todayVN } from "@/lib/datetime";
 import { can } from "@/lib/permissions";
-import { parseCommissionKind, parseCommissionValue, parseDiscountKind, parseDiscountValue, parseMoney, parsePaymentMethod } from "@/lib/sales";
+import { depositRefundAllowed, parseCommissionKind, parseCommissionValue, parseDiscountKind, parseDiscountValue, parseMoney, parsePaymentMethod } from "@/lib/sales";
 
 export async function requireSales() {
   const user = await requireSession();
@@ -16,10 +17,19 @@ export async function requireCancel() {
   return user;
 }
 
-export function assertDepositRefunded(deposit: number, formData: FormData) {
-  if (deposit > 0 && String(formData.get("depositRefunded") || "") !== "1") {
-    throw new Error("Xác nhận đã hoàn cọc trước khi hủy");
+export function assertDepositRefund(hold: number, checkIn: string, formData: FormData) {
+  const refunded = String(formData.get("depositRefunded") || "") === "1";
+  const amount = Math.max(0, Math.round(hold || 0));
+  if (amount <= 0) {
+    if (refunded) throw new Error("Không có cọc để hoàn");
+    return false;
   }
+  if (!depositRefundAllowed(checkIn, todayVN())) {
+    if (refunded) throw new Error("Chỉ hoàn cọc khi hủy trước ngày nhận ít nhất 7 ngày");
+    return false;
+  }
+  if (!refunded) throw new Error("Xác nhận đã hoàn cọc trước khi hủy");
+  return true;
 }
 
 export async function requireRates() {

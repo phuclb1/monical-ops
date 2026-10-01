@@ -20,6 +20,9 @@ import {
   parsePaymentMethod,
   parkingLabel,
   primaryPaymentMethod,
+  depositRefundAllowed,
+  depositRefundSplit,
+  refundParts,
   salePaid,
   saleQuote,
   saleTotal,
@@ -112,4 +115,20 @@ test("payment split, due, labels, codes", () => {
   assert.equal(discountLabel("none", 0), "Không");
   assert.equal(bookingDisplayCode({ id: "abc", pmsCode: " BK-09-1 " }), "BK-09-1");
   assert.equal(bookingPdfFilename({ id: "abc", pmsCode: "BK 09/1" }), "BK-09-1.pdf");
+});
+
+test("deposit refund needs 7 days before check-in and returns the hold account", () => {
+  assert.equal(depositRefundAllowed("2026-10-08", "2026-10-01"), true);
+  assert.equal(depositRefundAllowed("2026-10-07", "2026-10-01"), false);
+  assert.equal(depositRefundAllowed("2026-10-01", "2026-10-01"), false);
+  const split = depositRefundSplit({
+    cashPaid: 500_000,
+    transferPaid: 300_000,
+    companyPaid: 0,
+    deposit: 800_000,
+    checkinPaid: 500_000,
+    checkinMethod: "cash",
+  });
+  assert.deepEqual(split, { refundCash: 0, refundTransfer: 300_000, refundCompany: 0 });
+  assert.deepEqual(refundParts(split), [{ method: "personal", amount: 300_000 }]);
 });

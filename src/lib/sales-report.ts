@@ -32,6 +32,10 @@ type BookingMoney = {
   cashPaid?: number | null;
   transferPaid?: number | null;
   companyPaid?: number | null;
+  refundCash?: number | null;
+  refundTransfer?: number | null;
+  refundCompany?: number | null;
+  refundedAt?: string | null;
   source?: string | null;
   otaPaymentMode?: string | null;
   otaCommissionPercent?: number | null;
@@ -143,11 +147,13 @@ export type CashFlowLine = {
   receivable: number;
   payable: number;
   guestDue: number;
+  refund?: boolean;
 };
 
-export type CashFlowTotals = Omit<CashFlowLine, "kind" | "recognized"> & {
+export type CashFlowTotals = Omit<CashFlowLine, "kind" | "recognized" | "refund"> & {
   count: number;
   recognizedCount: number;
+  refundCount: number;
 };
 
 export function inclusiveVat(total: number) {
@@ -169,6 +175,7 @@ function emptyCashTotals(): CashFlowTotals {
     guestDue: 0,
     count: 0,
     recognizedCount: 0,
+    refundCount: 0,
   };
 }
 
@@ -211,10 +218,45 @@ export function cashFlowOf<T extends BookingMoney>(row: T, today = todayVN()): C
   };
 }
 
+function moneyOut(value?: number | null) {
+  const amount = Math.max(0, Math.round(value || 0));
+  return amount ? -amount : 0;
+}
+
+function refundFlowOf<T extends BookingMoney>(row: T): CashFlowLine | null {
+  const cash = moneyOut(row.refundCash);
+  const transfer = moneyOut(row.refundTransfer);
+  const company = moneyOut(row.refundCompany);
+  if (!cash && !transfer && !company) return null;
+  const date = String(row.refundedAt || "").slice(0, 10);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return null;
+  return {
+    kind: "direct",
+    recognized: true,
+    refund: true,
+    gross: 0,
+    vat: 0,
+    net: 0,
+    cash,
+    transfer,
+    company,
+    receivable: 0,
+    payable: 0,
+    guestDue: 0,
+  };
+}
+
 export function cashFlowReport<T extends BookingMoney>(bookings: T[], from: string, to: string, today = todayVN()) {
-  const rows = bookings
+  const stays = bookings
     .filter((row) => countsAsBookingRevenue(row.status) && row.checkIn >= from && row.checkIn < to)
     .map((booking) => ({ booking, flow: cashFlowOf(booking, today) }));
+  const refunds = bookings.flatMap((booking) => {
+    const flow = refundFlowOf(booking);
+    const date = String(booking.refundedAt || "").slice(0, 10);
+    if (!flow || date < from || date >= to) return [];
+    return [{ booking, flow }];
+  });
+  const rows = [...stays, ...refunds];
   const totals = rows.reduce((acc, { flow }) => {
     acc.gross += flow.gross;
     acc.vat += flow.vat;
@@ -225,8 +267,9 @@ export function cashFlowReport<T extends BookingMoney>(bookings: T[], from: stri
     acc.receivable += flow.receivable;
     acc.payable += flow.payable;
     acc.guestDue += flow.guestDue;
-    acc.count += 1;
-    if (flow.recognized) acc.recognizedCount += 1;
+    if (flow.refund) acc.refundCount += 1;
+    else acc.count += 1;
+    if (!flow.refund && flow.recognized) acc.recognizedCount += 1;
     return acc;
   }, emptyCashTotals());
   return { rows, totals };

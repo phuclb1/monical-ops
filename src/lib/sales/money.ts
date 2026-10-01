@@ -1,5 +1,8 @@
+import { addDaysVN } from "../datetime";
 import type { PaymentMethod } from "../types";
 import { PAYMENT_METHODS } from "../types";
+
+export const DEPOSIT_REFUND_LEAD_DAYS = 7;
 
 export type CommissionKind = "percent" | "amount";
 
@@ -189,6 +192,31 @@ export function bookingPayMethods(row: PaidSplit & { checkinPaid?: number | null
     deposit: depositMethodOf(row, row.checkinPaid, checkin),
     checkin,
   };
+}
+
+export function depositRefundAllowed(checkIn: string, cancelDate: string) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(checkIn) || !/^\d{4}-\d{2}-\d{2}$/.test(cancelDate)) return false;
+  return addDaysVN(cancelDate, DEPOSIT_REFUND_LEAD_DAYS) <= checkIn;
+}
+
+export function depositRefundSplit(row: PaidSplit & { checkinPaid?: number | null; checkinMethod?: string | null }) {
+  const paid = salePaid(row);
+  const hold = collectedSplit(paid.deposit, row.checkinPaid).hold;
+  const method = depositMethodOf(row, row.checkinPaid, row.checkinMethod);
+  const refund = paidFromMethod(hold, method);
+  return {
+    refundCash: refund.cashPaid,
+    refundTransfer: refund.transferPaid,
+    refundCompany: refund.companyPaid,
+  };
+}
+
+export function refundParts(row: { refundCash?: number | null; refundTransfer?: number | null; refundCompany?: number | null }) {
+  const parts: { method: PaymentMethod; amount: number }[] = [];
+  if (row.refundCompany) parts.push({ method: "company", amount: Math.round(row.refundCompany) });
+  if (row.refundTransfer) parts.push({ method: "personal", amount: Math.round(row.refundTransfer) });
+  if (row.refundCash) parts.push({ method: "cash", amount: Math.round(row.refundCash) });
+  return parts;
 }
 
 export function paidNote(row: PaidSplit) {

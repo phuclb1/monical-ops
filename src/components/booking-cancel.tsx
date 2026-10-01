@@ -14,6 +14,8 @@ export function BookingCancelActions({
   guestName,
   deposit,
   canNoShow,
+  canRefund = false,
+  accountLabel = "tài khoản nhận cọc",
   variant = "link",
 }: {
   kind: "booking" | "sale";
@@ -21,12 +23,14 @@ export function BookingCancelActions({
   guestName: string;
   deposit: number;
   canNoShow?: boolean;
+  canRefund?: boolean;
+  accountLabel?: string;
   variant?: "link" | "block";
 }) {
   const [mode, setMode] = useState<Mode | null>(null);
   const [refunded, setRefunded] = useState(false);
   const paid = Math.max(0, Math.round(deposit || 0));
-  const needRefund = mode === "cancel" && paid > 0;
+  const needRefund = mode === "cancel" && paid > 0 && canRefund;
   const action = kind === "booking" ? cancelBookingAction : cancelSaleAction;
   const cancelLabel = kind === "booking" ? "Hủy booking" : "Hủy chỗ";
 
@@ -76,18 +80,27 @@ export function BookingCancelActions({
             {mode === "no_show" ? <input type="hidden" name="asNoShow" value="1" /> : null}
             {needRefund && refunded ? <input type="hidden" name="depositRefunded" value="1" /> : null}
 
-            {mode === "cancel" && paid > 0 ? (
+            {mode === "cancel" && needRefund ? (
               <>
                 <h2 id="cancel-booking-title" className="font-bold">
                   Xác nhận đã hoàn cọc
                 </h2>
                 <p className="mt-2 text-sm">
-                  {guestName} · đã cọc {formatVnd(paid)}. Hoàn tiền cho khách rồi mới hủy trên hệ thống.
+                  {guestName} · đã cọc {formatVnd(paid)} qua {accountLabel}. Hoàn tiền cho khách rồi mới hủy trên hệ thống.
                 </p>
                 <label className="mt-3 flex min-h-11 items-center gap-2 rounded-xl border border-line bg-white px-3 text-sm font-semibold">
                   <input type="checkbox" checked={refunded} onChange={(event) => setRefunded(event.target.checked)} />
-                  Đã hoàn cọc {formatVnd(paid)}
+                  Đã hoàn cọc {formatVnd(paid)} từ {accountLabel}
                 </label>
+              </>
+            ) : mode === "cancel" && paid > 0 ? (
+              <>
+                <h2 id="cancel-booking-title" className="font-bold">
+                  {cancelLabel}
+                </h2>
+                <p className="mt-2 text-sm">
+                  {guestName} đã cọc {formatVnd(paid)}. Chưa đủ 7 ngày trước ngày nhận — hủy không hoàn cọc.
+                </p>
               </>
             ) : mode === "cancel" ? (
               <>

@@ -3,8 +3,8 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import * as repo from "@/lib/repos";
-import { parseCommissionKind, parseCommissionValue, parseDiscountKind, parseDiscountValue, parseMoney, parsePaymentMethod } from "@/lib/sales";
-import { actionBack, assertDepositRefunded, fail, refresh, requireCancel, requireSales, saleFromForm } from "./shared";
+import { collectedSplit, isActiveSaleStatus, parseCommissionKind, parseCommissionValue, parseDiscountKind, parseDiscountValue, parseMoney, parsePaymentMethod, salePaid } from "@/lib/sales";
+import { actionBack, assertDepositRefund, fail, refresh, requireCancel, requireSales, saleFromForm } from "./shared";
 
 export async function createSaleAction(formData: FormData) {
   const user = await requireSales();
@@ -116,8 +116,10 @@ export async function cancelSaleAction(formData: FormData) {
   const asNoShow = String(formData.get("asNoShow") || "") === "1";
   try {
     const sale = await repo.getRoomSale(id);
-    if (!asNoShow) assertDepositRefunded(sale?.deposit || 0, formData);
-    await repo.cancelRoomSale(user, id, asNoShow);
+    const otherActive = Boolean(sale?.peers.some((row) => isActiveSaleStatus(row.status)));
+    const hold = !sale || otherActive ? 0 : collectedSplit(salePaid(sale).deposit, sale.checkinPaid).hold;
+    const refundDeposit = !asNoShow && assertDepositRefund(hold, sale?.checkIn || "", formData);
+    await repo.cancelRoomSale(user, id, asNoShow, { refundDeposit });
   } catch (e) {
     fail(back, e);
   }
@@ -218,8 +220,11 @@ export async function cancelBookingAction(formData: FormData) {
   const asNoShow = String(formData.get("asNoShow") || "") === "1";
   try {
     const booking = await repo.getBooking(bookingId);
-    if (!asNoShow) assertDepositRefunded(booking?.deposit || 0, formData);
-    await repo.cancelBooking(user, bookingId, asNoShow);
+    const active = booking?.rooms.filter((row) => isActiveSaleStatus(row.status)) || [];
+    const checkIn = active.reduce((min, row) => (row.checkIn < min ? row.checkIn : min), active[0]?.checkIn || booking?.checkIn || "");
+    const hold = booking ? collectedSplit(salePaid(booking).deposit, booking.checkinPaid).hold : 0;
+    const refundDeposit = !asNoShow && assertDepositRefund(hold, checkIn, formData);
+    await repo.cancelBooking(user, bookingId, asNoShow, { refundDeposit });
   } catch (e) {
     fail(back, e);
   }

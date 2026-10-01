@@ -15,7 +15,7 @@ import { formatDateLong, todayVN } from "@/lib/datetime";
 import { extraDetail } from "@/lib/extras";
 import { can } from "@/lib/permissions";
 import { getBooking, listBookingChangeRequests, listBookingLogs, listRooms, listRoomSales, listRoomTypes, listSaleExtraTypes } from "@/lib/repos";
-import { bookingPayMethods, bookingQuote, collectedSplit, commissionAmount, formatVnd, isActiveSaleStatus, isOpsBookingCode, isOtaDebt, isOtaSource, paidNote, parkingLabel } from "@/lib/sales";
+import { bookingPayMethods, bookingQuote, collectedSplit, commissionAmount, depositRefundAllowed, formatVnd, isActiveSaleStatus, isOpsBookingCode, isOtaDebt, isOtaSource, paidNote, parkingLabel, refundParts } from "@/lib/sales";
 import type { SaleOrigin, SaleSource, SaleStatus } from "@/lib/types";
 
 const STATUS_TONE: Record<SaleStatus, "ok" | "warn" | "danger" | "gold" | "neutral"> = {
@@ -62,6 +62,9 @@ export default async function BookingDetailPage({
   const otaDebt = isOtaDebt(booking.source, booking.otaPaymentMode);
   const paidSplit = collectedSplit(booking.deposit, booking.checkinPaid);
   const payMethods = bookingPayMethods(booking);
+  const earliestIn = activeRooms.reduce((min, row) => (row.checkIn < min ? row.checkIn : min), activeRooms[0]?.checkIn || booking.checkIn);
+  const canRefund = paidSplit.hold > 0 && depositRefundAllowed(earliestIn, today);
+  const refunds = refundParts(booking);
   const holdSuffix = ` · ${PAYMENT_METHOD_LABEL[payMethods.deposit]}`;
   const checkinSuffix = ` · ${PAYMENT_METHOD_LABEL[payMethods.checkin]}`;
   const activeIds = new Set(activeRooms.map((row) => row.id));
@@ -204,6 +207,11 @@ export default async function BookingDetailPage({
                 <p className="mt-1 text-sm font-semibold">Còn phải thu {formatVnd(booking.due)}</p>
               </>
             )}
+            {refunds.map((part) => (
+              <p key={part.method} className="mt-1 text-sm font-semibold text-[#c23b3b]">
+                Hoàn tiền {formatVnd(part.amount)} từ {PAYMENT_METHOD_LABEL[part.method]}
+              </p>
+            ))}
             {booking.guestPhone ? <p className="mt-1 text-sm">SĐT {booking.guestPhone}</p> : null}
             {booking.pmsCode ? (
               <p className="mt-1 text-sm">
@@ -242,8 +250,10 @@ export default async function BookingDetailPage({
               kind="booking"
               id={booking.id}
               guestName={booking.guestName}
-              deposit={booking.deposit}
+              deposit={paidSplit.hold}
               canNoShow={canNoShow}
+              canRefund={canRefund}
+              accountLabel={PAYMENT_METHOD_LABEL[payMethods.deposit]}
             />
           ) : null}
         </aside>
