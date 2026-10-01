@@ -2,13 +2,14 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { ACCOUNTING_NAV, homePath, isAccountingAllowedPath, isAccountingPath, MANAGER_NAV, sidebarNav } from "../src/lib/nav";
 import { datesUntil } from "../src/lib/datetime";
-import { invoiceRevenueReport, revenueTrend, roomPerformanceSummary, roomRevenueReport } from "../src/lib/sales-report";
+import { cashFlowReport, invoiceRevenueReport, revenueTrend, roomPerformanceSummary, roomRevenueReport } from "../src/lib/sales-report";
 
 function row(partial: {
   checkIn: string;
   checkOut: string;
   status: string;
   total?: number;
+  due?: number;
   source?: string;
   invoiceRequested?: boolean;
   otaPaymentMode?: "debt" | "hotel";
@@ -24,7 +25,7 @@ function row(partial: {
     checkOut: partial.checkOut,
     status: partial.status,
     total: partial.total ?? 1_000_000,
-    due: 0,
+    due: partial.due ?? 0,
     deposit: (partial.cashPaid || 0) + (partial.transferPaid || 0) + (partial.companyPaid || 0),
     cashPaid: partial.cashPaid,
     transferPaid: partial.transferPaid,
@@ -171,6 +172,86 @@ test("recognized month splits direct collections and OTA after commission", () =
   assert.equal(report.recognizedSplit.ota.partnerNet, 850);
   assert.equal(report.recognizedSplit.ota.collectedGross, 2_000);
   assert.equal(report.recognizedSplit.ota.collectedCommission, 300);
+});
+
+test("cash flow splits inclusive VAT and OTA receivable or hotel commission payable", () => {
+  const report = cashFlowReport(
+    [
+      row({
+        checkIn: "2026-09-10",
+        checkOut: "2026-09-11",
+        status: "reserved",
+        total: 1_080_000,
+        due: 480_000,
+        source: "walk_in",
+        cashPaid: 200_000,
+        transferPaid: 300_000,
+        companyPaid: 100_000,
+      }),
+      row({
+        checkIn: "2026-09-11",
+        checkOut: "2026-09-12",
+        status: "reserved",
+        total: 1_080_000,
+        source: "agoda",
+        otaPaymentMode: "debt",
+        otaCommissionPercent: 15,
+        cashPaid: 50_000,
+      }),
+      row({
+        checkIn: "2026-09-12",
+        checkOut: "2026-09-13",
+        status: "inhouse",
+        total: 2_000_000,
+        due: 500_000,
+        source: "booking",
+        otaPaymentMode: "hotel",
+        otaCommissionKind: "amount",
+        otaCommissionValue: 300_000,
+        companyPaid: 1_500_000,
+      }),
+      row({ checkIn: "2026-09-20", checkOut: "2026-09-21", status: "reserved", total: 108_000, source: "phone" }),
+      row({ checkIn: "2026-09-08", checkOut: "2026-09-09", status: "cancelled", total: 1_080_000, source: "walk_in" }),
+      row({ checkIn: "2026-09-14", checkOut: "2026-09-15", status: "no_show", total: 1_080_000, source: "walk_in" }),
+      row({ checkIn: "2026-08-31", checkOut: "2026-09-02", status: "departed", total: 1_080_000, source: "walk_in" }),
+    ],
+    "2026-09-01",
+    "2026-10-01",
+    "2026-09-12",
+  );
+
+  assert.equal(report.rows.length, 4);
+  assert.equal(report.totals.count, 4);
+  assert.equal(report.totals.recognizedCount, 3);
+  assert.deepEqual(
+    report.rows.map((item) => item.flow.kind),
+    ["direct", "ota_debt", "ota_hotel", "direct"],
+  );
+  assert.equal(report.rows[0].flow.vat, 80_000);
+  assert.equal(report.rows[0].flow.net, 1_000_000);
+  assert.equal(report.rows[0].flow.cash, 200_000);
+  assert.equal(report.rows[0].flow.transfer, 300_000);
+  assert.equal(report.rows[0].flow.company, 100_000);
+  assert.equal(report.rows[0].flow.receivable, 0);
+  assert.equal(report.rows[0].flow.payable, 0);
+  assert.equal(report.rows[0].flow.guestDue, 480_000);
+  assert.equal(report.rows[1].flow.cash, 0);
+  assert.equal(report.rows[1].flow.receivable, 918_000);
+  assert.equal(report.rows[1].flow.payable, 0);
+  assert.equal(report.rows[1].flow.guestDue, 0);
+  assert.equal(report.rows[2].flow.company, 1_500_000);
+  assert.equal(report.rows[2].flow.receivable, 0);
+  assert.equal(report.rows[2].flow.payable, 300_000);
+  assert.equal(report.rows[2].flow.guestDue, 500_000);
+  assert.equal(report.rows[3].flow.recognized, false);
+  assert.equal(report.rows[3].flow.vat, 8_000);
+  assert.equal(report.totals.vat, 80_000 + 80_000 + Math.round((2_000_000 * 8) / 108) + 8_000);
+  assert.equal(report.totals.cash, 200_000);
+  assert.equal(report.totals.transfer, 300_000);
+  assert.equal(report.totals.company, 1_600_000);
+  assert.equal(report.totals.receivable, 918_000);
+  assert.equal(report.totals.payable, 300_000);
+  assert.equal(report.totals.guestDue, 980_000);
 });
 
 test("invoice revenue includes direct bookings that request an invoice and all OTA", () => {

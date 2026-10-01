@@ -915,6 +915,63 @@ label {
   gap: 0.65rem;
 }
 
+.cash-flow-scroll {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.cash-flow-table {
+  width: max-content;
+  min-width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.cash-flow-table th,
+.cash-flow-table td {
+  padding: 0.55rem 0.7rem;
+  border-bottom: 1px solid var(--line);
+  white-space: nowrap;
+  text-align: left;
+  vertical-align: middle;
+  background: var(--card);
+}
+
+.cash-flow-table th {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: #5c6665;
+  background: #fff8ee;
+}
+
+.cash-flow-table th.is-num,
+.cash-flow-table td.is-num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.cash-flow-table th:first-child,
+.cash-flow-table td:first-child {
+  position: sticky;
+  left: 0;
+  z-index: 2;
+}
+
+.cash-flow-table th:first-child {
+  z-index: 3;
+}
+
+.cash-flow-table tbody tr:hover td {
+  background: #fff8ee;
+}
+
+.cash-flow-table tfoot td {
+  font-weight: 700;
+  background: #fff8ee;
+}
+
 .owner-hero {
   padding: 1rem 1.1rem;
 }

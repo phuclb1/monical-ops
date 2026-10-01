@@ -123,6 +123,115 @@ function countsAsBookingRevenue(status: string) {
   return status !== "cancelled" && status !== "no_show";
 }
 
+export const CASH_FLOW_KIND_LABEL = {
+  direct: "Trực tiếp",
+  ota_debt: "OTA công nợ",
+  ota_hotel: "OTA thu tại KS",
+} as const;
+
+export type CashFlowKind = keyof typeof CASH_FLOW_KIND_LABEL;
+
+export type CashFlowLine = {
+  kind: CashFlowKind;
+  recognized: boolean;
+  gross: number;
+  vat: number;
+  net: number;
+  cash: number;
+  transfer: number;
+  company: number;
+  receivable: number;
+  payable: number;
+  guestDue: number;
+};
+
+export type CashFlowTotals = Omit<CashFlowLine, "kind" | "recognized"> & {
+  count: number;
+  recognizedCount: number;
+};
+
+export function inclusiveVat(total: number) {
+  const gross = Math.max(0, Math.round(total || 0));
+  const vat = Math.round((gross * 8) / 108);
+  return { gross, vat, net: gross - vat };
+}
+
+function emptyCashTotals(): CashFlowTotals {
+  return {
+    gross: 0,
+    vat: 0,
+    net: 0,
+    cash: 0,
+    transfer: 0,
+    company: 0,
+    receivable: 0,
+    payable: 0,
+    guestDue: 0,
+    count: 0,
+    recognizedCount: 0,
+  };
+}
+
+export function cashFlowOf<T extends BookingMoney>(row: T, today = todayVN()): CashFlowLine {
+  const { gross, vat, net } = inclusiveVat(row.total);
+  const paid = salePaid(row);
+  const fee = feeOf(row);
+  const ota = isOtaSource(row.source);
+  const debt = isOtaDebt(row.source, row.otaPaymentMode);
+  const kind: CashFlowKind = !ota ? "direct" : debt ? "ota_debt" : "ota_hotel";
+  const recognized = row.checkIn <= today;
+  if (kind === "ota_debt") {
+    return {
+      kind,
+      recognized,
+      gross,
+      vat,
+      net,
+      cash: 0,
+      transfer: 0,
+      company: 0,
+      receivable: gross - fee,
+      payable: 0,
+      guestDue: 0,
+    };
+  }
+  const guestDue = Math.max(0, Math.round(row.due || 0));
+  return {
+    kind,
+    recognized,
+    gross,
+    vat,
+    net,
+    cash: paid.cashPaid,
+    transfer: paid.transferPaid,
+    company: paid.companyPaid,
+    receivable: 0,
+    payable: kind === "ota_hotel" ? fee : 0,
+    guestDue,
+  };
+}
+
+export function cashFlowReport<T extends BookingMoney>(bookings: T[], from: string, to: string, today = todayVN()) {
+  const rows = bookings
+    .filter((row) => countsAsBookingRevenue(row.status) && row.checkIn >= from && row.checkIn < to)
+    .map((booking) => ({ booking, flow: cashFlowOf(booking, today) }));
+  const totals = rows.reduce((acc, { flow }) => {
+    acc.gross += flow.gross;
+    acc.vat += flow.vat;
+    acc.net += flow.net;
+    acc.cash += flow.cash;
+    acc.transfer += flow.transfer;
+    acc.company += flow.company;
+    acc.receivable += flow.receivable;
+    acc.payable += flow.payable;
+    acc.guestDue += flow.guestDue;
+    acc.count += 1;
+    if (flow.recognized) acc.recognizedCount += 1;
+    return acc;
+  }, emptyCashTotals());
+  return { rows, totals };
+}
+
 export function roomRevenueReport<T extends BookingMoney>(bookings: T[], from: string, to: string, today = todayVN()) {
   const booked = bookings.filter((row) => countsAsBookingRevenue(row.status) && row.checkIn >= from && row.checkIn < to);
   const recognized = booked.filter((row) => row.checkIn <= today);
