@@ -119,6 +119,7 @@ export function bookingChangeRequiresApproval(
   if (data.transferPaid !== undefined && data.transferPaid !== booking.transferPaid) return true;
   if (data.companyPaid !== undefined && data.companyPaid !== booking.companyPaid) return true;
   const roomById = new Map(booking.rooms.map((row) => [row.id, row]));
+  if ((data.removedSaleIds || []).some((id) => roomById.has(id))) return true;
   return data.assignments.some((assignment) => {
     const current = roomById.get(assignment.saleId);
     if (!current) return true;
@@ -135,6 +136,9 @@ export function bookingChangeRequiresApproval(
 
 function updateSummary(booking: BookingView, data: BookingUpdateInput) {
   const labels = new Set<string>();
+  const removed = (data.removedSaleIds || []).filter((id) => booking.rooms.some((row) => row.id === id));
+  if (removed.length === 1) labels.add("xóa 1 phòng");
+  if (removed.length > 1) labels.add(`xóa ${removed.length} phòng`);
   const roomById = new Map(booking.rooms.map((row) => [row.id, row]));
   for (const assignment of data.assignments) {
     const current = roomById.get(assignment.saleId);

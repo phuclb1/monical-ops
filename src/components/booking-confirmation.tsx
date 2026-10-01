@@ -12,7 +12,7 @@ import {
   SALE_SOURCE_LABEL,
 } from "@/lib/constants";
 import { formatDateNumeric, formatStayStamp, todayVN } from "@/lib/datetime";
-import { bookingDisplayCode, bookingQuote, formatVndLetter, isOtaDebt, isOtaSource, parkingLabel } from "@/lib/sales";
+import { billableSaleRows, bookingDisplayCode, bookingQuote, formatVndLetter, isOtaDebt, isOtaSource, parkingLabel } from "@/lib/sales";
 import type { SaleSource } from "@/lib/types";
 import type { getBooking } from "@/lib/repos";
 
@@ -49,7 +49,8 @@ function SheetHead() {
 }
 
 export function BookingConfirmation({ booking }: { booking: Booking }) {
-  const quote = bookingQuote(booking.rooms);
+  const rooms = billableSaleRows(booking.rooms);
+  const quote = bookingQuote(rooms);
   const code = bookingDisplayCode(booking);
   const guest = booking.guestName.toUpperCase();
   const arrive = formatStayStamp(booking.checkIn, CHECK_IN_TIME);
@@ -123,7 +124,7 @@ export function BookingConfirmation({ booking }: { booking: Booking }) {
             </tr>
           </thead>
           <tbody>
-            {booking.rooms.map((row, index) => {
+            {rooms.map((row, index) => {
               const line = quote.lines[index];
               return (
                 <tr key={row.id}>

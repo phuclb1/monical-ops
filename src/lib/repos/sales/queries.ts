@@ -9,6 +9,7 @@ import {
   bookingQuote,
   ganttSpan,
   groupByBooking,
+  billableSaleRows,
   isActiveSaleStatus,
   isGanttSaleStatus,
   nightlyNetFromLine,
@@ -46,45 +47,46 @@ export async function getRoomSale(id: string) {
 
 function toBookingView(id: string, rooms: Awaited<ReturnType<typeof listRoomSales>>) {
   const sorted = [...rooms].sort((a, b) => (a.room?.number || "").localeCompare(b.room?.number || ""));
-  const first = sorted[0];
-  const quote = bookingQuote(sorted);
-  const paid = salePaid(first);
-  const checkIn = sorted.reduce((min, row) => (row.checkIn < min ? row.checkIn : min), first.checkIn);
-  const checkOut = sorted.reduce((max, row) => (row.checkOut > max ? row.checkOut : max), first.checkOut);
+  const priced = billableSaleRows(sorted);
+  const head = priced[0];
+  const quote = bookingQuote(priced);
+  const paid = salePaid(head);
+  const checkIn = priced.reduce((min, row) => (row.checkIn < min ? row.checkIn : min), head.checkIn);
+  const checkOut = priced.reduce((max, row) => (row.checkOut > max ? row.checkOut : max), head.checkOut);
   const nights = Math.max(quote.nights, nightsBetween(checkIn, checkOut));
   return {
     id,
-    guestName: first.guestName,
-    guestPhone: first.guestPhone,
-    origin: first.origin,
-    source: first.source,
-    otaPaymentMode: first.otaPaymentMode,
-    otaCommissionKind: first.otaCommissionKind === "amount" ? "amount" : "percent",
-    otaCommissionValue: first.otaCommissionValue || (first.otaCommissionKind === "amount" ? 0 : Math.min(100, Math.max(0, Math.round(first.otaCommissionPercent || 0)))),
-    otaCommissionPercent: Math.min(100, Math.max(0, Math.round(first.otaCommissionPercent || 0))),
-    invoiceRequested: first.invoiceRequested,
-    pmsCode: first.pmsCode,
-    notes: first.notes,
-    adults: first.adults,
-    children: first.children,
-    breakfastAdults: bookingBreakfastPax(sorted).adults,
-    breakfastChildren: bookingBreakfastPax(sorted).children,
-    cars: first.cars || 0,
-    bikes: first.bikes || 0,
+    guestName: head.guestName,
+    guestPhone: head.guestPhone,
+    origin: head.origin,
+    source: head.source,
+    otaPaymentMode: head.otaPaymentMode,
+    otaCommissionKind: head.otaCommissionKind === "amount" ? "amount" : "percent",
+    otaCommissionValue: head.otaCommissionValue || (head.otaCommissionKind === "amount" ? 0 : Math.min(100, Math.max(0, Math.round(head.otaCommissionPercent || 0)))),
+    otaCommissionPercent: Math.min(100, Math.max(0, Math.round(head.otaCommissionPercent || 0))),
+    invoiceRequested: head.invoiceRequested,
+    pmsCode: head.pmsCode,
+    notes: head.notes,
+    adults: head.adults,
+    children: head.children,
+    breakfastAdults: bookingBreakfastPax(priced).adults,
+    breakfastChildren: bookingBreakfastPax(priced).children,
+    cars: head.cars || 0,
+    bikes: head.bikes || 0,
     deposit: paid.deposit,
-    checkinPaid: Math.max(0, Math.round(first.checkinPaid || 0)),
-    checkinMethod: first.checkinMethod || "",
+    checkinPaid: Math.max(0, Math.round(head.checkinPaid || 0)),
+    checkinMethod: head.checkinMethod || "",
     cashPaid: paid.cashPaid,
     transferPaid: paid.transferPaid,
     companyPaid: paid.companyPaid,
     due: bookingDue(quote.total, paid.deposit),
-    createdAt: sorted.reduce((min, row) => (row.createdAt < min ? row.createdAt : min), first.createdAt),
+    createdAt: sorted.reduce((min, row) => (row.createdAt < min ? row.createdAt : min), sorted[0].createdAt),
     checkIn,
     checkOut,
     rooms: sorted,
-    roomCount: sorted.length,
-    roomLabel: sorted.map((row) => `P.${row.room?.number || "—"}`).join(" · "),
-    typeLabel: [...new Set(sorted.map((row) => row.room?.type || "—"))].join(" · "),
+    roomCount: priced.length,
+    roomLabel: priced.map((row) => `P.${row.room?.number || "—"}`).join(" · "),
+    typeLabel: [...new Set(priced.map((row) => row.room?.type || "—"))].join(" · "),
     status: rollupBookingStatus(sorted.map((row) => row.status)),
     nights,
     subtotal: quote.subtotal,

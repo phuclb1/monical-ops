@@ -179,6 +179,7 @@ export async function updateBookingAction(formData: FormData) {
       paymentMethod: parsePaymentMethod(formData.get("paymentMethod")),
       checkinPaymentMethod: parsePaymentMethod(formData.get("checkinPaymentMethod")),
       notes: String(formData.get("notes") || ""),
+      removedSaleIds: formData.getAll("removeSaleId").map(String).filter(Boolean),
     });
   } catch (e) {
     fail(back, e);

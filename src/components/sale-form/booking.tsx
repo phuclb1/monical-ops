@@ -65,6 +65,8 @@ export function BookingForm({
     notes?: string;
   };
 }) {
+  const [removed, setRemoved] = useState<string[]>([]);
+  const kept = lines.filter((line) => !removed.includes(line.saleId));
   const [picks, setPicks] = useState<Record<string, string>>(() =>
     Object.fromEntries(lines.map((line) => [line.saleId, line.roomId])),
   );
@@ -133,7 +135,17 @@ export function BookingForm({
       });
   }
 
-  const quoteInputs = lines.map((line) => {
+  function removeLine(saleId: string) {
+    if (kept.length <= 1) return;
+    setRemoved((prev) => (prev.includes(saleId) ? prev : [...prev, saleId]));
+    setPicks((prev) => {
+      const next = { ...prev };
+      delete next[saleId];
+      return next;
+    });
+  }
+
+  const quoteInputs = kept.map((line) => {
     const roomId = picks[line.saleId] || line.roomId;
     const room = rooms.find((item) => item.id === roomId);
     const stay = stayOf(line.saleId, { checkIn: line.checkIn, checkOut: line.checkOut });
@@ -182,6 +194,7 @@ export function BookingForm({
   const depositAmount = holdAmount + checkinAmount;
   const due = bookingDue(bookingTotal, depositAmount);
   const hasApprovalChange =
+    removed.length > 0 ||
     source !== (defaults.source || "walk_in") ||
     otaPaymentMode !== (defaults.otaPaymentMode === "hotel" ? "hotel" : "debt") ||
     commissionKind !== savedCommissionKind ||
@@ -190,7 +203,7 @@ export function BookingForm({
     checkinAmount !== initialPaid.checkin ||
     (holdAmount > 0 && payMethod !== storedMethods.deposit) ||
     (checkinAmount > 0 && checkinPayMethod !== storedMethods.checkin) ||
-    lines.some((line) => {
+    kept.some((line) => {
       const stay = stayOf(line.saleId, { checkIn: line.checkIn, checkOut: line.checkOut });
       const discount = discounts[line.saleId] || { kind: "none", value: "" };
       return (
@@ -204,7 +217,7 @@ export function BookingForm({
     });
   const stayAdults = Math.max(1, Number(adults) || 1);
   const stayChildren = Math.max(0, Number(children) || 0);
-  const anyBreakfast = lines.some((line) => breakfast[line.saleId] !== false);
+  const anyBreakfast = kept.some((line) => breakfast[line.saleId] !== false);
   useEffect(() => {
     if (!anyBreakfast) {
       setBreakfastAdults("0");
@@ -340,7 +353,7 @@ export function BookingForm({
         </Field>
       </div>
       <BookingRoomLines
-        lines={lines}
+        lines={kept}
         types={types}
         picks={picks}
         setPicks={setPicks}
@@ -352,7 +365,31 @@ export function BookingForm({
         setDiscounts={setDiscounts}
         optionsFor={optionsFor}
         stayOf={stayOf}
+        onRemove={kept.length > 1 ? removeLine : undefined}
       />
+      {removed.length ? (
+        <div className="space-y-2">
+          {removed.map((saleId) => {
+            const line = lines.find((row) => row.saleId === saleId);
+            return (
+              <div key={saleId} className="flex items-center justify-between gap-2 rounded-xl border border-[#f0d0d0] bg-[#fde8e8] px-3 py-2">
+                <input type="hidden" name="removeSaleId" value={saleId} />
+                <p className="text-sm font-semibold text-[#c23b3b]">
+                  Xóa P.{line?.number || "—"}
+                  {line?.type ? ` · ${line.type}` : ""}
+                </p>
+                <button
+                  type="button"
+                  className="text-xs font-semibold text-teal"
+                  onClick={() => setRemoved((prev) => prev.filter((id) => id !== saleId))}
+                >
+                  Hoàn tác
+                </button>
+              </div>
+            );
+          })}
+        </div>
+      ) : null}
       {otaDebt ? (
         <>
           <input type="hidden" name="deposit" value="0" />
@@ -384,7 +421,10 @@ export function BookingForm({
       <Field label="Ghi chú">
         <textarea name="notes" rows={2} defaultValue={defaults.notes || ""} placeholder="Giờ đến, giường, xe đón..." />
       </Field>
-      <p className="text-xs text-[#5c6665]">Sửa tên, SĐT, số khách, kênh. Đổi số phòng cùng hạng hoặc nâng hạng. Ngày, ăn sáng và chiết khấu theo từng phòng.</p>
+      <p className="text-xs text-[#5c6665]">
+        Sửa tên, SĐT, số khách, kênh. Đổi số phòng cùng hạng hoặc nâng hạng. Ngày, ăn sáng và chiết khấu theo từng phòng.
+        {lines.length > 1 ? " Xóa bớt phòng vẫn giữ các phòng còn lại — muốn hủy hết thì dùng Hủy booking." : ""}
+      </p>
       <BookingQuote
         quotes={quotes}
         extraRows={extraRows}

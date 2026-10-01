@@ -79,6 +79,43 @@ test("phiếu duyệt hiện đổi phòng, ngày và phụ thu", () => {
   );
   assert.deepEqual(added, [{ label: "Thêm phòng", before: "—", after: "P.102" }]);
 
+  const droppedRoom = approvalChanges(
+    JSON.stringify({
+      ...before,
+      rooms: [
+        ...before.rooms,
+        {
+          id: "sale-2",
+          roomId: "room-102",
+          checkIn: "2026-09-28",
+          checkOut: "2026-09-30",
+          breakfast: true,
+          discountKind: "none",
+          discountValue: 0,
+        },
+      ],
+    }),
+    JSON.stringify({
+      kind: "booking_update",
+      data: {
+        removedSaleIds: ["sale-2"],
+        assignments: [
+          {
+            saleId: "sale-1",
+            roomId: "room-101",
+            checkIn: "2026-09-28",
+            checkOut: "2026-09-30",
+            breakfast: true,
+            discountKind: "none",
+            discountValue: 0,
+          },
+        ],
+      },
+    }),
+    rooms,
+  );
+  assert.deepEqual(droppedRoom, [{ label: "Xóa phòng", before: "P.102", after: "—" }]);
+
   const removed = approvalChanges(
     JSON.stringify(before),
     JSON.stringify({ kind: "remove_extra", extraId: "ex-1" }),

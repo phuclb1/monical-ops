@@ -26,6 +26,7 @@ import { audit } from "../audit";
 import { assertSaleWindow, paymentOf } from "./helpers";
 import { notifyBookingChange } from "./notify";
 import { dispatchBookingZalo } from "@/lib/zalo-notify";
+import { cancelRoomSale } from "./lifecycle";
 import { syncStayFromSale } from "./stay";
 
 export type BookingUpdateInput = {
@@ -62,6 +63,7 @@ export type BookingUpdateInput = {
   companyPaid?: number;
   paymentMethod?: string;
   notes?: string;
+  removedSaleIds?: string[];
 };
 
 export async function updateBooking(
@@ -135,7 +137,15 @@ export async function updateBooking(
   const notes = data.notes !== undefined ? data.notes.trim() || null : undefined;
   const roomById = new Map(rooms.map((room) => [room.id, room]));
   const nextBySale = new Map(data.assignments.map((row) => [row.saleId, row]));
-  const hasBreakfast = active.some((row) => {
+  const removeIds = [...new Set((data.removedSaleIds || []).map((id) => id.trim()).filter(Boolean))];
+  const activeIds = new Set(active.map((row) => row.id));
+  for (const id of removeIds) {
+    if (!activeIds.has(id)) throw new Error("Không tìm thấy phòng cần xóa trong booking");
+  }
+  if (removeIds.length >= active.length) throw new Error("Giữ ít nhất một phòng. Hủy cả booking nếu không còn phòng nào.");
+  const removeSet = new Set(removeIds);
+  const staying = active.filter((row) => !removeSet.has(row.id));
+  const hasBreakfast = staying.some((row) => {
     const assignment = nextBySale.get(row.id);
     return assignment?.breakfast ?? row.breakfast !== false;
   });
@@ -149,7 +159,7 @@ export async function updateBooking(
   const seen = new Set<string>();
   const now = nowISO();
   const today = todayVN();
-  for (const row of active) {
+  for (const row of staying) {
     const assignment = nextBySale.get(row.id);
     const nextRoomId = assignment?.roomId || row.roomId;
     if (seen.has(nextRoomId)) throw new Error("Hai chỗ trong booking không được trùng số phòng");
@@ -208,13 +218,21 @@ export async function updateBooking(
       await audit(user.id, "room_sale", row.id, "update", row, after);
     }
   }
+  const removedNumbers = removeIds
+    .map((id) => {
+      const sale = active.find((row) => row.id === id);
+      const number = sale ? roomById.get(sale.roomId)?.number : "";
+      return number ? `P.${number}` : "";
+    })
+    .filter(Boolean);
+  for (const id of removeIds) await cancelRoomSale(user, id, false, { silent: true });
   await ensureTodayRoomTasks(db, { actorId: user.id });
   await notifyBookingChange({
     actor: user,
     bookingId: key,
     createdBy: [...active].sort((a, b) => a.createdAt.localeCompare(b.createdAt))[0]?.createdBy,
     title: `Sửa booking · ${guestName}`,
-    body: `${user.fullName} · ${active.length} phòng`,
+    body: `${user.fullName} · còn ${staying.length} phòng${removedNumbers.length ? ` · xóa ${removedNumbers.join(", ")}` : ""}`,
   });
   await dispatchBookingZalo(user.id, "booking_updated", key).catch((error) => console.error("zalo booking", error));
   return key;

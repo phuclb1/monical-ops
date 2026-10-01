@@ -67,6 +67,36 @@ test("ordinary guest detail edits do not require approval", () => {
   );
 });
 
+test("removing a room requires approval and an unknown id does not", () => {
+  const two = {
+    ...booking,
+    rooms: [
+      ...booking.rooms,
+      {
+        id: "sale-2",
+        roomId: "room-102",
+        checkIn: "2026-09-25",
+        checkOut: "2026-09-27",
+        breakfast: true,
+        discountKind: "none",
+        discountValue: 0,
+      },
+    ],
+  } as typeof booking;
+  const kept = {
+    saleId: "sale-1",
+    roomId: "room-101",
+    checkIn: "2026-09-25",
+    checkOut: "2026-09-27",
+    breakfast: true,
+    discountKind: "none",
+    discountValue: 0,
+  };
+  assert.equal(bookingChangeRequiresApproval(two, { assignments: [kept], removedSaleIds: ["sale-2"] }), true);
+  assert.equal(bookingChangeRequiresApproval(two, { assignments: [kept], removedSaleIds: [] }), false);
+  assert.equal(bookingChangeRequiresApproval(booking, { assignments: [kept], removedSaleIds: ["missing"] }), false);
+});
+
 test("date, money, room, breakfast and discount edits require approval", () => {
   const base = {
     saleId: "sale-1",

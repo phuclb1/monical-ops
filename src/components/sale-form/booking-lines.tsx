@@ -32,8 +32,9 @@ export function BookingRoomLines(props: {
   setDiscounts: (value: Record<string, DiscountState> | ((prev: Record<string, DiscountState>) => Record<string, DiscountState>)) => void;
   optionsFor: (line: Line) => { id: string; number: string; type: string }[];
   stayOf: (saleId: string, fallback: StayDates) => StayDates;
+  onRemove?: (saleId: string) => void;
 }) {
-  const { lines, types, picks, setPicks, setDates, breakfast, setBreakfast, discounts, setDiscounts, optionsFor, stayOf } = props;
+  const { lines, types, picks, setPicks, setDates, breakfast, setBreakfast, discounts, setDiscounts, optionsFor, stayOf, onRemove } = props;
   return (
     <>
       {lines.map((line, index) => {
@@ -47,10 +48,17 @@ export function BookingRoomLines(props: {
         return (
           <div key={line.saleId} className="space-y-2 rounded-xl border border-line p-3">
             <input type="hidden" name="saleId" value={line.saleId} />
-            <p className="font-bold">
-              {line.type}
-              <span className="ml-2 text-xs font-semibold text-[#8a7a72]">P.{line.number}</span>
-            </p>
+            <div className="flex items-start justify-between gap-2">
+              <p className="font-bold">
+                {line.type}
+                <span className="ml-2 text-xs font-semibold text-[#8a7a72]">P.{line.number}</span>
+              </p>
+              {onRemove ? (
+                <button type="button" className="text-xs font-semibold text-[#c23b3b]" onClick={() => onRemove(line.saleId)}>
+                  Xóa phòng
+                </button>
+              ) : null}
+            </div>
             <Field label="Đổi phòng">
               <select
                 name={`room-${line.saleId}`}

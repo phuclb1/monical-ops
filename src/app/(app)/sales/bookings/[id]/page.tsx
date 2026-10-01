@@ -49,11 +49,12 @@ export default async function BookingDetailPage({
   ]);
   if (!booking) notFound();
   const today = todayVN();
-  const taken = new Set(booking.rooms.map((row) => row.roomId));
-  const extraRooms = rooms.filter((room) => !taken.has(room.id) && room.opsStatus !== "ooo").sort((a, b) => a.number.localeCompare(b.number));
   const activeRooms = booking.rooms.filter((row) => isActiveSaleStatus(row.status));
+  const listedRooms = activeRooms.length ? activeRooms : booking.rooms;
+  const taken = new Set(activeRooms.map((row) => row.roomId));
+  const extraRooms = rooms.filter((room) => !taken.has(room.id) && room.opsStatus !== "ooo").sort((a, b) => a.number.localeCompare(b.number));
   const firstActive = activeRooms[0];
-  const booked = bookingQuote(booking.rooms);
+  const booked = bookingQuote(listedRooms);
   const canNoShow = Boolean(activeRooms.length) && activeRooms.every((row) => row.status === "reserved");
   const readyIn = activeRooms.filter((row) => row.status === "reserved" && today >= row.checkIn);
   const staying = activeRooms.filter((row) => row.status === "inhouse");
@@ -251,7 +252,7 @@ export default async function BookingDetailPage({
           <Card>
             <h2 className="mb-1 font-bold">Phòng trong booking</h2>
             <BookingRoomList
-              rooms={booking.rooms}
+              rooms={listedRooms}
               quotes={booked.lines}
               ota={otaDebt}
               otaHotel={ota && !otaDebt}
@@ -304,10 +305,10 @@ export default async function BookingDetailPage({
 
           {firstActive ? (
             <Fold title="Sửa booking">
-              <p className="mb-2 text-xs text-[#5c6665]">Sửa tên, SĐT, số khách, kênh. Đổi số phòng cùng hạng hoặc nâng hạng. Ngày, ăn sáng và chiết khấu theo từng phòng.</p>
+              <p className="mb-2 text-xs text-[#5c6665]">Sửa tên, SĐT, số khách, kênh. Đổi số phòng cùng hạng hoặc nâng hạng. Xóa bớt phòng, giữ ít nhất một phòng. Ngày, ăn sáng và chiết khấu theo từng phòng.</p>
               {user.role === "reception" ? (
                 <p className="mb-3 rounded-xl bg-[#fff1d6] px-3 py-2 text-xs font-semibold text-[#9a5b00]">
-                  Đổi ngày, phòng, tiền, ăn sáng, chiết khấu hoặc hoa hồng OTA sẽ gửi quản lý duyệt. Booking chỉ đổi sau khi được duyệt.
+                  Đổi ngày, phòng, xóa phòng, tiền, ăn sáng, chiết khấu hoặc hoa hồng OTA sẽ gửi quản lý duyệt. Booking chỉ đổi sau khi được duyệt.
                 </p>
               ) : null}
               <BookingForm

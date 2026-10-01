@@ -160,6 +160,11 @@ export function approvalChanges(
         formatAuditValue(parsePaymentMethod(data.checkinPaymentMethod), "paymentMethod"),
       );
     }
+    const removedIds = Array.isArray(data.removedSaleIds) ? data.removedSaleIds.map(String) : [];
+    for (const id of removedIds) {
+      const current = rooms.find((room) => room.id === id);
+      push(rows, "Xóa phòng", current ? roomName(current.roomId, roomNumbers) : "Phòng", "—");
+    }
     const assignments = Array.isArray(data.assignments) ? data.assignments : [];
     for (const raw of assignments) {
       const assignment = raw as {

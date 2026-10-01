@@ -16,6 +16,11 @@ export function isActiveSaleStatus(status: string): status is SaleStatus {
   return ACTIVE_SALE_STATUSES.includes(status as SaleStatus);
 }
 
+export function billableSaleRows<T extends { status: string }>(rooms: T[]) {
+  const active = rooms.filter((row) => isActiveSaleStatus(row.status));
+  return active.length ? active : rooms;
+}
+
 export function isGanttSaleStatus(status: string): status is SaleStatus {
   return status === "reserved" || status === "inhouse" || status === "departed";
 }
