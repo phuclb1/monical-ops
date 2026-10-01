@@ -52,7 +52,7 @@ export default async function CashFlowPage({
         <div>
           <h1 className="text-xl font-bold">Báo cáo dòng tiền</h1>
           <p className="text-xs text-[#5c6665] md:text-sm">
-            Theo ngày nhận trong kỳ, gồm booking chưa đến ngày nhận. Giá booking đã gồm VAT 8%; VAT tách riêng để khấu trừ sau. Tiền mặt, CK cá nhân và CK công ty là tiền đã thu. Hoàn cọc ghi âm vào đúng tài khoản đã nhận, theo ngày hoàn. OTA công nợ thành phải thu sau hoa hồng. OTA thu tại khách sạn giữ tiền đã thu và ghi hoa hồng vào phải trả.
+            Theo ngày nhận trong kỳ, gồm booking chưa đến ngày nhận. Giá booking đã gồm VAT 8%; VAT tách riêng để khấu trừ sau. Tiền mặt, CK cá nhân và CK công ty là tiền đã thu. Hoàn cọc ghi âm vào đúng tài khoản đã nhận, theo ngày hoàn. OTA công nợ thành phải thu sau hoa hồng; hoa hồng OTA đã trừ ghi riêng. OTA thu tại khách sạn giữ tiền đã thu và ghi hoa hồng vào phải trả.
           </p>
         </div>
         {grain === "month" ? (
@@ -115,6 +115,7 @@ export default async function CashFlowPage({
         <Stat label="CK cá nhân" value={formatFlowVnd(totals.transfer)} />
         <Stat label="CK công ty" value={formatFlowVnd(totals.company)} />
         <Stat label="Phải thu OTA" value={formatVnd(totals.receivable)} tone="text-[#c47b12]" />
+        <Stat label="Hoa hồng đã khấu trừ" value={formatVnd(totals.withheld)} tone="text-[#c47b12]" />
         <Stat label="Phải trả hoa hồng" value={formatVnd(totals.payable)} tone="text-[#c47b12]" />
         <Stat label="Khách còn nợ" value={formatVnd(totals.guestDue)} />
       </div>
@@ -148,6 +149,7 @@ export default async function CashFlowPage({
                   <th className="is-num">CK cá nhân</th>
                   <th className="is-num">CK công ty</th>
                   <th className="is-num">Phải thu OTA</th>
+                  <th className="is-num">Hoa hồng đã khấu trừ</th>
                   <th className="is-num">Phải trả hoa hồng</th>
                   <th className="is-num">Khách còn nợ</th>
                 </tr>
@@ -179,6 +181,7 @@ export default async function CashFlowPage({
                     <td className="is-num">{formatFlowVnd(flow.transfer)}</td>
                     <td className="is-num">{formatFlowVnd(flow.company)}</td>
                     <td className="is-num">{formatVnd(flow.receivable)}</td>
+                    <td className="is-num">{formatVnd(flow.withheld)}</td>
                     <td className="is-num">{formatVnd(flow.payable)}</td>
                     <td className="is-num">{formatVnd(flow.guestDue)}</td>
                   </tr>
@@ -200,6 +203,7 @@ export default async function CashFlowPage({
                   <td className="is-num">{formatFlowVnd(totals.transfer)}</td>
                   <td className="is-num">{formatFlowVnd(totals.company)}</td>
                   <td className="is-num">{formatVnd(totals.receivable)}</td>
+                  <td className="is-num">{formatVnd(totals.withheld)}</td>
                   <td className="is-num">{formatVnd(totals.payable)}</td>
                   <td className="is-num">{formatVnd(totals.guestDue)}</td>
                 </tr>

@@ -16,6 +16,8 @@ export const roomSales = sqliteTable("room_sales", {
   status: text("status").notNull(),
   checkIn: text("check_in").notNull(),
   checkOut: text("check_out").notNull(),
+  checkedInAt: text("checked_in_at"),
+  checkedOutAt: text("checked_out_at"),
   adults: integer("adults").notNull().default(1),
   children: integer("children").notNull().default(0),
   rate: integer("rate").notNull().default(0),

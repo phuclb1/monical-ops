@@ -4,6 +4,8 @@ export {
   updateSaleAction,
   checkinBookingAction,
   checkoutBookingAction,
+  checkinBookingRoomAction,
+  checkoutBookingRoomAction,
   checkinSaleAction,
   checkoutSaleAction,
   cancelSaleAction,

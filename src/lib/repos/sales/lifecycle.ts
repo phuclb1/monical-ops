@@ -87,25 +87,24 @@ export async function cancelBooking(user: SessionUser, bookingId: string, asNoSh
   return booking.id;
 }
 
-export async function checkinRoomSale(user: SessionUser, id: string) {
+export async function checkinRoomSale(user: SessionUser, id: string, opts?: { skipHandoff?: boolean }) {
   const db = await getDb();
   const before = (await db.select().from(t.roomSales).where(eq(t.roomSales.id, id)).limit(1))[0];
   if (!before) throw new Error("Không tìm thấy chỗ bán");
   if (before.status !== "reserved") throw new Error("Chỉ nhận phòng khi đang giữ chỗ");
   const today = todayVN();
   if (today < before.checkIn) throw new Error("Chưa đến ngày nhận phòng");
-  await assertSaleHandoff("checkin", before.roomId);
-  await db
-    .update(t.roomSales)
-    .set({ status: "inhouse", updatedAt: nowISO(), updatedBy: user.id })
-    .where(eq(t.roomSales.id, id));
+  if (!opts?.skipHandoff) await assertSaleHandoff("checkin", before.roomId);
+  const now = nowISO();
+  const patch = { status: "inhouse" as const, checkedInAt: now, updatedAt: now, updatedBy: user.id };
+  await db.update(t.roomSales).set(patch).where(eq(t.roomSales.id, id));
   await syncStayFromSale(user.id, { ...before, status: "inhouse" });
   await applySaleRoomState(user.id, { roomId: before.roomId, status: "inhouse" });
   await ensureTodayRoomTasks(db, { actorId: user.id });
-  await audit(user.id, "room_sale", id, "checkin", before, { status: "inhouse" });
+  await audit(user.id, "room_sale", id, "checkin", before, { status: "inhouse", checkedInAt: now });
 }
 
-export async function checkoutRoomSale(user: SessionUser, id: string) {
+export async function checkoutRoomSale(user: SessionUser, id: string, opts?: { skipHandoff?: boolean }) {
   const db = await getDb();
   const before = (await db.select().from(t.roomSales).where(eq(t.roomSales.id, id)).limit(1))[0];
   if (!before) throw new Error("Không tìm thấy chỗ bán");
@@ -113,10 +112,11 @@ export async function checkoutRoomSale(user: SessionUser, id: string) {
   const today = todayVN();
   const checkOut = today < before.checkOut ? today : before.checkOut;
   if (checkOut < before.checkIn) throw new Error("Ngày trả không hợp lệ");
-  await assertSaleHandoff("checkout", before.roomId);
+  if (!opts?.skipHandoff) await assertSaleHandoff("checkout", before.roomId);
+  const now = nowISO();
   await db
     .update(t.roomSales)
-    .set({ status: "departed", checkOut, updatedAt: nowISO(), updatedBy: user.id })
+    .set({ status: "departed", checkOut, checkedOutAt: now, updatedAt: now, updatedBy: user.id })
     .where(eq(t.roomSales.id, id));
   await syncStayFromSale(user.id, { ...before, status: "departed", checkOut });
   await applySaleRoomState(user.id, { roomId: before.roomId, status: "departed" });
@@ -131,7 +131,7 @@ export async function checkoutRoomSale(user: SessionUser, id: string) {
     roomNumber: room?.number || "",
   });
   await ensureTodayRoomTasks(db, { actorId: user.id });
-  await audit(user.id, "room_sale", id, "checkout", before, { status: "departed", checkOut });
+  await audit(user.id, "room_sale", id, "checkout", before, { status: "departed", checkOut, checkedOutAt: now });
 }
 
 export async function checkinBooking(user: SessionUser, bookingId: string) {

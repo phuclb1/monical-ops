@@ -66,6 +66,8 @@ CREATE TABLE IF NOT EXISTS room_sales (
   status TEXT NOT NULL,
   check_in TEXT NOT NULL,
   check_out TEXT NOT NULL,
+  checked_in_at TEXT,
+  checked_out_at TEXT,
   adults INTEGER NOT NULL DEFAULT 1,
   children INTEGER NOT NULL DEFAULT 0,
   rate INTEGER NOT NULL DEFAULT 0,

@@ -146,6 +146,7 @@ export type CashFlowLine = {
   company: number;
   receivable: number;
   payable: number;
+  withheld: number;
   guestDue: number;
   refund?: boolean;
 };
@@ -172,6 +173,7 @@ function emptyCashTotals(): CashFlowTotals {
     company: 0,
     receivable: 0,
     payable: 0,
+    withheld: 0,
     guestDue: 0,
     count: 0,
     recognizedCount: 0,
@@ -199,6 +201,7 @@ export function cashFlowOf<T extends BookingMoney>(row: T, today = todayVN()): C
       company: 0,
       receivable: gross - fee,
       payable: 0,
+      withheld: fee,
       guestDue: 0,
     };
   }
@@ -214,6 +217,7 @@ export function cashFlowOf<T extends BookingMoney>(row: T, today = todayVN()): C
     company: paid.companyPaid,
     receivable: 0,
     payable: kind === "ota_hotel" ? fee : 0,
+    withheld: 0,
     guestDue,
   };
 }
@@ -242,6 +246,7 @@ function refundFlowOf<T extends BookingMoney>(row: T): CashFlowLine | null {
     company,
     receivable: 0,
     payable: 0,
+    withheld: 0,
     guestDue: 0,
   };
 }
@@ -266,6 +271,7 @@ export function cashFlowReport<T extends BookingMoney>(bookings: T[], from: stri
     acc.company += flow.company;
     acc.receivable += flow.receivable;
     acc.payable += flow.payable;
+    acc.withheld += flow.withheld;
     acc.guestDue += flow.guestDue;
     if (flow.refund) acc.refundCount += 1;
     else acc.count += 1;

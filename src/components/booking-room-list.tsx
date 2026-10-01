@@ -1,7 +1,8 @@
 import Link from "next/link";
-import { Chip } from "@/components/ui";
+import { checkinBookingRoomAction, checkoutBookingRoomAction } from "@/actions/sales";
+import { Btn, Chip } from "@/components/ui";
 import { CHECK_IN_TIME, CHECK_OUT_TIME, SALE_STATUS_LABEL } from "@/lib/constants";
-import { formatDateNumeric } from "@/lib/datetime";
+import { formatDateNumeric, formatTime } from "@/lib/datetime";
 import { discountLabel, formatVnd } from "@/lib/sales";
 import type { SaleStatus } from "@/lib/types";
 
@@ -24,6 +25,8 @@ type RoomRow = {
   discountKind?: string | null;
   discountValue?: number | null;
   status: string;
+  checkedInAt?: string | null;
+  checkedOutAt?: string | null;
   room?: { number?: string | null; type?: string | null } | null;
 };
 
@@ -134,17 +137,61 @@ function Totals({
   );
 }
 
+function stayNote(row: RoomRow) {
+  if (row.status === "inhouse") {
+    return row.checkedInAt ? `Có khách từ ${formatTime(row.checkedInAt)}` : "Có khách";
+  }
+  if (row.status === "departed") {
+    const parts = [
+      row.checkedInAt ? `Vào ${formatTime(row.checkedInAt)}` : "",
+      row.checkedOutAt ? `Ra ${formatTime(row.checkedOutAt)}` : "",
+    ].filter(Boolean);
+    return parts.join(" · ");
+  }
+  return "";
+}
+
+function RoomStay({ row, today, bookingId }: { row: RoomRow; today: string; bookingId: string }) {
+  const note = stayNote(row);
+  const canIn = row.status === "reserved" && today >= row.checkIn;
+  const canOut = row.status === "inhouse";
+  if (!note && !canIn && !canOut) return null;
+  return (
+    <div className="booking-room-stay">
+      {note ? <p className={row.status === "inhouse" ? "booking-room-in" : "booking-room-out"}>{note}</p> : null}
+      {canIn ? (
+        <form action={checkinBookingRoomAction}>
+          <input type="hidden" name="bookingId" value={bookingId} />
+          <input type="hidden" name="id" value={row.id} />
+          <Btn type="submit">Check in</Btn>
+        </form>
+      ) : null}
+      {canOut ? (
+        <form action={checkoutBookingRoomAction}>
+          <input type="hidden" name="bookingId" value={bookingId} />
+          <input type="hidden" name="id" value={row.id} />
+          <Btn type="submit" variant="gold">Check out</Btn>
+        </form>
+      ) : null}
+    </div>
+  );
+}
+
 export function BookingRoomList({
   rooms,
   quotes,
   totals,
   ota,
   otaHotel,
+  today,
+  bookingId,
 }: {
   rooms: RoomRow[];
   quotes: QuoteLine[];
   ota?: boolean;
   otaHotel?: boolean;
+  today: string;
+  bookingId: string;
   totals: {
     roomTotal: number;
     discount: number;
@@ -161,8 +208,8 @@ export function BookingRoomList({
         {rooms.map((row, index) => {
           const { breakfast, ck, quote } = roomView(row, quotes[index]);
           return (
-            <Link key={row.id} href={`/sales/${row.id}`} className="booking-room">
-              <div>
+            <article key={row.id} className="booking-room">
+              <Link href={`/sales/${row.id}`} className="booking-room-main">
                 <p className="booking-room-no">P.{row.room?.number || "—"}</p>
                 <p className="booking-room-type">{row.room?.type || "—"}</p>
                 <p className="booking-room-dates">
@@ -178,8 +225,8 @@ export function BookingRoomList({
                   <span className={breakfast ? "booking-room-bf" : "booking-room-bf is-off"}>{breakfast ? "✓ Có" : "Không ăn sáng"}</span>
                   <Chip tone={STATUS_TONE[row.status as SaleStatus]}>{SALE_STATUS_LABEL[row.status as SaleStatus]}</Chip>
                 </div>
-              </div>
-              <div className="booking-room-money">
+              </Link>
+              <Link href={`/sales/${row.id}`} className="booking-room-money">
                 <p className="booking-room-rate">{formatVnd(row.rate)}/đêm</p>
                 {quote?.breakfastOff ? (
                   <p className="booking-room-bf-cut">Không ăn sáng −{formatVnd(quote.breakfastOff)}</p>
@@ -190,8 +237,9 @@ export function BookingRoomList({
                   </p>
                 ) : null}
                 <p className="booking-room-total">{formatVnd(quote?.total ?? 0)}</p>
-              </div>
-            </Link>
+              </Link>
+              <RoomStay row={row} today={today} bookingId={bookingId} />
+            </article>
           );
         })}
       </div>
@@ -207,6 +255,7 @@ export function BookingRoomList({
               <th className="is-num">Giá</th>
               <th className="is-num">Tổng</th>
               <th>TT</th>
+              <th>Khách</th>
             </tr>
           </thead>
           <tbody>
@@ -240,6 +289,9 @@ export function BookingRoomList({
                   <td className="is-num booking-room-total">{formatVnd(quote?.total ?? 0)}</td>
                   <td>
                     <Chip tone={STATUS_TONE[row.status as SaleStatus]}>{SALE_STATUS_LABEL[row.status as SaleStatus]}</Chip>
+                  </td>
+                  <td>
+                    <RoomStay row={row} today={today} bookingId={bookingId} />
                   </td>
                 </tr>
               );

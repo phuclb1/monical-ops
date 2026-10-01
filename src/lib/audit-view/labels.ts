@@ -143,6 +143,8 @@ export const FIELD_LABEL: Record<string, string> = {
   weekendRate: "Giá lễ tết",
   checkIn: "Ngày nhận phòng",
   checkOut: "Ngày trả phòng",
+  checkedInAt: "Giờ check in",
+  checkedOutAt: "Giờ check out",
   arrivalDate: "Ngày khách đến",
   departureDate: "Ngày khách đi",
   source: "Kênh đặt phòng",

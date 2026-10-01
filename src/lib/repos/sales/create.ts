@@ -80,6 +80,8 @@ export async function createRoomSale(user: SessionUser, data: SaleInput) {
       status,
       checkIn: row.checkIn,
       checkOut: row.checkOut,
+      checkedInAt: status === "inhouse" ? now : null,
+      checkedOutAt: null,
       adults: pax.adults,
       children: pax.children,
       breakfastAdults: pax.breakfastAdults,

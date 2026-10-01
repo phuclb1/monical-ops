@@ -53,6 +53,42 @@ export async function updateSaleAction(formData: FormData) {
   revalidatePath(`/sales/${id}`);
 }
 
+export async function checkinBookingRoomAction(formData: FormData) {
+  const user = await requireSales();
+  const bookingId = String(formData.get("bookingId") || "");
+  const id = String(formData.get("id") || "");
+  const back = `/sales/bookings/${bookingId}`;
+  try {
+    const sale = await repo.getRoomSale(id);
+    if (!sale || sale.bookingKey !== bookingId) throw new Error("Phòng không thuộc booking này");
+    await repo.checkinRoomSale(user, id, { skipHandoff: true });
+  } catch (e) {
+    fail(back, e);
+  }
+  refresh();
+  revalidatePath(back);
+  revalidatePath(`/sales/${id}`);
+  redirect(back);
+}
+
+export async function checkoutBookingRoomAction(formData: FormData) {
+  const user = await requireSales();
+  const bookingId = String(formData.get("bookingId") || "");
+  const id = String(formData.get("id") || "");
+  const back = `/sales/bookings/${bookingId}`;
+  try {
+    const sale = await repo.getRoomSale(id);
+    if (!sale || sale.bookingKey !== bookingId) throw new Error("Phòng không thuộc booking này");
+    await repo.checkoutRoomSale(user, id, { skipHandoff: true });
+  } catch (e) {
+    fail(back, e);
+  }
+  refresh();
+  revalidatePath(back);
+  revalidatePath(`/sales/${id}`);
+  redirect(back);
+}
+
 export async function checkinBookingAction(formData: FormData) {
   const user = await requireSales();
   const bookingId = String(formData.get("bookingId") || "");

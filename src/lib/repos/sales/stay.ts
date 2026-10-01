@@ -54,9 +54,15 @@ export async function syncStayFromSale(
     updatedBy: actorId,
   };
   if (existing) {
+    const guestIn = stayStatus === "inhouse" || stayStatus === "departing" || stayStatus === "departed";
+    const checkinAt = existing.checkinAt || (guestIn ? now : null);
     await db.update(t.stays).set({
       ...payload,
       pmsBookingOk: existing.pmsBookingOk || origin === "ops",
+      pmsCheckinOk: existing.pmsCheckinOk || guestIn,
+      pmsCheckoutOk: existing.pmsCheckoutOk || stayStatus === "departed",
+      checkinAt,
+      registrationDueAt: existing.registrationDueAt || (guestIn && stayStatus !== "departed" && checkinAt ? addMinutes(checkinAt, 30) : null),
     }).where(eq(t.stays.id, existing.id));
     return;
   }

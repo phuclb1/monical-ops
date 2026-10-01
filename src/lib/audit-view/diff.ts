@@ -90,7 +90,7 @@ const MONEY_FIELDS = new Set([
   "due",
 ]);
 const DATE_FIELDS = new Set(["checkIn", "checkOut", "arrivalDate", "departureDate", "date", "effectiveFrom"]);
-const DATE_TIME_FIELDS = new Set(["dueAt"]);
+const DATE_TIME_FIELDS = new Set(["dueAt", "checkedInAt", "checkedOutAt"]);
 
 function formatDateOnly(value: string) {
   const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);

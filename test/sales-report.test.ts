@@ -245,10 +245,12 @@ test("cash flow splits inclusive VAT and OTA receivable or hotel commission paya
   assert.equal(report.rows[0].flow.guestDue, 480_000);
   assert.equal(report.rows[1].flow.cash, 0);
   assert.equal(report.rows[1].flow.receivable, 918_000);
+  assert.equal(report.rows[1].flow.withheld, 162_000);
   assert.equal(report.rows[1].flow.payable, 0);
   assert.equal(report.rows[1].flow.guestDue, 0);
   assert.equal(report.rows[2].flow.company, 1_500_000);
   assert.equal(report.rows[2].flow.receivable, 0);
+  assert.equal(report.rows[2].flow.withheld, 0);
   assert.equal(report.rows[2].flow.payable, 300_000);
   assert.equal(report.rows[2].flow.guestDue, 500_000);
   assert.equal(report.rows[3].flow.recognized, false);
@@ -258,6 +260,7 @@ test("cash flow splits inclusive VAT and OTA receivable or hotel commission paya
   assert.equal(report.totals.transfer, 300_000);
   assert.equal(report.totals.company, 1_600_000);
   assert.equal(report.totals.receivable, 918_000);
+  assert.equal(report.totals.withheld, 162_000);
   assert.equal(report.totals.payable, 300_000);
   assert.equal(report.totals.guestDue, 980_000);
   assert.equal(report.totals.refundCount, 0);

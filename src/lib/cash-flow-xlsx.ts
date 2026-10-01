@@ -20,11 +20,12 @@ const HEADERS = [
   "CK cá nhân",
   "CK công ty",
   "Phải thu OTA",
+  "Hoa hồng đã khấu trừ",
   "Phải trả hoa hồng",
   "Khách còn nợ",
 ] as const;
 
-const MONEY_COLUMNS = [7, 8, 9, 10, 11, 12, 13, 14, 15];
+const MONEY_COLUMNS = [7, 8, 9, 10, 11, 12, 13, 14, 15, 16];
 
 type ExportBooking = {
   id: string;
@@ -62,6 +63,7 @@ export function cashFlowXlsx<T extends ExportBooking>(report: {
       flow.transfer,
       flow.company,
       flow.receivable,
+      flow.withheld,
       flow.payable,
       flow.guestDue,
     ]),
@@ -80,6 +82,7 @@ export function cashFlowXlsx<T extends ExportBooking>(report: {
       report.totals.transfer,
       report.totals.company,
       report.totals.receivable,
+      report.totals.withheld,
       report.totals.payable,
       report.totals.guestDue,
     ],

@@ -7,7 +7,7 @@ import { RoomHandoffPanel } from "@/components/room-handoff";
 import { Card, Chip } from "@/components/ui";
 import { getSession } from "@/lib/auth";
 import { PAYMENT_METHOD_LABEL, SALE_ORIGIN_LABEL, SALE_SOURCE_LABEL, SALE_STATUS_LABEL } from "@/lib/constants";
-import { formatDateLong, todayVN } from "@/lib/datetime";
+import { formatDateLong, formatDateTime, todayVN } from "@/lib/datetime";
 import { can } from "@/lib/permissions";
 import { getRoomSale, getRoomDayChecklists, getBooking, listRooms, listRoomHandoff } from "@/lib/repos";
 import { canCheckinAfterStandby, canCheckoutAfterInspect } from "@/lib/room-handoff";
@@ -88,6 +88,8 @@ export default async function SaleDetailPage({
         <p className="text-sm">
           {formatDateLong(sale.checkIn)} → {formatDateLong(sale.checkOut)} · {quote.nights} đêm
         </p>
+        {sale.checkedInAt ? <p className="mt-1 text-sm text-[#1b7a4e]">Check in {formatDateTime(sale.checkedInAt)} · phòng có khách</p> : null}
+        {sale.checkedOutAt ? <p className="mt-1 text-sm text-[#5c6665]">Check out {formatDateTime(sale.checkedOutAt)}</p> : null}
         <p className="mt-1 text-sm">
           {formatVnd(sale.rate)}/đêm · tạm tính {formatVnd(quote.subtotal)}
         </p>
