@@ -48,11 +48,21 @@ export default async function CashFlowPage({
 
   return (
     <main className="booking-desk space-y-3 px-3 py-4 md:space-y-4">
-      <div>
-        <h1 className="text-xl font-bold">Báo cáo dòng tiền</h1>
-        <p className="text-xs text-[#5c6665] md:text-sm">
-          Theo ngày nhận trong kỳ, gồm booking chưa đến ngày nhận. Giá booking đã gồm VAT 8%; VAT tách riêng để khấu trừ sau. Tiền mặt, CK cá nhân và CK công ty là tiền đã thu. Hoàn cọc ghi âm vào đúng tài khoản đã nhận, theo ngày hoàn. OTA công nợ thành phải thu sau hoa hồng. OTA thu tại khách sạn giữ tiền đã thu và ghi hoa hồng vào phải trả.
-        </p>
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <h1 className="text-xl font-bold">Báo cáo dòng tiền</h1>
+          <p className="text-xs text-[#5c6665] md:text-sm">
+            Theo ngày nhận trong kỳ, gồm booking chưa đến ngày nhận. Giá booking đã gồm VAT 8%; VAT tách riêng để khấu trừ sau. Tiền mặt, CK cá nhân và CK công ty là tiền đã thu. Hoàn cọc ghi âm vào đúng tài khoản đã nhận, theo ngày hoàn. OTA công nợ thành phải thu sau hoa hồng. OTA thu tại khách sạn giữ tiền đã thu và ghi hoa hồng vào phải trả.
+          </p>
+        </div>
+        {grain === "month" ? (
+          <a
+            href={`/api/reports/cash/export?date=${window.from}`}
+            className="inline-flex min-h-11 shrink-0 items-center rounded-xl bg-teal px-3 text-sm font-semibold text-white"
+          >
+            Xuất Excel
+          </a>
+        ) : null}
       </div>
 
       <ReportTabs active="cash" showSales showWork={can(user.role, "viewReports")} />
