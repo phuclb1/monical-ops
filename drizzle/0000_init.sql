@@ -306,3 +306,16 @@ CREATE TABLE IF NOT EXISTS audit_logs (
   after_json TEXT,
   created_at TEXT NOT NULL
 );
+CREATE TABLE IF NOT EXISTS expenses (
+  id TEXT PRIMARY KEY,
+  spent_on TEXT NOT NULL,
+  category TEXT NOT NULL,
+  amount INTEGER NOT NULL,
+  has_invoice INTEGER NOT NULL DEFAULT 0,
+  funded_by TEXT NOT NULL,
+  note TEXT,
+  created_by TEXT NOT NULL,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS expenses_spent_on ON expenses (spent_on);

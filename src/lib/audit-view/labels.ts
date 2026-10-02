@@ -22,6 +22,7 @@ export const AUDIT_ENTITIES = [
   "sale_extra_type",
   "booking",
   "settings",
+  "expense",
 ] as const;
 
 export const AUDIT_ACTIONS = [
@@ -77,6 +78,7 @@ export const AUDIT_ENTITY_LABEL: Record<string, string> = {
   sale_extra_type: "Giá dịch vụ",
   booking: "Booking",
   settings: "Cấu hình",
+  expense: "Chi phí",
 };
 
 export const AUDIT_ACTION_LABEL: Record<string, string> = {
@@ -188,6 +190,11 @@ export const FIELD_LABEL: Record<string, string> = {
   reset: "Đặt lại MK",
   summary: "Nội dung đề nghị",
   reviewNote: "Lý do xử lý",
+  spentOn: "Ngày chi",
+  category: "Hạng mục chi",
+  amount: "Số tiền",
+  hasInvoice: "Hóa đơn",
+  fundedBy: "Nguồn tiền",
 };
 
 export const SKIP_FIELDS = new Set([

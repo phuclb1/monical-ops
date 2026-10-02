@@ -36,6 +36,7 @@ export const CAN = {
   manageRates: ["manager"] as Role[],
   manageRoster: ["manager"] as Role[],
   approveIncident: ["manager"] as Role[],
+  manageExpenses: ["manager"] as Role[],
 };
 
 export function can(role: Role, action: keyof typeof CAN) {

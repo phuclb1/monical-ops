@@ -2,6 +2,14 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { can } from "../src/lib/permissions";
 
+test("chỉ quản lý nhập được chi phí", () => {
+  assert.equal(can("manager", "manageExpenses"), true);
+  assert.equal(can("reception", "manageExpenses"), false);
+  assert.equal(can("accounting", "manageExpenses"), false);
+  assert.equal(can("owner", "manageExpenses"), false);
+  assert.equal(can("kitchen", "manageExpenses"), false);
+});
+
 test("chỉ quản lý được hủy booking", () => {
   assert.equal(can("manager", "cancelBooking"), true);
   assert.equal(can("reception", "cancelBooking"), false);

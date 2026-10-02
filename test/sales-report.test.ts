@@ -52,7 +52,14 @@ test("manager home and mobile navigation include dashboard and reports", () => {
   assert.equal(MANAGER_NAV[0]?.href, "/");
   assert.deepEqual(MANAGER_NAV[2], { href: "/reports", label: "Báo cáo" });
   const manage = sidebarNav("manager").blocks.find((block) => block.kind === "group" && block.label === "Quản lý");
-  assert.deepEqual(manage, { kind: "group", label: "Quản lý", items: [{ href: "/reports", label: "Báo cáo" }] });
+  assert.deepEqual(manage, {
+    kind: "group",
+    label: "Quản lý",
+    items: [
+      { href: "/reports", label: "Báo cáo" },
+      { href: "/expenses", label: "Chi phí" },
+    ],
+  });
 });
 
 test("room performance calculates occupancy, ADR and RevPAR", () => {

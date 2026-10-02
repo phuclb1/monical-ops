@@ -88,6 +88,19 @@ export const loginEvents = sqliteTable("login_events", {
   createdAt: text("created_at").notNull(),
 });
 
+export const expenses = sqliteTable("expenses", {
+  id: text("id").primaryKey(),
+  spentOn: text("spent_on").notNull(),
+  category: text("category").notNull(),
+  amount: integer("amount").notNull(),
+  hasInvoice: integer("has_invoice", { mode: "boolean" }).notNull().default(false),
+  fundedBy: text("funded_by").notNull(),
+  note: text("note"),
+  createdBy: text("created_by").notNull(),
+  createdAt: text("created_at").notNull(),
+  updatedAt: text("updated_at").notNull(),
+});
+
 export const pushSubscriptions = sqliteTable("push_subscriptions", {
   id: text("id").primaryKey(),
   userId: text("user_id").notNull(),

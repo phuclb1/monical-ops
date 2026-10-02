@@ -93,9 +93,13 @@ export function sidebarNav(role: Role): SidebarModel {
     blocks.push({ kind: "links", items: primary.map((item) => ({ href: item.href, label: item.label })) });
   }
 
-  if (can(role, "viewReports")) {
-    blocks.push({ kind: "group", label: "Quản lý", items: [{ href: "/reports", label: "Báo cáo" }] });
-  }
+  const manage = [
+    { href: "/reports", label: "Báo cáo", show: can(role, "viewReports") },
+    { href: "/expenses", label: "Chi phí", show: can(role, "manageExpenses") },
+  ]
+    .filter((item) => item.show)
+    .map(({ href, label }) => ({ href, label }));
+  if (manage.length) blocks.push({ kind: "group", label: "Quản lý", items: manage });
 
   const ops = [
     { href: "/reception", label: "Lễ tân", show: can(role, "viewReception") || role === "hk" },
