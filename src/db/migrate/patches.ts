@@ -179,4 +179,5 @@ export const SCHEMA_PATCHES = [
   updated_at TEXT NOT NULL
 )`,
   "CREATE INDEX IF NOT EXISTS expenses_spent_on ON expenses (spent_on)",
+  "ALTER TABLE expenses ADD COLUMN spent_by TEXT NOT NULL DEFAULT ''",
 ];

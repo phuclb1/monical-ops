@@ -22,8 +22,17 @@ export type ExpenseDraft = {
   amount: number;
   hasInvoice: boolean;
   fundedBy: ExpenseFund;
+  spentBy: string;
   note: string | null;
 };
+
+export function normalizePayer(raw: string, labels: readonly string[] = []) {
+  const text = raw.trim().replace(/\s+/g, " ");
+  if (!text) throw new Error("Nhập ai chi");
+  if (text.length > 80) throw new Error("Tên người chi tối đa 80 ký tự");
+  const existing = labels.find((label) => label.localeCompare(text, "vi", { sensitivity: "accent" }) === 0);
+  return existing || text;
+}
 
 export type ExpenseSummaryRow = {
   category: string;
@@ -32,14 +41,18 @@ export type ExpenseSummaryRow = {
   fundedBy: string;
 };
 
-export function parseExpenseForm(raw: {
-  spentOn: string;
-  category: string;
-  amount: number;
-  hasInvoice: string;
-  fundedBy: string;
-  note: string;
-}): ExpenseDraft {
+export function parseExpenseForm(
+  raw: {
+    spentOn: string;
+    category: string;
+    amount: number;
+    hasInvoice: string;
+    fundedBy: string;
+    spentBy: string;
+    note: string;
+  },
+  labels: readonly string[] = [],
+): ExpenseDraft {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(raw.spentOn)) throw new Error("Chọn ngày chi");
   if (!(EXPENSE_CATEGORIES as readonly string[]).includes(raw.category)) throw new Error("Chọn hạng mục chi");
   if (!Number.isFinite(raw.amount) || raw.amount <= 0) throw new Error("Nhập số tiền lớn hơn 0");
@@ -53,6 +66,7 @@ export function parseExpenseForm(raw: {
     amount: Math.round(raw.amount),
     hasInvoice: raw.hasInvoice === "yes",
     fundedBy: raw.fundedBy,
+    spentBy: normalizePayer(raw.spentBy, labels),
     note: note || null,
   };
 }

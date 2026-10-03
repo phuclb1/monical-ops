@@ -283,6 +283,7 @@ CREATE TABLE IF NOT EXISTS expenses (
   amount INTEGER NOT NULL,
   has_invoice INTEGER NOT NULL DEFAULT 0,
   funded_by TEXT NOT NULL,
+  spent_by TEXT NOT NULL DEFAULT '',
   note TEXT,
   created_by TEXT NOT NULL,
   created_at TEXT NOT NULL,

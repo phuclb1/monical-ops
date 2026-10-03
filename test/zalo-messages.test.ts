@@ -42,4 +42,17 @@ test("nhóm và tin đọc từ cấu hình cũ khi chưa có bản mới", () =
   assert.equal(created?.group, "booking");
   const updated = messages.find((item) => item.id === "booking-updated");
   assert.equal(updated?.template, "Sửa booking {{ma}}\n{{suaGi}}\nNgười sửa: {{sua}}\nNgười duyệt: {{duyet}}");
+  const checkinPaid = messages.find((item) => item.id === "booking-checkin-paid");
+  assert.equal(checkinPaid?.event, "booking_checkin_paid");
+  assert.equal(checkinPaid?.group, "booking");
+  assert.match(checkinPaid?.template || "", /Đã check-in và thu đủ \{\{ma\}\}/);
+  assert.match(checkinPaid?.template || "", /Người check-in: \{\{checkinBoi\}\}/);
+  assert.match(checkinPaid?.template || "", /Người thu đủ: \{\{thuBoi\}\}/);
+  const savedOld = normalizeZaloMessages([
+    {
+      id: "booking-checkin-paid",
+      template: "Đã check-in và thu đủ {{ma}}\nKhách: {{khach}}\nPhòng: {{phong}}\nNhận {{nhan}} · trả {{tra}}\nĐã thu: {{daThu}}\nNgười ghi nhận: {{xuLy}}",
+    },
+  ]);
+  assert.match(savedOld.find((item) => item.id === "booking-checkin-paid")?.template || "", /Người thu đủ: \{\{thuBoi\}\}/);
 });

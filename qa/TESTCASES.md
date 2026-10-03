@@ -267,13 +267,22 @@ Khách `E2E Van A` · P.101. Lễ tân `tuyen` · HK `uyen`.
 | E2E-R9 | `/rooms?focus=dirty` | P.101 phòng bẩn |
 | E2E-H5–H6 | HK chuyển status + dọn trả | Filter bẩn không còn tên khách E2E |
 | E2E-R12 | `/audit` | Lễ tân không vào nhật ký |
+| E2E-H9 | Login HK `/expenses` | Không menu Chi phí, redirect khỏi trang chi phí |
+| E2E-C1 | Login lễ tân `/expenses` | Không menu Chi phí, redirect khỏi trang chi phí |
 | E2E-R11 | `/handover` | Bàn giao |
 | E2E-R10 | `/shifts` | Cuối ca · Đang mở |
 | E2E-O1 | `/sales/new` nguồn Agoda, phòng trống | Công nợ OTA · có lựa chọn Xuất hóa đơn · không còn Từ ezCloud · mặc định không xuất |
 | E2E-X1 | `/sales/new` phòng trống, thêm phụ thu khác, tích Xuất hóa đơn | Xe đón sân bay · 150.000₫ · booking ghi Yêu cầu xuất hóa đơn |
 | E2E-O4 | `/sales/new` nguồn Agoda, chọn Thanh toán tại KS | Công nợ OTA 0₫ · phải thu khi check-in · có luồng Thu đủ |
 | E2E-O2 | login `quanly` `/reports/sales` | Doanh thu OTA · trước hoa hồng · E2E OTA · Công nợ OTA |
+| E2E-C2 | login `quanly` `/more` → Chi phí | Nhập chi phí · hạng mục Bếp / Lễ tân / Khách sạn / Quản lý · Ai chi · hóa đơn · tài khoản công ty / cá nhân · Tháng / Quý / Năm |
+| E2E-C3 | `/expenses` lưu khoản chi, gõ tên người chi mới | Đã lưu khoản chi · Bếp · 250.000₫ · Có hóa đơn · Tài khoản công ty · nhãn người chi vừa gõ |
+| E2E-C3b | Khoản chi sau chọn lại nhãn đó | Không gõ lại tên · chọn nhãn · 80.000₫ · Không hóa đơn · Tài khoản cá nhân |
+| E2E-C4 | `/audit?entity=expense&action=create` | Nhật ký Chi phí · Thêm mới · nội dung khoản chi |
+| E2E-C5 | Xóa khoản chi vừa nhập | Không còn nội dung khoản chi trên trang |
+| E2E-C6 | `/audit?entity=expense&action=delete` | Nhật ký Chi phí · Xóa |
 | E2E-O3 | login `chusohuu` `/owner` | Doanh thu OTA · chưa trừ hoa hồng · E2E OTA |
+| E2E-C7 | login `chusohuu` `/expenses` | Không menu Chi phí, redirect về doanh thu |
 
 ### E2E — phê duyệt sửa booking (`npm run qa:e2e:approval:staging`)
 

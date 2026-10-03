@@ -2,6 +2,8 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { breakfastDay } from "../src/lib/breakfast-report";
 import {
+  bookingCheckinPaidReady,
+  checkinPaidActorIds,
   bookingEditSummary,
   bookingZaloVars,
   zaloBreakfastLabel,
@@ -13,6 +15,46 @@ import {
   zaloOutbound,
   ZALO_BOT_NAME,
 } from "../src/lib/zalo-templates";
+
+test("tin check-in đã thu đủ ghi người bấm check-in và người thu đủ", () => {
+  const picked = checkinPaidActorIds(
+    [
+      {
+        action: "create",
+        actorId: "u-book",
+        createdAt: "2026-10-01T01:00:00.000Z",
+        before: null,
+        after: { status: "reserved", deposit: 500_000, transferPaid: 500_000 },
+      },
+      {
+        action: "checkin",
+        actorId: "u-lt",
+        createdAt: "2026-10-02T02:00:00.000Z",
+        before: { status: "reserved" },
+        after: { status: "inhouse" },
+      },
+      {
+        action: "update",
+        actorId: "u-thu",
+        createdAt: "2026-10-02T03:00:00.000Z",
+        before: { deposit: 500_000, transferPaid: 500_000 },
+        after: { deposit: 1_800_000, transferPaid: 1_800_000 },
+      },
+    ],
+    1_800_000,
+  );
+  assert.deepEqual(picked, { checkinBy: "u-lt", paidBy: "u-thu" });
+});
+
+test("check-in đã thu đủ chỉ khi khách đang ở và không còn phải thu", () => {
+  const paid = { due: 0, source: "walk_in", otaPaymentMode: "debt", rooms: [{ status: "inhouse" }] };
+  assert.equal(bookingCheckinPaidReady(paid), true);
+  assert.equal(bookingCheckinPaidReady({ ...paid, rooms: [{ status: "reserved" }] }), false);
+  assert.equal(bookingCheckinPaidReady({ ...paid, due: 200_000 }), false);
+  assert.equal(bookingCheckinPaidReady({ ...paid, rooms: [{ status: "departed" }] }), false);
+  assert.equal(bookingCheckinPaidReady({ ...paid, source: "agoda", otaPaymentMode: "debt" }), false);
+  assert.equal(bookingCheckinPaidReady({ ...paid, source: "agoda", otaPaymentMode: "hotel" }), true);
+});
 
 test("tin không gắn Trợ Lý Monical ở đầu", () => {
   assert.equal(zaloOutbound("Đã tạo booking BK1"), "Đã tạo booking BK1");

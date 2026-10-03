@@ -17,6 +17,7 @@ const SAVED: Record<string, string> = {
   "daily-breakfast": "Đã lưu báo cáo ăn sáng.",
   "booking-created": "Đã lưu tin booking mới.",
   "booking-updated": "Đã lưu tin sửa booking.",
+  "booking-checkin-paid": "Đã lưu tin check-in đã thu đủ.",
   test: "Đã gửi tin thử.",
   cleared: "Đã xóa phiên Zalo.",
 };
@@ -24,6 +25,7 @@ const SAVED: Record<string, string> = {
 const EVENT_LABEL = {
   booking_created: "khi có booking mới",
   booking_updated: "khi sửa booking",
+  booking_checkin_paid: "khi khách check-in và đã thu đủ tiền",
 } as const;
 
 export default async function ZaloSettingsPage({
@@ -114,7 +116,7 @@ export default async function ZaloSettingsPage({
         <Card>
           <h2 className="mb-2 font-bold">Tin nhắn</h2>
           <p className="mb-3 text-xs leading-5 text-[#5c6665]">
-            Bản tin lễ tân và báo cáo ăn sáng gửi mỗi ngày vào giờ đã chọn, giờ Việt Nam. Ăn sáng mặc định 05:00. Tin booking gửi khi tạo mới hoặc khi sửa.
+            Bản tin lễ tân và báo cáo ăn sáng gửi mỗi ngày vào giờ đã chọn, giờ Việt Nam. Ăn sáng mặc định 05:00. Tin booking gửi khi tạo mới, khi sửa, hoặc khi khách check-in và đã thu đủ tiền.
           </p>
           <ZaloMessageManager
             messages={zalo.messages.map((message) => {

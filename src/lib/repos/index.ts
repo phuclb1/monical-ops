@@ -77,6 +77,6 @@ export { pendingHandover, listHandovers, buildHandoverDraft, createHandover, acc
 export { getBreakfast, upsertBreakfast, confirmBreakfast } from "./kitchen";
 export { listForms, getForm, saveForm } from "./forms";
 export { listIncidents, createIncident, approveIncident } from "./incidents";
-export { listExpenses, createExpense, deleteExpense } from "./expenses";
+export { listExpenses, listExpensePayers, createExpense, deleteExpense } from "./expenses";
 export { searchOps, overdueReport } from "./search";
 

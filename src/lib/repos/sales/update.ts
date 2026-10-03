@@ -8,7 +8,9 @@ import type { SessionUser } from "../../types";
 import { audit } from "../audit";
 import { assertSaleWindow, paymentOf, type SaleInput, uniqueSaleRoomIds } from "./helpers";
 import { bookingCreatedBy, notifyBookingChange } from "./notify";
-import { dispatchBookingZalo } from "@/lib/zalo-notify";
+import { bookingCheckinPaidReady } from "@/lib/zalo-templates";
+import { dispatchBookingZalo, dispatchCheckinPaidZalo } from "@/lib/zalo-notify";
+import { getBooking } from "./queries";
 import { syncStayFromSale } from "./stay";
 
 export async function updateRoomSale(user: SessionUser, id: string, data: SaleInput) {
@@ -16,6 +18,9 @@ export async function updateRoomSale(user: SessionUser, id: string, data: SaleIn
   const before = (await db.select().from(t.roomSales).where(eq(t.roomSales.id, id)).limit(1))[0];
   if (!before) throw new Error("Không tìm thấy chỗ bán");
   if (!isActiveSaleStatus(before.status)) throw new Error("Chỗ đã đóng, không sửa");
+  const bookingId = before.bookingId || before.id;
+  const prior = await getBooking(bookingId);
+  const wasPaidInhouse = prior ? bookingCheckinPaidReady(prior) : false;
   const guestName = before.guestName;
   const roomId = uniqueSaleRoomIds(data)[0];
   const peers = before.bookingId
@@ -73,7 +78,6 @@ export async function updateRoomSale(user: SessionUser, id: string, data: SaleIn
   }
   await ensureTodayRoomTasks(db, { actorId: user.id });
   await audit(user.id, "room_sale", id, "update", before, patch);
-  const bookingId = before.bookingId || before.id;
   await notifyBookingChange({
     actor: user,
     bookingId,
@@ -82,4 +86,5 @@ export async function updateRoomSale(user: SessionUser, id: string, data: SaleIn
     body: `${user.fullName} · ${before.checkIn} → ${data.checkOut}`,
   });
   await dispatchBookingZalo(user.id, "booking_updated", bookingId).catch((error) => console.error("zalo booking", error));
+  await dispatchCheckinPaidZalo(user.id, bookingId, wasPaidInhouse).catch((error) => console.error("zalo booking", error));
 }

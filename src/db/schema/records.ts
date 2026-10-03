@@ -95,6 +95,7 @@ export const expenses = sqliteTable("expenses", {
   amount: integer("amount").notNull(),
   hasInvoice: integer("has_invoice", { mode: "boolean" }).notNull().default(false),
   fundedBy: text("funded_by").notNull(),
+  spentBy: text("spent_by").notNull().default(""),
   note: text("note"),
   createdBy: text("created_by").notNull(),
   createdAt: text("created_at").notNull(),

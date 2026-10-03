@@ -50,6 +50,15 @@ export const ZALO_MESSAGE_DEFS = [
     fields: "{{ma}} {{suaGi}} {{sua}} {{duyet}}",
     template: "Sửa booking {{ma}}\n{{suaGi}}\nNgười sửa: {{sua}}\nNgười duyệt: {{duyet}}",
   },
+  {
+    id: "booking-checkin-paid",
+    name: "Check-in đã thu đủ",
+    kind: "trigger" as const,
+    event: "booking_checkin_paid" as const,
+    group: "booking" as const,
+    fields: "{{ma}} {{khach}} {{phong}} {{nhan}} {{tra}} {{daThu}} {{checkinBoi}} {{thuBoi}}",
+    template: "Đã check-in và thu đủ {{ma}}\nKhách: {{khach}}\nPhòng: {{phong}}\nNhận {{nhan}} · trả {{tra}}\nĐã thu: {{daThu}}\nNgười check-in: {{checkinBoi}}\nNgười thu đủ: {{thuBoi}}",
+  },
 ] as const;
 
 const PREVIOUS_MESSAGE_TEMPLATES: Record<string, string[]> = {
@@ -68,9 +77,12 @@ const PREVIOUS_MESSAGE_TEMPLATES: Record<string, string[]> = {
     "Sửa booking từ nguồn {{nguon}} {{ma}}\nKhách: {{khach}}\nPhòng: {{phong}}\nHạng: {{hang}}\nNhận {{nhan}} · trả {{tra}}\nTổng phòng: {{tongPhong}}\nChiết khấu: {{chietKhau}}\nTổng sau chiết khấu: {{tongSauCk}}\nĐặt cọc: {{datCoc}}\nCòn phải thu khi check-in: {{conPhaiThu}}\nXuất hóa đơn: {{hoaDon}}\nNgười tạo: {{tao}}\nNgười sửa: {{sua}}\nSửa:\n{{suaGi}}",
     "Sửa booking {{ma}}\n{{suaGi}}",
   ],
+  "booking-checkin-paid": [
+    "Đã check-in và thu đủ {{ma}}\nKhách: {{khach}}\nPhòng: {{phong}}\nNhận {{nhan}} · trả {{tra}}\nĐã thu: {{daThu}}\nNgười ghi nhận: {{xuLy}}",
+  ],
 };
 
-export type ZaloMessageEvent = "booking_created" | "booking_updated";
+export type ZaloMessageEvent = "booking_created" | "booking_updated" | "booking_checkin_paid";
 
 export type ZaloMessage = {
   id: string;
@@ -175,6 +187,10 @@ function ensureActorLines(id: string, template: string) {
     if (!/\{\{\s*suaGi\s*\}\}/.test(text)) text = `${text}\n{{suaGi}}`;
     if (!/\{\{\s*sua\s*\}\}/.test(text)) text = `${text}\nNgười sửa: {{sua}}`;
     if (!/\{\{\s*duyet\s*\}\}/.test(text)) text = `${text}\nNgười duyệt: {{duyet}}`;
+  }
+  if (id === "booking-checkin-paid") {
+    if (!/\{\{\s*checkinBoi\s*\}\}/.test(text)) text = `${text}\nNgười check-in: {{checkinBoi}}`;
+    if (!/\{\{\s*thuBoi\s*\}\}/.test(text)) text = `${text}\nNgười thu đủ: {{thuBoi}}`;
   }
   return text;
 }

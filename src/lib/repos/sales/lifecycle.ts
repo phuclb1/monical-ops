@@ -7,6 +7,8 @@ import { can } from "../../permissions";
 import { applyPaidAmount, collectedSplit, depositRefundSplit, isActiveSaleStatus, isPaymentMethod, parsePaymentMethod, salePaid } from "../../sales";
 import type { SaleStatus, SessionUser } from "../../types";
 import { audit } from "../audit";
+import { bookingCheckinPaidReady } from "../../zalo-templates";
+import { dispatchCheckinPaidZalo } from "../../zalo-notify";
 import { bookingCreatedBy, notifyBookingChange } from "./notify";
 import { getBooking } from "./queries";
 import { applySaleRoomState, syncStayFromSale } from "./stay";
@@ -57,6 +59,7 @@ export async function recordBookingPayment(
     await db.update(t.roomSales).set(patch).where(eq(t.roomSales.id, row.id));
     await audit(user.id, "room_sale", row.id, "update", { deposit: row.deposit, checkinPaid: row.checkinPaid, checkinMethod: row.checkinMethod, cashPaid: row.cashPaid, transferPaid: row.transferPaid, companyPaid: row.companyPaid }, patch);
   }
+  await dispatchCheckinPaidZalo(user.id, booking.id, bookingCheckinPaidReady(booking)).catch((error) => console.error("zalo booking", error));
   return booking.id;
 }
 
@@ -95,6 +98,9 @@ export async function checkinRoomSale(user: SessionUser, id: string, opts?: { sk
   const today = todayVN();
   if (today < before.checkIn) throw new Error("Chưa đến ngày nhận phòng");
   if (!opts?.skipHandoff) await assertSaleHandoff("checkin", before.roomId);
+  const bookingId = before.bookingId || before.id;
+  const prior = await getBooking(bookingId);
+  const wasPaidInhouse = prior ? bookingCheckinPaidReady(prior) : false;
   const now = nowISO();
   const patch = { status: "inhouse" as const, checkedInAt: now, updatedAt: now, updatedBy: user.id };
   await db.update(t.roomSales).set(patch).where(eq(t.roomSales.id, id));
@@ -102,6 +108,7 @@ export async function checkinRoomSale(user: SessionUser, id: string, opts?: { sk
   await applySaleRoomState(user.id, { roomId: before.roomId, status: "inhouse" });
   await ensureTodayRoomTasks(db, { actorId: user.id });
   await audit(user.id, "room_sale", id, "checkin", before, { status: "inhouse", checkedInAt: now });
+  await dispatchCheckinPaidZalo(user.id, bookingId, wasPaidInhouse).catch((error) => console.error("zalo booking", error));
 }
 
 export async function checkoutRoomSale(user: SessionUser, id: string, opts?: { skipHandoff?: boolean }) {

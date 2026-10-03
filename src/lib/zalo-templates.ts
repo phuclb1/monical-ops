@@ -124,6 +124,10 @@ export function bookingZaloVars(input: {
   editedBy: string;
   approvedBy: string;
   edited: string;
+  handledBy?: string;
+  checkedInBy?: string;
+  collectedBy?: string;
+  collected?: number;
   checkIn: string;
   checkOut: string;
   due: number;
@@ -150,7 +154,53 @@ export function bookingZaloVars(input: {
     sua: input.editedBy || "—",
     duyet: input.approvedBy || "Không cần duyệt",
     suaGi: input.edited || "Không thấy mục sửa trong nhật ký.",
+    xuLy: input.handledBy || "—",
+    checkinBoi: input.checkedInBy || "—",
+    thuBoi: input.collectedBy || "—",
+    daThu: formatVnd(input.collected ?? input.deposit),
   };
+}
+
+export function checkinPaidActorIds(
+  logs: { action: string; actorId: string; createdAt: string; before: Record<string, unknown> | null; after: Record<string, unknown> | null }[],
+  total: number,
+) {
+  const ordered = [...logs].sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+  const target = Math.max(0, Math.round(total || 0));
+  let checkinBy = "";
+  let paidBy = "";
+  for (const log of ordered) {
+    const afterStatus = String(log.after?.status || "");
+    if ((log.action === "checkin" || (log.action === "create" && afterStatus === "inhouse")) && log.actorId) {
+      checkinBy = log.actorId;
+    }
+    const beforePaid = paidAmount(log.before);
+    const afterPaid = paidAmount(log.after);
+    if (log.actorId && afterPaid >= target && beforePaid < target) paidBy = log.actorId;
+  }
+  if (!paidBy && target === 0) paidBy = checkinBy;
+  return { checkinBy, paidBy };
+}
+
+function paidAmount(row: Record<string, unknown> | null) {
+  if (!row) return 0;
+  const cash = Math.max(0, Math.round(Number(row.cashPaid) || 0));
+  const transfer = Math.max(0, Math.round(Number(row.transferPaid) || 0));
+  const company = Math.max(0, Math.round(Number(row.companyPaid) || 0));
+  const split = cash + transfer + company;
+  const deposit = Math.max(0, Math.round(Number(row.deposit) || 0));
+  return split || deposit;
+}
+
+export function bookingCheckinPaidReady(booking: {
+  due: number;
+  source?: string | null;
+  otaPaymentMode?: string | null;
+  rooms: { status: string }[];
+}) {
+  if (isOtaDebt(booking.source, booking.otaPaymentMode)) return false;
+  if (Math.max(0, Math.round(booking.due || 0)) > 0) return false;
+  return booking.rooms.some((row) => row.status === "inhouse");
 }
 
 export function zaloBreakfastLabel(rooms: { breakfast?: boolean | null; room?: { number?: string | null } | null }[]) {

@@ -1,6 +1,7 @@
-import { and, desc, eq } from "drizzle-orm";
+import { and, desc, eq, inArray } from "drizzle-orm";
 import { getDb } from "@/db";
 import * as t from "@/db/schema";
+import { parseAuditJson } from "@/lib/repos/audit";
 import { auditActorName } from "@/lib/audit-view/view";
 import { SALE_SOURCE_LABEL } from "@/lib/constants";
 import { breakfastDay } from "@/lib/breakfast-report";
@@ -15,7 +16,9 @@ import { sendZaloToGroup } from "@/lib/zalo-client";
 import { claimZaloSchedule, loadZaloGroups, loadZaloMessages, zaloChannel } from "@/lib/zalo-session";
 import { scheduleIsDue, type ZaloMessageEvent } from "@/lib/zalo-messages";
 import {
+  bookingCheckinPaidReady,
   bookingEditSummary,
+  checkinPaidActorIds,
   bookingZaloVars,
   breakfastZaloVars,
   receptionDigest,
@@ -39,6 +42,40 @@ async function staffName(userId: string) {
   if (!userId) return "—";
   const person = (await listUsers()).find((item) => item.id === userId);
   return auditActorName(userId, person?.fullName);
+}
+
+function auditRecord(raw: string | null) {
+  const value = parseAuditJson(raw);
+  return value && typeof value === "object" && !Array.isArray(value) ? (value as Record<string, unknown>) : null;
+}
+
+async function checkinPaidNames(booking: { id: string; total: number; rooms: { id: string }[] }) {
+  const ids = [...new Set([booking.id, ...booking.rooms.map((row) => row.id)])].filter(Boolean);
+  const db = await getDb();
+  const rows = ids.length
+    ? await db
+        .select({
+          action: t.auditLogs.action,
+          actorId: t.auditLogs.actorId,
+          beforeJson: t.auditLogs.beforeJson,
+          afterJson: t.auditLogs.afterJson,
+          createdAt: t.auditLogs.createdAt,
+        })
+        .from(t.auditLogs)
+        .where(and(eq(t.auditLogs.entity, "room_sale"), inArray(t.auditLogs.entityId, ids)))
+    : [];
+  const picked = checkinPaidActorIds(
+    rows.map((row) => ({
+      action: row.action,
+      actorId: row.actorId,
+      createdAt: row.createdAt,
+      before: auditRecord(row.beforeJson),
+      after: auditRecord(row.afterJson),
+    })),
+    booking.total,
+  );
+  const [checkinBy, paidBy] = await Promise.all([staffName(picked.checkinBy), staffName(picked.paidBy)]);
+  return { checkinBy, paidBy };
 }
 
 async function pendingRequester(bookingId: string) {
@@ -82,10 +119,13 @@ export async function dispatchBookingZalo(actorId: string, event: ZaloMessageEve
   const requesterId = event === "booking_updated" ? await pendingRequester(bookingId) : "";
   const editorId = event === "booking_updated" ? requesterId || actorId : "";
   const approverId = event === "booking_updated" && requesterId ? actorId : "";
-  const [createdBy, editedBy, approvedBy, edits] = await Promise.all([
+  const handlerId = event === "booking_checkin_paid" ? actorId : "";
+  const paidNames = event === "booking_checkin_paid" ? await checkinPaidNames(booking) : null;
+  const [createdBy, editedBy, approvedBy, handledBy, edits] = await Promise.all([
     staffName(creatorId),
     staffName(editorId),
     staffName(approverId),
+    staffName(handlerId),
     event === "booking_updated" ? recentEditText(bookingId, actorId) : Promise.resolve(""),
   ]);
   const source = SALE_SOURCE_LABEL[booking.source as SaleSource] || booking.source;
@@ -107,6 +147,10 @@ export async function dispatchBookingZalo(actorId: string, event: ZaloMessageEve
     createdBy,
     editedBy,
     approvedBy: approverId ? approvedBy : "Không cần duyệt",
+    handledBy,
+    checkedInBy: paidNames?.checkinBy,
+    collectedBy: paidNames?.paidBy,
+    collected: booking.deposit,
     edited: edits,
     checkIn: booking.checkIn,
     checkOut: booking.checkOut,
@@ -121,6 +165,13 @@ export async function dispatchBookingZalo(actorId: string, event: ZaloMessageEve
       console.error("zalo booking", error);
     });
   }
+}
+
+export async function dispatchCheckinPaidZalo(actorId: string, bookingId: string, wasReady: boolean) {
+  if (wasReady) return;
+  const booking = await getBooking(bookingId);
+  if (!booking || !bookingCheckinPaidReady(booking)) return;
+  await dispatchBookingZalo(actorId, "booking_checkin_paid", bookingId);
 }
 
 export async function receptionNoticeVars(date = todayVN()) {
@@ -185,6 +236,10 @@ export async function sendMessagePreview(actorId: string, messageId: string) {
           createdBy: "Minh Quản lý",
           editedBy: "Ngân Lễ tân",
           approvedBy: "Minh Quản lý",
+          handledBy: "Ngân Lễ tân",
+          checkedInBy: "Ngân Lễ tân",
+          collectedBy: "Minh Quản lý",
+          collected: 1_800_000,
           edited: "Ngày nhận phòng: 29/09/2026 → 30/09/2026",
           checkIn: today,
           checkOut: addDaysVN(today, 1),
@@ -216,6 +271,10 @@ export async function sendChannelPreview(actorId: string, key: ZaloChannelKey) {
         createdBy: "Minh Quản lý",
         editedBy: "Ngân Lễ tân",
         approvedBy: "Minh Quản lý",
+        handledBy: "Ngân Lễ tân",
+        checkedInBy: "Ngân Lễ tân",
+        collectedBy: "Minh Quản lý",
+        collected: 1_800_000,
         edited: "",
         checkIn: today,
         checkOut: addDaysVN(today, 1),

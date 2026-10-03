@@ -240,7 +240,7 @@ try {
   });
 
   await check("AC-04", "Kế toán bị chặn khỏi mọi URL vận hành", accountingPage, async (shot) => {
-    const blocked = ["/today", "/tasks", "/rooms", "/handover", "/reports", "/sales/bookings", "/sales/new", "/staff", "/notifications"];
+    const blocked = ["/today", "/tasks", "/rooms", "/handover", "/reports", "/expenses", "/sales/bookings", "/sales/new", "/staff", "/notifications"];
     for (const path of blocked) {
       await go(accountingPage, path);
       if (new URL(accountingPage.url()).pathname !== "/accounting") {

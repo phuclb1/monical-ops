@@ -25,7 +25,9 @@ import type { SessionUser } from "../../types";
 import { audit } from "../audit";
 import { assertSaleWindow, paymentOf } from "./helpers";
 import { notifyBookingChange } from "./notify";
-import { dispatchBookingZalo } from "@/lib/zalo-notify";
+import { bookingCheckinPaidReady } from "@/lib/zalo-templates";
+import { dispatchBookingZalo, dispatchCheckinPaidZalo } from "@/lib/zalo-notify";
+import { getBooking } from "./queries";
 import { cancelRoomSale } from "./lifecycle";
 import { syncStayFromSale } from "./stay";
 
@@ -71,6 +73,8 @@ export async function updateBooking(
   bookingId: string,
   data: BookingUpdateInput,
 ) {
+  const prior = await getBooking(bookingId);
+  const wasPaidInhouse = prior ? bookingCheckinPaidReady(prior) : false;
   const db = await getDb();
   const [all, rooms, types] = await Promise.all([
     db.select().from(t.roomSales),
@@ -235,5 +239,6 @@ export async function updateBooking(
     body: `${user.fullName} · còn ${staying.length} phòng${removedNumbers.length ? ` · xóa ${removedNumbers.join(", ")}` : ""}`,
   });
   await dispatchBookingZalo(user.id, "booking_updated", key).catch((error) => console.error("zalo booking", error));
+  await dispatchCheckinPaidZalo(user.id, key, wasPaidInhouse).catch((error) => console.error("zalo booking", error));
   return key;
 }

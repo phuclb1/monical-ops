@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { createExpenseAction, deleteExpenseAction } from "@/actions/expenses";
+import { ExpensePayerField } from "@/components/expense-payer-field";
 import { OwnerPeriodBar } from "@/components/owner-period";
 import { Btn, Card, Chip, Empty, Field, Stat } from "@/components/ui";
 import { getSession } from "@/lib/auth";
@@ -14,7 +15,7 @@ import {
 } from "@/lib/expenses";
 import { homePath } from "@/lib/nav";
 import { can } from "@/lib/permissions";
-import { listExpenses, listUsers } from "@/lib/repos";
+import { listExpensePayers, listExpenses, listUsers } from "@/lib/repos";
 import { formatVnd } from "@/lib/sales";
 import { parsePeriodQuery } from "@/lib/sales-report";
 
@@ -31,7 +32,11 @@ export default async function ExpensesPage({
   const { grain, window } = parsePeriodQuery(rawGrain, rawDate);
   const today = todayVN();
   const defaultDate = today >= window.from && today < window.to ? today : window.from;
-  const [rows, users] = await Promise.all([listExpenses(window.from, window.to), listUsers()]);
+  const [rows, users, payers] = await Promise.all([
+    listExpenses(window.from, window.to),
+    listUsers(),
+    listExpensePayers(),
+  ]);
   const names = new Map(users.map((person) => [person.id, person.fullName]));
   const summary = summarizeExpenses(rows);
 
@@ -39,7 +44,9 @@ export default async function ExpensesPage({
     <main className="space-y-3 px-3 py-4 md:space-y-4">
       <div>
         <h1 className="text-xl font-bold">Chi phí</h1>
-        <p className="text-xs text-[#5c6665] md:text-sm">Chỉ quản lý nhập chi phí vận hành theo ngày, hạng mục, hóa đơn và nguồn tiền.</p>
+        <p className="text-xs text-[#5c6665] md:text-sm">
+          Chỉ quản lý nhập chi phí vận hành theo ngày, hạng mục, người chi, hóa đơn và nguồn tiền.
+        </p>
       </div>
 
       {error ? <p className="text-sm text-[#c23b3b]">{error}</p> : null}
@@ -102,6 +109,7 @@ export default async function ExpensesPage({
                 <option value="personal">Tài khoản cá nhân</option>
               </select>
             </Field>
+            <ExpensePayerField labels={payers} />
             <Field label="Nội dung">
               <input name="note" maxLength={200} placeholder="Không bắt buộc" />
             </Field>
@@ -134,6 +142,7 @@ export default async function ExpensesPage({
                     <div className="mt-2 flex flex-wrap items-center gap-1.5">
                       <Chip tone={row.hasInvoice ? "ok" : "warn"}>{row.hasInvoice ? "Có hóa đơn" : "Không hóa đơn"}</Chip>
                       <Chip tone={fund === "company" ? "teal" : "gold"}>{EXPENSE_FUND_LABEL[fund] || row.fundedBy}</Chip>
+                      {row.spentBy ? <Chip>{row.spentBy}</Chip> : null}
                     </div>
                     <form action={deleteExpenseAction} className="mt-2">
                       <input type="hidden" name="id" value={row.id} />

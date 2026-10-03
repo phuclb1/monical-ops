@@ -195,6 +195,7 @@ export const FIELD_LABEL: Record<string, string> = {
   amount: "Số tiền",
   hasInvoice: "Hóa đơn",
   fundedBy: "Nguồn tiền",
+  spentBy: "Ai chi",
 };
 
 export const SKIP_FIELDS = new Set([

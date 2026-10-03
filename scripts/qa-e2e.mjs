@@ -24,6 +24,8 @@ function gitCommit() {
 
 const commit = gitCommit();
 const runId = process.env.QA_RUN_ID || `E2E-${new Date().toISOString().slice(0, 10).replaceAll("-", "")}-1`;
+const EXPENSE_NOTE = `E2E chi bep ${runId}`;
+const EXPENSE_PAYER = `E2E Ngan ${runId}`;
 const outDir = join(root, "qa", "evidence", runId);
 mkdirSync(outDir, { recursive: true });
 
@@ -99,6 +101,25 @@ async function completeOpenTask(needle) {
   await page.locator('select[name="status"]').selectOption("done");
   await page.getByRole("button", { name: "Lưu trạng thái" }).click();
   await ready();
+}
+
+function todayVN() {
+  return new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Ho_Chi_Minh" }).format(new Date());
+}
+
+async function fillNewPayer(name) {
+  const picker = page.locator("select").filter({ has: page.locator('option[value="__new__"]') });
+  if (await picker.count()) await picker.selectOption("__new__");
+  await page.getByPlaceholder("Nhập tên người chi").fill(name);
+}
+
+async function assertNoExpenses(shot) {
+  await go("/more");
+  const more = await pageText();
+  if (more.includes("Chi phí — ngày chi")) throw new Error("Menu Chi phí hiện với role không được nhập");
+  await go("/expenses");
+  if (new URL(page.url()).pathname.startsWith("/expenses")) throw new Error("Vẫn vào được /expenses");
+  await mustNot(shot, ["Nhập chi phí", "Lưu khoản chi"]);
 }
 
 async function pageText() {
@@ -325,6 +346,10 @@ try {
     if (text.includes(GUEST)) throw new Error("Filter bẩn vẫn còn khách E2E sau khi việc xong");
   });
 
+  await check("E2E-H9", "HK không vào chi phí", async (shot) => {
+    await assertNoExpenses(shot);
+  });
+
   await check("E2E-R12", "Lễ tân không vào nhật ký", async (shot) => {
     await asReception();
     await go("/audit");
@@ -428,6 +453,10 @@ try {
     ]);
   });
 
+  await check("E2E-C1", "Lễ tân không vào chi phí", async (shot) => {
+    await assertNoExpenses(shot);
+  });
+
   await check("E2E-O2", "Báo cáo doanh thu OTA sau hoa hồng", async (shot) => {
     await logout();
     await login("quanly");
@@ -435,11 +464,96 @@ try {
     await must(shot, ["OTA sau hoa hồng", "phải trả hoa hồng", "phải thu đối tác", "OTA đã thu tại KS", "E2E OTA", "Công nợ OTA"]);
   });
 
+  await check("E2E-C2", "Quản lý mở trang chi phí từ Thêm", async (shot) => {
+    await go("/more");
+    await page.locator("main").getByRole("link", { name: /Chi phí/ }).click();
+    await page.waitForURL(/\/expenses/, { timeout: 20000 });
+    await ready();
+    const optionText = async (name) =>
+      (await page.locator(`select[name="${name}"] option`).allTextContents()).join("\n");
+    const categories = await optionText("category");
+    const invoice = await optionText("hasInvoice");
+    const funds = await optionText("fundedBy");
+    const missing = ["Bếp", "Lễ tân", "Khách sạn", "Quản lý"].filter((label) => !categories.includes(label));
+    if (!invoice.includes("Có hóa đơn") || !invoice.includes("Không hóa đơn")) missing.push("hóa đơn");
+    if (!funds.includes("Tài khoản công ty") || !funds.includes("Tài khoản cá nhân")) missing.push("nguồn tiền");
+    if (missing.length) throw new Error(`Thiếu lựa chọn: ${missing.join(" | ")}`);
+    await must(shot, ["Chi phí", "Nhập chi phí", "Ngày chi", "Hạng mục chi", "Ai chi", "Tháng", "Quý", "Năm", "Lưu khoản chi"]);
+  });
+
+  await check("E2E-C3", "Quản lý nhập khoản chi bếp, có hóa đơn, tài khoản công ty", async (shot) => {
+    await go("/expenses");
+    await page.locator('input[name="spentOn"]').fill(todayVN());
+    await page.locator('select[name="category"]').selectOption("kitchen");
+    await page.locator('input[name="amount"]').fill("250000");
+    await page.locator('select[name="hasInvoice"]').selectOption("yes");
+    await page.locator('select[name="fundedBy"]').selectOption("company");
+    await fillNewPayer(EXPENSE_PAYER);
+    await page.locator('input[name="note"]').fill(EXPENSE_NOTE);
+    await Promise.all([
+      page.waitForURL(/[?&]ok=1/, { timeout: 25000 }),
+      page.getByRole("button", { name: "Lưu khoản chi" }).click(),
+    ]);
+    await ready();
+    await must(shot, ["Đã lưu khoản chi", EXPENSE_NOTE, EXPENSE_PAYER, "Bếp", "250.000₫", "Có hóa đơn", "Tài khoản công ty"]);
+  });
+
+  await check("E2E-C3b", "Khoản chi sau chọn lại nhãn người chi vừa nhập", async (shot) => {
+    await go("/expenses");
+    const picker = page.locator("select").filter({ has: page.locator('option[value="__new__"]') });
+    await picker.selectOption(EXPENSE_PAYER);
+    await page.locator('input[name="spentOn"]').fill(todayVN());
+    await page.locator('select[name="category"]').selectOption("reception");
+    await page.locator('input[name="amount"]').fill("80000");
+    await page.locator('select[name="hasInvoice"]').selectOption("no");
+    await page.locator('select[name="fundedBy"]').selectOption("personal");
+    await page.locator('input[name="note"]').fill(`${EXPENSE_NOTE} 2`);
+    await Promise.all([
+      page.waitForURL(/[?&]ok=1/, { timeout: 25000 }),
+      page.getByRole("button", { name: "Lưu khoản chi" }).click(),
+    ]);
+    await ready();
+    await must(shot, ["Đã lưu khoản chi", `${EXPENSE_NOTE} 2`, EXPENSE_PAYER, "80.000₫", "Không hóa đơn", "Tài khoản cá nhân"]);
+  });
+
+  await check("E2E-C4", "Nhật ký ghi thêm khoản chi", async (shot) => {
+    await go("/audit?entity=expense&action=create");
+    await page.locator("details summary").first().click();
+    await ready();
+    await must(shot, ["Nhật ký thao tác", "Chi phí", "Thêm mới", EXPENSE_NOTE]);
+  });
+
+  await check("E2E-C5", "Quản lý xóa khoản chi vừa nhập", async (shot) => {
+    await go("/expenses");
+    for (let i = 0; i < 4; i += 1) {
+      const row = page.locator("div.rounded-xl").filter({ hasText: EXPENSE_NOTE });
+      if (!(await row.count())) break;
+      await Promise.all([
+        page.waitForResponse((res) => res.request().method() === "POST" && res.url().includes("/expenses"), { timeout: 25000 }),
+        row.first().getByRole("button", { name: "Xóa" }).click(),
+      ]);
+      await ready();
+    }
+    const text = await must(shot, ["Chi phí", "Nhập chi phí"]);
+    if (text.includes(EXPENSE_NOTE)) throw new Error("Khoản chi vẫn còn sau khi xóa");
+  });
+
+  await check("E2E-C6", "Nhật ký ghi xóa khoản chi", async (shot) => {
+    await go("/audit?entity=expense&action=delete");
+    await page.locator("details summary").first().click();
+    await ready();
+    await must(shot, ["Nhật ký thao tác", "Chi phí", "Xóa", EXPENSE_NOTE]);
+  });
+
   await check("E2E-O3", "Chủ sở hữu thấy doanh thu OTA", async (shot) => {
     await logout();
     await login("chusohuu");
     await go("/owner");
     await must(shot, ["OTA sau hoa hồng", "Công nợ đối tác", "phải trả hoa hồng", "E2E OTA"]);
+  });
+
+  await check("E2E-C7", "Chủ sở hữu không vào chi phí", async (shot) => {
+    await assertNoExpenses(shot);
   });
 } finally {
   await browser.close();

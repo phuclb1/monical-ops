@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { parseExpenseForm, summarizeExpenses } from "../src/lib/expenses";
+import { normalizePayer, parseExpenseForm, summarizeExpenses } from "../src/lib/expenses";
 
 test("parse expense form accepts manager fields", () => {
   assert.deepEqual(
@@ -10,17 +10,25 @@ test("parse expense form accepts manager fields", () => {
       amount: 150000,
       hasInvoice: "yes",
       fundedBy: "company",
+      spentBy: "  nguyễn  lan  ",
       note: "  Gas bếp  ",
-    }),
+    }, ["Nguyễn Lan"]),
     {
       spentOn: "2026-10-01",
       category: "kitchen",
       amount: 150000,
       hasInvoice: true,
       fundedBy: "company",
+      spentBy: "Nguyễn Lan",
       note: "Gas bếp",
     },
   );
+});
+
+test("new payer text becomes its own label and later matches that label", () => {
+  assert.equal(normalizePayer("  Trần  An  "), "Trần An");
+  assert.equal(normalizePayer("trần an", ["Trần An"]), "Trần An");
+  assert.throws(() => normalizePayer("   "), /ai chi/);
 });
 
 test("parse expense form rejects missing invoice and fund", () => {
@@ -32,6 +40,7 @@ test("parse expense form rejects missing invoice and fund", () => {
         amount: 1,
         hasInvoice: "",
         fundedBy: "personal",
+        spentBy: "Lan",
         note: "",
       }),
     /hóa đơn/,
@@ -44,6 +53,7 @@ test("parse expense form rejects missing invoice and fund", () => {
         amount: 0,
         hasInvoice: "no",
         fundedBy: "personal",
+        spentBy: "Lan",
         note: "",
       }),
     /số tiền/,

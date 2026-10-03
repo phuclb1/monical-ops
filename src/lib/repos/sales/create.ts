@@ -13,7 +13,7 @@ import { notifyBookingChange } from "./notify";
 import { extraAmount } from "../../extras";
 import { insertSaleExtras, resolveSaleExtras } from "./extras";
 import { applySaleRoomState, syncStayFromSale } from "./stay";
-import { dispatchBookingZalo } from "@/lib/zalo-notify";
+import { dispatchBookingZalo, dispatchCheckinPaidZalo } from "@/lib/zalo-notify";
 
 export async function createRoomSale(user: SessionUser, data: SaleInput) {
   const guestName = data.guestName.trim();
@@ -125,6 +125,9 @@ export async function createRoomSale(user: SessionUser, data: SaleInput) {
   });
   if (!requestedBookingId) {
     await dispatchBookingZalo(user.id, "booking_created", bookingId).catch((error) => console.error("zalo booking", error));
+    if (data.checkinNow) {
+      await dispatchCheckinPaidZalo(user.id, bookingId, false).catch((error) => console.error("zalo booking", error));
+    }
   }
   return { id: ids[0], bookingId };
 }

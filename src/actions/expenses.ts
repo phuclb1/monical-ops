@@ -28,14 +28,19 @@ export async function createExpenseAction(formData: FormData) {
   const grain = String(formData.get("grain") || "month");
   let draft;
   try {
-    draft = parseExpenseForm({
-      spentOn,
-      category: String(formData.get("category") || ""),
-      amount: parseMoney(formData.get("amount")),
-      hasInvoice: String(formData.get("hasInvoice") || ""),
-      fundedBy: String(formData.get("fundedBy") || ""),
-      note: String(formData.get("note") || ""),
-    });
+    const labels = await repo.listExpensePayers();
+    draft = parseExpenseForm(
+      {
+        spentOn,
+        category: String(formData.get("category") || ""),
+        amount: parseMoney(formData.get("amount")),
+        hasInvoice: String(formData.get("hasInvoice") || ""),
+        fundedBy: String(formData.get("fundedBy") || ""),
+        spentBy: String(formData.get("spentBy") || ""),
+        note: String(formData.get("note") || ""),
+      },
+      labels,
+    );
   } catch (error) {
     back(spentOn, grain, (error as Error).message);
   }

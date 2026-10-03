@@ -6,6 +6,12 @@ import type { ExpenseDraft } from "../expenses";
 import type { SessionUser } from "../types";
 import { audit } from "./audit";
 
+export async function listExpensePayers() {
+  const db = await getDb();
+  const rows = await db.select({ spentBy: t.expenses.spentBy }).from(t.expenses);
+  return [...new Set(rows.map((row) => row.spentBy.trim()).filter(Boolean))].sort((a, b) => a.localeCompare(b, "vi"));
+}
+
 export async function listExpenses(from: string, to: string) {
   const db = await getDb();
   return db
@@ -26,6 +32,7 @@ export async function createExpense(user: SessionUser, data: ExpenseDraft) {
     amount: data.amount,
     hasInvoice: data.hasInvoice,
     fundedBy: data.fundedBy,
+    spentBy: data.spentBy,
     note: data.note,
     createdBy: user.id,
     createdAt: now,
