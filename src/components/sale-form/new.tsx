@@ -85,6 +85,7 @@ export function SaleForm({
   const [extras, setExtras] = useState<DraftExtra[]>([]);
   const [deposit, setDeposit] = useState(defaults.deposit ? String(defaults.deposit) : "");
   const [payMethod, setPayMethod] = useState<PaymentMethod>("personal");
+  const [invoiceOn, setInvoiceOn] = useState(Boolean(defaults.invoiceRequested));
   const ota = isOtaSource(source);
   const otaDebt = ota && otaPaymentMode === "debt";
   const commissionValue = commissionKind === "percent"
@@ -255,9 +256,18 @@ export function SaleForm({
         </>
       )}
       <label className="flex items-center gap-2">
-        <input type="checkbox" name="invoiceRequested" value="1" defaultChecked={defaults.invoiceRequested} />
+        {ota ? <input type="hidden" name="invoiceRequested" value="1" /> : null}
+        <input
+          type="checkbox"
+          name={ota ? undefined : "invoiceRequested"}
+          value="1"
+          checked={ota || invoiceOn}
+          disabled={ota}
+          onChange={(e) => setInvoiceOn(e.target.checked)}
+        />
         <span>Xuất hóa đơn</span>
       </label>
+      {ota ? <p className="-mt-2 text-xs text-[#5c6665]">OTA luôn xuất hóa đơn.</p> : null}
       <div className="grid grid-cols-2 gap-2">
         <Field label="Nhận">
           <input

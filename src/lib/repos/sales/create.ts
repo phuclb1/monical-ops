@@ -76,7 +76,7 @@ export async function createRoomSale(user: SessionUser, data: SaleInput) {
       source: data.source,
       otaPaymentMode: data.otaPaymentMode === "hotel" ? "hotel" : "debt",
       ...normalizeCommission(isOtaSource(data.source), data.otaCommissionKind, data.otaCommissionValue),
-      invoiceRequested: Boolean(data.invoiceRequested),
+      invoiceRequested: isOtaSource(data.source) || Boolean(data.invoiceRequested),
       status,
       checkIn: row.checkIn,
       checkOut: row.checkOut,

@@ -15,8 +15,7 @@ function hintFor(role: string) {
 export default async function NotificationsPage() {
   const user = await getSession();
   if (!user) redirect("/login");
-  const rows = await listNotifications(user);
-  const unread = rows.filter((n) => !n.read).length;
+  const rows = (await listNotifications(user)).filter((n) => !n.read);
   const hint = hintFor(user.role);
 
   return (
@@ -26,15 +25,15 @@ export default async function NotificationsPage() {
           <h1 className="text-xl font-bold">Thông báo</h1>
           {hint ? <p className="mt-1 text-sm text-[#5c6665]">{hint}</p> : null}
         </div>
-        {unread ? (
+        {rows.length ? (
           <form action={readAllNotifAction}>
-            <button className="text-sm font-semibold text-teal">Đọc hết · {unread}</button>
+            <button className="text-sm font-semibold text-teal">Đọc hết · {rows.length}</button>
           </form>
         ) : null}
       </div>
       <PushPrompt variant="panel" />
       {rows.length === 0 ? (
-        <Empty title="Chưa có thông báo" text="Khi có đặt, sửa hoặc hủy booking, thông báo sẽ hiện theo quyền của bạn." />
+        <Empty title="Không còn thông báo mới" text="Bấm một thông báo là mở nội dung và xóa khỏi danh sách này." />
       ) : (
         <NotificationList rows={rows} />
       )}

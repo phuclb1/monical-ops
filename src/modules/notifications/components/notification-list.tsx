@@ -1,6 +1,5 @@
-import Link from "next/link";
 import { Ban, Bell, CalendarPlus, Pencil } from "lucide-react";
-import { openNotifAction } from "@/modules/notifications/actions/notifications.action";
+import { openNotifAction, readNotifAction } from "@/modules/notifications/actions/notifications.action";
 import { Chip } from "@/components/ui";
 import { TimeAgo } from "@/components/time-ago";
 
@@ -44,7 +43,7 @@ function NotifBody({ n }: { n: Row }) {
       <span className="min-w-0 flex-1">
         <span className="flex items-start justify-between gap-2">
           <span className="min-w-0">
-            <span className={`mt-0.5 block truncate text-[15px] leading-5 ${n.read ? "font-semibold text-[#4d5554]" : "font-bold text-ink"}`}>
+            <span className="mt-0.5 block truncate text-[15px] font-bold leading-5 text-ink">
               <span className="text-[11px] font-bold uppercase tracking-[0.04em] text-[#8a7a72]">{kicker}</span>
               {" · "}
               {subject}
@@ -67,22 +66,14 @@ export function NotificationList({ rows }: { rows: Row[] }) {
       {rows.map((n) => {
         const inner = <NotifBody n={n} />;
         return (
-          <article key={n.id} className={`notif-card ${n.read ? "is-read" : "is-unread"}`}>
-            {n.link && !n.read ? (
-              <form action={openNotifAction}>
-                <input type="hidden" name="id" value={n.id} />
-                <input type="hidden" name="link" value={n.link} />
-                <button type="submit" className="notif-card-hit">
-                  {inner}
-                </button>
-              </form>
-            ) : n.link ? (
-              <Link href={n.link} className="notif-card-hit">
+          <article key={n.id} className="notif-card is-unread">
+            <form action={n.link ? openNotifAction : readNotifAction}>
+              <input type="hidden" name="id" value={n.id} />
+              {n.link ? <input type="hidden" name="link" value={n.link} /> : null}
+              <button type="submit" className="notif-card-hit">
                 {inner}
-              </Link>
-            ) : (
-              <div className="notif-card-hit">{inner}</div>
-            )}
+              </button>
+            </form>
           </article>
         );
       })}
