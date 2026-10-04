@@ -19,11 +19,6 @@ export function SaleFormSide(props: {
   bookingTotal: number;
   due: number;
   defaults: { guestName?: string; guestPhone?: string; cars?: number; bikes?: number; pmsCode?: string; notes?: string; checkIn: string };
-  adults: string;
-  setAdultsTouched: (value: boolean) => void;
-  setAdults: (value: string) => void;
-  children: string;
-  setChildren: (value: string) => void;
   stayAdults: number;
   stayChildren: number;
   breakfastAdults: string;
@@ -54,11 +49,6 @@ export function SaleFormSide(props: {
     bookingTotal,
     due,
     defaults,
-    adults,
-    setAdultsTouched,
-    setAdults,
-    children,
-    setChildren,
     stayAdults,
     stayChildren,
     breakfastAdults,
@@ -172,30 +162,10 @@ export function SaleFormSide(props: {
       <Field label="SĐT">
         <input name="guestPhone" type="tel" defaultValue={defaults.guestPhone || ""} placeholder="090..." />
       </Field>
-      <p className="text-xs font-semibold text-[#5c6665]">Khách ở</p>
-      <div className="grid grid-cols-2 gap-2">
-        <Field label="Người lớn">
-          <input
-            name="adults"
-            type="number"
-            min={1}
-            value={adults}
-            onChange={(e) => {
-              setAdultsTouched(true);
-              setAdults(e.target.value);
-            }}
-          />
-        </Field>
-        <Field label="Trẻ em">
-          <input
-            name="children"
-            type="number"
-            min={0}
-            value={children}
-            onChange={(e) => setChildren(e.target.value)}
-          />
-        </Field>
-      </div>
+      <p className="text-xs font-semibold text-[#5c6665]">Khách ở · tổng các phòng</p>
+      <p className="text-sm">
+        {stayAdults} NL{stayChildren ? ` · ${stayChildren} TE` : ""}
+      </p>
       <p className="text-xs font-semibold text-[#5c6665]">Khách ăn sáng · không lớn hơn khách ở</p>
       <div className="grid grid-cols-2 gap-2">
         <Field label="Người lớn">

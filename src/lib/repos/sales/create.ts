@@ -4,11 +4,12 @@ import { getDb } from "@/db";
 import * as t from "@/db/schema";
 import { nid, nowISO, todayVN } from "../../datetime";
 import { ensureTodayRoomTasks } from "../../checklist-ops";
-import { bookingQuote, catalogRate, isActiveSaleStatus, isOtaSource, isSaleSource, normalizeCommission, parsePaymentMethod } from "../../sales";
+import { bookingQuote, catalogRate, clampBreakfastPax, isActiveSaleStatus, isOtaSource, isSaleSource, normalizeCommission, parsePaymentMethod, roomStayPax } from "../../sales";
+import { defaultAdultsForRoomType } from "../../rooms-catalog";
 import type { SaleStatus, SessionUser } from "../../types";
 import { audit } from "../audit";
 import { listRooms, listRoomTypes } from "../rooms";
-import { assertSaleWindow, paymentOf, saleLineWindow, salePax, type SaleInput, uniqueSaleRoomIds } from "./helpers";
+import { assertSaleWindow, paymentOf, saleLineWindow, type SaleInput, uniqueSaleRoomIds } from "./helpers";
 import { notifyBookingChange } from "./notify";
 import { extraAmount } from "../../extras";
 import { insertSaleExtras, resolveSaleExtras } from "./extras";
@@ -22,7 +23,6 @@ export async function createRoomSale(user: SessionUser, data: SaleInput) {
   const origin = data.origin === "ezcloud" ? "ezcloud" : "ops";
   if (origin === "ezcloud" && !data.pmsCode?.trim()) throw new Error("Tích ezCloud thì nhập mã PMS");
   const roomIds = uniqueSaleRoomIds(data);
-  const pax = salePax(data, roomIds);
   const lines = roomIds.map((roomId) => ({ roomId, ...saleLineWindow(data, roomId) }));
   const rooms = [];
   for (const line of lines) {
@@ -50,6 +50,16 @@ export async function createRoomSale(user: SessionUser, data: SaleInput) {
     !requestedBookingId && isOtaSource(data.source)
       ? { cashPaid: 0, transferPaid: 0, companyPaid: 0, deposit: 0 }
       : paymentOf(data);
+  const types = await listRoomTypes();
+  const typeAdults = new Map(types.map((type) => [type.name, type.adults]));
+  const roomPax = rooms.map((row) => {
+    const cap = defaultAdultsForRoomType(row.room.type, typeAdults.get(row.room.type));
+    return roomStayPax(cap, data.adultsByRoom?.[row.room.id], data.childrenByRoom?.[row.room.id]);
+  });
+  const stayAdults = roomPax.reduce((sum, row) => sum + row.adults, 0);
+  const stayChildren = roomPax.reduce((sum, row) => sum + row.children, 0);
+  const hasBreakfast = rooms.some((row) => row.breakfast !== false);
+  const breakfastPax = clampBreakfastPax(stayAdults, stayChildren, data.breakfastAdults, data.breakfastChildren, hasBreakfast);
   const quote = bookingQuote(
     rooms.map((row) => ({
       rate: row.rate,
@@ -63,7 +73,8 @@ export async function createRoomSale(user: SessionUser, data: SaleInput) {
   const preparedExtras = requestedBookingId ? [] : await resolveSaleExtras(data.extras || []);
   const bookingTotal = quote.total + preparedExtras.reduce((sum, row) => sum + extraAmount(row, quote.nights), 0);
   const ids: string[] = [];
-  for (const row of rooms) {
+  for (const [index, row] of rooms.entries()) {
+    const pax = roomPax[index];
     const id = nid();
     const status: SaleStatus = Boolean(data.checkinNow) && row.checkIn <= today ? "inhouse" : "reserved";
     const record = {
@@ -84,8 +95,8 @@ export async function createRoomSale(user: SessionUser, data: SaleInput) {
       checkedOutAt: null,
       adults: pax.adults,
       children: pax.children,
-      breakfastAdults: pax.breakfastAdults,
-      breakfastChildren: pax.breakfastChildren,
+      breakfastAdults: breakfastPax.adults,
+      breakfastChildren: breakfastPax.children,
       cars: Math.max(0, data.cars || 0),
       bikes: Math.max(0, data.bikes || 0),
       rate: row.rate,
@@ -166,8 +177,6 @@ export async function addRoomsToBooking(user: SessionUser, saleId: string, roomI
     invoiceRequested: before.invoiceRequested,
     checkIn: before.checkIn,
     checkOut: before.checkOut,
-    adults: before.adults,
-    children: before.children,
     breakfastAdults: before.breakfastAdults ?? undefined,
     breakfastChildren: before.breakfastChildren ?? undefined,
     cars: before.cars,

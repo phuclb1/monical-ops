@@ -1,10 +1,16 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
+import { legacyPaxAssignments } from "../src/db/split-legacy-pax";
 import {
   bookingKey,
   clampBreakfastPax,
+  clampRoomAdults,
   clampStayPax,
   defaultCheckout,
+  roomStayPax,
+  splitBookingAdults,
+  splitBookingChildren,
+  bookingStayPax,
   formatOpsBookingCode,
   groupByBooking,
   isActiveSaleStatus,
@@ -58,6 +64,32 @@ test("OTA / walk-in source aliases and booking codes", () => {
 
 test("pax clamp, rollup, grouping, room move", () => {
   assert.deepEqual(clampStayPax(0, -1), { adults: 1, children: 0 });
+  assert.equal(clampRoomAdults(undefined, 2), 2);
+  assert.equal(clampRoomAdults(4, 2), 2);
+  assert.equal(clampRoomAdults(1, 4), 1);
+  assert.deepEqual(roomStayPax(2, undefined, 1), { adults: 2, children: 1 });
+  assert.deepEqual(splitBookingAdults(4, [2, 2]), [2, 2]);
+  assert.deepEqual(splitBookingAdults(3, [2, 2]), [2, 1]);
+  assert.deepEqual(splitBookingAdults(1, [2, 4, 2, 4]), [1, 1, 1, 1]);
+  assert.deepEqual(splitBookingChildren(3, 2), [2, 1]);
+  assert.deepEqual(bookingStayPax([{ adults: 1, children: 0 }, { adults: 2, children: 1 }]), { adults: 3, children: 1 });
+  const caps = new Map<string, number>([["DELUXE", 2], ["FAMILY", 4]]);
+  const split = legacyPaxAssignments(
+    [
+      { id: "a", bookingId: "bk", roomNumber: "301", typeName: "DELUXE", adults: 4, children: 0, breakfast: false, breakfastAdults: 0, breakfastChildren: 0 },
+      { id: "b", bookingId: "bk", roomNumber: "401", typeName: "DELUXE", adults: 4, children: 0, breakfast: false, breakfastAdults: 0, breakfastChildren: 0 },
+    ],
+    caps,
+  );
+  assert.deepEqual(split.map((row) => row.adults), [2, 2]);
+  const clamped = legacyPaxAssignments(
+    [
+      { id: "a", bookingId: "bk2", roomNumber: "301", typeName: "DELUXE", adults: 1, children: 0, breakfast: false, breakfastAdults: 0, breakfastChildren: 0 },
+      { id: "b", bookingId: "bk2", roomNumber: "401", typeName: "DELUXE", adults: 4, children: 0, breakfast: false, breakfastAdults: 0, breakfastChildren: 0 },
+    ],
+    caps,
+  );
+  assert.deepEqual(clamped.map((row) => [row.id, row.adults]), [["a", 1], ["b", 2]]);
   assert.deepEqual(clampBreakfastPax(2, 1, 9, 9, true), { adults: 2, children: 1 });
   assert.deepEqual(clampBreakfastPax(2, 1, 1, 0, false), { adults: 0, children: 0 });
   assert.equal(rollupBookingStatus(["cancelled", "inhouse", "reserved"]), "inhouse");

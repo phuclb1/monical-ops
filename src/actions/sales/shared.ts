@@ -93,6 +93,14 @@ export function saleFromForm(formData: FormData) {
       ),
     };
   }
+  const adultsByRoom: Record<string, number> = {};
+  const childrenByRoom: Record<string, number> = {};
+  for (const id of roomIds) {
+    const adults = formData.get(`adults-${id}`);
+    const children = formData.get(`children-${id}`);
+    if (adults != null && String(adults) !== "") adultsByRoom[id] = Number(adults);
+    if (children != null && String(children) !== "") childrenByRoom[id] = Number(children);
+  }
   return {
     roomId: roomIds[0] || "",
     roomIds,
@@ -109,8 +117,8 @@ export function saleFromForm(formData: FormData) {
     invoiceRequested: String(formData.get("invoiceRequested") || "") === "1",
     checkIn: dates[roomIds[0] || ""]?.checkIn || fallbackIn,
     checkOut: dates[roomIds[0] || ""]?.checkOut || fallbackOut,
-    adults: Number(formData.get("adults") || 1),
-    children: Number(formData.get("children") || 0),
+    adultsByRoom,
+    childrenByRoom,
     breakfastAdults: Number(formData.get("breakfastAdults") || 0),
     breakfastChildren: Number(formData.get("breakfastChildren") || 0),
     cars: Math.max(0, Number(formData.get("cars") || 0) || 0),

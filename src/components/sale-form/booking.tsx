@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { Btn, Field, MoneyMethodField } from "@/components/ui";
 import { SALE_SOURCE_GROUPS, SALE_SOURCE_LABEL } from "@/lib/constants";
-import { bookingDue, bookingPayMethods, bookingQuote, catalogRate, collectedSplit, formatVnd, isOtaDebt, isOtaSource, parseMoney, parseDiscountValue, rangesOverlap, roomMoveKind } from "@/lib/sales";
+import { bookingDue, bookingPayMethods, bookingQuote, catalogRate, collectedSplit, formatVnd, isOtaDebt, isOtaSource, parseMoney, parseDiscountValue, rangesOverlap, roomAdultCap, roomMoveKind } from "@/lib/sales";
 import { extraAmount } from "@/lib/extras";
 import type { PaymentMethod } from "@/lib/types";
 import { OtaCommissionFields, type CommissionKind } from "./commission";
@@ -31,12 +31,14 @@ export function BookingForm({
     checkIn: string;
     checkOut: string;
     breakfast?: boolean;
+    adults?: number;
+    children?: number;
     discountKind?: string;
     discountValue?: number;
     status?: string;
   }[];
   rooms: { id: string; number: string; type: string; opsStatus?: string }[];
-  types: { name: string; sortOrder: number; baseRate: number; weekendRate: number }[];
+  types: { name: string; sortOrder: number; baseRate: number; weekendRate: number; adults?: number }[];
   busy?: { roomId: string; checkIn: string; checkOut: string }[];
   extras?: { name: string; qty: number; unitPrice: number; unit: string }[];
   requiresApproval?: boolean;
@@ -76,8 +78,8 @@ export function BookingForm({
   const [breakfast, setBreakfast] = useState<Record<string, boolean>>(() =>
     Object.fromEntries(lines.map((line) => [line.saleId, line.breakfast !== false])),
   );
-  const [adults, setAdults] = useState(String(defaults.adults ?? 1));
-  const [children, setChildren] = useState(String(defaults.children ?? 0));
+  const [roomAdults, setRoomAdults] = useState<Record<string, string>>({});
+  const [roomChildren, setRoomChildren] = useState<Record<string, string>>({});
   const [breakfastAdults, setBreakfastAdults] = useState(
     String(defaults.breakfastAdults ?? defaults.adults ?? 1),
   );
@@ -215,8 +217,23 @@ export function BookingForm({
         parseDiscountValue(discount.kind, discount.value) !== (line.discountValue || 0)
       );
     });
-  const stayAdults = Math.max(1, Number(adults) || 1);
-  const stayChildren = Math.max(0, Number(children) || 0);
+  function capFor(roomId: string, fallbackType: string) {
+    const room = rooms.find((item) => item.id === roomId);
+    const typeName = room?.type || fallbackType;
+    return roomAdultCap(typeName, types.find((type) => type.name === typeName)?.adults);
+  }
+  function adultsOf(line: (typeof lines)[number]) {
+    const cap = capFor(picks[line.saleId] || line.roomId, line.type);
+    const raw = roomAdults[line.saleId];
+    const current = raw == null ? line.adults ?? cap : Number(raw);
+    return Math.min(cap, Math.max(1, Math.round(Number(current) || 1)));
+  }
+  function childrenOf(line: (typeof lines)[number]) {
+    const raw = roomChildren[line.saleId];
+    return Math.max(0, Math.round(Number(raw == null ? line.children || 0 : raw) || 0));
+  }
+  const stayAdults = kept.reduce((sum, line) => sum + adultsOf(line), 0);
+  const stayChildren = kept.reduce((sum, line) => sum + childrenOf(line), 0);
   const anyBreakfast = kept.some((line) => breakfast[line.saleId] !== false);
   useEffect(() => {
     if (!anyBreakfast) {
@@ -286,27 +303,10 @@ export function BookingForm({
         <input type="checkbox" name="invoiceRequested" value="1" defaultChecked={defaults.invoiceRequested} />
         <span>Xuất hóa đơn</span>
       </label>
-      <p className="text-xs font-semibold text-[#5c6665]">Khách ở</p>
-      <div className="grid grid-cols-2 gap-2">
-        <Field label="Người lớn">
-          <input
-            name="adults"
-            type="number"
-            min={1}
-            value={adults}
-            onChange={(e) => setAdults(e.target.value)}
-          />
-        </Field>
-        <Field label="Trẻ em">
-          <input
-            name="children"
-            type="number"
-            min={0}
-            value={children}
-            onChange={(e) => setChildren(e.target.value)}
-          />
-        </Field>
-      </div>
+      <p className="text-xs font-semibold text-[#5c6665]">Khách ở · tổng các phòng</p>
+      <p className="text-sm">
+        {stayAdults} NL{stayChildren ? ` · ${stayChildren} TE` : ""}
+      </p>
       <p className="text-xs font-semibold text-[#5c6665]">Khách ăn sáng · không lớn hơn khách ở</p>
       <div className="grid grid-cols-2 gap-2">
         <Field label="Người lớn">
@@ -366,6 +366,11 @@ export function BookingForm({
         optionsFor={optionsFor}
         stayOf={stayOf}
         onRemove={kept.length > 1 ? removeLine : undefined}
+        capFor={capFor}
+        adultsOf={adultsOf}
+        childrenOf={childrenOf}
+        setRoomAdults={setRoomAdults}
+        setRoomChildren={setRoomChildren}
       />
       {removed.length ? (
         <div className="space-y-2">

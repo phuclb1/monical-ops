@@ -4,6 +4,7 @@ import { getDb } from "@/db";
 import * as t from "@/db/schema";
 import {
   bookingBreakfastPax,
+  bookingStayPax,
   bookingDue,
   bookingKey,
   bookingQuote,
@@ -49,6 +50,7 @@ function toBookingView(id: string, rooms: Awaited<ReturnType<typeof listRoomSale
   const sorted = [...rooms].sort((a, b) => (a.room?.number || "").localeCompare(b.room?.number || ""));
   const priced = billableSaleRows(sorted);
   const head = priced[0];
+  const stay = bookingStayPax(priced);
   const quote = bookingQuote(priced);
   const paid = salePaid(head);
   const checkIn = priced.reduce((min, row) => (row.checkIn < min ? row.checkIn : min), head.checkIn);
@@ -67,8 +69,8 @@ function toBookingView(id: string, rooms: Awaited<ReturnType<typeof listRoomSale
     invoiceRequested: head.invoiceRequested,
     pmsCode: head.pmsCode,
     notes: head.notes,
-    adults: head.adults,
-    children: head.children,
+    adults: stay.adults,
+    children: stay.children,
     breakfastAdults: bookingBreakfastPax(priced).adults,
     breakfastChildren: bookingBreakfastPax(priced).children,
     cars: head.cars || 0,

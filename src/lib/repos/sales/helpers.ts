@@ -3,8 +3,6 @@ import { getDb } from "@/db";
 import * as t from "@/db/schema";
 import {
   applyPaidAmount,
-  clampBreakfastPax,
-  clampStayPax,
   isActiveSaleStatus,
   normalizeDiscount,
   paidFromMethod,
@@ -28,6 +26,8 @@ export type SaleInput = {
   checkOut: string;
   adults?: number;
   children?: number;
+  adultsByRoom?: Record<string, number>;
+  childrenByRoom?: Record<string, number>;
   breakfastAdults?: number;
   breakfastChildren?: number;
   cars?: number;
@@ -63,13 +63,6 @@ export function saleLineWindow(data: SaleInput, roomId: string) {
     data.discounts?.[roomId]?.value ?? data.discountValue,
   );
   return { checkIn, checkOut, breakfast, rate, discountKind, discountValue };
-}
-
-export function salePax(data: Pick<SaleInput, "adults" | "children" | "breakfastAdults" | "breakfastChildren" | "breakfasts">, roomIds: string[]) {
-  const stay = clampStayPax(data.adults, data.children);
-  const hasBreakfast = roomIds.some((id) => data.breakfasts?.[id] !== false);
-  const breakfast = clampBreakfastPax(stay.adults, stay.children, data.breakfastAdults, data.breakfastChildren, hasBreakfast);
-  return { adults: stay.adults, children: stay.children, breakfastAdults: breakfast.adults, breakfastChildren: breakfast.children };
 }
 
 export function uniqueSaleRoomIds(data: SaleInput) {

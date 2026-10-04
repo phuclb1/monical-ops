@@ -4,7 +4,7 @@ import * as t from "@/db/schema";
 import { nid, nowISO } from "./datetime";
 import { audit } from "./repos";
 import { ensureTodayRoomTasks } from "./checklist-ops";
-import { catalogRate, clampBreakfastPax, isActiveSaleStatus, normalizeDiscount, parseSaleSource, rangesOverlap, applyPaidAmount, salePaid } from "./sales";
+import { catalogRate, clampBreakfastPax, clampRoomAdults, isActiveSaleStatus, normalizeDiscount, parseSaleSource, rangesOverlap, applyPaidAmount, roomAdultCap, salePaid } from "./sales";
 import type { SaleOrigin, SaleStatus, StayStatus } from "./types";
 import { SALE_STATUSES, STAY_STATUSES } from "./types";
 
@@ -127,6 +127,10 @@ async function ingestOne(raw: IngestBooking): Promise<IngestResult> {
   const { discountKind, discountValue } = normalizeDiscount(raw.discountKind || "none", raw.discountValue || 0);
 
   let stayResult: IngestResult["stay"] = "skipped";
+  const roomType = room
+    ? (await db.select().from(t.roomTypes).where(eq(t.roomTypes.name, room.type)).limit(1))[0]
+    : null;
+  const cap = room ? roomAdultCap(room.type, roomType?.adults) : null;
   const stayRows = await db.select().from(t.stays).where(eq(t.stays.pmsCode, pmsCode));
   const stayRow = room
     ? stayRows.find((row) => row.roomId === room.id) ?? stayRows.find((row) => !row.roomId)
@@ -141,7 +145,7 @@ async function ingestOne(raw: IngestBooking): Promise<IngestResult> {
     status: stayStatus,
     arrivalDate: raw.arrivalDate,
     departureDate: raw.departureDate,
-    adults: Math.max(1, raw.adults || stayRow?.adults || 1),
+    adults: cap ? clampRoomAdults(raw.adults || stayRow?.adults || cap, cap) : Math.max(1, raw.adults || stayRow?.adults || 1),
     children: Math.max(0, raw.children ?? stayRow?.children ?? 0),
     breakfast: raw.breakfast ?? stayRow?.breakfast ?? true,
     pmsBookingOk: true,
@@ -196,10 +200,7 @@ async function ingestOne(raw: IngestBooking): Promise<IngestResult> {
     };
   }
 
-  const roomType = room
-    ? (await db.select().from(t.roomTypes).where(eq(t.roomTypes.name, room.type)).limit(1))[0]
-    : null;
-  const adults = Math.max(1, raw.adults || saleRow?.adults || 1);
+  const adults = cap ? clampRoomAdults(raw.adults || saleRow?.adults || cap, cap) : Math.max(1, raw.adults || saleRow?.adults || 1);
   const children = Math.max(0, raw.children ?? saleRow?.children ?? 0);
   const breakfast = raw.breakfast ?? saleRow?.breakfast ?? true;
   const breakfastPax = clampBreakfastPax(adults, children, saleRow?.breakfastAdults, saleRow?.breakfastChildren, breakfast !== false);

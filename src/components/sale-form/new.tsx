@@ -15,7 +15,7 @@ import {
   parseMoney,
   parseDiscountValue,
 } from "@/lib/sales";
-import { defaultAdultsForRooms } from "@/lib/rooms-catalog";
+import { defaultAdultsForRoomType } from "@/lib/rooms-catalog";
 import type { PaymentMethod } from "@/lib/types";
 import { OtaCommissionFields, type CommissionKind } from "./commission";
 import { SaleFormExtras, type DraftExtra, type ExtraTypeOption } from "./extras";
@@ -92,11 +92,9 @@ export function SaleForm({
     ? Math.min(100, Math.max(0, Math.round(Number(commission) || 0)))
     : parseMoney(commission);
   const selectedRooms = rooms.filter((room) => roomIds.includes(room.id));
-  const occupancyAdults = useMemo(() => defaultAdultsForRooms(selectedRooms, types), [selectedRooms, types]);
-  const [adults, setAdults] = useState(String(defaults.adults ?? occupancyAdults));
-  const [children, setChildren] = useState(String(defaults.children ?? 0));
-  const [adultsTouched, setAdultsTouched] = useState(false);
-  const [breakfastAdults, setBreakfastAdults] = useState(String(defaults.breakfastAdults ?? defaults.adults ?? occupancyAdults));
+  const [roomAdults, setRoomAdults] = useState<Record<string, string>>({});
+  const [roomChildren, setRoomChildren] = useState<Record<string, string>>({});
+  const [breakfastAdults, setBreakfastAdults] = useState(String(defaults.breakfastAdults ?? defaults.adults ?? ""));
   const [breakfastChildren, setBreakfastChildren] = useState(String(defaults.breakfastChildren ?? defaults.children ?? 0));
   const [breakfastPaxTouched, setBreakfastPaxTouched] = useState(false);
   const quoteInputs = selectedRooms.map((room) => {
@@ -124,16 +122,25 @@ export function SaleForm({
   const commissionLabel = commissionKind === "amount" ? "Hoa hồng" : `Hoa hồng ${commissionValue}%`;
   const depositAmount = ota ? 0 : parseMoney(deposit);
   const due = bookingDue(bookingTotal, depositAmount);
-  const stayAdults = Math.max(1, Number(adults) || 1);
-  const stayChildren = Math.max(0, Number(children) || 0);
+  function capOf(room: { type: string }) {
+    return defaultAdultsForRoomType(room.type, typeByName[room.type]?.adults);
+  }
+  function adultsOf(room: (typeof selectedRooms)[number]) {
+    const cap = capOf(room);
+    const raw = roomAdults[room.id];
+    if (raw == null) return cap;
+    return Math.min(cap, Math.max(1, Math.round(Number(raw) || 1)));
+  }
+  function childrenOf(room: (typeof selectedRooms)[number]) {
+    return Math.max(0, Math.round(Number(roomChildren[room.id]) || 0));
+  }
+  const stayAdults = selectedRooms.reduce((sum, room) => sum + adultsOf(room), 0);
+  const stayChildren = selectedRooms.reduce((sum, room) => sum + childrenOf(room), 0);
   const anyBreakfast = selectedRooms.some((room) => breakfast[room.id] !== false);
   const openRooms = useMemo(
     () => rooms.filter((room) => room.opsStatus !== "ooo" && roomOpen(room.id, sharedStay.checkIn, sharedStay.checkOut, busy)),
     [rooms, sharedStay, busy],
   );
-  useEffect(() => {
-    if (!adultsTouched) setAdults(String(occupancyAdults));
-  }, [occupancyAdults, adultsTouched]);
   useEffect(() => {
     if (!anyBreakfast) {
       setBreakfastAdults("0");
@@ -317,6 +324,11 @@ export function SaleForm({
         discounts={discounts}
         setDiscounts={setDiscounts}
         typeByName={typeByName}
+        capOf={capOf}
+        adultsOf={adultsOf}
+        childrenOf={childrenOf}
+        setRoomAdults={setRoomAdults}
+        setRoomChildren={setRoomChildren}
       />
       <SaleFormExtras types={extraTypes} nights={extraNights} extras={extras} setExtras={setExtras} />
       </div>
@@ -333,11 +345,6 @@ export function SaleForm({
         bookingTotal={bookingTotal}
         due={due}
         defaults={defaults}
-        adults={adults}
-        setAdultsTouched={setAdultsTouched}
-        setAdults={setAdults}
-        children={children}
-        setChildren={setChildren}
         stayAdults={stayAdults}
         stayChildren={stayChildren}
         breakfastAdults={breakfastAdults}

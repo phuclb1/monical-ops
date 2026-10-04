@@ -14,6 +14,8 @@ type Line = {
   checkIn: string;
   checkOut: string;
   breakfast?: boolean;
+  adults?: number;
+  children?: number;
   discountKind?: string;
   discountValue?: number;
   status?: string;
@@ -21,7 +23,7 @@ type Line = {
 
 export function BookingRoomLines(props: {
   lines: Line[];
-  types: { name: string; sortOrder: number; baseRate: number; weekendRate: number }[];
+  types: { name: string; sortOrder: number; baseRate: number; weekendRate: number; adults?: number }[];
   picks: Record<string, string>;
   setPicks: (value: Record<string, string> | ((prev: Record<string, string>) => Record<string, string>)) => void;
   dates: Record<string, StayDates>;
@@ -33,8 +35,13 @@ export function BookingRoomLines(props: {
   optionsFor: (line: Line) => { id: string; number: string; type: string }[];
   stayOf: (saleId: string, fallback: StayDates) => StayDates;
   onRemove?: (saleId: string) => void;
+  capFor: (roomId: string, fallbackType: string) => number;
+  adultsOf: (line: Line) => number;
+  childrenOf: (line: Line) => number;
+  setRoomAdults: (value: Record<string, string> | ((prev: Record<string, string>) => Record<string, string>)) => void;
+  setRoomChildren: (value: Record<string, string> | ((prev: Record<string, string>) => Record<string, string>)) => void;
 }) {
-  const { lines, types, picks, setPicks, setDates, breakfast, setBreakfast, discounts, setDiscounts, optionsFor, stayOf, onRemove } = props;
+  const { lines, types, picks, setPicks, setDates, breakfast, setBreakfast, discounts, setDiscounts, optionsFor, stayOf, onRemove, capFor, adultsOf, childrenOf, setRoomAdults, setRoomChildren } = props;
   return (
     <>
       {lines.map((line, index) => {
@@ -45,6 +52,10 @@ export function BookingRoomLines(props: {
         const stay = stayOf(line.saleId, { checkIn: line.checkIn, checkOut: line.checkOut });
         const canEditCheckIn = line.status !== "inhouse";
         const eats = breakfast[line.saleId] !== false;
+        const roomId = picks[line.saleId] || line.roomId;
+        const cap = capFor(roomId, line.type);
+        const adults = adultsOf(line);
+        const children = childrenOf(line);
         return (
           <div key={line.saleId} className="space-y-2 rounded-xl border border-line p-3">
             <input type="hidden" name="saleId" value={line.saleId} />
@@ -119,6 +130,31 @@ export function BookingRoomLines(props: {
                 />
               </Field>
             </div>
+            <div className="grid grid-cols-2 gap-2">
+              <Field label="Người lớn">
+                <input
+                  name={`adults-${line.saleId}`}
+                  type="number"
+                  min={1}
+                  max={cap}
+                  value={adults}
+                  onChange={(e) => {
+                    const next = Math.min(cap, Math.max(1, Math.round(Number(e.target.value) || 1)));
+                    setRoomAdults((prev) => ({ ...prev, [line.saleId]: String(next) }));
+                  }}
+                />
+              </Field>
+              <Field label="Trẻ em">
+                <input
+                  name={`children-${line.saleId}`}
+                  type="number"
+                  min={0}
+                  value={children}
+                  onChange={(e) => setRoomChildren((prev) => ({ ...prev, [line.saleId]: e.target.value }))}
+                />
+              </Field>
+            </div>
+            <p className="text-xs text-[#5c6665]">Hạng này tối đa {cap} NL. Chỉ giảm được, không tăng.</p>
             <label className="flex items-center gap-2">
               <input type="hidden" name={`breakfast-${line.saleId}`} value="0" />
               <input

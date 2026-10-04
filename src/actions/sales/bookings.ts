@@ -192,6 +192,8 @@ export async function updateBookingAction(formData: FormData) {
     checkIn: String(formData.get(`checkIn-${saleId}`) || ""),
     checkOut: String(formData.get(`checkOut-${saleId}`) || ""),
     breakfast: formData.getAll(`breakfast-${saleId}`).map(String).includes("1"),
+    adults: formData.get(`adults-${saleId}`) == null ? undefined : Number(formData.get(`adults-${saleId}`)),
+    children: formData.get(`children-${saleId}`) == null ? undefined : Number(formData.get(`children-${saleId}`)),
     discountKind: parseDiscountKind(formData.get(`discountKind-${saleId}`)),
     discountValue: parseDiscountValue(formData.get(`discountKind-${saleId}`), formData.get(`discountValue-${saleId}`)),
   }));
@@ -206,8 +208,6 @@ export async function updateBookingAction(formData: FormData) {
       otaCommissionKind: parseCommissionKind(formData.get("otaCommissionKind")),
       otaCommissionValue: parseCommissionValue(formData.get("otaCommissionKind"), formData.get("otaCommissionValue")),
       invoiceRequested: String(formData.get("invoiceRequested") || "") === "1",
-      adults: Number(formData.get("adults") || 1),
-      children: Number(formData.get("children") || 0),
       breakfastAdults: Number(formData.get("breakfastAdults") || 0),
       breakfastChildren: Number(formData.get("breakfastChildren") || 0),
       cars: Math.max(0, Number(formData.get("cars") || 0) || 0),

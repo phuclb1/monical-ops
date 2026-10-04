@@ -8,6 +8,8 @@ import {
   bookingKey,
   catalogRate,
   clampBreakfastPax,
+  clampRoomAdults,
+  roomAdultCap,
   isActiveSaleStatus,
   collectedSplit,
   isPaymentMethod,
@@ -38,6 +40,8 @@ export type BookingUpdateInput = {
     checkIn?: string;
     checkOut?: string;
     breakfast?: boolean;
+    adults?: number;
+    children?: number;
     discountKind?: string;
     discountValue?: number;
   }[];
@@ -100,8 +104,6 @@ export async function updateBooking(
     data.otaCommissionValue ?? (hit.otaCommissionValue || hit.otaCommissionPercent || 0),
   );
   const guestPhone = data.guestPhone !== undefined ? data.guestPhone.trim() || null : hit.guestPhone;
-  const adults = Math.max(1, data.adults ?? hit.adults ?? 1);
-  const children = Math.max(0, data.children ?? hit.children ?? 0);
   const cars = Math.max(0, data.cars ?? hit.cars ?? 0);
   const bikes = Math.max(0, data.bikes ?? hit.bikes ?? 0);
   const currentSplit = collectedSplit(hit.deposit, hit.checkinPaid);
@@ -149,6 +151,18 @@ export async function updateBooking(
   if (removeIds.length >= active.length) throw new Error("Giữ ít nhất một phòng. Hủy cả booking nếu không còn phòng nào.");
   const removeSet = new Set(removeIds);
   const staying = active.filter((row) => !removeSet.has(row.id));
+  const typeAdults = new Map(types.map((type) => [type.name, type.adults]));
+  const stayingPax = staying.map((row) => {
+    const assignment = nextBySale.get(row.id);
+    const nextRoom = roomById.get(assignment?.roomId || row.roomId);
+    const cap = roomAdultCap(nextRoom?.type || "", typeAdults.get(nextRoom?.type || ""));
+    return {
+      adults: clampRoomAdults(assignment?.adults ?? row.adults, cap),
+      children: Math.max(0, Math.round(Number(assignment?.children ?? row.children) || 0)),
+    };
+  });
+  const adults = stayingPax.reduce((sum, row) => sum + row.adults, 0);
+  const children = stayingPax.reduce((sum, row) => sum + row.children, 0);
   const hasBreakfast = staying.some((row) => {
     const assignment = nextBySale.get(row.id);
     return assignment?.breakfast ?? row.breakfast !== false;
@@ -163,7 +177,8 @@ export async function updateBooking(
   const seen = new Set<string>();
   const now = nowISO();
   const today = todayVN();
-  for (const row of staying) {
+  for (const [index, row] of staying.entries()) {
+    const pax = stayingPax[index];
     const assignment = nextBySale.get(row.id);
     const nextRoomId = assignment?.roomId || row.roomId;
     if (seen.has(nextRoomId)) throw new Error("Hai chỗ trong booking không được trùng số phòng");
@@ -193,8 +208,8 @@ export async function updateBooking(
       otaPaymentMode,
       ...commission,
       invoiceRequested: data.invoiceRequested ?? hit.invoiceRequested,
-      adults,
-      children,
+      adults: pax.adults,
+      children: pax.children,
       breakfastAdults: breakfastPax.adults,
       breakfastChildren: breakfastPax.children,
       cars,

@@ -1,4 +1,5 @@
 import { addDaysVN } from "../datetime";
+import { defaultAdultsForRoomType } from "../rooms-catalog";
 import type { SaleStatus } from "../types";
 import { bookingQuote } from "./quote";
 import { bookingKey } from "./status";
@@ -8,6 +9,55 @@ export function clampStayPax(adults?: number | null, children?: number | null) {
     adults: Math.max(1, Math.round(Number(adults) || 1)),
     children: Math.max(0, Math.round(Number(children) || 0)),
   };
+}
+
+export function roomAdultCap(typeName: string, configured?: number | null) {
+  return defaultAdultsForRoomType(typeName, configured);
+}
+
+/** Adults for one room: default is the room-type cap, and the value cannot rise above it. */
+export function clampRoomAdults(value: number | null | undefined, cap: number) {
+  const ceiling = Math.max(1, Math.round(Number(cap)) || 1);
+  if (value == null || !Number.isFinite(Number(value))) return ceiling;
+  return Math.min(ceiling, Math.max(1, Math.round(Number(value))));
+}
+
+export function roomStayPax(cap: number, adults?: number | null, children?: number | null) {
+  return {
+    adults: clampRoomAdults(adults, cap),
+    children: Math.max(0, Math.round(Number(children) || 0)),
+  };
+}
+
+/** Spread a legacy booking-level adult count across rooms without passing each room's cap. */
+export function splitBookingAdults(total: number, caps: number[]) {
+  const limits = caps.map((cap) => Math.max(1, Math.round(Number(cap)) || 1));
+  if (!limits.length) return [];
+  const maxSum = limits.reduce((sum, cap) => sum + cap, 0);
+  const minSum = limits.length;
+  let left = Math.min(maxSum, Math.max(minSum, Math.round(Number(total)) || minSum));
+  const out = limits.map(() => 1);
+  left -= out.length;
+  for (let i = 0; i < out.length && left > 0; i += 1) {
+    const take = Math.min(limits[i] - out[i], left);
+    out[i] += take;
+    left -= take;
+  }
+  return out;
+}
+
+export function splitBookingChildren(total: number, count: number) {
+  const n = Math.max(0, count);
+  const safe = Math.max(0, Math.round(Number(total)) || 0);
+  const out = Array.from({ length: n }, () => 0);
+  if (!n || !safe) return out;
+  const base = Math.floor(safe / n);
+  let rem = safe - base * n;
+  for (let i = 0; i < n; i += 1) {
+    out[i] = base + (rem > 0 ? 1 : 0);
+    if (rem > 0) rem -= 1;
+  }
+  return out;
 }
 
 export function clampBreakfastPax(
@@ -37,8 +87,13 @@ type PaxRoom = {
 };
 
 export function bookingStayPax(rooms: PaxRoom[]) {
-  const first = rooms[0];
-  return { adults: Math.max(0, first?.adults || 0), children: Math.max(0, first?.children || 0) };
+  return rooms.reduce(
+    (sum, row) => ({
+      adults: sum.adults + Math.max(0, Math.round(Number(row.adults) || 0)),
+      children: sum.children + Math.max(0, Math.round(Number(row.children) || 0)),
+    }),
+    { adults: 0, children: 0 },
+  );
 }
 
 export function bookingBreakfastPax(rooms: PaxRoom[]) {

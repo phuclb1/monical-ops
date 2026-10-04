@@ -27,6 +27,11 @@ export function SaleFormRooms(props: {
   discounts: Record<string, DiscountState>;
   setDiscounts: (value: Record<string, DiscountState> | ((prev: Record<string, DiscountState>) => Record<string, DiscountState>)) => void;
   typeByName: Record<string, { weekendRate?: number }>;
+  capOf: (room: Room) => number;
+  adultsOf: (room: Room) => number;
+  childrenOf: (room: Room) => number;
+  setRoomAdults: (value: Record<string, string> | ((prev: Record<string, string>) => Record<string, string>)) => void;
+  setRoomChildren: (value: Record<string, string> | ((prev: Record<string, string>) => Record<string, string>)) => void;
 }) {
   const {
     allowMultiple,
@@ -50,6 +55,11 @@ export function SaleFormRooms(props: {
     discounts,
     setDiscounts,
     typeByName,
+    capOf,
+    adultsOf,
+    childrenOf,
+    setRoomAdults,
+    setRoomChildren,
   } = props;
   return (
     <>
@@ -124,6 +134,9 @@ export function SaleFormRooms(props: {
           {selectedRooms.map((room) => {
             const stay = dates[room.id] || sharedStay;
             const eats = breakfast[room.id] !== false;
+            const cap = capOf(room);
+            const adults = adultsOf(room);
+            const children = childrenOf(room);
             const catalog = catalogFor(room.id, stay.checkIn);
             const peakRate = isHolidayNight(stay.checkIn) && Boolean(typeByName[room.type]?.weekendRate);
             return (
@@ -157,6 +170,31 @@ export function SaleFormRooms(props: {
                     />
                   </Field>
                 </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <Field label="Người lớn">
+                    <input
+                      name={`adults-${room.id}`}
+                      type="number"
+                      min={1}
+                      max={cap}
+                      value={adults}
+                      onChange={(e) => {
+                        const next = Math.min(cap, Math.max(1, Math.round(Number(e.target.value) || 1)));
+                        setRoomAdults((prev) => ({ ...prev, [room.id]: String(next) }));
+                      }}
+                    />
+                  </Field>
+                  <Field label="Trẻ em">
+                    <input
+                      name={`children-${room.id}`}
+                      type="number"
+                      min={0}
+                      value={children}
+                      onChange={(e) => setRoomChildren((prev) => ({ ...prev, [room.id]: e.target.value }))}
+                    />
+                  </Field>
+                </div>
+                <p className="text-xs text-[#5c6665]">Hạng {room.type} tối đa {cap} NL. Chỉ giảm được, không tăng.</p>
                 <label className="sale-room-bf flex items-center gap-2">
                   <input type="hidden" name={`breakfast-${room.id}`} value="0" />
                   <input

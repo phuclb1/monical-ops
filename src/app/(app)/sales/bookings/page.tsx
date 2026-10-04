@@ -3,11 +3,17 @@ import { redirect } from "next/navigation";
 import { Btn, Card, Chip, Empty, Field, TabChip } from "@/components/ui";
 import { getSession } from "@/lib/auth";
 import { SALE_ORIGIN_LABEL, SALE_SOURCE_LABEL, SALE_STATUS_LABEL } from "@/lib/constants";
-import { formatDateLong, formatDateNumeric } from "@/lib/datetime";
+import { formatDateLong, formatDateNumeric, todayVN } from "@/lib/datetime";
 import { can } from "@/lib/permissions";
 import { listBookings } from "@/lib/repos";
-import { formatVnd, isOpsBookingCode, isOtaDebt, isOtaSource, matchesBookingSearch, paidNote } from "@/lib/sales";
+import { bookingMatchesListView, formatVnd, isBookingListView, isOpsBookingCode, isOtaDebt, isOtaSource, matchesBookingSearch, paidNote, type BookingListView } from "@/lib/sales";
 import type { SaleOrigin, SaleSource, SaleStatus } from "@/lib/types";
+
+const VIEWS = [
+  { id: "new", label: "Mới nhất" },
+  { id: "checkin", label: "Check-in hôm nay" },
+  { id: "checkout", label: "Check-out hôm nay" },
+] as const;
 
 const TABS = [
   { id: "open", label: "Đang mở / đã trả" },
@@ -29,6 +35,15 @@ function isTab(value: string): value is (typeof TABS)[number]["id"] {
   return TABS.some((tab) => tab.id === value);
 }
 
+function bookingsHref(view: BookingListView, tab: (typeof TABS)[number]["id"], q: string) {
+  const params = new URLSearchParams();
+  if (view !== "new") params.set("view", view);
+  if (tab !== "open") params.set("tab", tab);
+  if (q) params.set("q", q);
+  const text = params.toString();
+  return text ? `/sales/bookings?${text}` : "/sales/bookings";
+}
+
 function channelLabel(source: string) {
   return isOtaSource(source) ? "OTA" : "Trực tiếp";
 }
@@ -38,34 +53,46 @@ function invoiceLabel(row: { invoiceRequested?: boolean | null; rooms?: { invoic
   return on ? "Có" : "Không";
 }
 
+function matchesTab(status: string, tab: (typeof TABS)[number]["id"]) {
+  if (tab === "open") return status === "reserved" || status === "inhouse" || status === "departed";
+  if (tab === "reserved") return status === "reserved";
+  if (tab === "inhouse") return status === "inhouse";
+  if (tab === "done") return status === "departed" || status === "cancelled" || status === "no_show";
+  return true;
+}
+
 export default async function BookingsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ tab?: string; q?: string }>;
+  searchParams: Promise<{ tab?: string; q?: string; view?: string }>;
 }) {
   const user = await getSession();
   if (!user) redirect("/login");
   if (!can(user.role, "manageSales")) redirect("/more");
-  const { tab: rawTab, q: rawQ } = await searchParams;
-  const tab = isTab(rawTab || "") ? rawTab : "open";
+  const { tab: rawTab, q: rawQ, view: rawView } = await searchParams;
+  const tabValue = rawTab || "";
+  const viewValue = rawView || "";
+  const tab = isTab(tabValue) ? tabValue : "open";
+  const view = isBookingListView(viewValue) ? viewValue : "new";
   const q = (rawQ || "").trim();
+  const today = todayVN();
   const bookings = await listBookings();
   const matched = q ? bookings.filter((row) => matchesBookingSearch(row, q)) : bookings;
+  const viewed = matched.filter((row) => bookingMatchesListView(row, view, today));
   const counts = {
-    open: matched.filter((row) => row.status === "reserved" || row.status === "inhouse" || row.status === "departed").length,
-    reserved: matched.filter((row) => row.status === "reserved").length,
-    inhouse: matched.filter((row) => row.status === "inhouse").length,
-    done: matched.filter((row) => row.status === "departed" || row.status === "cancelled" || row.status === "no_show").length,
-    all: matched.length,
+    open: viewed.filter((row) => matchesTab(row.status, "open")).length,
+    reserved: viewed.filter((row) => matchesTab(row.status, "reserved")).length,
+    inhouse: viewed.filter((row) => matchesTab(row.status, "inhouse")).length,
+    done: viewed.filter((row) => matchesTab(row.status, "done")).length,
+    all: viewed.length,
   };
-  const rows = matched
-    .filter((row) => {
-      if (tab === "open" && row.status !== "reserved" && row.status !== "inhouse" && row.status !== "departed") return false;
-      if (tab === "reserved" && row.status !== "reserved") return false;
-      if (tab === "inhouse" && row.status !== "inhouse") return false;
-      if (tab === "done" && row.status !== "departed" && row.status !== "cancelled" && row.status !== "no_show") return false;
-      return true;
-    })
+  const viewCounts = {
+    new: matched.filter((row) => matchesTab(row.status, tab)).length,
+    checkin: matched.filter((row) => matchesTab(row.status, tab) && bookingMatchesListView(row, "checkin", today)).length,
+    checkout: matched.filter((row) => matchesTab(row.status, tab) && bookingMatchesListView(row, "checkout", today)).length,
+  };
+  const rows = viewed
+    .filter((row) => matchesTab(row.status, tab))
     .sort((a, b) => b.createdAt.localeCompare(a.createdAt) || b.id.localeCompare(a.id));
 
   return (
@@ -73,7 +100,7 @@ export default async function BookingsPage({
       <div className="flex items-start justify-between gap-3 md:items-center">
         <div>
           <h1 className="text-xl font-bold">Đặt phòng</h1>
-          <p className="text-xs text-[#5c6665] md:text-sm">Quản lý booking: khách, nhiều phòng, mã PMS. Sơ đồ phòng nằm ở Bán phòng.</p>
+          <p className="text-xs text-[#5c6665] md:text-sm">Mặc định booking mới tạo trước. Có thể xem phòng nhận hoặc trả hôm nay.</p>
         </div>
         <div className="flex flex-col items-end gap-1 md:flex-row md:items-center md:gap-3">
           <Link href="/sales/new" className="cta-link">
@@ -103,6 +130,7 @@ export default async function BookingsPage({
             />
           </Field>
         </div>
+        {view !== "new" ? <input type="hidden" name="view" value={view} /> : null}
         {tab !== "open" ? <input type="hidden" name="tab" value={tab} /> : null}
         <div className="mt-2 flex gap-2 md:mt-0">
           <Btn type="submit" variant="ghost" className="w-full md:w-auto md:px-6">
@@ -110,7 +138,7 @@ export default async function BookingsPage({
           </Btn>
           {q ? (
             <Link
-              href={tab === "open" ? "/sales/bookings" : `/sales/bookings?tab=${tab}`}
+              href={bookingsHref(view, tab, "")}
               className="inline-flex min-h-12 items-center justify-center rounded-xl px-4 text-sm font-semibold text-teal"
             >
               Xóa
@@ -120,12 +148,25 @@ export default async function BookingsPage({
       </form>
 
       <div className="tab-scroller -mx-3 px-3 pb-1">
+        {VIEWS.map((item) => (
+          <TabChip key={item.id} href={bookingsHref(item.id, tab, q)} active={view === item.id}>
+            {item.label} · {viewCounts[item.id]}
+          </TabChip>
+        ))}
+      </div>
+      <div className="tab-scroller -mx-3 px-3 pb-1">
         {TABS.map((item) => (
-          <TabChip key={item.id} href={item.id === "open" && !q ? "/sales/bookings" : `/sales/bookings?tab=${item.id}${q ? `&q=${encodeURIComponent(q)}` : ""}`} active={tab === item.id}>
+          <TabChip key={item.id} href={bookingsHref(view, item.id, q)} active={tab === item.id}>
             {item.label} · {counts[item.id]}
           </TabChip>
         ))}
       </div>
+      {view === "checkin" ? (
+        <p className="text-xs text-[#5c6665]">Phòng nhận {formatDateLong(today)}. Booking nhiều phòng hiện khi có ít nhất một phòng nhận hôm nay.</p>
+      ) : null}
+      {view === "checkout" ? (
+        <p className="text-xs text-[#5c6665]">Phòng trả {formatDateLong(today)}. Booking nhiều phòng hiện khi có ít nhất một phòng trả hôm nay.</p>
+      ) : null}
       {q ? (
         <p className="text-xs text-[#5c6665]">
           {rows.length} kết quả trong tab này · {counts.all} booking khớp “{q}”
@@ -241,7 +282,15 @@ export default async function BookingsPage({
       ) : (
         <Empty
           title="Không có booking khớp"
-          text={q ? "Đổi từ khóa hoặc tab. Có thể tìm tên (không dấu), SĐT, phòng, mã, ghi chú, nguồn." : "Bấm Đặt mới để tạo booking."}
+          text={
+            view === "checkin"
+              ? "Không có phòng nhận hôm nay trong tab này. Đổi tab hoặc về Mới nhất."
+              : view === "checkout"
+                ? "Không có phòng trả hôm nay trong tab này. Đổi tab hoặc về Mới nhất."
+                : q
+                  ? "Đổi từ khóa hoặc tab. Có thể tìm tên (không dấu), SĐT, phòng, mã, ghi chú, nguồn."
+                  : "Bấm Đặt mới để tạo booking."
+          }
         />
       )}
     </main>

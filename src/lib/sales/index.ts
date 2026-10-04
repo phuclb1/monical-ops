@@ -66,6 +66,11 @@ export {
 export {
   clampStayPax,
   clampBreakfastPax,
+  clampRoomAdults,
+  roomAdultCap,
+  roomStayPax,
+  splitBookingAdults,
+  splitBookingChildren,
   bookingStayPax,
   bookingBreakfastPax,
   roomMoveKind,
@@ -77,3 +82,5 @@ export {
 } from "./pax";
 export { bookingSearchText, matchesBookingSearch } from "./search";
 export type { BookingSearchRow } from "./search";
+export { BOOKING_LIST_VIEWS, bookingMatchesListView, isBookingListView } from "./list-view";
+export type { BookingListView } from "./list-view";
