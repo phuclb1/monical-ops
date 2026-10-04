@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="utf-8" />
+<title>Hướng dẫn lễ tân — Tạo và sửa booking</title>
+<style>
+  @page { size: A4; margin: 14mm 14mm 16mm; }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    color: #2b2422;
+    font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+    font-size: 11pt;
+    line-height: 1.45;
+  }
+  h1, h2, h3 { font-weight: 700; line-height: 1.25; margin: 0; }
+  h1 { font-size: 26pt; letter-spacing: -0.02em; }
+  h2 { font-size: 16pt; margin-top: 1.4em; page-break-after: avoid; }
+  h3 { font-size: 12.5pt; margin: 1em 0 0.35em; }
+  p { margin: 0.35em 0 0.6em; }
+  ol, ul { margin: 0.2em 0 0.7em; padding-left: 1.2em; }
+  li { margin: 0.15em 0; }
+  .cover {
+    background: #6e2433;
+    color: #fff8ee;
+    margin: -14mm -14mm 8mm;
+    padding: 22mm 16mm 16mm;
+  }
+  .cover .kicker { letter-spacing: 0.16em; text-transform: uppercase; font-size: 10pt; font-weight: 700; color: #f3d7c4; }
+  .cover h1 { margin-top: 8px; max-width: 16ch; }
+  .cover p { color: #f6ebe3; max-width: 42em; }
+  .meta { margin-top: 18px; font-size: 10pt; color: #f3d7c4; }
+  figure {
+    margin: 0.4em 0 1em;
+    page-break-inside: avoid;
+  }
+  figcaption {
+    font-size: 9pt;
+    color: #6b5a52;
+    margin-top: 4px;
+  }
+  img {
+    display: block;
+    width: 100%;
+    height: auto;
+    border: 1px solid #eadfd4;
+    border-radius: 8px;
+  }
+  img.col { width: auto; max-width: 100%; max-height: 175mm; }
+  .pair { display: flex; gap: 10px; align-items: flex-start; }
+  .pair figure { flex: 1; margin: 0; }
+  .pair.side figure:last-child { flex: 0 0 42%; }
+  table { width: 100%; border-collapse: collapse; margin: 0.4em 0 0.8em; font-size: 10pt; page-break-inside: avoid; }
+  th, td { border: 1px solid #eadfd4; padding: 6px 8px; text-align: left; vertical-align: top; }
+  th { background: #fff4ea; font-size: 9pt; letter-spacing: 0.03em; text-transform: uppercase; color: #6b5a52; }
+  .note, .warn {
+    border-radius: 8px;
+    padding: 8px 10px;
+    margin: 0.4em 0 0.8em;
+    page-break-inside: avoid;
+  }
+  .note { background: #f4f7f4; border: 1px solid #d5e4d8; }
+  .warn { background: #fff6e8; border: 1px solid #f0d7a8; }
+  .note strong, .warn strong { display: block; margin-bottom: 2px; }
+  .step { font-weight: 700; color: #6e2433; }
+</style>
+</head>
+<body>
+  <header class="cover">
+    <div class="kicker">MONICAL Ops · Lễ tân</div>
+    <h1>Tạo booking, sửa booking và gửi phê duyệt</h1>
+    <p>Hướng dẫn thao tác trên màn Đặt phòng: booking trực tiếp, booking OTA, và những sửa đổi phải gửi quản lý duyệt trước khi có hiệu lực.</p>
+    <div class="meta">Ảnh chụp từ phần mềm đang chạy · 3/10/2026</div>
+  </header>
+
+  <h2>1. Mở danh sách đặt phòng</h2>
+  <p>Trên laptop, vào nhóm <strong>Phòng</strong> ở menu trái, chọn <strong>Đặt phòng</strong>. Muốn tạo mới thì bấm nút <strong>Đặt mới</strong> góc phải.</p>
+  <figure>
+    <img src="print/01-top.png" alt="Màn Đặt phòng với nút Đặt mới, ô tìm và các tab trạng thái" />
+    <figcaption>Hình 1. Danh sách booking. Nút Đặt mới nằm góc trên bên phải.</figcaption>
+  </figure>
+  <ul>
+    <li><strong>Tìm booking</strong> theo tên, số điện thoại, số phòng, mã, ghi chú hoặc nguồn.</li>
+    <li>Tab lọc trạng thái: Đang mở / đã trả, Giữ chỗ, Đang ở, Đã đóng, Tất cả.</li>
+    <li>Cột <strong>Kênh</strong> ghi Trực tiếp hoặc OTA. Cột <strong>Nguồn</strong> ghi đúng nơi khách đặt: Zalo, Vãng lai, Agoda…</li>
+    <li>Bấm một dòng để mở booking đó.</li>
+  </ul>
+
+  <h2>2. Tạo booking trực tiếp</h2>
+  <p>Booking tạo mới có hiệu lực ngay khi bấm lưu. Lễ tân không cần gửi phê duyệt ở bước này.</p>
+  <p>Ở ô <strong>Nền tảng</strong>, nhóm <strong>Trực tiếp</strong> gồm: Vãng lai, Điện thoại, Zalo, Facebook, TikTok, Công ty / đoàn, ezCloud / web KS. Chọn đúng kênh khách đang đặt. Ví dụ dưới đây là Zalo.</p>
+  <figure>
+    <img src="print/02-top.png" alt="Form đặt phòng nền tảng Zalo, ngày nhận trả và bảng hạng phòng còn trống" />
+    <figcaption>Hình 2. Chọn nền tảng, ngày nhận, ngày trả. Bảng phía dưới cho biết mỗi hạng còn bao nhiêu phòng.</figcaption>
+  </figure>
+  <ol>
+    <li><span class="step">Nền tảng.</span> Chọn kênh trực tiếp. Ô <strong>Xuất hóa đơn</strong> chỉ tick khi khách cần hóa đơn.</li>
+    <li><span class="step">Ngày nhận và ngày trả.</span> Chọn ngày trước, rồi mới tick phòng. Đổi ngày thì danh sách phòng trống cập nhật lại.</li>
+    <li><span class="step">Xem hạng còn phòng.</span> Dòng xanh là còn phòng. Dòng đỏ “Hết phòng cả kỳ” thì không tick hạng đó.</li>
+    <li><span class="step">Tick phòng trống.</span> Tick một hoặc nhiều phòng. Dòng “Đã chọn” hiện số phòng vừa tick.</li>
+    <li><span class="step">Giá, ăn sáng, chiết khấu.</span> Mỗi phòng một dòng. Nếu thấy “Chưa có giá bảng — nhập giá bán” thì phải gõ giá một đêm, nếu không booking lưu với giá 0 đồng. Bỏ tick <strong>Ăn sáng</strong> nếu phòng đó không ăn. Chiết khấu chọn % hoặc số tiền.</li>
+    <li><span class="step">Phụ thu</span> (nếu có): chọn dịch vụ, số lượng, rồi <strong>Thêm phụ thu</strong>.</li>
+  </ol>
+  <figure>
+    <img src="print/02-phong.png" alt="Phòng SENIOR P.302 đã tick, giá 1.500.000 đồng một đêm và ô ăn sáng" />
+    <figcaption>Hình 3. Đã tick P.302, giá 1.500.000 đồng/đêm, vẫn ăn sáng, chưa chiết khấu.</figcaption>
+  </figure>
+  <h3>Cột bên phải: khách và tiền cọc</h3>
+  <ol start="7">
+    <li><span class="step">Đặt cọc</span> và hình thức: CK công ty, CK cá nhân, hoặc Tiền mặt. Tạm tính hiện ngay: tổng phòng, đã cọc, còn phải thu.</li>
+    <li><span class="step">Họ tên</span> là bắt buộc. Nhập SĐT, số người lớn, trẻ em.</li>
+    <li><span class="step">Khách ăn sáng</span> không được lớn hơn số khách ở. Bỏ ăn sáng ở phòng thì hai ô này về 0.</li>
+    <li>Ô tô, xe máy, ghi chú (giờ đến, giường, xe đón). Mã PMS để trống — Ops tự cấp mã BK.</li>
+    <li><span class="step">Nhận phòng luôn</span> chỉ tick khi khách đến trong ngày và nhận phòng ngay. Khách đặt trước thì để trống.</li>
+    <li>Bấm <strong>Lưu đặt phòng</strong>. Nhiều phòng thì nút thành “Lưu … phòng”.</li>
+  </ol>
+  <figure>
+    <img class="col" src="print/02b.png" alt="Cột khách, cọc 500.000 đồng CK cá nhân và nút Lưu đặt phòng" />
+    <figcaption>Hình 4. Cọc 500.000 đồng, CK cá nhân. Còn phải thu 2.500.000 đồng. Ô nhận phòng luôn để trống vì khách chưa đến trong ngày.</figcaption>
+  </figure>
+
+  <h2>3. Tạo booking OTA</h2>
+  <p>Cùng nút <strong>Đặt mới</strong>. Ở <strong>Nền tảng</strong>, chọn nhóm <strong>OTA</strong>: Booking.com, Agoda, Traveloka, Expedia, Airbnb, hoặc OTA khác.</p>
+  <p>Form hiện thêm hai chỗ OTA không có ở booking trực tiếp: hình thức thanh toán và hoa hồng. Ô xuất hóa đơn tự bật và không tắt được — dòng chữ “OTA luôn xuất hóa đơn”.</p>
+  <figure>
+    <img src="print/03-top.png" alt="Nền tảng Agoda, công nợ OTA và hoa hồng 15 phần trăm" />
+    <figcaption>Hình 5. Agoda, công nợ OTA, hoa hồng 15%. Phần mềm tính hoa hồng phải trả đối tác ngay trên form.</figcaption>
+  </figure>
+  <h3>Hai cách thu tiền</h3>
+  <div class="pair">
+    <figure>
+      <img src="print/03b.png" alt="Tạm tính công nợ OTA bằng toàn bộ tiền phòng" />
+      <figcaption>Hình 6. Công nợ OTA — OTA đã thu khách. Không nhập cọc. Toàn bộ tiền phòng là công nợ OTA.</figcaption>
+    </figure>
+    <figure>
+      <img src="print/04b.png" alt="Tạm tính khách thanh toán tại khách sạn, công nợ OTA bằng 0" />
+      <figcaption>Hình 7. Thanh toán tại KS — khách trả khi đến. Công nợ OTA = 0. Phải thu khi check-in bằng tiền phòng.</figcaption>
+    </figure>
+  </div>
+  <ul>
+    <li><strong>Công nợ OTA — OTA đã thu khách:</strong> khách đã trả trên OTA. Khách sạn không thu cọc và không thu lại lúc check-in.</li>
+    <li><strong>Thanh toán tại KS — khách trả khách sạn:</strong> OTA chỉ đưa booking, khách vẫn trả tiền tại quầy.</li>
+    <li><strong>Hoa hồng OTA:</strong> chọn % hoặc số tiền, rồi nhập mức. Đây là khoản khách sạn phải trả đối tác, không phải tiền thu khách.</li>
+  </ul>
+  <p>Phòng, ngày, giá, ăn sáng, tên khách làm giống booking trực tiếp. Xong thì bấm <strong>Lưu đặt phòng</strong>. Tạo OTA mới cũng có hiệu lực ngay, chưa cần duyệt.</p>
+  <div class="note">
+    <strong>Nhớ phân biệt hai loại OTA trước khi lưu</strong>
+    Trên danh sách, booking công nợ có nhãn “Công nợ OTA” và còn thu là số công nợ. Booking khách trả tại khách sạn có nhãn “Thanh toán tại KS”.
+  </div>
+
+  <h2>4. Booking vừa lưu</h2>
+  <p>Sau khi lưu, phần mềm mở thẳng trang booking. Kiểm tra tên, phòng, ngày, tiền cọc, còn phải thu và mã Ops.</p>
+  <figure>
+    <img src="print/05-top.png" alt="Trang booking Nguyễn Minh Anh, phòng P.302, đã cọc và còn phải thu" />
+    <figcaption>Hình 8. Booking Zalo vừa tạo: P.302, 2 đêm, đã cọc 500.000 đồng, còn phải thu 2.500.000 đồng. Nhật ký ghi người tạo.</figcaption>
+  </figure>
+  <ul>
+    <li>Khách trả thêm lúc này: nhập số tiền ở <strong>Thu thêm</strong>, chọn hình thức, bấm nút thu. Ô trống nghĩa là thu đủ phần còn lại.</li>
+    <li><strong>In xác nhận</strong> ở góc trên khi khách cần phiếu.</li>
+    <li>Check-in và check-out làm trên từng phòng trong bảng “Phòng trong booking”, khi khách đến và khi khách đi.</li>
+  </ul>
+
+  <h2>5. Sửa booking</h2>
+  <p>Mở booking, kéo xuống, bấm <strong>Sửa booking</strong>. Lễ tân sửa được tên, số điện thoại, số khách, kênh, phòng, ngày, ăn sáng, chiết khấu, cọc và ghi chú.</p>
+  <figure>
+    <img src="print/06-top.png" alt="Mục Sửa booking với cảnh báo những mục phải gửi quản lý duyệt" />
+    <figcaption>Hình 9. Dòng vàng liệt kê việc nào phải gửi quản lý. Booking chỉ đổi sau khi được duyệt.</figcaption>
+  </figure>
+  <p>Nút dưới form tự đổi theo nội dung vừa sửa:</p>
+  <table>
+    <thead>
+      <tr><th>Việc lễ tân sửa</th><th>Nút bấm</th><th>Kết quả</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>Họ tên, số điện thoại, số khách ở, số khách ăn sáng, ô tô, xe máy, ghi chú, xuất hóa đơn</td>
+        <td>Lưu booking</td>
+        <td>Đổi ngay</td>
+      </tr>
+      <tr>
+        <td>Ngày nhận hoặc ngày trả, đổi phòng, xóa bớt phòng, bật/tắt ăn sáng, chiết khấu</td>
+        <td>Gửi phê duyệt</td>
+        <td>Chờ quản lý. Booking giữ nguyên</td>
+      </tr>
+      <tr>
+        <td>Đặt cọc, thu đủ khi check-in, hình thức CK/tiền mặt</td>
+        <td>Gửi phê duyệt</td>
+        <td>Chờ quản lý. Booking giữ nguyên</td>
+      </tr>
+      <tr>
+        <td>Đổi nền tảng, đổi công nợ OTA, sửa hoa hồng OTA</td>
+        <td>Gửi phê duyệt</td>
+        <td>Chờ quản lý. Booking giữ nguyên</td>
+      </tr>
+    </tbody>
+  </table>
+  <p>Ví dụ: ngày trả đang là 12/10. Sửa thành 13/10 thì tạm tính nhảy lên 3 đêm và nút thành <strong>Gửi phê duyệt</strong>.</p>
+  <figure>
+    <img src="print/07-bottom.png" alt="Ngày trả đổi sang 13/10 và nút Gửi phê duyệt" />
+    <figcaption>Hình 10. Đổi ngày trả. Tạm tính đã là 3 đêm, nhưng bấm Gửi phê duyệt thì booking chưa đổi.</figcaption>
+  </figure>
+  <div class="warn">
+    <strong>Hai khoản tiền tách riêng</strong>
+    Đặt cọc và Thu đủ khi check-in là hai ô khác nhau. Nhập sai khoản nào thì sửa đúng khoản đó. Đổi số tiền hoặc hình thức thanh toán đều phải gửi duyệt.
+  </div>
+
+  <h2>6. Sau khi gửi phê duyệt</h2>
+  <p>Trang hiện dòng vàng: <strong>Đã gửi quản lý duyệt. Booking chưa thay đổi.</strong> Khung <strong>Phê duyệt thay đổi</strong> ghi việc gì đổi, từ đâu sang đâu, ai gửi, và trạng thái “Chờ quản lý duyệt”.</p>
+  <figure>
+    <img src="print/08-top.png" alt="Thông báo đã gửi quản lý duyệt và thẻ ngày trả 12/10 sang 13/10" />
+    <figcaption>Hình 11. Đề nghị “đổi ngày ở”: ngày trả 12/10/2026 → 13/10/2026. Phòng trên booking vẫn trả ngày 12/10 cho đến khi quản lý duyệt.</figcaption>
+  </figure>
+  <ul>
+    <li>Quản lý mở cùng booking này, bấm <strong>Chấp nhận</strong> thì thay đổi mới vào booking. Bấm <strong>Từ chối</strong> thì phải ghi lý do. Lễ tân không có hai nút đó.</li>
+    <li>Nhật ký thêm dòng “Gửi duyệt” kèm nội dung đề nghị.</li>
+    <li>Khi đang có một đề nghị chờ duyệt, không gửi thêm đề nghị khác. Phần mềm báo “Booking đang có một đề nghị chờ quản lý duyệt”. Nhắc quản lý xử lý cái đang chờ, rồi mới gửi việc mới.</li>
+  </ul>
+
+  <h2>7. Thêm phòng và phụ thu</h2>
+  <p>Cũng nằm trong trang booking, phía trên mục Sửa booking.</p>
+  <ul>
+    <li><strong>Thêm phòng:</strong> giữ nguyên khách, ngày và nền tảng. Giá theo hạng phòng thêm. Lễ tân bấm thêm thì đề nghị đi quản lý, phòng chưa vào booking.</li>
+    <li><strong>Dịch vụ / phụ thu:</strong> thêm hoặc xóa đều gửi quản lý duyệt trước khi cộng hoặc trừ tiền.</li>
+    <li>Đổi phòng hoặc đổi ngày bằng cách kéo trên <strong>Sơ đồ phòng</strong> cũng gửi phê duyệt, rồi quay về trang booking với cùng dòng “Đã gửi quản lý duyệt”.</li>
+  </ul>
+  <div class="note">
+    <strong>Hủy booking</strong>
+    Lễ tân không hủy booking trên Ops. Cần hủy hoặc ghi no-show thì báo quản lý.
+  </div>
+
+  <h2>8. Việc nên kiểm tra trước khi rời màn hình</h2>
+  <ol>
+    <li>Nền tảng đúng nhóm: trực tiếp hay OTA, và đúng kênh (Zalo, Agoda…).</li>
+    <li>OTA: đã chọn đúng “OTA đã thu khách” hoặc “khách trả tại khách sạn”, và đã nhập hoa hồng.</li>
+    <li>Ngày nhận, ngày trả, số phòng đã tick, giá một đêm khác 0.</li>
+    <li>Tên khách, số điện thoại, số người ở và số người ăn sáng.</li>
+    <li>Cọc và hình thức thu, nếu là booking trực tiếp.</li>
+    <li>Nếu vừa sửa ngày, phòng hoặc tiền: đã thấy dòng “Đã gửi quản lý duyệt”, và hiểu là booking chưa đổi.</li>
+  </ol>
+</body>
+</html>

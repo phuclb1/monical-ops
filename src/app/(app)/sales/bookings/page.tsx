@@ -29,6 +29,15 @@ function isTab(value: string): value is (typeof TABS)[number]["id"] {
   return TABS.some((tab) => tab.id === value);
 }
 
+function channelLabel(source: string) {
+  return isOtaSource(source) ? "OTA" : "Trực tiếp";
+}
+
+function invoiceLabel(row: { invoiceRequested?: boolean | null; rooms?: { invoiceRequested?: boolean | null }[] }) {
+  const on = Boolean(row.invoiceRequested) || Boolean(row.rooms?.some((room) => room.invoiceRequested));
+  return on ? "Có" : "Không";
+}
+
 export default async function BookingsPage({
   searchParams,
 }: {
@@ -138,6 +147,9 @@ export default async function BookingsPage({
                       <p className="mt-1 text-xs text-[#5c6665]">
                         {formatDateLong(row.checkIn)} → {formatDateLong(row.checkOut)} · {SALE_SOURCE_LABEL[row.source as SaleSource] || row.source} · {SALE_ORIGIN_LABEL[(row.origin as SaleOrigin) || "ops"]}
                       </p>
+                      <p className="mt-1 text-xs text-[#5c6665]">
+                        Tạo {formatDateNumeric(row.createdAt)} · {channelLabel(row.source)} · Hóa đơn {invoiceLabel(row)}
+                      </p>
                       {row.pmsCode ? (
                         <p className="mt-1 text-xs text-[#5c6665]">
                           {isOpsBookingCode(row.pmsCode) ? "Mã Ops" : "PMS"} {row.pmsCode}
@@ -174,7 +186,10 @@ export default async function BookingsPage({
             <div className="booking-list-head">
               <span>Khách</span>
               <span>Phòng</span>
-              <span>Ngày</span>
+              <span>Ngày ở</span>
+              <span>Ngày tạo</span>
+              <span>Kênh</span>
+              <span>Hóa đơn</span>
               <span>Nguồn</span>
               <span>Trạng thái</span>
               <span className="booking-list-money">Còn thu</span>
@@ -199,6 +214,9 @@ export default async function BookingsPage({
                   </p>
                   <p className="text-xs text-[#5c6665]">{row.nights} đêm</p>
                 </div>
+                <p className="whitespace-nowrap text-sm">{formatDateNumeric(row.createdAt)}</p>
+                <p className="text-sm font-semibold">{channelLabel(row.source)}</p>
+                <p className="text-sm">{invoiceLabel(row)}</p>
                 <p className="text-sm">{SALE_SOURCE_LABEL[row.source as SaleSource] || row.source}</p>
                 <div className="flex flex-col items-start gap-1">
                   <Chip tone={STATUS_TONE[row.status]}>{SALE_STATUS_LABEL[row.status]}</Chip>
