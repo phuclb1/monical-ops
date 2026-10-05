@@ -93,7 +93,7 @@ export default async function MorePage() {
       })}
       <Card>
         <p className="text-sm leading-6 text-[#5c6665]">
-          MONICAL Ops không gọi ezCloudhotel. Agent crawl PMS rồi POST vào <code className="text-xs">/api/ingest/pms</code>.
+          Monical Quản lý vận hành không gọi ezCloudhotel. Agent crawl PMS rồi POST vào <code className="text-xs">/api/ingest/pms</code>.
           Lễ tân/quản lý bán phòng và đối chiếu mã PMS trên web. Zalo chỉ để thông báo nhanh.
         </p>
       </Card>

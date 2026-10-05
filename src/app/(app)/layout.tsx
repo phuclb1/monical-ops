@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { Bell } from "lucide-react";
 import { getSession } from "@/lib/auth";
-import { ROLE_LABEL } from "@/lib/constants";
+import { APP_NAME, ROLE_LABEL } from "@/lib/constants";
 import { ACCOUNTING_NAV, flatSidebar, MANAGER_NAV, OWNER_NAV, PRIMARY_NAV, sidebarNav } from "@/lib/nav";
 import { BottomNav, SideNav } from "@/components/app-nav";
 import { Logo } from "@/components/logo";
@@ -29,8 +29,8 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
             <Logo className="h-12 w-9 object-cover object-[center_8%]" />
           </div>
           <div>
-            <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-burgundy">MONICAL</p>
-            <p className="text-xs text-[#6b5a52]">{owner ? "Chủ sở hữu · laptop" : accounting ? "Kế toán · laptop" : "Ops · laptop"}</p>
+            <p className="text-sm font-bold leading-tight text-burgundy">Monical</p>
+            <p className="text-xs leading-snug text-[#6b5a52]">Quản lý vận hành</p>
           </div>
         </div>
         <div className="px-4 pt-4">
@@ -50,14 +50,14 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
               <Logo className="h-11 w-[34px] object-cover object-[center_8%]" />
             </div>
             <div>
-              <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-burgundy">MONICAL</p>
+              <p className="text-[11px] font-bold leading-tight text-burgundy">{APP_NAME}</p>
               <p className="text-sm font-semibold">
                 {user.fullName} · {ROLE_LABEL[user.role]}
               </p>
             </div>
           </div>
           <p className="hidden text-sm font-semibold text-[#5c4a46] md:block">
-            {owner ? "Doanh thu & khách · chỉ xem" : accounting ? "Sơ đồ phòng & hóa đơn · chỉ xem" : "Vận hành khách sạn · không thay PMS"}
+            {owner ? "Doanh thu & khách · chỉ xem" : accounting ? "Đặt phòng, sơ đồ phòng & hóa đơn · chỉ xem" : APP_NAME}
           </p>
           {isolated ? (
             <form action={logoutAction} className="md:hidden">

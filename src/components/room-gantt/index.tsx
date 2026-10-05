@@ -249,13 +249,9 @@ export function RoomGantt({
                             onPointerMove={readOnly ? undefined : onBarMove}
                             onPointerUp={readOnly ? undefined : onBarUp}
                             onPointerCancel={readOnly ? undefined : () => setDrag(null)}
-                            onClick={
-                              readOnly
-                                ? undefined
-                                : () => {
-                                    if (checkedOut) router.push(`/sales/bookings/${bookingKey(bar.sale)}`);
-                                  }
-                            }
+                            onClick={() => {
+                              if (readOnly || checkedOut) router.push(`/sales/bookings/${bookingKey(bar.sale)}`);
+                            }}
                             disabled={pending}
                           >
                             <span className="min-w-0 truncate">{bar.sale.guestName}</span>

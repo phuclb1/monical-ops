@@ -1,7 +1,7 @@
 {
-  "name": "MONICAL Ops",
-  "short_name": "MONICAL",
-  "description": "Điều phối vận hành MONICAL hotel dalat — không thay thế ezCloudhotel PMS",
+  "name": "Monical Quản lý vận hành",
+  "short_name": "Monical",
+  "description": "Monical Quản lý vận hành",
   "id": "/",
   "start_url": "/today",
   "scope": "/",

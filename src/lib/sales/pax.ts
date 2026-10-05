@@ -86,8 +86,8 @@ type PaxRoom = {
   breakfastChildren?: number | null;
 };
 
-export function bookingStayPax(rooms: PaxRoom[]) {
-  return rooms.reduce(
+export function bookingStayPax(rooms: PaxRoom[]): { adults: number; children: number } {
+  return rooms.reduce<{ adults: number; children: number }>(
     (sum, row) => ({
       adults: sum.adults + Math.max(0, Math.round(Number(row.adults) || 0)),
       children: sum.children + Math.max(0, Math.round(Number(row.children) || 0)),

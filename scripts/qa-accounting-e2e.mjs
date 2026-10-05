@@ -91,9 +91,11 @@ async function createCheckedInBooking(page, { guest, phone, source, invoice }) {
   const room = await pickOpenRoom(page);
   await page.locator('input[name="guestName"]').fill(guest);
   await page.locator('input[name="guestPhone"]').fill(phone);
-  const invoiceBox = page.locator('input[name="invoiceRequested"]');
-  if (invoice) await invoiceBox.check();
-  else if (await invoiceBox.isChecked()) await invoiceBox.uncheck();
+  const invoiceBox = page.locator('input[type="checkbox"][name="invoiceRequested"]');
+  if (await invoiceBox.count()) {
+    if (invoice) await invoiceBox.check();
+    else if (await invoiceBox.isChecked()) await invoiceBox.uncheck();
+  }
   const now = page.locator('input[name="checkinNow"]');
   if (await now.count() && !(await now.isChecked())) await now.check();
   await Promise.all([
@@ -224,7 +226,7 @@ try {
     );
     const forbiddenHref = hrefs.find((href) => {
       const path = href.split("?")[0];
-      if (path === "/sales") return false;
+      if (path === "/sales" || path === "/sales/bookings") return false;
       return (
         path.startsWith("/sales/") ||
         path.startsWith("/reception") ||
@@ -236,11 +238,12 @@ try {
     });
     if (forbiddenHref) throw new Error(`Có liên kết vận hành: ${forbiddenHref}`);
     if (!hrefs.some((href) => href.split("?")[0] === "/sales")) throw new Error("Thiếu liên kết sơ đồ phòng");
+    if (!hrefs.some((href) => href.split("?")[0] === "/sales/bookings")) throw new Error("Thiếu liên kết đặt phòng");
     await accountingPage.screenshot({ path: shot, fullPage: true });
   });
 
   await check("AC-04", "Kế toán bị chặn khỏi mọi URL vận hành", accountingPage, async (shot) => {
-    const blocked = ["/today", "/tasks", "/rooms", "/handover", "/reports", "/expenses", "/sales/bookings", "/sales/new", "/staff", "/notifications"];
+    const blocked = ["/today", "/tasks", "/rooms", "/handover", "/reports", "/expenses", "/sales/new", "/sales/bookings/bk-1/print", "/staff", "/notifications"];
     for (const path of blocked) {
       await go(accountingPage, path);
       if (new URL(accountingPage.url()).pathname !== "/accounting") {
@@ -257,10 +260,34 @@ try {
     }
     await must(accountingPage, shot, ["Sơ đồ phòng", "Chỉ xem lịch phòng", "QA D***"]);
     const text = await pageText(accountingPage);
-    const leaked = ["QA Xuat Hoa Don", "Bán phòng", "Kéo tên khách", "Đặt phòng"].filter((value) => text.includes(value));
+    const leaked = ["QA Xuat Hoa Don", "Bán phòng", "Kéo tên khách", "Đặt mới"].filter((value) => text.includes(value));
     if (leaked.length) throw new Error(`Sơ đồ phòng lộ thao tác hoặc tên khách: ${leaked.join(" | ")}`);
-    const sellLinks = await accountingPage.locator('a[href*="/sales/new"], a[href*="/sales/bookings"]').count();
-    if (sellLinks) throw new Error("Sơ đồ phòng vẫn dẫn tới bán phòng hoặc sửa booking");
+    const sellLinks = await accountingPage.locator('a[href*="/sales/new"]').count();
+    if (sellLinks) throw new Error("Sơ đồ phòng vẫn dẫn tới bán phòng");
+    const bookingLinks = await accountingPage.locator('a[href*="/sales/bookings"]').count();
+    if (!bookingLinks) throw new Error("Sơ đồ phòng không mở được trang đặt phòng");
+  });
+
+  await check("AC-10", "Kế toán xem đặt phòng, không sửa", accountingPage, async (shot) => {
+    await go(accountingPage, "/sales/bookings");
+    if (new URL(accountingPage.url()).pathname !== "/sales/bookings") {
+      throw new Error(`Không mở được đặt phòng: ${accountingPage.url()}`);
+    }
+    await must(accountingPage, shot, ["Đặt phòng", "Chỉ xem", "QA D***"]);
+    const text = await pageText(accountingPage);
+    const leaked = ["QA Xuat Hoa Don", "Đặt mới", "0901000701"].filter((value) => text.includes(value));
+    if (leaked.length) throw new Error(`Đặt phòng lộ thao tác hoặc thông tin khách: ${leaked.join(" | ")}`);
+    const detail = accountingPage.locator('a[href^="/sales/bookings/"]').first();
+    if (!(await detail.count())) throw new Error("Không có booking để mở");
+    await detail.click();
+    await accountingPage.waitForURL(/\/sales\/bookings\/[^/]+$/, { timeout: 30_000 });
+    await ready(accountingPage);
+    const detailText = await pageText(accountingPage);
+    const detailLeak = ["Sửa booking", "In xác nhận", "Giao việc HK", "Thêm phòng", "QA Xuat Hoa Don", "0901000701"].filter((value) => detailText.includes(value));
+    if (detailLeak.length) throw new Error(`Chi tiết booking không còn chỉ xem: ${detailLeak.join(" | ")}`);
+    if (!detailText.includes("QA D***") && !detailText.includes("QA X***") && !detailText.includes("QA O***")) {
+      throw new Error("Chi tiết booking không che tên khách");
+    }
   });
 
   await check("AC-09", "Kế toán đổi mật khẩu", accountingPage, async (shot) => {

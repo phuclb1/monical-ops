@@ -1,5 +1,6 @@
 import type { DepartmentCode, DiscountKind, FormCode, HkStatus, PaymentMethod, Role, SaleOrigin, SaleSource, SaleStatus, ShiftType, StayStatus, TaskPriority, TaskStatus } from "./types";
 
+export const APP_NAME = "Monical Quản lý vận hành";
 export const HOTEL_NAME = process.env.NEXT_PUBLIC_HOTEL_NAME ?? "MONICAL hotel dalat";
 export const HOTEL_LETTERHEAD = process.env.NEXT_PUBLIC_HOTEL_LETTERHEAD ?? "MONICAL Hotel Dalat";
 export const HOTEL_ADDRESS =

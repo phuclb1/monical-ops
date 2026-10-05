@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Be_Vietnam_Pro } from "next/font/google";
+import { APP_NAME } from "@/lib/constants";
 import { SITE_URL } from "@/lib/site";
 import { PwaBoot } from "@/components/pwa";
 import "./globals.css";
@@ -12,11 +13,11 @@ const beVietnam = Be_Vietnam_Pro({
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
-  title: "MONICAL Ops",
-  description: "Điều phối vận hành MONICAL hotel dalat — không thay thế ezCloudhotel PMS",
-  applicationName: "MONICAL Ops",
+  title: APP_NAME,
+  description: APP_NAME,
+  applicationName: APP_NAME,
   icons: { icon: [{ url: "/icon-192.png", sizes: "192x192" }, { url: "/icon-512.png", sizes: "512x512" }], apple: "/apple-touch-icon.png" },
-  appleWebApp: { capable: true, title: "MONICAL Ops", statusBarStyle: "black-translucent" },
+  appleWebApp: { capable: true, title: APP_NAME, statusBarStyle: "black-translucent" },
   manifest: "/manifest.webmanifest",
   robots: { index: false, follow: false },
 };

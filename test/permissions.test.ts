@@ -24,9 +24,11 @@ test("lễ tân được vận hành booking nhưng không được xem doanh th
   assert.equal(can("manager", "viewSalesRevenue"), true);
 });
 
-test("kế toán chỉ có quyền vào view kế toán, sơ đồ phòng và xem thanh toán", () => {
+test("kế toán chỉ có quyền vào view kế toán, sơ đồ phòng, đặt phòng và xem thanh toán", () => {
   assert.equal(can("accounting", "viewAccounting"), true);
   assert.equal(can("accounting", "viewRoomChart"), true);
+  assert.equal(can("accounting", "viewBookings"), true);
+  assert.equal(can("reception", "viewBookings"), false);
   assert.equal(can("accounting", "manageSales"), false);
   assert.equal(can("accounting", "viewPayments"), true);
   assert.equal(can("accounting", "viewToday"), false);

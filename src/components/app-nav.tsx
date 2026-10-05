@@ -75,7 +75,7 @@ export function BottomNav({ items = PRIMARY_NAV }: { items?: readonly { href: st
       <ul
         className={clsx(
           "mx-auto grid max-w-md px-1 pt-1",
-          items.length <= 2 ? "grid-cols-2" : items.length === 3 ? "grid-cols-3" : "grid-cols-5",
+          items.length <= 2 ? "grid-cols-2" : items.length === 3 ? "grid-cols-3" : items.length === 4 ? "grid-cols-4" : "grid-cols-5",
         )}
       >
         {items.map((item) => {

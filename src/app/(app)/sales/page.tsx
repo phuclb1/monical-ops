@@ -94,6 +94,7 @@ export default async function SalesPage({
   if (!user) redirect("/login");
   const manage = can(user.role, "manageSales");
   const showRevenue = can(user.role, "viewSalesRevenue");
+  const openBooking = manage || can(user.role, "viewBookings");
   if (!manage && !can(user.role, "viewRoomChart")) redirect(homePath(user.role));
   const showNames = can(user.role, "viewGuestPii");
   const { date: rawDate, error, origin: rawOrigin, focus: rawFocus, view: rawView, group: rawGroup } = await searchParams;
@@ -301,7 +302,7 @@ export default async function SalesPage({
                 </>
                 );
                 const className = "flex min-h-14 items-center justify-between gap-2 rounded-xl bg-sand px-3 py-2.5";
-                return manage ? (
+                return openBooking ? (
                   <Link key={row.id} href={`/sales/bookings/${row.id}`} className={className}>
                     {body}
                   </Link>

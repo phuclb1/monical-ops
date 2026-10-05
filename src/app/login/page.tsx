@@ -10,17 +10,10 @@ export default async function LoginPage({
   const { error, reset } = await searchParams;
   return (
     <main className="min-h-dvh min-h-[100dvh] bg-burgundy md:grid md:grid-cols-[1.1fr_min(440px,42vw)]">
-      <section className="flex flex-col justify-center px-5 pb-4 pt-[max(2rem,calc(env(safe-area-inset-top)+0.75rem))] md:px-16 md:pt-8">
-        <div className="mx-auto w-[220px] md:mx-0 md:w-[280px]">
+      <section className="flex items-center justify-center px-5 py-8 pt-[max(2rem,calc(env(safe-area-inset-top)+0.75rem))] md:px-16 md:py-10">
+        <div className="w-[220px] md:w-[280px]">
           <Logo priority className="w-full" />
         </div>
-        <p className="-mt-2 text-center text-xs font-semibold uppercase tracking-[0.2em] text-cream/80 md:text-left">
-          Vận hành
-        </p>
-        <p className="mt-3 text-center text-sm leading-6 text-cream/75 md:max-w-md md:text-left">
-          Điều phối ca, checklist, bàn giao và biểu mẫu. Booking / tiền phòng vẫn nằm trên ezCloudhotel PMS.
-        </p>
-        <p className="mt-6 hidden text-sm text-cream/60 md:block">Mở trên điện thoại để dùng PWA, hoặc làm việc trên laptop tại đây.</p>
       </section>
 
       <section className="px-5 pb-[max(2.5rem,calc(env(safe-area-inset-bottom)+1.25rem))] md:flex md:flex-col md:justify-center md:bg-sand md:px-10 md:pb-10">

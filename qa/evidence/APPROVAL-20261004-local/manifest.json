@@ -1,0 +1,85 @@
+{
+  "runId": "APPROVAL-20261004-local",
+  "date": "2026-10-05T02:29:46.775Z",
+  "commit": "39a3633-dirty",
+  "env": "http://localhost:3000",
+  "guest": "E2E Duyet 261004-local",
+  "room": "401",
+  "bookingUrl": "/sales/bookings/cf376474-6d84-48f1-bb45-59adab6fcefb",
+  "pass": 9,
+  "fail": 1,
+  "total": 10,
+  "passRate": "90%",
+  "results": [
+    {
+      "id": "APP-A1",
+      "title": "Lễ tân tạo booking kiểm thử với cọc 100.000₫",
+      "result": "pass",
+      "evidence": "qa/evidence/APPROVAL-20261004-local/APP-A1.png",
+      "note": ""
+    },
+    {
+      "id": "APP-A2",
+      "title": "Đổi tiền hiện nút Gửi phê duyệt và chưa áp dụng booking",
+      "result": "pass",
+      "evidence": "qa/evidence/APPROVAL-20261004-local/APP-A2.png",
+      "note": ""
+    },
+    {
+      "id": "APP-A3",
+      "title": "Quản lý chỉ thấy Chấp nhận/Từ chối và lý do là bắt buộc",
+      "result": "pass",
+      "evidence": "qa/evidence/APPROVAL-20261004-local/APP-A3.png",
+      "note": ""
+    },
+    {
+      "id": "APP-A4",
+      "title": "Quản lý từ chối, lý do và lịch sử được lưu",
+      "result": "pass",
+      "evidence": "qa/evidence/APPROVAL-20261004-local/APP-A4.png",
+      "note": ""
+    },
+    {
+      "id": "APP-A5",
+      "title": "Lễ tân gửi lại đề nghị điều chỉnh tiền",
+      "result": "pass",
+      "evidence": "qa/evidence/APPROVAL-20261004-local/APP-A5.png",
+      "note": ""
+    },
+    {
+      "id": "APP-A6",
+      "title": "Quản lý chấp nhận đề nghị",
+      "result": "pass",
+      "evidence": "qa/evidence/APPROVAL-20261004-local/APP-A6.png",
+      "note": ""
+    },
+    {
+      "id": "APP-A7",
+      "title": "Lễ tân thấy kết quả duyệt và toàn bộ lịch sử",
+      "result": "pass",
+      "evidence": "qa/evidence/APPROVAL-20261004-local/APP-A7.png",
+      "note": ""
+    },
+    {
+      "id": "APP-A9",
+      "title": "Sửa riêng thu check-in, đặt cọc chưa đổi và chưa áp dụng",
+      "result": "pass",
+      "evidence": "qa/evidence/APPROVAL-20261004-local/APP-A9.png",
+      "note": ""
+    },
+    {
+      "id": "APP-A10",
+      "title": "Quản lý duyệt thu check-in; đặt cọc giữ nguyên",
+      "result": "pass",
+      "evidence": "qa/evidence/APPROVAL-20261004-local/APP-A10.png",
+      "note": ""
+    },
+    {
+      "id": "APP-A8",
+      "title": "Dọn dữ liệu: quản lý hủy booking kiểm thử",
+      "result": "fail",
+      "evidence": "qa/evidence/APPROVAL-20261004-local/APP-A8.png",
+      "note": "locator.check: Timeout 30000ms exceeded.\nCall log:\n  - waiting for getByRole('dialog', { name: 'Xác nhận đã hoàn cọc' }).getByRole('checkbox', { name: /Đã hoàn cọc/ })\n"
+    }
+  ]
+}

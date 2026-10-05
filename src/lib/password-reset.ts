@@ -48,9 +48,9 @@ async function sendResetEmail(to: string, fullName: string, resetUrl: string) {
     body: JSON.stringify({
       from,
       to: [to],
-      subject: "Khôi phục mật khẩu MONICAL Ops",
+      subject: "Khôi phục mật khẩu Monical Quản lý vận hành",
       html: `<p>Xin chào ${escapeHtml(fullName)},</p>
-<p>Bấm vào liên kết dưới đây để đặt lại mật khẩu MONICAL Ops:</p>
+<p>Bấm vào liên kết dưới đây để đặt lại mật khẩu Monical Quản lý vận hành:</p>
 <p><a href="${escapeHtml(resetUrl)}">Đặt lại mật khẩu</a></p>
 <p>Liên kết chỉ dùng được một lần và hết hạn sau 30 phút. Nếu bạn không yêu cầu, hãy bỏ qua email này.</p>`,
     }),

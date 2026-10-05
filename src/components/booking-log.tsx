@@ -8,23 +8,28 @@ import {
   formatAuditWhen,
   type BookingLogRow,
 } from "@/lib/audit-view";
+import { maskName, maskPhone } from "@/lib/mask";
 
 function roomLabel(value: string, rooms: Record<string, string>) {
   const number = rooms[value];
   return number ? `P.${number}` : value;
 }
 
-function formatChangeValue(key: string, value: string, rooms: Record<string, string>) {
+function formatChangeValue(key: string, value: string, rooms: Record<string, string>, maskPii: boolean) {
   if (key === "roomId") return roomLabel(value, rooms);
+  if (maskPii && key === "guestName") return maskName(value, "accounting");
+  if (maskPii && key === "guestPhone") return maskPhone(value, "accounting");
   return value;
 }
 
 export function BookingLog({
   rows,
   rooms = {},
+  maskPii = false,
 }: {
   rows: BookingLogRow[];
   rooms?: Record<string, string>;
+  maskPii?: boolean;
 }) {
   if (!rows.length) {
     return <p className="text-sm text-[#5c6665]">Chưa có nhật ký trên booking này.</p>;
@@ -52,16 +57,16 @@ export function BookingLog({
                   <li key={`${change.key}-${change.before}-${change.after}`}>
                     <span className="text-[#5c6665]">{change.label}: </span>
                     {change.kind === "add" ? (
-                      <b>{formatChangeValue(change.key, change.after, rooms)}</b>
+                      <b>{formatChangeValue(change.key, change.after, rooms, maskPii)}</b>
                     ) : change.kind === "remove" ? (
                       <span>
-                        xóa <b>{formatChangeValue(change.key, change.before, rooms)}</b>
+                        xóa <b>{formatChangeValue(change.key, change.before, rooms, maskPii)}</b>
                       </span>
                     ) : (
                       <span>
-                        <span className="text-[#8a7a72] line-through">{formatChangeValue(change.key, change.before, rooms)}</span>
+                        <span className="text-[#8a7a72] line-through">{formatChangeValue(change.key, change.before, rooms, maskPii)}</span>
                         {" → "}
-                        <b>{formatChangeValue(change.key, change.after, rooms)}</b>
+                        <b>{formatChangeValue(change.key, change.after, rooms, maskPii)}</b>
                       </span>
                     )}
                   </li>

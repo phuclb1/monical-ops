@@ -13,6 +13,7 @@ import { getSession } from "@/lib/auth";
 import { PAYMENT_METHOD_LABEL, SALE_ORIGIN_LABEL, SALE_SOURCE_LABEL, SALE_STATUS_LABEL } from "@/lib/constants";
 import { formatDateLong, todayVN } from "@/lib/datetime";
 import { extraDetail } from "@/lib/extras";
+import { maskName, maskPhone } from "@/lib/mask";
 import { can } from "@/lib/permissions";
 import { getBooking, listBookingChangeRequests, listBookingLogs, listRooms, listRoomSales, listRoomTypes, listSaleExtraTypes } from "@/lib/repos";
 import { bookingPayMethods, bookingQuote, collectedSplit, commissionAmount, depositRefundAllowed, formatVnd, isActiveSaleStatus, isOpsBookingCode, isOtaDebt, isOtaSource, paidNote, parkingLabel, refundParts } from "@/lib/sales";
@@ -35,7 +36,9 @@ export default async function BookingDetailPage({
 }) {
   const user = await getSession();
   if (!user) redirect("/login");
-  if (!can(user.role, "manageSales")) redirect("/more");
+  const manage = can(user.role, "manageSales");
+  if (!manage && !can(user.role, "viewBookings")) redirect("/more");
+  const showPii = can(user.role, "viewGuestPii");
   const { id } = await params;
   const { error, approval } = await searchParams;
   const [booking, rooms, types, sales, extraTypes, logs, approvals] = await Promise.all([
@@ -48,6 +51,8 @@ export default async function BookingDetailPage({
     listBookingChangeRequests(id),
   ]);
   if (!booking) notFound();
+  const guestName = showPii ? booking.guestName : maskName(booking.guestName, user.role);
+  const guestPhone = booking.guestPhone ? (showPii ? booking.guestPhone : maskPhone(booking.guestPhone, user.role)) : "";
   const today = todayVN();
   const activeRooms = booking.rooms.filter((row) => isActiveSaleStatus(row.status));
   const listedRooms = activeRooms.length ? activeRooms : booking.rooms;
@@ -80,9 +85,11 @@ export default async function BookingDetailPage({
             ← Đặt phòng
           </Link>
           <div className="flex items-center gap-3">
-            <Link href={`/sales/bookings/${booking.id}/print`} className="inline-flex min-h-11 items-center text-sm font-semibold text-teal">
-              In xác nhận
-            </Link>
+            {manage ? (
+              <Link href={`/sales/bookings/${booking.id}/print`} className="inline-flex min-h-11 items-center text-sm font-semibold text-teal">
+                In xác nhận
+              </Link>
+            ) : null}
             <Link href={`/sales?date=${booking.checkIn}`} className="inline-flex min-h-11 items-center text-sm font-semibold text-teal">
               Sơ đồ
             </Link>
@@ -90,7 +97,7 @@ export default async function BookingDetailPage({
         </div>
         <div className="mt-2 flex items-start justify-between gap-3">
           <div>
-            <h1 className="text-xl font-bold">{booking.guestName}</h1>
+            <h1 className="text-xl font-bold">{guestName}</h1>
             <p className="text-sm text-[#5c6665]">
               {booking.roomCount} phòng · {booking.roomLabel}
             </p>
@@ -127,7 +134,7 @@ export default async function BookingDetailPage({
         </p>
       ) : null}
 
-      <BookingApprovals rows={approvals} role={user.role} />
+      {manage ? <BookingApprovals rows={approvals} role={user.role} /> : null}
 
       <div className="booking-desk-grid space-y-3 md:space-y-0">
         <aside className="booking-desk-side space-y-3">
@@ -212,7 +219,7 @@ export default async function BookingDetailPage({
                 Hoàn tiền {formatVnd(part.amount)} từ {PAYMENT_METHOD_LABEL[part.method]}
               </p>
             ))}
-            {booking.guestPhone ? <p className="mt-1 text-sm">SĐT {booking.guestPhone}</p> : null}
+            {guestPhone ? <p className="mt-1 text-sm">SĐT {guestPhone}</p> : null}
             {booking.pmsCode ? (
               <p className="mt-1 text-sm">
                 {isOpsBookingCode(booking.pmsCode) ? "Mã Ops" : "PMS"} {booking.pmsCode}
@@ -220,7 +227,7 @@ export default async function BookingDetailPage({
             ) : null}
             {booking.notes ? <p className="mt-2 text-sm text-[#5c6665]">{booking.notes}</p> : null}
             <p className="mt-1 text-sm">{booking.invoiceRequested ? "Yêu cầu xuất hóa đơn" : "Không xuất hóa đơn"}</p>
-            {firstActive && !otaDebt ? (
+            {manage && firstActive && !otaDebt ? (
               <div className="mt-3 border-t border-line pt-3">
                 <p className="mb-2 text-xs font-semibold text-[#5c6665]">Thanh toán</p>
                 <BookingPaymentPanel
@@ -233,7 +240,7 @@ export default async function BookingDetailPage({
                 />
               </div>
             ) : null}
-            {readyIn.length || staying.length ? (
+            {manage && (readyIn.length || staying.length) ? (
               <div className="mt-3 space-y-2 border-t border-line pt-3">
                 <p className="text-xs text-[#5c6665]">Check in và check out nằm trên từng phòng. HK kiểm phòng là việc riêng.</p>
                 {[...readyIn, ...staying].map((row) => (
@@ -267,6 +274,7 @@ export default async function BookingDetailPage({
               quotes={booked.lines}
               today={today}
               bookingId={booking.id}
+              readOnly={!manage}
               ota={otaDebt}
               otaHotel={ota && !otaDebt}
               totals={{
@@ -286,11 +294,12 @@ export default async function BookingDetailPage({
             <p className="mb-3 text-xs text-[#5c6665]">Ai tạo, ai sửa, sửa gì, lúc nào.</p>
             <BookingLog
               rows={logs}
+              maskPii={!showPii}
               rooms={Object.fromEntries(rooms.map((room) => [room.id, room.number]))}
             />
           </Card>
 
-          {firstActive ? (
+          {manage && firstActive ? (
             <Fold title="Dịch vụ / phụ thu" hint={booking.extras.length ? `${booking.extras.length}` : undefined}>
               {user.role === "reception" ? (
                 <p className="mb-3 rounded-xl bg-[#fff1d6] px-3 py-2 text-xs font-semibold text-[#9a5b00]">
@@ -306,7 +315,7 @@ export default async function BookingDetailPage({
             </Fold>
           ) : null}
 
-          {firstActive && extraRooms.length ? (
+          {manage && firstActive && extraRooms.length ? (
             <Fold title="Thêm phòng">
               <p className="mb-2 text-xs text-[#5c6665]">Giữ nguyên khách, ngày, nền tảng. Giá theo bảng hạng phòng thêm.</p>
               {user.role === "reception" ? (
@@ -316,7 +325,7 @@ export default async function BookingDetailPage({
             </Fold>
           ) : null}
 
-          {firstActive ? (
+          {manage && firstActive ? (
             <Fold title="Sửa booking">
               <p className="mb-2 text-xs text-[#5c6665]">Sửa tên, SĐT, kênh. Số người lớn theo từng phòng, mặc định bằng hạng phòng và chỉ giảm được. Đổi số phòng cùng hạng hoặc nâng hạng. Xóa bớt phòng, giữ ít nhất một phòng.</p>
               {user.role === "reception" ? (

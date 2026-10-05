@@ -23,6 +23,7 @@ export const CAN = {
   viewOwner: ["owner"] as Role[],
   viewAccounting: ["accounting"] as Role[],
   viewRoomChart: ["accounting"] as Role[],
+  viewBookings: ["accounting"] as Role[],
   viewPayments: ["accounting", "manager", "reception"] as Role[],
   viewGuestPii: ["reception", "hk", "manager", "owner"] as Role[],
   manageProcess: ["manager"] as Role[],

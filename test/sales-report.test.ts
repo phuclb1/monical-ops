@@ -110,11 +110,14 @@ test("kế toán có khu vực điều hướng riêng và xem được sơ đ�
   assert.equal(homePath("accounting"), "/accounting");
   assert.equal(ACCOUNTING_NAV[0]?.href, "/accounting");
   assert.equal(ACCOUNTING_NAV.some((item) => item.href === "/sales"), true);
+  assert.equal(ACCOUNTING_NAV.some((item) => item.href === "/sales/bookings"), true);
   assert.equal(isAccountingPath("/accounting"), true);
   assert.equal(isAccountingPath("/accounting/anything"), true);
   assert.equal(isAccountingPath("/reports"), false);
   assert.equal(isAccountingAllowedPath("/sales"), true);
-  assert.equal(isAccountingAllowedPath("/sales/bookings"), false);
+  assert.equal(isAccountingAllowedPath("/sales/bookings"), true);
+  assert.equal(isAccountingAllowedPath("/sales/bookings/bk-1"), true);
+  assert.equal(isAccountingAllowedPath("/sales/bookings/bk-1/print"), false);
   assert.equal(isAccountingAllowedPath("/sales/new"), false);
 });
 

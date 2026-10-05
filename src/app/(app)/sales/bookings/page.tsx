@@ -4,6 +4,7 @@ import { Btn, Card, Chip, Empty, Field, TabChip } from "@/components/ui";
 import { getSession } from "@/lib/auth";
 import { SALE_ORIGIN_LABEL, SALE_SOURCE_LABEL, SALE_STATUS_LABEL } from "@/lib/constants";
 import { formatDateLong, formatDateNumeric, todayVN } from "@/lib/datetime";
+import { maskName } from "@/lib/mask";
 import { can } from "@/lib/permissions";
 import { listBookings } from "@/lib/repos";
 import { bookingMatchesListView, formatVnd, isBookingListView, isOpsBookingCode, isOtaDebt, isOtaSource, matchesBookingSearch, paidNote, type BookingListView } from "@/lib/sales";
@@ -68,7 +69,10 @@ export default async function BookingsPage({
 }) {
   const user = await getSession();
   if (!user) redirect("/login");
-  if (!can(user.role, "manageSales")) redirect("/more");
+  const manage = can(user.role, "manageSales");
+  if (!manage && !can(user.role, "viewBookings")) redirect("/more");
+  const showNames = can(user.role, "viewGuestPii");
+  const guestLabel = (name: string) => (showNames ? name : maskName(name, user.role));
   const { tab: rawTab, q: rawQ, view: rawView } = await searchParams;
   const tabValue = rawTab || "";
   const viewValue = rawView || "";
@@ -100,12 +104,16 @@ export default async function BookingsPage({
       <div className="flex items-start justify-between gap-3 md:items-center">
         <div>
           <h1 className="text-xl font-bold">Đặt phòng</h1>
-          <p className="text-xs text-[#5c6665] md:text-sm">Mặc định booking mới tạo trước. Có thể xem phòng nhận hoặc trả hôm nay.</p>
+          <p className="text-xs text-[#5c6665] md:text-sm">
+            {manage ? "Mặc định booking mới tạo trước. Có thể xem phòng nhận hoặc trả hôm nay." : "Chỉ xem. Mặc định booking mới tạo trước."}
+          </p>
         </div>
         <div className="flex flex-col items-end gap-1 md:flex-row md:items-center md:gap-3">
-          <Link href="/sales/new" className="cta-link">
-            Đặt mới
-          </Link>
+          {manage ? (
+            <Link href="/sales/new" className="cta-link">
+              Đặt mới
+            </Link>
+          ) : null}
           <Link href="/sales" className="flex min-h-11 items-center text-sm font-semibold text-teal">
             Sơ đồ phòng
           </Link>
@@ -181,7 +189,7 @@ export default async function BookingsPage({
                 <Card className="min-h-16">
                   <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0">
-                      <p className="font-bold">{row.guestName}</p>
+                      <p className="font-bold">{guestLabel(row.guestName)}</p>
                       <p className="text-xs text-[#5c6665]">
                         {row.roomCount} phòng · {row.roomLabel}
                       </p>
@@ -238,7 +246,7 @@ export default async function BookingsPage({
             {rows.map((row) => (
               <Link key={row.id} href={`/sales/bookings/${row.id}`} className="booking-list-row">
                 <div className="min-w-0">
-                  <p className="truncate font-bold">{row.guestName}</p>
+                  <p className="truncate font-bold">{guestLabel(row.guestName)}</p>
                   {row.pmsCode ? (
                     <p className="truncate text-xs text-[#5c6665]">
                       {isOpsBookingCode(row.pmsCode) ? "Ops" : "PMS"} {row.pmsCode}
@@ -289,7 +297,9 @@ export default async function BookingsPage({
                 ? "Không có phòng trả hôm nay trong tab này. Đổi tab hoặc về Mới nhất."
                 : q
                   ? "Đổi từ khóa hoặc tab. Có thể tìm tên (không dấu), SĐT, phòng, mã, ghi chú, nguồn."
-                  : "Bấm Đặt mới để tạo booking."
+                  : manage
+                    ? "Bấm Đặt mới để tạo booking."
+                    : "Đổi tab hoặc bộ lọc."
           }
         />
       )}

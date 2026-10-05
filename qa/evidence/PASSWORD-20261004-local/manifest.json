@@ -1,0 +1,70 @@
+{
+  "runId": "PASSWORD-20261004-local",
+  "date": "2026-10-05T02:28:18.547Z",
+  "commit": "39a3633-dirty",
+  "env": "http://localhost:3000",
+  "testUser": "qa.password.67268987",
+  "emailDeliveryChecked": false,
+  "pass": 8,
+  "fail": 0,
+  "total": 8,
+  "passRate": "100%",
+  "results": [
+    {
+      "id": "PW-01",
+      "title": "Trang quên mật khẩu và token sai là public",
+      "result": "pass",
+      "evidence": "qa/evidence/PASSWORD-20261004-local/PW-01.png",
+      "note": ""
+    },
+    {
+      "id": "PW-02",
+      "title": "Quản lý không thể tạo mật khẩu thiếu chữ hoa",
+      "result": "pass",
+      "evidence": "qa/evidence/PASSWORD-20261004-local/PW-02.png",
+      "note": ""
+    },
+    {
+      "id": "PW-03",
+      "title": "Quản lý tạo tài khoản với mật khẩu mạnh",
+      "result": "pass",
+      "evidence": "qa/evidence/PASSWORD-20261004-local/PW-03.png",
+      "note": ""
+    },
+    {
+      "id": "PW-04",
+      "title": "Người dùng không thể đổi sang mật khẩu yếu",
+      "result": "pass",
+      "evidence": "qa/evidence/PASSWORD-20261004-local/PW-04.png",
+      "note": ""
+    },
+    {
+      "id": "PW-05",
+      "title": "Đổi mật khẩu thành công; mật khẩu cũ bị từ chối",
+      "result": "pass",
+      "evidence": "qa/evidence/PASSWORD-20261004-local/PW-05.png",
+      "note": ""
+    },
+    {
+      "id": "PW-06",
+      "title": "Quản lý reset mật khẩu người khác và vô hiệu hóa phiên cũ",
+      "result": "pass",
+      "evidence": "qa/evidence/PASSWORD-20261004-local/PW-06.png",
+      "note": ""
+    },
+    {
+      "id": "PW-07",
+      "title": "Đăng nhập được bằng mật khẩu quản lý vừa reset",
+      "result": "pass",
+      "evidence": "qa/evidence/PASSWORD-20261004-local/PW-07.png",
+      "note": ""
+    },
+    {
+      "id": "PW-08",
+      "title": "Yêu cầu email không làm lộ tài khoản tồn tại",
+      "result": "pass",
+      "evidence": "qa/evidence/PASSWORD-20261004-local/PW-08.png",
+      "note": ""
+    }
+  ]
+}

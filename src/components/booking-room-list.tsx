@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import Link from "next/link";
 import { checkinBookingRoomAction, checkoutBookingRoomAction } from "@/actions/sales";
 import { Btn, Chip } from "@/components/ui";
@@ -151,10 +152,19 @@ function stayNote(row: RoomRow) {
   return "";
 }
 
-function RoomStay({ row, today, bookingId }: { row: RoomRow; today: string; bookingId: string }) {
+function RoomLink({ href, className, children }: { href?: string; className: string; children: ReactNode }) {
+  if (!href) return <div className={className}>{children}</div>;
+  return (
+    <Link href={href} className={className}>
+      {children}
+    </Link>
+  );
+}
+
+function RoomStay({ row, today, bookingId, readOnly }: { row: RoomRow; today: string; bookingId: string; readOnly?: boolean }) {
   const note = stayNote(row);
-  const canIn = row.status === "reserved" && today >= row.checkIn;
-  const canOut = row.status === "inhouse";
+  const canIn = !readOnly && row.status === "reserved" && today >= row.checkIn;
+  const canOut = !readOnly && row.status === "inhouse";
   if (!note && !canIn && !canOut) return null;
   return (
     <div className="booking-room-stay">
@@ -185,6 +195,7 @@ export function BookingRoomList({
   otaHotel,
   today,
   bookingId,
+  readOnly = false,
 }: {
   rooms: RoomRow[];
   quotes: QuoteLine[];
@@ -192,6 +203,7 @@ export function BookingRoomList({
   otaHotel?: boolean;
   today: string;
   bookingId: string;
+  readOnly?: boolean;
   totals: {
     roomTotal: number;
     discount: number;
@@ -209,7 +221,7 @@ export function BookingRoomList({
           const { breakfast, ck, quote } = roomView(row, quotes[index]);
           return (
             <article key={row.id} className="booking-room">
-              <Link href={`/sales/${row.id}`} className="booking-room-main">
+              <RoomLink href={readOnly ? undefined : `/sales/${row.id}`} className="booking-room-main">
                 <p className="booking-room-no">P.{row.room?.number || "—"}</p>
                 <p className="booking-room-type">{row.room?.type || "—"}</p>
                 <p className="booking-room-dates">
@@ -225,8 +237,8 @@ export function BookingRoomList({
                   <span className={breakfast ? "booking-room-bf" : "booking-room-bf is-off"}>{breakfast ? "✓ Có" : "Không ăn sáng"}</span>
                   <Chip tone={STATUS_TONE[row.status as SaleStatus]}>{SALE_STATUS_LABEL[row.status as SaleStatus]}</Chip>
                 </div>
-              </Link>
-              <Link href={`/sales/${row.id}`} className="booking-room-money">
+              </RoomLink>
+              <RoomLink href={readOnly ? undefined : `/sales/${row.id}`} className="booking-room-money">
                 <p className="booking-room-rate">{formatVnd(row.rate)}/đêm</p>
                 {quote?.breakfastOff ? (
                   <p className="booking-room-bf-cut">Không ăn sáng −{formatVnd(quote.breakfastOff)}</p>
@@ -237,8 +249,8 @@ export function BookingRoomList({
                   </p>
                 ) : null}
                 <p className="booking-room-total">{formatVnd(quote?.total ?? 0)}</p>
-              </Link>
-              <RoomStay row={row} today={today} bookingId={bookingId} />
+              </RoomLink>
+              <RoomStay row={row} today={today} bookingId={bookingId} readOnly={readOnly} />
             </article>
           );
         })}
@@ -264,9 +276,13 @@ export function BookingRoomList({
               return (
                 <tr key={row.id}>
                   <td>
-                    <Link href={`/sales/${row.id}`} className="booking-room-no">
-                      P.{row.room?.number || "—"}
-                    </Link>
+                    {readOnly ? (
+                      <p className="booking-room-no">P.{row.room?.number || "—"}</p>
+                    ) : (
+                      <Link href={`/sales/${row.id}`} className="booking-room-no">
+                        P.{row.room?.number || "—"}
+                      </Link>
+                    )}
                     <p className="booking-room-type">{row.room?.type || "—"}</p>
                   </td>
                   <td className="booking-room-dates">
@@ -291,7 +307,7 @@ export function BookingRoomList({
                     <Chip tone={STATUS_TONE[row.status as SaleStatus]}>{SALE_STATUS_LABEL[row.status as SaleStatus]}</Chip>
                   </td>
                   <td>
-                    <RoomStay row={row} today={today} bookingId={bookingId} />
+                    <RoomStay row={row} today={today} bookingId={bookingId} readOnly={readOnly} />
                   </td>
                 </tr>
               );

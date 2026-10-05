@@ -50,7 +50,7 @@ self.addEventListener("fetch", (event) => {
 });
 
 self.addEventListener("push", (event) => {
-  let data = { title: "MONICAL Ops", body: "Có thông báo mới", url: "/notifications", tag: "ops-booking" };
+  let data = { title: "Monical Quản lý vận hành", body: "Có thông báo mới", url: "/notifications", tag: "ops-booking" };
   try {
     const parsed = event.data?.json();
     if (parsed && typeof parsed === "object") {
