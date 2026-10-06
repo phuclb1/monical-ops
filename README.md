@@ -32,6 +32,22 @@ Mỗi booking upsert theo `pmsCode` vào **Lễ tân** và **Bán phòng**. `pla
 
 PRD: `npx wrangler secret put INGEST_SECRET` — không để secret trong `wrangler.jsonc`.
 
+## SePay báo tiền vào nhóm kế toán
+
+SePay gửi HTTP POST tới URL nền tảng `https://platform.monicalhoteldalat.com/api/webhooks/sepay` mỗi khi có giao dịch. Cùng URL hiện ở **Cài đặt → Zalo**. Worker nhận webhook, bỏ qua tiền ra, chống gửi trùng theo `id`, rồi nhắn Zalo vào nhóm kế toán.
+
+Trên SePay: Webhooks → Thêm webhook, dán URL nền tảng đó. Loại giao dịch chọn **Chỉ tiền vào** hoặc **Tất cả**. Phương thức xác thực dùng **HMAC-SHA256** (khuyến nghị) hoặc **API Key**.
+
+```bash
+npx wrangler secret put SEPAY_WEBHOOK_SECRET
+# hoặc, nếu webhook dùng API Key:
+npx wrangler secret put SEPAY_API_KEY
+```
+
+Staging dùng cùng lệnh với `--env staging`. Production từ chối webhook chưa có secret. Local (`npm run dev`) nhận payload không chữ ký để thử.
+
+Trong **Cài đặt → Zalo → Nhóm**, chọn nhóm kế toán. Tab **Tin** có mẫu "Tiền vào tài khoản"; bật tin và gán đúng nhóm đó. Mẫu dùng `{{nganHang}} {{soTk}} {{soTien}} {{noiDung}} {{luc}} {{soDu}} {{maGd}}`.
+
 ## Email khôi phục mật khẩu
 
 Ứng dụng gửi liên kết đặt lại mật khẩu qua Resend. Cấu hình production:

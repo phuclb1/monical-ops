@@ -29,6 +29,7 @@ test("nhóm và tin đọc từ cấu hình cũ khi chưa có bản mới", () =
     [
       ["reception", "111", "Lễ tân"],
       ["booking", "222", "Booking"],
+      ["accounting", "", ""],
     ],
   );
   const messages = normalizeZaloMessages(undefined, legacy);
@@ -48,6 +49,11 @@ test("nhóm và tin đọc từ cấu hình cũ khi chưa có bản mới", () =
   assert.match(checkinPaid?.template || "", /Đã check-in và thu đủ \{\{ma\}\}/);
   assert.match(checkinPaid?.template || "", /Người check-in: \{\{checkinBoi\}\}/);
   assert.match(checkinPaid?.template || "", /Người thu đủ: \{\{thuBoi\}\}/);
+  const moneyIn = messages.find((item) => item.id === "money-in");
+  assert.equal(moneyIn?.event, "money_in");
+  assert.equal(moneyIn?.group, "accounting");
+  assert.match(moneyIn?.template || "", /Có tiền vào tài khoản/);
+  assert.match(moneyIn?.template || "", /\{\{soTien\}\}/);
   const savedOld = normalizeZaloMessages([
     {
       id: "booking-checkin-paid",

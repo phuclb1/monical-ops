@@ -7,6 +7,8 @@ interface CloudflareEnv {
   SESSION_SECRET?: string;
   RECEPTION_ALLOWED_IP?: string;
   INGEST_SECRET?: string;
+  SEPAY_WEBHOOK_SECRET?: string;
+  SEPAY_API_KEY?: string;
   RESEND_API_KEY?: string;
   PASSWORD_RESET_FROM?: string;
 }

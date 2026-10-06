@@ -12,6 +12,7 @@ import { getBooking, listBookings, listRoomSales } from "@/lib/repos/sales/queri
 import { listUsers } from "@/lib/repos/users";
 import { collectedSplit, isOtaDebt } from "@/lib/sales";
 import type { SaleSource } from "@/lib/types";
+import type { SepayTransaction } from "@/lib/sepay";
 import { sendZaloToGroup } from "@/lib/zalo-client";
 import { claimZaloSchedule, loadZaloGroups, loadZaloMessages, zaloChannel } from "@/lib/zalo-session";
 import { scheduleIsDue, type ZaloMessageEvent } from "@/lib/zalo-messages";
@@ -21,6 +22,7 @@ import {
   checkinPaidActorIds,
   bookingZaloVars,
   breakfastZaloVars,
+  moneyInZaloVars,
   receptionDigest,
   receptionZaloVars,
   renderZaloTemplate,
@@ -167,6 +169,33 @@ export async function dispatchBookingZalo(actorId: string, event: ZaloMessageEve
   }
 }
 
+export async function dispatchMoneyInZalo(tx: SepayTransaction) {
+  const [messages, groups] = await Promise.all([loadZaloMessages(), loadZaloGroups()]);
+  const targets = messages.filter((message) => message.enabled && message.kind === "trigger" && message.event === "money_in");
+  if (!targets.length) return { sent: false as const, reason: "disabled" as const };
+  const vars = moneyInZaloVars({
+    gateway: tx.gateway,
+    accountNumber: tx.accountNumber,
+    subAccount: tx.subAccount,
+    amount: tx.transferAmount,
+    content: tx.content,
+    description: tx.description,
+    at: tx.transactionDate,
+    balance: tx.accumulated,
+    reference: tx.referenceCode,
+    code: tx.code,
+  });
+  let sent = 0;
+  for (const message of targets) {
+    const group = groups.find((item) => item.slot === message.group);
+    if (!group?.groupId) continue;
+    await sendZaloToGroup("sepay-webhook", group.groupId, renderZaloTemplate(message.template, vars));
+    sent += 1;
+  }
+  if (!sent) return { sent: false as const, reason: "no-group" as const };
+  return { sent: true as const, count: sent };
+}
+
 export async function dispatchCheckinPaidZalo(actorId: string, bookingId: string, wasReady: boolean) {
   if (wasReady) return;
   const booking = await getBooking(bookingId);
@@ -218,9 +247,22 @@ export async function sendMessagePreview(actorId: string, messageId: string) {
   if (!group?.groupId) throw new Error("Chọn nhóm nhận cho tin này trước khi gửi thử.");
   const today = todayVN();
   const vars =
-    message.kind === "schedule"
-      ? await scheduleVars(message.id, today)
-      : bookingZaloVars({
+    message.event === "money_in"
+      ? moneyInZaloVars({
+          gateway: "Vietcombank",
+          accountNumber: "1017588888",
+          subAccount: "",
+          amount: 10_000,
+          content: "NGUYEN VAN A chuyen tien",
+          description: "NGUYEN VAN A chuyen tien",
+          at: `${today} 11:08:33`,
+          balance: 1_500_000,
+          reference: "FT24012345678",
+          code: "",
+        })
+      : message.kind === "schedule"
+        ? await scheduleVars(message.id, today)
+        : bookingZaloVars({
           code: "TEST",
           source: "Zalo",
           guest: "Khách thử",

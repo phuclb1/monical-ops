@@ -6,6 +6,8 @@ import { Btn, Card, Field, TabChip } from "@/components/ui";
 import { getSession } from "@/lib/auth";
 import { formatDateTime } from "@/lib/datetime";
 import { can } from "@/lib/permissions";
+import { sepayWebhookUrl } from "@/lib/sepay";
+import { platformOrigin } from "@/lib/site";
 import { loadZaloPublicStatus } from "@/lib/zalo-session";
 import { ZALO_GROUP_SLOTS, ZALO_MESSAGE_DEFS } from "@/lib/zalo-messages";
 
@@ -13,11 +15,13 @@ const SAVED: Record<string, string> = {
   phone: "Đã lưu số Zalo.",
   booking: "Đã lưu nhóm booking.",
   reception: "Đã lưu nhóm lễ tân.",
+  accounting: "Đã lưu nhóm kế toán.",
   "daily-reception": "Đã lưu bản tin lễ tân.",
   "daily-breakfast": "Đã lưu báo cáo ăn sáng.",
   "booking-created": "Đã lưu tin booking mới.",
   "booking-updated": "Đã lưu tin sửa booking.",
   "booking-checkin-paid": "Đã lưu tin check-in đã thu đủ.",
+  "money-in": "Đã lưu tin tiền vào tài khoản.",
   test: "Đã gửi tin thử.",
   cleared: "Đã xóa phiên Zalo.",
 };
@@ -26,6 +30,7 @@ const EVENT_LABEL = {
   booking_created: "khi có booking mới",
   booking_updated: "khi sửa booking",
   booking_checkin_paid: "khi khách check-in và đã thu đủ tiền",
+  money_in: "khi có tiền vào tài khoản ngân hàng",
 } as const;
 
 export default async function ZaloSettingsPage({
@@ -39,6 +44,7 @@ export default async function ZaloSettingsPage({
   const { error, saved, tab } = await searchParams;
   const current = tab === "messages" ? "messages" : "groups";
   const zalo = await loadZaloPublicStatus();
+  const webhookUrl = sepayWebhookUrl(await platformOrigin());
   const savedText = saved ? SAVED[saved] || "" : "";
 
   return (
@@ -86,6 +92,16 @@ export default async function ZaloSettingsPage({
         ) : null}
       </Card>
 
+      <Card>
+        <h2 className="mb-2 font-bold">Webhook tiền vào</h2>
+        <p className="mb-3 text-xs leading-5 text-[#5c6665]">
+          Dán URL này vào SePay. SePay gọi vào nền tảng mỗi khi có tiền vào tài khoản, rồi tin gửi vào nhóm kế toán.
+        </p>
+        <Field label="URL webhook">
+          <input readOnly value={webhookUrl} />
+        </Field>
+      </Card>
+
       <div className="tab-scroller -mx-3 px-3 pb-1">
         <TabChip href="/settings/zalo?tab=groups" active={current === "groups"}>
           Nhóm
@@ -98,7 +114,7 @@ export default async function ZaloSettingsPage({
       {current === "groups" ? (
         <Card>
           <h2 className="mb-2 font-bold">Nhóm Zalo</h2>
-          <p className="mb-3 text-xs leading-5 text-[#5c6665]">Chọn nhóm lễ tân và nhóm booking trên Zalo. Tin sẽ gửi vào nhóm được gán ở tab Tin.</p>
+          <p className="mb-3 text-xs leading-5 text-[#5c6665]">Chọn nhóm lễ tân, nhóm booking và nhóm kế toán trên Zalo. Tin sẽ gửi vào nhóm được gán ở tab Tin.</p>
           <ZaloGroupManager
             connected={zalo.connected}
             groups={ZALO_GROUP_SLOTS.map((slot) => {
@@ -116,7 +132,7 @@ export default async function ZaloSettingsPage({
         <Card>
           <h2 className="mb-2 font-bold">Tin nhắn</h2>
           <p className="mb-3 text-xs leading-5 text-[#5c6665]">
-            Bản tin lễ tân và báo cáo ăn sáng gửi mỗi ngày vào giờ đã chọn, giờ Việt Nam. Ăn sáng mặc định 05:00. Tin booking gửi khi tạo mới, khi sửa, hoặc khi khách check-in và đã thu đủ tiền.
+            Bản tin lễ tân và báo cáo ăn sáng gửi mỗi ngày vào giờ đã chọn, giờ Việt Nam. Ăn sáng mặc định 05:00. Tin booking gửi khi tạo mới, khi sửa, hoặc khi khách check-in và đã thu đủ tiền. Tin tiền vào tài khoản gửi khi SePay báo giao dịch tiền vào.
           </p>
           <ZaloMessageManager
             messages={zalo.messages.map((message) => {

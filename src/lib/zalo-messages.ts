@@ -3,6 +3,7 @@ import { todayVN, TZ } from "@/lib/datetime";
 export const ZALO_GROUP_SLOTS = [
   { slot: "reception", label: "Nhóm lễ tân" },
   { slot: "booking", label: "Nhóm booking" },
+  { slot: "accounting", label: "Nhóm kế toán" },
 ] as const;
 
 export type ZaloGroupSlot = (typeof ZALO_GROUP_SLOTS)[number]["slot"];
@@ -59,6 +60,16 @@ export const ZALO_MESSAGE_DEFS = [
     fields: "{{ma}} {{khach}} {{phong}} {{nhan}} {{tra}} {{daThu}} {{checkinBoi}} {{thuBoi}}",
     template: "Đã check-in và thu đủ {{ma}}\nKhách: {{khach}}\nPhòng: {{phong}}\nNhận {{nhan}} · trả {{tra}}\nĐã thu: {{daThu}}\nNgười check-in: {{checkinBoi}}\nNgười thu đủ: {{thuBoi}}",
   },
+  {
+    id: "money-in",
+    name: "Tiền vào tài khoản",
+    kind: "trigger" as const,
+    event: "money_in" as const,
+    group: "accounting" as const,
+    fields: "{{nganHang}} {{soTk}} {{taiKhoanPhu}} {{soTien}} {{noiDung}} {{luc}} {{soDu}} {{maGd}} {{maThanhToan}}",
+    template:
+      "Có tiền vào tài khoản\nNgân hàng: {{nganHang}}\nSố TK: {{soTk}}\nSố tiền: {{soTien}}\nNội dung: {{noiDung}}\nLúc: {{luc}}\nSố dư: {{soDu}}\nMã GD: {{maGd}}",
+  },
 ] as const;
 
 const PREVIOUS_MESSAGE_TEMPLATES: Record<string, string[]> = {
@@ -82,7 +93,7 @@ const PREVIOUS_MESSAGE_TEMPLATES: Record<string, string[]> = {
   ],
 };
 
-export type ZaloMessageEvent = "booking_created" | "booking_updated" | "booking_checkin_paid";
+export type ZaloMessageEvent = "booking_created" | "booking_updated" | "booking_checkin_paid" | "money_in";
 
 export type ZaloMessage = {
   id: string;

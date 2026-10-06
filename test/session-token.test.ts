@@ -26,17 +26,17 @@ function testSecret() {
   return new TextEncoder().encode(process.env.SESSION_SECRET || "ops-monical-dev-secret-change-me");
 }
 
-test("JWT lễ tân hết hạn sau 15 phút, role khác giữ 12 giờ", async () => {
+test("JWT lễ tân hết hạn sau 1 giờ, role khác giữ 12 giờ", async () => {
   const receptionPayload = decodeJwt(await signSession(user("reception")));
   const managerPayload = decodeJwt(await signSession(user("manager")));
 
-  assert.equal(sessionMaxAgeSeconds("reception"), 15 * 60);
+  assert.equal(sessionMaxAgeSeconds("reception"), 60 * 60);
   assert.equal(sessionMaxAgeSeconds("manager"), 12 * 60 * 60);
   assert.equal(receptionPayload.exp! - receptionPayload.iat!, RECEPTION_SESSION_MAX_AGE_SECONDS);
   assert.equal(managerPayload.exp! - managerPayload.iat!, DEFAULT_SESSION_MAX_AGE_SECONDS);
 });
 
-test("JWT lễ tân cũ quá 15 phút bị từ chối dù exp còn hạn", async () => {
+test("JWT lễ tân cũ quá 1 giờ bị từ chối dù exp còn hạn", async () => {
   const now = Math.floor(Date.now() / 1000);
   const reception = user("reception");
   const token = await new SignJWT(reception)

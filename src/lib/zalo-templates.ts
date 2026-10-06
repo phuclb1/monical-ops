@@ -319,3 +319,38 @@ export function breakfastZaloVars(day: {
     dsAnSang: lines.join("\n") || "Không có suất ăn sáng.",
   };
 }
+
+export type MoneyInNotice = {
+  gateway: string;
+  accountNumber: string;
+  subAccount: string;
+  amount: number;
+  content: string;
+  description: string;
+  at: string;
+  balance: number;
+  reference: string;
+  code: string;
+};
+
+export function moneyInZaloVars(input: MoneyInNotice) {
+  const detail = input.content.trim() || input.description.trim() || "—";
+  return {
+    nganHang: input.gateway.trim() || "—",
+    soTk: input.accountNumber.trim() || "—",
+    taiKhoanPhu: input.subAccount.trim() || "—",
+    soTien: formatVnd(input.amount),
+    noiDung: detail,
+    moTa: input.description.trim() || "—",
+    luc: formatSepayTime(input.at),
+    soDu: input.balance > 0 ? formatVnd(input.balance) : "—",
+    maGd: input.reference.trim() || "—",
+    maThanhToan: input.code.trim() || "—",
+  };
+}
+
+function formatSepayTime(value: string) {
+  const match = /^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}:\d{2})/.exec(value.trim());
+  if (!match) return value.trim() || "—";
+  return `${match[3]}/${match[2]}/${match[1]} ${match[4]}`;
+}

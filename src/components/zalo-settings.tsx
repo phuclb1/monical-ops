@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { listZaloGroupsAction, saveZaloGroupSlotAction, saveZaloMessageAction, sendZaloMessageTestAction, sendZaloTestAction } from "@/actions/zalo";
 import { Btn, Field } from "@/components/ui";
-import type { ZaloGroupSlot } from "@/lib/zalo-messages";
+import { ZALO_GROUP_SLOTS, type ZaloGroupSlot } from "@/lib/zalo-messages";
 
 export function ZaloConnectButton() {
   const router = useRouter();
@@ -173,8 +173,11 @@ export function ZaloMessageManager({
           </label>
           <Field label="Gửi vào nhóm">
             <select name="group" defaultValue={message.group}>
-              <option value="reception">Nhóm lễ tân</option>
-              <option value="booking">Nhóm booking</option>
+              {ZALO_GROUP_SLOTS.map((slot) => (
+                <option key={slot.slot} value={slot.slot}>
+                  {slot.label}
+                </option>
+              ))}
             </select>
           </Field>
           {message.kind === "schedule" ? (

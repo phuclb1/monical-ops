@@ -290,4 +290,20 @@ CREATE TABLE IF NOT EXISTS expenses (
   updated_at TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS expenses_spent_on ON expenses (spent_on);
+CREATE TABLE IF NOT EXISTS sepay_transactions (
+  id TEXT PRIMARY KEY,
+  gateway TEXT NOT NULL,
+  account_number TEXT NOT NULL,
+  sub_account TEXT NOT NULL DEFAULT '',
+  code TEXT NOT NULL DEFAULT '',
+  content TEXT NOT NULL,
+  description TEXT NOT NULL DEFAULT '',
+  transfer_type TEXT NOT NULL,
+  transfer_amount INTEGER NOT NULL,
+  accumulated INTEGER NOT NULL DEFAULT 0,
+  reference_code TEXT NOT NULL DEFAULT '',
+  transaction_date TEXT NOT NULL,
+  notified INTEGER NOT NULL DEFAULT 0,
+  received_at TEXT NOT NULL
+);
 `;

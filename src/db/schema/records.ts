@@ -102,6 +102,23 @@ export const expenses = sqliteTable("expenses", {
   updatedAt: text("updated_at").notNull(),
 });
 
+export const sepayTransactions = sqliteTable("sepay_transactions", {
+  id: text("id").primaryKey(),
+  gateway: text("gateway").notNull(),
+  accountNumber: text("account_number").notNull(),
+  subAccount: text("sub_account").notNull().default(""),
+  code: text("code").notNull().default(""),
+  content: text("content").notNull(),
+  description: text("description").notNull().default(""),
+  transferType: text("transfer_type").notNull(),
+  transferAmount: integer("transfer_amount").notNull(),
+  accumulated: integer("accumulated").notNull().default(0),
+  referenceCode: text("reference_code").notNull().default(""),
+  transactionDate: text("transaction_date").notNull(),
+  notified: integer("notified", { mode: "boolean" }).notNull().default(false),
+  receivedAt: text("received_at").notNull(),
+});
+
 export const pushSubscriptions = sqliteTable("push_subscriptions", {
   id: text("id").primaryKey(),
   userId: text("user_id").notNull(),

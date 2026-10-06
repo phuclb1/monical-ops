@@ -2,7 +2,7 @@ import { SignJWT, jwtVerify } from "jose";
 import type { DepartmentCode, Role, SessionUser } from "./types";
 
 export const SESSION_COOKIE = "ops_session";
-export const RECEPTION_SESSION_MAX_AGE_SECONDS = 15 * 60;
+export const RECEPTION_SESSION_MAX_AGE_SECONDS = 60 * 60;
 export const DEFAULT_SESSION_MAX_AGE_SECONDS = 12 * 60 * 60;
 
 export function sessionMaxAgeSeconds(role: Role) {

@@ -19,6 +19,7 @@ const PUBLIC = [
   "/api/auth/reset-password",
   "/api/ingest",
   "/api/zalo/cron",
+  "/api/webhooks/sepay",
 ];
 
 function withCache(res: NextResponse, value: string) {

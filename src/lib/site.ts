@@ -46,6 +46,21 @@ function normalizeOrigin(value?: string | null) {
   return "";
 }
 
+export function publicPlatformOrigin(value?: string | null) {
+  const trimmed = value?.trim().replace(/\/$/, "") || "";
+  try {
+    const url = new URL(trimmed);
+    if (url.protocol === "https:" && /(^|\.)monicalhoteldalat\.com$/i.test(url.hostname)) return url.origin;
+  } catch {
+    return DEFAULT_SITE_URL;
+  }
+  return DEFAULT_SITE_URL;
+}
+
+export async function platformOrigin() {
+  return publicPlatformOrigin((await configuredAppUrl()) || process.env.NEXT_PUBLIC_APP_URL);
+}
+
 function firstHeaderValue(value?: string | null) {
   return value?.split(",")[0]?.trim() || "";
 }
