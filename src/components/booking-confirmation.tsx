@@ -268,8 +268,7 @@ export function BookingConfirmation({ booking }: { booking: Booking }) {
             ngắt dây nguồn kết nối điện thoại vì lý do an toàn phòng chống cháy nổ.
           </li>
           <li>
-            Khách sạn không phục vụ ăn uống trong phòng, khách hàng vui lòng tham khảo kỹ các nội quy đặt tại phòng, để
-            tránh làm ảnh hưởng vệ sinh cho các khách hàng lưu trú sau.
+            Khách sạn không phục vụ ăn uống trong phòng, khách hàng vui lòng tham khảo kỹ các nội quy đặt tại phòng.
           </li>
           <li>Quý khách vui lòng tham khảo Nội quy và Biểu phí các dịch vụ trong Tệp hồ sơ ở mỗi phòng.</li>
         </ul>
