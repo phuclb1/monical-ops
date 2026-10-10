@@ -22,6 +22,7 @@ export type GanttSale = {
   checkIn: string;
   checkOut: string;
   rate: number;
+  source?: string | null;
   breakfast?: boolean | null;
   discountKind?: string | null;
   discountValue?: number | null;
@@ -91,6 +92,7 @@ export type ConfirmState = {
   checkIn: string;
   checkOut: string;
   extra: number;
+  rateKept: boolean;
 };
 
 export function quoteTotal(sale: GanttSale, rate: number, checkIn: string, checkOut: string) {

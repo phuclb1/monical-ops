@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { Btn, Field, MoneyMethodField } from "@/components/ui";
 import { SALE_SOURCE_GROUPS, SALE_SOURCE_LABEL } from "@/lib/constants";
-import { bookingDue, bookingPayMethods, bookingQuote, catalogRate, collectedSplit, formatVnd, isOtaDebt, isOtaSource, parseMoney, parseDiscountValue, rangesOverlap, roomAdultCap, roomMoveKind } from "@/lib/sales";
+import { bookingDue, bookingPayMethods, bookingQuote, catalogRate, collectedSplit, formatVnd, isOtaDebt, isOtaSource, parseMoney, parseDiscountValue, rangesOverlap, rateForRoomMove, roomAdultCap, roomMoveKind } from "@/lib/sales";
 import { extraAmount } from "@/lib/extras";
 import type { PaymentMethod } from "@/lib/types";
 import { OtaCommissionFields, type CommissionKind } from "./commission";
@@ -130,9 +130,10 @@ export function BookingForm({
         return Boolean(roomMoveKind(line.type, room.type, types));
       })
       .sort((a, b) => {
+        const rank = { same: 0, upgrade: 1, downgrade: 2 };
         const kindA = roomMoveKind(line.type, a.type, types);
         const kindB = roomMoveKind(line.type, b.type, types);
-        if (kindA !== kindB) return kindA === "same" ? -1 : 1;
+        if (kindA !== kindB) return (kindA ? rank[kindA] : 9) - (kindB ? rank[kindB] : 9);
         return a.number.localeCompare(b.number);
       });
   }
@@ -152,8 +153,7 @@ export function BookingForm({
     const room = rooms.find((item) => item.id === roomId);
     const stay = stayOf(line.saleId, { checkIn: line.checkIn, checkOut: line.checkOut });
     const kind = roomMoveKind(line.type, room?.type || line.type, types);
-    const rate =
-      kind === "upgrade" ? catalogRate(types.find((type) => type.name === room?.type), stay.checkIn) || line.rate : line.rate;
+    const rate = rateForRoomMove(kind, catalogRate(types.find((type) => type.name === room?.type), stay.checkIn), line.rate, ota);
     return {
       line,
       room,
@@ -179,6 +179,7 @@ export function BookingForm({
   const quotes = quoteInputs.map((row, index) => ({
     ...row,
     quote: booked.lines[index],
+    rateKept: row.kind !== "same" && row.kind != null && row.rate === row.line.rate,
   }));
   const extraRows = extras.map((row) => ({ ...row, amount: extraAmount(row, booked.nights) }));
   const extrasTotal = extraRows.reduce((sum, row) => sum + row.amount, 0);
@@ -427,7 +428,7 @@ export function BookingForm({
         <textarea name="notes" rows={2} defaultValue={defaults.notes || ""} placeholder="Giờ đến, giường, xe đón..." />
       </Field>
       <p className="text-xs text-[#5c6665]">
-        Sửa tên, SĐT, số khách, kênh. Đổi số phòng cùng hạng hoặc nâng hạng. Ngày, ăn sáng và chiết khấu theo từng phòng.
+        Sửa tên, SĐT, số khách, kênh. Đổi sang phòng bất kỳ hạng nào. Ngày, ăn sáng và chiết khấu theo từng phòng.
         {lines.length > 1 ? " Xóa bớt phòng vẫn giữ các phòng còn lại — muốn hủy hết thì dùng Hủy booking." : ""}
       </p>
       <BookingQuote

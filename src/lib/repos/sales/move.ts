@@ -3,7 +3,7 @@ import { getDb } from "@/db";
 import * as t from "@/db/schema";
 import { nowISO, todayVN } from "../../datetime";
 import { ensureTodayRoomTasks } from "../../checklist-ops";
-import { bookingKey, catalogRate, isActiveSaleStatus, roomMoveKind } from "../../sales";
+import { bookingKey, catalogRate, isActiveSaleStatus, isOtaSource, rateForRoomMove, roomMoveKind } from "../../sales";
 import type { SessionUser } from "../../types";
 import { audit } from "../audit";
 import { assertSaleWindow } from "./helpers";
@@ -34,11 +34,13 @@ export async function moveGanttSale(
   if (before.status === "inhouse" && checkOut < today) throw new Error("Ngày trả không được trước hôm nay");
   const next = await assertSaleWindow(data.roomId, checkIn, checkOut, before.id);
   const kind = roomMoveKind(current.type, next.type, types);
-  if (!kind) {
-    throw new Error(`P.${next.number} không cùng hạng và không phải nâng hạng so với ${current.type}`);
-  }
-  const nextRate =
-    kind === "upgrade" ? catalogRate(types.find((type) => type.name === next.type), checkIn) || before.rate : before.rate;
+  if (!kind) throw new Error(`P.${next.number} không thuộc hạng phòng đã khai báo`);
+  const nextRate = rateForRoomMove(
+    kind,
+    catalogRate(types.find((type) => type.name === next.type), checkIn),
+    before.rate,
+    isOtaSource(before.source),
+  );
   const now = nowISO();
   const patch = {
     roomId: next.id,

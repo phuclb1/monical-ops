@@ -25,6 +25,7 @@ import {
   quoteLinesBySaleId,
   rangesOverlap,
   rollupBookingStatus,
+  rateForRoomMove,
   roomMoveKind,
   saleStatusToStay,
 } from "../src/lib/sales";
@@ -106,7 +107,13 @@ test("pax clamp, rollup, grouping, room move", () => {
   ];
   assert.equal(roomMoveKind("Deluxe", "Deluxe", types), "same");
   assert.equal(roomMoveKind("Deluxe", "Suite", types), "upgrade");
-  assert.equal(roomMoveKind("Suite", "Deluxe", types), null);
+  assert.equal(roomMoveKind("Suite", "Deluxe", types), "downgrade");
+  assert.equal(roomMoveKind("Deluxe", "Unknown", types), null);
+  assert.equal(rateForRoomMove("same", 1_200_000, 800_000), 800_000);
+  assert.equal(rateForRoomMove("upgrade", 1_200_000, 800_000), 1_200_000);
+  assert.equal(rateForRoomMove("downgrade", 800_000, 1_200_000), 800_000);
+  assert.equal(rateForRoomMove("upgrade", 1_200_000, 800_000, true), 800_000);
+  assert.equal(rateForRoomMove("downgrade", 800_000, 1_200_000, true), 1_200_000);
 
   const grouped = groupByBooking([
     { id: "a", bookingId: "bk" },

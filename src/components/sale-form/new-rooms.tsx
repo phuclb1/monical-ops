@@ -24,6 +24,8 @@ export function SaleFormRooms(props: {
   breakfast: Record<string, boolean>;
   setBreakfast: (value: Record<string, boolean> | ((prev: Record<string, boolean>) => Record<string, boolean>)) => void;
   rates: Record<string, string>;
+  ota?: boolean;
+  otaRates?: Record<string, number>;
   discounts: Record<string, DiscountState>;
   setDiscounts: (value: Record<string, DiscountState> | ((prev: Record<string, DiscountState>) => Record<string, DiscountState>)) => void;
   typeByName: Record<string, { weekendRate?: number }>;
@@ -52,6 +54,8 @@ export function SaleFormRooms(props: {
     breakfast,
     setBreakfast,
     rates,
+    ota,
+    otaRates = {},
     discounts,
     setDiscounts,
     typeByName,
@@ -123,13 +127,18 @@ export function SaleFormRooms(props: {
       )}
 
       {selectedRooms.length ? (
-        <div className="sale-rooms space-y-2">
+        <div className={`sale-rooms space-y-2 ${ota ? "is-ota" : ""}`}>
           <p className="text-xs font-semibold text-[#5c6665] md:hidden">Thông tin phòng</p>
+          {ota ? <p className="text-xs text-[#5c6665]">Chọn hạng và số phòng. Giá lấy từ tổng booking, không nhập giá từng phòng.</p> : null}
           <div className="sale-rooms-head">
             <span>Phòng</span>
             <span>Ngày</span>
-            <span>Giá / đêm</span>
-            <span>Chiết khấu</span>
+            {ota ? null : (
+              <>
+                <span>Giá / đêm</span>
+                <span>Chiết khấu</span>
+              </>
+            )}
           </div>
           {selectedRooms.map((room) => {
             const stay = dates[room.id] || sharedStay;
@@ -206,29 +215,35 @@ export function SaleFormRooms(props: {
                   />
                   <span>Ăn sáng</span>
                 </label>
-                <div className="sale-room-rate">
-                  <Field label="Giá / đêm (₫)">
-                    <input
-                      name={`rate-${room.id}`}
-                      inputMode="numeric"
-                      value={rates[room.id] || ""}
-                      onChange={(e) => setRoomRate(room.id, e.target.value)}
-                      placeholder="800000"
+                {ota ? (
+                  <input type="hidden" name={`rate-${room.id}`} value={String(otaRates[room.id] || 0)} />
+                ) : (
+                  <>
+                    <div className="sale-room-rate">
+                      <Field label="Giá / đêm (₫)">
+                        <input
+                          name={`rate-${room.id}`}
+                          inputMode="numeric"
+                          value={rates[room.id] || ""}
+                          onChange={(e) => setRoomRate(room.id, e.target.value)}
+                          placeholder="800000"
+                        />
+                      </Field>
+                      {catalog ? (
+                        <p className="sale-room-hint text-xs text-[#5c6665]">
+                          Giá bảng {peakRate ? "lễ tết" : "ngày thường"}: {formatVnd(catalog)}
+                        </p>
+                      ) : (
+                        <p className="sale-room-hint text-xs text-[#5c6665]">Chưa có giá bảng — nhập giá bán.</p>
+                      )}
+                    </div>
+                    <RoomDiscountFields
+                      namePrefix={room.id}
+                      discount={discounts[room.id] || emptyDiscount()}
+                      onChange={(next) => setDiscounts((prev) => ({ ...prev, [room.id]: next }))}
                     />
-                  </Field>
-                  {catalog ? (
-                    <p className="sale-room-hint text-xs text-[#5c6665]">
-                      Giá bảng {peakRate ? "lễ tết" : "ngày thường"}: {formatVnd(catalog)}
-                    </p>
-                  ) : (
-                    <p className="sale-room-hint text-xs text-[#5c6665]">Chưa có giá bảng — nhập giá bán.</p>
-                  )}
-                </div>
-                <RoomDiscountFields
-                  namePrefix={room.id}
-                  discount={discounts[room.id] || emptyDiscount()}
-                  onChange={(next) => setDiscounts((prev) => ({ ...prev, [room.id]: next }))}
-                />
+                  </>
+                )}
               </div>
             );
           })}

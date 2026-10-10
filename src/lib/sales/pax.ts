@@ -104,18 +104,26 @@ export function bookingBreakfastPax(rooms: PaxRoom[]) {
   return clampBreakfastPax(stay.adults, stay.children, sample.breakfastAdults, sample.breakfastChildren, true);
 }
 
+export type RoomMoveKind = "same" | "upgrade" | "downgrade";
+
 export function roomMoveKind(
   fromType: string,
   toType: string,
   types: { name: string; sortOrder: number; baseRate?: number | null }[],
-): "same" | "upgrade" | null {
+): RoomMoveKind | null {
   if (fromType === toType) return "same";
   const from = types.find((type) => type.name === fromType);
   const to = types.find((type) => type.name === toType);
   if (!from || !to) return null;
   if (to.sortOrder < from.sortOrder) return "upgrade";
   if ((to.baseRate || 0) > (from.baseRate || 0)) return "upgrade";
-  return null;
+  return "downgrade";
+}
+
+/** Same category, or an OTA stay, keeps the booked rate. Any other category uses that category's catalog rate. */
+export function rateForRoomMove(kind: RoomMoveKind | null, catalog: number, current: number, keepRate = false) {
+  if (keepRate || (kind !== "upgrade" && kind !== "downgrade")) return current;
+  return catalog || current;
 }
 
 export function rollupBookingStatus(statuses: string[]): SaleStatus {

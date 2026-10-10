@@ -48,6 +48,7 @@ export function BookingRoomLines(props: {
         const options = optionsFor(line);
         const same = options.filter((room) => roomMoveKind(line.type, room.type, types) === "same");
         const upgrades = options.filter((room) => roomMoveKind(line.type, room.type, types) === "upgrade");
+        const downgrades = options.filter((room) => roomMoveKind(line.type, room.type, types) === "downgrade");
         const taken = new Set(Object.entries(picks).filter(([saleId]) => saleId !== line.saleId).map(([, roomId]) => roomId));
         const stay = stayOf(line.saleId, { checkIn: line.checkIn, checkOut: line.checkOut });
         const canEditCheckIn = line.status !== "inhouse";
@@ -87,6 +88,15 @@ export function BookingRoomLines(props: {
                 {upgrades.length ? (
                   <optgroup label="Nâng hạng">
                     {upgrades.map((room) => (
+                      <option key={room.id} value={room.id} disabled={taken.has(room.id)}>
+                        P.{room.number} · {room.type}
+                      </option>
+                    ))}
+                  </optgroup>
+                ) : null}
+                {downgrades.length ? (
+                  <optgroup label="Hạ hạng">
+                    {downgrades.map((room) => (
                       <option key={room.id} value={room.id} disabled={taken.has(room.id)}>
                         P.{room.number} · {room.type}
                       </option>

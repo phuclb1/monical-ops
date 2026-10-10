@@ -16,7 +16,7 @@ export function GanttUpgradeDialog(props: {
   return (
         <div className="gantt-dialog-back" role="dialog" aria-modal="true">
           <div className="gantt-dialog card p-4">
-            <h2 className="font-bold">Nâng hạng phòng</h2>
+            <h2 className="font-bold">Đổi hạng phòng</h2>
             <p className="mt-2 text-sm">
               {roomOf(confirm.sale.roomId)?.type || "—"} P.{roomOf(confirm.sale.roomId)?.number} → {confirm.room.type} P.
               {confirm.room.number}
@@ -24,11 +24,21 @@ export function GanttUpgradeDialog(props: {
             <p className="mt-1 text-sm text-[#5c6665]">
               {formatDateNumeric(confirm.checkIn)} → {formatDateNumeric(confirm.checkOut)} · {nightsBetween(confirm.checkIn, confirm.checkOut)} đêm
             </p>
-            {confirm.extra > 0 ? (
+            {confirm.rateKept ? (
+              <p className="mt-2 text-sm font-semibold">Giữ nguyên tiền — chỉ đổi hạng.</p>
+            ) : confirm.extra > 0 ? (
               <p className="mt-2 text-sm font-semibold">Phải thu thêm {formatVnd(confirm.extra)}</p>
+            ) : confirm.extra < 0 ? (
+              <p className="mt-2 text-sm font-semibold">Giảm phải thu {formatVnd(-confirm.extra)}</p>
             ) : (
-              <p className="mt-2 text-sm text-[#5c6665]">Giá không tăng — chỉ đổi hạng.</p>
+              <p className="mt-2 text-sm text-[#5c6665]">Giá không đổi — chỉ đổi hạng.</p>
             )}
+            {confirm.rateKept && confirm.extra > 0 ? (
+              <p className="mt-1 text-sm font-semibold">Phải thu thêm {formatVnd(confirm.extra)} do đổi số đêm.</p>
+            ) : null}
+            {confirm.rateKept && confirm.extra < 0 ? (
+              <p className="mt-1 text-sm font-semibold">Giảm phải thu {formatVnd(-confirm.extra)} do đổi số đêm.</p>
+            ) : null}
             <div className="mt-4 grid grid-cols-2 gap-2">
               <Btn type="button" variant="ghost" onClick={onCancel} disabled={pending}>
                 Hủy

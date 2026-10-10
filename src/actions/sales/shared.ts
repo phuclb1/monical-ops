@@ -133,6 +133,7 @@ export function saleFromForm(formData: FormData) {
     checkinNow: String(formData.get("checkinNow") || "") === "1",
     origin: "ops",
     bookingId: String(formData.get("bookingId") || ""),
+    otaTotal: formData.has("otaTotal") ? parseMoney(formData.get("otaTotal")) : undefined,
     extras: formData.getAll("extraType").map((typeId, index) => ({
       typeId: String(typeId) === "other" ? "" : String(typeId),
       qty: Number(formData.getAll("extraQty")[index] || 1),

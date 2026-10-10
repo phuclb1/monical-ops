@@ -327,7 +327,7 @@ export default async function BookingDetailPage({
 
           {manage && firstActive ? (
             <Fold title="Sửa booking">
-              <p className="mb-2 text-xs text-[#5c6665]">Sửa tên, SĐT, kênh. Số người lớn theo từng phòng, mặc định bằng hạng phòng và chỉ giảm được. Đổi số phòng cùng hạng hoặc nâng hạng. Xóa bớt phòng, giữ ít nhất một phòng.</p>
+              <p className="mb-2 text-xs text-[#5c6665]">Sửa tên, SĐT, kênh. Số người lớn theo từng phòng, mặc định bằng hạng phòng và chỉ giảm được. Đổi sang phòng bất kỳ hạng nào. Xóa bớt phòng, giữ ít nhất một phòng.</p>
               {user.role === "reception" ? (
                 <p className="mb-3 rounded-xl bg-[#fff1d6] px-3 py-2 text-xs font-semibold text-[#9a5b00]">
                   Đổi ngày, phòng, xóa phòng, tiền, ăn sáng, chiết khấu hoặc hoa hồng OTA sẽ gửi quản lý duyệt. Booking chỉ đổi sau khi được duyệt.

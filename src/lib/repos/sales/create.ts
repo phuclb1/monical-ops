@@ -4,7 +4,7 @@ import { getDb } from "@/db";
 import * as t from "@/db/schema";
 import { nid, nowISO, todayVN } from "../../datetime";
 import { ensureTodayRoomTasks } from "../../checklist-ops";
-import { bookingQuote, catalogRate, clampBreakfastPax, isActiveSaleStatus, isOtaSource, isSaleSource, normalizeCommission, parsePaymentMethod, roomStayPax } from "../../sales";
+import { bookingQuote, catalogRate, clampBreakfastPax, isActiveSaleStatus, isOtaSource, isSaleSource, nightsBetween, normalizeCommission, parsePaymentMethod, ratesFromBookingTotal, roomStayPax } from "../../sales";
 import { defaultAdultsForRoomType } from "../../rooms-catalog";
 import type { SaleStatus, SessionUser } from "../../types";
 import { audit } from "../audit";
@@ -60,6 +60,17 @@ export async function createRoomSale(user: SessionUser, data: SaleInput) {
   const stayChildren = roomPax.reduce((sum, row) => sum + row.children, 0);
   const hasBreakfast = rooms.some((row) => row.breakfast !== false);
   const breakfastPax = clampBreakfastPax(stayAdults, stayChildren, data.breakfastAdults, data.breakfastChildren, hasBreakfast);
+  if (!requestedBookingId && isOtaSource(data.source) && data.otaTotal != null) {
+    const allocated = ratesFromBookingTotal(
+      data.otaTotal,
+      rooms.map((row) => nightsBetween(row.checkIn, row.checkOut)),
+    );
+    rooms.forEach((row, index) => {
+      row.rate = allocated[index] || 0;
+      row.discountKind = "none";
+      row.discountValue = 0;
+    });
+  }
   const quote = bookingQuote(
     rooms.map((row) => ({
       rate: row.rate,

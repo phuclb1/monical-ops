@@ -5,7 +5,7 @@ import { formatVnd } from "@/lib/sales";
 import type { PaymentMethod } from "@/lib/types";
 
 export function BookingQuote(props: {
-  quotes: { line: { saleId: string; type: string }; room?: { type?: string } | null; kind: string | null; quote: { nights: number; gross?: number; subtotal: number; breakfastOff: number; discount: number }; discountKind: string; discountValue: number }[];
+  quotes: { line: { saleId: string; type: string }; room?: { type?: string } | null; kind: string | null; rateKept?: boolean; quote: { nights: number; gross?: number; subtotal: number; breakfastOff: number; discount: number }; discountKind: string; discountValue: number }[];
   extraRows: { name: string; qty: number; unitPrice: number; unit: string; amount: number }[];
   booked: { nights: number };
   bookingTotal: number;
@@ -30,7 +30,8 @@ export function BookingQuote(props: {
               <div className="flex justify-between gap-2">
                 <span>
                   {row.room?.type || row.line.type}
-                  {row.kind === "upgrade" ? ` · nâng` : ""} · {row.quote.nights} đêm
+                  {row.kind === "upgrade" ? ` · nâng` : row.kind === "downgrade" ? ` · hạ` : ""}
+                  {row.rateKept ? ` · giữ tiền` : ""} · {row.quote.nights} đêm
                 </span>
                 <span>{formatVnd(row.quote.gross ?? row.quote.subtotal + row.quote.breakfastOff)}</span>
               </div>

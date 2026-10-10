@@ -73,6 +73,29 @@ function lineDiscount(subtotal: number, kind: string | null | undefined, value: 
   return 0;
 }
 
+/** Split a booking total into nightly rates. The saved sum is the largest amount that divides across the nights. */
+export function ratesFromBookingTotal(total: number, nightCounts: number[]) {
+  const nights = nightCounts.map((count) => Math.max(0, Math.round(Number(count) || 0)));
+  const span = nights.reduce((sum, count) => sum + count, 0);
+  const safe = Math.max(0, Math.round(Number(total) || 0));
+  if (!nights.length || !span || !safe) return nights.map(() => 0);
+  const rates = nights.map((count) => (count ? Math.floor(safe / span) : 0));
+  let left = safe - rates.reduce((sum, rate, index) => sum + rate * nights[index], 0);
+  const order = nights
+    .map((count, index) => ({ count, index }))
+    .filter((row) => row.count > 0)
+    .sort((a, b) => a.count - b.count || a.index - b.index);
+  let guard = 0;
+  while (left > 0 && guard < span) {
+    guard += 1;
+    const pick = order.find((row) => row.count <= left);
+    if (!pick) break;
+    rates[pick.index] += 1;
+    left -= pick.count;
+  }
+  return rates;
+}
+
 export function bookingQuote<T extends QuoteLineInput>(rooms: T[]) {
   const lines = rooms.map((row) => {
     const nights = Math.max(0, nightsBetween(row.checkIn, row.checkOut));

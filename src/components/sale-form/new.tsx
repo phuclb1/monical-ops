@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { Field } from "@/components/ui";
 import { SALE_SOURCE_GROUPS, SALE_SOURCE_LABEL } from "@/lib/constants";
+import { formatDateNumeric } from "@/lib/datetime";
 import { extraAmount } from "@/lib/extras";
 import {
   bookingDue,
@@ -14,6 +15,7 @@ import {
   formatVnd,
   parseMoney,
   parseDiscountValue,
+  ratesFromBookingTotal,
 } from "@/lib/sales";
 import { defaultAdultsForRoomType } from "@/lib/rooms-catalog";
 import type { PaymentMethod } from "@/lib/types";
@@ -21,6 +23,7 @@ import { OtaCommissionFields, type CommissionKind } from "./commission";
 import { SaleFormExtras, type DraftExtra, type ExtraTypeOption } from "./extras";
 import { SaleFormRooms } from "./new-rooms";
 import { SaleFormSide } from "./new-side";
+import { BookingSaveDialog } from "./save-confirm";
 import { RoomTypeAvailability } from "./room-type-availability";
 import { emptyDiscount, groupRoomsByType, roomOpen, type DiscountState, type Room, type RoomType, type StayDates } from "./shared";
 
@@ -82,6 +85,10 @@ export function SaleForm({
   const [otaPaymentMode, setOtaPaymentMode] = useState<"debt" | "hotel">("debt");
   const [commissionKind, setCommissionKind] = useState<CommissionKind>("percent");
   const [commission, setCommission] = useState("");
+  const [otaTotal, setOtaTotal] = useState("");
+  const formRef = useRef<HTMLFormElement>(null);
+  const skipConfirm = useRef(false);
+  const [confirming, setConfirming] = useState(false);
   const [extras, setExtras] = useState<DraftExtra[]>([]);
   const [deposit, setDeposit] = useState(defaults.deposit ? String(defaults.deposit) : "");
   const [payMethod, setPayMethod] = useState<PaymentMethod>("personal");
@@ -97,16 +104,22 @@ export function SaleForm({
   const [breakfastAdults, setBreakfastAdults] = useState(String(defaults.breakfastAdults ?? defaults.adults ?? ""));
   const [breakfastChildren, setBreakfastChildren] = useState(String(defaults.breakfastChildren ?? defaults.children ?? 0));
   const [breakfastPaxTouched, setBreakfastPaxTouched] = useState(false);
+  const otaNightCounts = selectedRooms.map((room) => {
+    const stay = dates[room.id] || sharedStay;
+    return Math.max(0, nightsBetween(stay.checkIn, stay.checkOut));
+  });
+  const otaRateList = ota ? ratesFromBookingTotal(parseMoney(otaTotal), otaNightCounts) : [];
+  const otaRates = Object.fromEntries(selectedRooms.map((room, index) => [room.id, otaRateList[index] || 0]));
   const quoteInputs = selectedRooms.map((room) => {
     const stay = dates[room.id] || sharedStay;
     return {
       room,
-      rate: parseMoney(rates[room.id]),
+      rate: ota ? otaRates[room.id] || 0 : parseMoney(rates[room.id]),
       checkIn: stay.checkIn,
       checkOut: stay.checkOut,
       breakfast: breakfast[room.id] !== false,
-      discountKind: discounts[room.id]?.kind || "none",
-      discountValue: parseDiscountValue(discounts[room.id]?.kind, discounts[room.id]?.value),
+      discountKind: ota ? "none" : discounts[room.id]?.kind || "none",
+      discountValue: ota ? 0 : parseDiscountValue(discounts[room.id]?.kind, discounts[room.id]?.value),
     };
   });
   const booked = bookingQuote(quoteInputs);
@@ -225,9 +238,28 @@ export function SaleForm({
   }
 
   const saveLabel = allowMultiple && roomIds.length > 1 ? `Lưu ${roomIds.length} phòng` : submitLabel;
+  const typedOtaTotal = parseMoney(otaTotal);
+  const otaShort = ota && typedOtaTotal > booked.total ? typedOtaTotal - booked.total : 0;
+
+  function onSubmit(event: FormEvent<HTMLFormElement>) {
+    if (skipConfirm.current) {
+      skipConfirm.current = false;
+      return;
+    }
+    event.preventDefault();
+    setConfirming(true);
+  }
+
+  function confirmSave() {
+    const form = formRef.current;
+    if (!form || !form.reportValidity()) return;
+    skipConfirm.current = true;
+    setConfirming(false);
+    form.requestSubmit();
+  }
 
   return (
-    <form action={action} className="sale-form-desk space-y-3">
+    <form ref={formRef} action={action} className="sale-form-desk space-y-3" onSubmit={onSubmit}>
       <div className="sale-form-main card p-4">
       {defaults.id ? <input type="hidden" name="id" value={defaults.id} /> : null}
       {defaults.date ? <input type="hidden" name="date" value={defaults.date} /> : null}
@@ -252,6 +284,22 @@ export function SaleForm({
               <option value="hotel">Thanh toán tại KS — khách trả khách sạn</option>
             </select>
           </Field>
+          <Field label="Tổng booking (₫)">
+            <input
+              name="otaTotal"
+              inputMode="numeric"
+              required
+              value={otaTotal}
+              onChange={(e) => setOtaTotal(e.target.value)}
+              placeholder="0"
+            />
+          </Field>
+          <p className="-mt-1 text-xs text-[#5c6665]">Tiền phòng của cả booking. Chọn hạng và số phòng, không nhập giá từng phòng.</p>
+          {otaShort ? (
+            <p className="-mt-1 text-xs text-[#9a5b00]">
+              Còn {formatVnd(otaShort)} không chia hết theo số đêm. Tổng lưu {formatVnd(booked.total)}.
+            </p>
+          ) : null}
           <OtaCommissionFields kind={commissionKind} value={commission} onKind={setCommissionKind} onValue={setCommission} />
           <p className="-mt-1 text-xs text-[#5c6665]">Hoa hồng phải trả đối tác: {formatVnd(commissionAmount)}</p>
         </>
@@ -321,6 +369,8 @@ export function SaleForm({
         breakfast={breakfast}
         setBreakfast={setBreakfast}
         rates={rates}
+        ota={ota}
+        otaRates={otaRates}
         discounts={discounts}
         setDiscounts={setDiscounts}
         typeByName={typeByName}
@@ -362,6 +412,36 @@ export function SaleForm({
         roomIds={roomIds}
         saveLabel={saveLabel}
       />
+      {confirming ? (
+        <BookingSaveDialog
+          guestName={String(new FormData(formRef.current || undefined).get("guestName") || "")}
+          guestPhone={String(new FormData(formRef.current || undefined).get("guestPhone") || "")}
+          source={source}
+          lines={quotes.map((row) => ({
+            id: row.room.id,
+            title: `${row.room.type} · P.${row.room.number}`,
+            detail: `${formatDateNumeric(row.checkIn)} → ${formatDateNumeric(row.checkOut)} · ${row.quote.nights} đêm`,
+          }))}
+          money={
+            ota
+              ? [
+                  { label: "Tổng tiền phòng", value: formatVnd(booked.total) },
+                  ...(extraRows.length ? [{ label: "Phụ thu", value: formatVnd(extraRows.reduce((sum, row) => sum + row.amount, 0)) }] : []),
+                  { label: commissionLabel, value: formatVnd(commissionAmount) },
+                  { label: otaDebt ? "Công nợ OTA" : "Phải thu khi check-in", value: formatVnd(otaDebt ? bookingTotal : bookingTotal), emphasis: true },
+                ]
+              : [
+                  { label: quotes.length > 1 ? `Phải thu ${quotes.length} phòng` : "Phải thu", value: formatVnd(bookingTotal) },
+                  { label: depositAmount ? "Đặt cọc" : "Đặt cọc", value: depositAmount ? `−${formatVnd(depositAmount)}` : "Chưa có" },
+                  { label: "Còn phải thu", value: formatVnd(due), emphasis: true },
+                ]
+          }
+          note={otaShort ? `Còn ${formatVnd(otaShort)} không chia hết theo số đêm.` : undefined}
+          confirmLabel={saveLabel}
+          onCancel={() => setConfirming(false)}
+          onConfirm={confirmSave}
+        />
+      ) : null}
     </form>
   );
 }

@@ -85,7 +85,9 @@ export function SaleFormSide(props: {
               <li key={row.room.id}>
                 <div className="flex justify-between gap-2">
                   <span>
-                    {row.room.type} · {row.quote.nights} đêm × {formatVnd(row.rate)}
+                    {ota
+                      ? `${row.room.type} · P.${row.room.number} · ${row.quote.nights} đêm`
+                      : `${row.room.type} · ${row.quote.nights} đêm × ${formatVnd(row.rate)}`}
                   </span>
                   <span>{formatVnd(row.quote.gross ?? row.quote.subtotal + row.quote.breakfastOff)}</span>
                 </div>

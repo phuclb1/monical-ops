@@ -5,7 +5,7 @@ import { useRef, useState, useTransition, type PointerEvent as ReactPointerEvent
 import { moveGanttSaleAction } from "@/actions/sales";
 import { ParkingIcons } from "@/components/parking-icons";
 import { WEEKDAYS, addDaysVN, formatDateNumeric, weekdayISO } from "@/lib/datetime";
-import { bookingKey, catalogRate, nightsBetween, roomMoveKind } from "@/lib/sales";
+import { bookingKey, catalogRate, isOtaSource, nightsBetween, rateForRoomMove, roomMoveKind } from "@/lib/sales";
 import { GanttUpgradeDialog } from "./dialog";
 import { BAR, DRAG_PX, ganttBarTone, ganttSections, quoteTotal, rangeOpen, saleTitle, type ConfirmState, type DragState, type GanttGroup, type GanttRow, type GanttSale, type Hover, type RoomType } from "./model";
 
@@ -83,14 +83,18 @@ export function RoomGantt({
     }
     const kind = roomMoveKind(from.type, target.room.type, types);
     if (!kind) {
-      setNotice(`P.${target.room.number} (${target.room.type}) không cùng hạng và không phải nâng hạng so với ${from.type}.`);
+      setNotice(`P.${target.room.number} (${target.room.type}) không thuộc hạng phòng đã khai báo.`);
       return;
     }
-    const nextRate =
-      kind === "upgrade" ? catalogRate(types.find((type) => type.name === target.room.type), checkIn) || sale.rate : sale.rate;
+    const nextRate = rateForRoomMove(
+      kind,
+      catalogRate(types.find((type) => type.name === target.room.type), checkIn),
+      sale.rate,
+      isOtaSource(sale.source),
+    );
     const extra = quoteTotal(sale, nextRate, checkIn, checkOut) - quoteTotal(sale, sale.rate, sale.checkIn, sale.checkOut);
-    if (kind === "upgrade") {
-      setConfirm({ sale, room: target.room, checkIn, checkOut, extra });
+    if (kind !== "same") {
+      setConfirm({ sale, room: target.room, checkIn, checkOut, extra, rateKept: nextRate === sale.rate });
       return;
     }
     submitMove(sale, target.room.id, checkIn, checkOut);

@@ -1375,6 +1375,19 @@ label {
   .sale-room-hint {
     margin-top: 0.35rem;
   }
+
+  .sale-rooms.is-ota .sale-rooms-head {
+    display: none;
+  }
+
+  .sale-rooms.is-ota .sale-room {
+    display: flex;
+    flex-direction: column;
+    border: 1px solid var(--line);
+    border-radius: 0.75rem;
+    padding: 0.75rem;
+    background: transparent;
+  }
 }
 
 @media (min-width: 1100px) {

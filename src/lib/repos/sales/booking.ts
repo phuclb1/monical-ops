@@ -21,6 +21,7 @@ import {
   isSaleSource,
   normalizeCommission,
   normalizeDiscount,
+  rateForRoomMove,
   roomMoveKind,
 } from "../../sales";
 import type { SessionUser } from "../../types";
@@ -191,11 +192,13 @@ export async function updateBooking(
     if (row.status === "inhouse" && nextOut < today) throw new Error("Ngày trả không được trước hôm nay");
     const next = await assertSaleWindow(nextRoomId, nextIn, nextOut, active.map((item) => item.id));
     const kind = roomMoveKind(current.type, next.type, types);
-    if (!kind) throw new Error(`P.${next.number} không cùng hạng và không phải nâng hạng so với ${current?.type || "phòng hiện tại"}`);
-    const nextRate =
-      kind === "upgrade"
-        ? catalogRate(types.find((type) => type.name === next.type), nextIn) || row.rate
-        : row.rate;
+    if (!kind) throw new Error(`P.${next.number} không thuộc hạng phòng đã khai báo`);
+    const nextRate = rateForRoomMove(
+      kind,
+      catalogRate(types.find((type) => type.name === next.type), nextIn),
+      row.rate,
+      isOtaSource(source),
+    );
     const { discountKind, discountValue } = normalizeDiscount(
       assignment?.discountKind ?? row.discountKind,
       assignment?.discountValue ?? row.discountValue,

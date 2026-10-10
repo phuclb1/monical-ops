@@ -118,9 +118,13 @@ export function BookingConfirmation({ booking }: { booking: Booking }) {
               <th>Ngày đi</th>
               <th>Khách</th>
               <th>Số đêm</th>
-              <th>Giá/đêm</th>
-              <th>Giảm giá</th>
-              <th>Thành tiền</th>
+              {otaDebt ? null : (
+                <>
+                  <th>Giá/đêm</th>
+                  <th>Giảm giá</th>
+                  <th>Thành tiền</th>
+                </>
+              )}
             </tr>
           </thead>
           <tbody>
@@ -133,22 +137,28 @@ export function BookingConfirmation({ booking }: { booking: Booking }) {
                   <td>{formatDateNumeric(row.checkOut)}</td>
                   <td>{pax(row.adults, row.children)}</td>
                   <td>{line?.nights ?? 0}</td>
-                  <td className="booking-sheet-num">{money(row.rate)}</td>
-                  <td className="booking-sheet-num">{line?.discount ? money(line.discount) : "—"}</td>
-                  <td className="booking-sheet-num">{money(line?.total ?? 0)}</td>
+                  {otaDebt ? null : (
+                    <>
+                      <td className="booking-sheet-num">{money(row.rate)}</td>
+                      <td className="booking-sheet-num">{line?.discount ? money(line.discount) : "—"}</td>
+                      <td className="booking-sheet-num">{money(line?.total ?? 0)}</td>
+                    </>
+                  )}
                 </tr>
               );
             })}
             {booking.extras.map((row) => (
               <tr key={row.id}>
-                <td colSpan={7}>{row.name}</td>
-                <td className="booking-sheet-num">{money(row.amount)}</td>
+                <td colSpan={otaDebt ? 5 : 7}>{row.name}</td>
+                {otaDebt ? null : <td className="booking-sheet-num">{money(row.amount)}</td>}
               </tr>
             ))}
-            <tr className="is-total">
-              <td colSpan={7}>TỔNG CỘNG</td>
-              <td className="booking-sheet-num">{money(afterDiscount)}</td>
-            </tr>
+            {otaDebt ? null : (
+              <tr className="is-total">
+                <td colSpan={7}>TỔNG CỘNG</td>
+                <td className="booking-sheet-num">{money(afterDiscount)}</td>
+              </tr>
+            )}
           </tbody>
         </table>
 
@@ -170,62 +180,60 @@ export function BookingConfirmation({ booking }: { booking: Booking }) {
               </tr>
             </tbody>
           </table>
-          <table className="booking-sheet-sum">
-            <tbody>
-              <tr>
-                <th>Tổng tiền</th>
-                <td className="booking-sheet-num">{formatVndLetter(gross)}</td>
-              </tr>
-              <tr>
-                <th>Chiết khấu</th>
-                <td className="booking-sheet-num">{formatVndLetter(quote.discount)}</td>
-              </tr>
-              <tr>
-                <th>Tổng tiền sau chiết khấu</th>
-                <td className="booking-sheet-num">{formatVndLetter(afterDiscount)}</td>
-              </tr>
-              {otaDebt ? (
-                <>
-                  {booking.deposit ? (
+          {otaDebt ? (
+            <table className="booking-sheet-sum">
+              <tbody>
+                <tr className="is-strong">
+                  <th>Thanh toán</th>
+                  <td>Đã thanh toán qua OTA</td>
+                </tr>
+              </tbody>
+            </table>
+          ) : (
+            <table className="booking-sheet-sum">
+              <tbody>
+                <tr>
+                  <th>Tổng tiền</th>
+                  <td className="booking-sheet-num">{formatVndLetter(gross)}</td>
+                </tr>
+                <tr>
+                  <th>Chiết khấu</th>
+                  <td className="booking-sheet-num">{formatVndLetter(quote.discount)}</td>
+                </tr>
+                <tr>
+                  <th>Tổng tiền sau chiết khấu</th>
+                  <td className="booking-sheet-num">{formatVndLetter(afterDiscount)}</td>
+                </tr>
+                {ota ? (
+                  <>
                     <tr>
-                      <th>Đã thu</th>
+                      <th>Công nợ OTA</th>
+                      <td className="booking-sheet-num">{formatVndLetter(0)}</td>
+                    </tr>
+                    <tr>
+                      <th>Đã thu tại khách sạn</th>
                       <td className="booking-sheet-num">{formatVndLetter(booking.deposit)}</td>
                     </tr>
-                  ) : null}
-                  <tr className="is-strong">
-                    <th>Công nợ OTA</th>
-                    <td className="booking-sheet-num">{formatVndLetter(booking.due)}</td>
-                  </tr>
-                </>
-              ) : ota ? (
-                <>
-                  <tr>
-                    <th>Công nợ OTA</th>
-                    <td className="booking-sheet-num">{formatVndLetter(0)}</td>
-                  </tr>
-                  <tr>
-                    <th>Đã thu tại khách sạn</th>
-                    <td className="booking-sheet-num">{formatVndLetter(booking.deposit)}</td>
-                  </tr>
-                  <tr className="is-strong">
-                    <th>Còn khách thanh toán</th>
-                    <td className="booking-sheet-num">{formatVndLetter(booking.due)}</td>
-                  </tr>
-                </>
-              ) : (
-                <>
-                  <tr>
-                    <th>Đặt cọc</th>
-                    <td className="booking-sheet-num">{formatVndLetter(booking.deposit)}</td>
-                  </tr>
-                  <tr className="is-strong">
-                    <th>Còn phải thanh toán</th>
-                    <td className="booking-sheet-num">{formatVndLetter(booking.due)}</td>
-                  </tr>
-                </>
-              )}
-            </tbody>
-          </table>
+                    <tr className="is-strong">
+                      <th>Còn khách thanh toán</th>
+                      <td className="booking-sheet-num">{formatVndLetter(booking.due)}</td>
+                    </tr>
+                  </>
+                ) : (
+                  <>
+                    <tr>
+                      <th>Đặt cọc</th>
+                      <td className="booking-sheet-num">{formatVndLetter(booking.deposit)}</td>
+                    </tr>
+                    <tr className="is-strong">
+                      <th>Còn phải thanh toán</th>
+                      <td className="booking-sheet-num">{formatVndLetter(booking.due)}</td>
+                    </tr>
+                  </>
+                )}
+              </tbody>
+            </table>
+          )}
         </div>
       </section>
 
