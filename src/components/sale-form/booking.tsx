@@ -1,14 +1,16 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import { Btn, Field, MoneyMethodField } from "@/components/ui";
 import { SALE_SOURCE_GROUPS, SALE_SOURCE_LABEL } from "@/lib/constants";
-import { bookingDue, bookingPayMethods, bookingQuote, catalogRate, collectedSplit, formatVnd, isOtaDebt, isOtaSource, parseMoney, parseDiscountValue, rangesOverlap, rateForRoomMove, roomAdultCap, roomMoveKind } from "@/lib/sales";
+import { formatDateNumeric } from "@/lib/datetime";
+import { bookingDue, bookingPayMethods, bookingQuote, catalogRate, collectedSplit, formatVnd, isOtaDebt, isOtaSource, nightsBetween, parseMoney, parseDiscountValue, rangesOverlap, rateForRoomMove, roomAdultCap, roomMoveKind } from "@/lib/sales";
 import { extraAmount } from "@/lib/extras";
 import type { PaymentMethod } from "@/lib/types";
 import { OtaCommissionFields, type CommissionKind } from "./commission";
 import { BookingRoomLines } from "./booking-lines";
 import { BookingQuote } from "./booking-quote";
+import { BookingSaveDialog } from "./save-confirm";
 import { parseDiscountState, type DiscountState, type StayDates } from "./shared";
 
 export function BookingForm({
@@ -111,6 +113,10 @@ export function BookingForm({
     ? Math.min(100, Math.max(0, Math.round(Number(commission) || 0)))
     : parseMoney(commission);
   const switchedToOtaDebt = otaDebt && !isOtaDebt(defaults.source, defaults.otaPaymentMode);
+  const formRef = useRef<HTMLFormElement>(null);
+  const skipConfirm = useRef(false);
+  const [confirming, setConfirming] = useState(false);
+  const [previewGuest, setPreviewGuest] = useState({ name: "", phone: "" });
 
   function stayOf(saleId: string, fallback: StayDates) {
     return dates[saleId] || fallback;
@@ -259,8 +265,62 @@ export function BookingForm({
     setBreakfastChildren((prev) => String(Math.min(stayChildren, Math.max(0, Number(prev) || 0))));
   }, [anyBreakfast, stayAdults, stayChildren, breakfastPaxTouched]);
 
+  const confirmLabel = requiresApproval && hasApprovalChange ? "Gửi phê duyệt" : "Lưu booking";
+
+  function onSubmit(event: FormEvent<HTMLFormElement>) {
+    if (skipConfirm.current) {
+      skipConfirm.current = false;
+      return;
+    }
+    event.preventDefault();
+    const data = new FormData(event.currentTarget);
+    setPreviewGuest({ name: String(data.get("guestName") || ""), phone: String(data.get("guestPhone") || "") });
+    setConfirming(true);
+  }
+
+  function confirmSave() {
+    const form = formRef.current;
+    if (!form || !form.reportValidity()) return;
+    skipConfirm.current = true;
+    setConfirming(false);
+    form.requestSubmit();
+  }
+
+  const confirmLines = [
+    ...quotes.map((row) => {
+      const room = row.room;
+      const number = room?.number || row.line.number;
+      const type = room?.type || row.line.type;
+      return {
+        id: row.line.saleId,
+        title: `${type} · P.${number}`,
+        detail: `${formatDateNumeric(row.checkIn)} → ${formatDateNumeric(row.checkOut)} · ${nightsBetween(row.checkIn, row.checkOut)} đêm`,
+      };
+    }),
+    ...removed.map((saleId) => {
+      const line = lines.find((row) => row.saleId === saleId);
+      return {
+        id: `remove-${saleId}`,
+        title: `Xóa ${line?.type || "phòng"} · P.${line?.number || "—"}`,
+        detail: "Phòng này sẽ bị xóa khỏi booking",
+      };
+    }),
+  ];
+  const confirmMoney = ota
+    ? [
+        { label: "Phải thu", value: formatVnd(bookingTotal) },
+        { label: commissionLabel, value: formatVnd(commissionAmount) },
+        { label: otaDebt ? "Công nợ OTA" : "Còn phải thu", value: formatVnd(due), emphasis: true },
+      ]
+    : [
+        { label: "Phải thu", value: formatVnd(bookingTotal) },
+        ...(holdAmount ? [{ label: "Đặt cọc", value: `−${formatVnd(holdAmount)}` }] : []),
+        ...(checkinAmount ? [{ label: "Thu đủ khi check-in", value: `−${formatVnd(checkinAmount)}` }] : []),
+        { label: "Còn phải thu", value: formatVnd(due), emphasis: true },
+      ];
+
   return (
-    <form action={action} className="space-y-3">
+    <form ref={formRef} action={action} className="space-y-3" onSubmit={onSubmit}>
       <input type="hidden" name="bookingId" value={defaults.bookingId} />
       <p className="text-xs font-semibold text-[#5c6665]">Thông tin khách</p>
       <Field label="Họ tên">
@@ -447,8 +507,21 @@ export function BookingForm({
         due={due}
       />
       <Btn type="submit" className="w-full">
-        {requiresApproval && hasApprovalChange ? "Gửi phê duyệt" : "Lưu booking"}
+        {confirmLabel}
       </Btn>
+      {confirming ? (
+        <BookingSaveDialog
+          guestName={previewGuest.name}
+          guestPhone={previewGuest.phone}
+          source={source}
+          lines={confirmLines}
+          money={confirmMoney}
+          note={requiresApproval && hasApprovalChange ? "Booking chỉ đổi sau khi quản lý duyệt." : undefined}
+          confirmLabel={confirmLabel}
+          onCancel={() => setConfirming(false)}
+          onConfirm={confirmSave}
+        />
+      ) : null}
     </form>
   );
 }

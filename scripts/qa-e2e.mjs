@@ -146,6 +146,17 @@ async function mustNot(shot, needles) {
   return text;
 }
 
+async function saveBooking() {
+  await page.getByRole("button", { name: /Lưu/ }).click();
+  const dialog = page.getByRole("dialog", { name: "Xác nhận lưu booking" });
+  await dialog.waitFor({ timeout: 10000 });
+  await Promise.all([
+    page.waitForURL(/\/sales\/bookings\//, { timeout: 25000 }),
+    dialog.getByRole("button", { name: /Lưu|Gửi phê duyệt/ }).click(),
+  ]);
+  await ready();
+}
+
 async function pickOpenRoom() {
   const boxes = page.locator('input[name="roomId"][type="checkbox"]');
   const n = await boxes.count();
@@ -219,11 +230,7 @@ try {
     await page.locator('input[name="deposit"]').fill("200000");
     const now = page.locator('input[name="checkinNow"]');
     if (await now.count()) await now.uncheck();
-    await Promise.all([
-      page.waitForURL(/\/sales\/bookings\//, { timeout: 25000 }),
-      page.getByRole("button", { name: /Lưu/ }).click(),
-    ]);
-    await ready();
+    await saveBooking();
     await must(shot, [GUEST, `P.${ROOM}`, "Đã đặt cọc", "Còn phải thu", "Đã giữ"]);
   });
 
@@ -382,6 +389,7 @@ try {
     await go("/sales/new");
     await page.locator('select[name="source"]').selectOption("agoda");
     const room = await pickOpenRoom();
+    await page.locator('input[name="otaTotal"]').fill("800000");
     await page.locator('input[name="guestName"]').fill("E2E OTA");
     await page.locator('input[name="guestPhone"]').fill("0900000104");
     const now = page.locator('input[name="checkinNow"]');
@@ -393,12 +401,8 @@ try {
     }
     await must(shot, ["Công nợ OTA", "Agoda", "Xuất hóa đơn"]);
     await mustNot(shot, ["Đặt cọc", "Thu đủ", "Chưa cọc", "Từ ezCloud"]);
-    await Promise.all([
-      page.waitForURL(/\/sales\/bookings\//, { timeout: 25000 }),
-      page.getByRole("button", { name: /Lưu/ }).click(),
-    ]);
-    await ready();
-    await must(shot, ["E2E OTA", `P.${room}`, "Công nợ OTA", "Agoda", "Đã giữ", "Không xuất hóa đơn"]);
+    await saveBooking();
+    await must(shot, ["E2E OTA", `P.${room}`, "Công nợ OTA", "Agoda", "Đã giữ", "Yêu cầu xuất hóa đơn"]);
     await mustNot(shot, ["Đặt cọc", "Thu đủ", "Chưa cọc", "Còn phải thu"]);
   });
 
@@ -417,11 +421,7 @@ try {
     const now = page.locator('input[name="checkinNow"]');
     if (await now.count()) await now.uncheck();
     await must(shot, ["Xe đón sân bay", "150.000₫"]);
-    await Promise.all([
-      page.waitForURL(/\/sales\/bookings\//, { timeout: 25000 }),
-      page.getByRole("button", { name: /Lưu/ }).click(),
-    ]);
-    await ready();
+    await saveBooking();
     await must(shot, ["E2E Phu Thu", `P.${room}`, "Xe đón sân bay", "150.000₫", "Đã giữ", "Yêu cầu xuất hóa đơn"]);
   });
 
@@ -430,19 +430,14 @@ try {
     await page.locator('select[name="source"]').selectOption("agoda");
     await page.locator('select[name="otaPaymentMode"]').selectOption("hotel");
     const room = await pickOpenRoom();
-    const selectedRoomId = await page.locator('input[name="roomId"]:checked').inputValue();
-    await page.locator(`input[name="rate-${selectedRoomId}"]`).fill("900000");
+    await page.locator('input[name="otaTotal"]').fill("900000");
     await page.locator('input[name="guestName"]').fill("E2E OTA Tai KS");
     await page.locator('input[name="guestPhone"]').fill("0900000306");
     const now = page.locator('input[name="checkinNow"]');
     if (await now.count()) await now.uncheck();
     await must(shot, ["Thanh toán tại KS", "Công nợ OTA", "0₫", "Phải thu khi check-in"]);
     await mustNot(shot, ["Đặt cọc", "Chưa đặt cọc"]);
-    await Promise.all([
-      page.waitForURL(/\/sales\/bookings\//, { timeout: 25000 }),
-      page.getByRole("button", { name: /Lưu/ }).click(),
-    ]);
-    await ready();
+    await saveBooking();
     await must(shot, [
       "E2E OTA Tai KS",
       `P.${room}`,

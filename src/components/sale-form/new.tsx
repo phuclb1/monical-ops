@@ -89,6 +89,7 @@ export function SaleForm({
   const formRef = useRef<HTMLFormElement>(null);
   const skipConfirm = useRef(false);
   const [confirming, setConfirming] = useState(false);
+  const [previewGuest, setPreviewGuest] = useState({ name: "", phone: "" });
   const [extras, setExtras] = useState<DraftExtra[]>([]);
   const [deposit, setDeposit] = useState(defaults.deposit ? String(defaults.deposit) : "");
   const [payMethod, setPayMethod] = useState<PaymentMethod>("personal");
@@ -247,6 +248,9 @@ export function SaleForm({
       return;
     }
     event.preventDefault();
+    if (!roomIds.length) return;
+    const data = new FormData(event.currentTarget);
+    setPreviewGuest({ name: String(data.get("guestName") || ""), phone: String(data.get("guestPhone") || "") });
     setConfirming(true);
   }
 
@@ -414,8 +418,8 @@ export function SaleForm({
       />
       {confirming ? (
         <BookingSaveDialog
-          guestName={String(new FormData(formRef.current || undefined).get("guestName") || "")}
-          guestPhone={String(new FormData(formRef.current || undefined).get("guestPhone") || "")}
+          guestName={previewGuest.name}
+          guestPhone={previewGuest.phone}
           source={source}
           lines={quotes.map((row) => ({
             id: row.room.id,
@@ -428,7 +432,7 @@ export function SaleForm({
                   { label: "Tổng tiền phòng", value: formatVnd(booked.total) },
                   ...(extraRows.length ? [{ label: "Phụ thu", value: formatVnd(extraRows.reduce((sum, row) => sum + row.amount, 0)) }] : []),
                   { label: commissionLabel, value: formatVnd(commissionAmount) },
-                  { label: otaDebt ? "Công nợ OTA" : "Phải thu khi check-in", value: formatVnd(otaDebt ? bookingTotal : bookingTotal), emphasis: true },
+                  { label: otaDebt ? "Công nợ OTA" : "Phải thu khi check-in", value: formatVnd(bookingTotal), emphasis: true },
                 ]
               : [
                   { label: quotes.length > 1 ? `Phải thu ${quotes.length} phòng` : "Phải thu", value: formatVnd(bookingTotal) },
