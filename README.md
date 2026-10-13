@@ -32,6 +32,46 @@ Mỗi booking upsert theo `pmsCode` vào **Lễ tân** và **Bán phòng**. `pla
 
 PRD: `npx wrangler secret put INGEST_SECRET` — không để secret trong `wrangler.jsonc`.
 
+## Open API + webhook Codex
+
+Cấu hình tại **Cài đặt → Cấu hình**: bấm **Tạo API token**, sao chép token, dán URL webhook Codex. Agent gọi Open API bằng `Authorization: Bearer <token>`. Token lưu trong `app_settings`, không để trong wrangler.
+
+Nếu chưa tạo token trên web, local vẫn fallback `OPEN_API_SECRET` / `INGEST_SECRET`.
+
+Spec implement cho Codex: [`docs/codex-ezcloud-agent.md`](docs/codex-ezcloud-agent.md).
+
+Agent trên máy local poll mỗi 2 phút — lần sau dùng `polledAt` làm `since`:
+
+```bash
+curl -sS "https://platform.monicalhoteldalat.com/api/open/bookings?since=2026-10-12T07:50:00.000Z" \
+  -H "Authorization: Bearer $OPEN_API_TOKEN"
+```
+
+```bash
+# Tạo booking
+curl -sS -X POST http://localhost:3000/api/open/bookings \
+  -H "Authorization: Bearer $OPEN_API_SECRET" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "guestName": "Nguyễn Văn A",
+    "guestPhone": "0901234567",
+    "source": "walk_in",
+    "checkIn": "2026-10-15",
+    "checkOut": "2026-10-17",
+    "rooms": [{ "roomNumber": "401", "rate": 900000, "adults": 2 }]
+  }'
+
+# Lấy booking theo id hoặc mã PMS
+curl -sS http://localhost:3000/api/open/bookings/BK-10-12 \
+  -H "Authorization: Bearer $OPEN_API_SECRET"
+curl -sS "http://localhost:3000/api/open/bookings?pmsCode=BK-10-12" \
+  -H "Authorization: Bearer $OPEN_API_SECRET"
+```
+
+Khi lễ tân / quản lý **tạo booking**, **đổi phòng**, **thêm ngày** hoặc **thêm phòng** trên Ops, worker POST JSON tới URL webhook đã lưu. Booking tạo từ Open API / ingest không gửi lại (tránh vòng).
+
+Payload webhook: `{ event, events, at, actor, bookingId, pmsCode, changes, booking }`. `event` là `booking.created` | `booking.room_changed` | `booking.dates_changed` | `booking.rooms_added`. Nếu có secret, header `X-Ops-Signature: sha256=HMAC(timestamp.body)` và `X-Ops-Timestamp`.
+
 ## SePay báo tiền vào nhóm kế toán
 
 SePay gửi HTTP POST tới URL nền tảng `https://platform.monicalhoteldalat.com/api/webhooks/sepay` mỗi khi có giao dịch. Cùng URL hiện ở **Cài đặt → Zalo**. Worker nhận webhook, bỏ qua tiền ra, chống gửi trùng theo `id`, rồi nhắn Zalo vào nhóm kế toán.
@@ -114,4 +154,4 @@ SQLite local (`data/ops.db`) dùng khi `next dev`. Khi chạy trên Workers, app
 - BM-01, 03, 04, 05, 06, 09, 13, 14, 15
 - Thông báo trong web + báo cáo việc chưa xong
 
-P1/P2 (PDF, Zalo OA, kho…) chưa làm — đúng lộ trình spec. Ingest PMS từ agent crawl ezCloud: `POST /api/ingest/pms`.
+P1/P2 (PDF, Zalo OA, kho…) chưa làm — đúng lộ trình spec. Ingest PMS từ agent crawl ezCloud: `POST /api/ingest/pms`. Open API + webhook Codex: `POST /api/open/bookings`.

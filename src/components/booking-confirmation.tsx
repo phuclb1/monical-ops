@@ -5,6 +5,7 @@ import {
   HOTEL_BANK_HOLDER,
   HOTEL_BANK_NAME,
   HOTEL_BANK_NUMBER,
+  HOTEL_BANK_QR,
   HOTEL_EMAIL,
   HOTEL_LETTERHEAD,
   HOTEL_PHONE,
@@ -164,22 +165,27 @@ export function BookingConfirmation({ booking }: { booking: Booking }) {
 
         <h2>THANH TOÁN</h2>
         <div className="booking-sheet-pay">
-          <table className="booking-sheet-kv">
-            <tbody>
-              <tr>
-                <th>Chủ tài khoản</th>
-                <td>{HOTEL_BANK_HOLDER || "—"}</td>
-              </tr>
-              <tr>
-                <th>Số tài khoản</th>
-                <td>{HOTEL_BANK_NUMBER || "—"}</td>
-              </tr>
-              <tr>
-                <th>Ngân hàng</th>
-                <td>{HOTEL_BANK_NAME || "—"}</td>
-              </tr>
-            </tbody>
-          </table>
+          <div className="booking-sheet-bank">
+            {HOTEL_BANK_QR ? (
+              <img src={HOTEL_BANK_QR} alt="QR chuyển khoản Vietcombank" className="booking-sheet-qr" />
+            ) : null}
+            <table className="booking-sheet-kv">
+              <tbody>
+                <tr>
+                  <th>Chủ tài khoản</th>
+                  <td>{HOTEL_BANK_HOLDER || "—"}</td>
+                </tr>
+                <tr>
+                  <th>Số tài khoản</th>
+                  <td>{HOTEL_BANK_NUMBER || "—"}</td>
+                </tr>
+                <tr>
+                  <th>Ngân hàng</th>
+                  <td>{HOTEL_BANK_NAME || "—"}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
           {otaDebt ? (
             <table className="booking-sheet-sum">
               <tbody>

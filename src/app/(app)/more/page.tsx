@@ -94,6 +94,7 @@ export default async function MorePage() {
       <Card>
         <p className="text-sm leading-6 text-[#5c6665]">
           Monical Quản lý vận hành không gọi ezCloudhotel. Agent crawl PMS rồi POST vào <code className="text-xs">/api/ingest/pms</code>.
+          Open API tạo/đọc booking: <code className="text-xs">/api/open/bookings</code>. Đổi phòng / thêm ngày trên web gửi webhook Codex.
           Lễ tân/quản lý bán phòng và đối chiếu mã PMS trên web. Zalo chỉ để thông báo nhanh.
         </p>
       </Card>

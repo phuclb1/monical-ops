@@ -8,24 +8,17 @@ import { BookingExtrasPanel } from "@/components/booking-extras";
 import { BookingPaymentPanel } from "@/components/booking-payment";
 import { BookingRoomList } from "@/components/booking-room-list";
 import { BookingLog } from "@/components/booking-log";
-import { Card, Chip, Fold } from "@/components/ui";
+import { BookingLifeChips, BookingLifecycleBar } from "@/components/booking-lifecycle";
+import { Card, Fold } from "@/components/ui";
 import { getSession } from "@/lib/auth";
-import { PAYMENT_METHOD_LABEL, SALE_ORIGIN_LABEL, SALE_SOURCE_LABEL, SALE_STATUS_LABEL } from "@/lib/constants";
+import { PAYMENT_METHOD_LABEL, SALE_ORIGIN_LABEL, SALE_SOURCE_LABEL } from "@/lib/constants";
 import { formatDateLong, todayVN } from "@/lib/datetime";
 import { extraDetail } from "@/lib/extras";
 import { maskName, maskPhone } from "@/lib/mask";
 import { can } from "@/lib/permissions";
 import { getBooking, listBookingChangeRequests, listBookingLogs, listRooms, listRoomSales, listRoomTypes, listSaleExtraTypes } from "@/lib/repos";
-import { bookingPayMethods, bookingQuote, collectedSplit, commissionAmount, depositRefundAllowed, formatVnd, isActiveSaleStatus, isOpsBookingCode, isOtaDebt, isOtaSource, paidNote, parkingLabel, refundParts } from "@/lib/sales";
-import type { SaleOrigin, SaleSource, SaleStatus } from "@/lib/types";
-
-const STATUS_TONE: Record<SaleStatus, "ok" | "warn" | "danger" | "gold" | "neutral"> = {
-  reserved: "gold",
-  inhouse: "ok",
-  departed: "neutral",
-  cancelled: "danger",
-  no_show: "warn",
-};
+import { bookingLifecycle, bookingPayMethods, bookingQuote, collectedSplit, commissionAmount, depositRefundAllowed, formatVnd, guestCheckoutDue, isActiveSaleStatus, isOpsBookingCode, isOtaDebt, isOtaSource, paidNote, parkingLabel, refundParts } from "@/lib/sales";
+import type { SaleOrigin, SaleSource } from "@/lib/types";
 
 export default async function BookingDetailPage({
   params,
@@ -65,6 +58,7 @@ export default async function BookingDetailPage({
   const staying = activeRooms.filter((row) => row.status === "inhouse");
   const ota = isOtaSource(booking.source);
   const otaDebt = isOtaDebt(booking.source, booking.otaPaymentMode);
+  const life = bookingLifecycle(booking);
   const paidSplit = collectedSplit(booking.deposit, booking.checkinPaid);
   const payMethods = bookingPayMethods(booking);
   const earliestIn = activeRooms.reduce((min, row) => (row.checkIn < min ? row.checkIn : min), activeRooms[0]?.checkIn || booking.checkIn);
@@ -106,18 +100,10 @@ export default async function BookingDetailPage({
             </p>
           </div>
           <div className="flex flex-col items-end gap-1">
-            <Chip tone={STATUS_TONE[booking.status]}>{SALE_STATUS_LABEL[booking.status]}</Chip>
-            {otaDebt ? (
-              <Chip tone="gold">Công nợ OTA</Chip>
-            ) : ota ? (
-              <Chip tone="ok">Thanh toán tại KS</Chip>
-            ) : booking.deposit ? (
-              <Chip tone="ok">Đã cọc</Chip>
-            ) : isActiveSaleStatus(booking.status) ? (
-              <Chip tone="warn">Chưa cọc</Chip>
-            ) : null}
+            <BookingLifeChips life={life} />
           </div>
         </div>
+        <BookingLifecycleBar life={life} />
       </div>
       {error ? <p className="text-sm text-[#c23b3b]">{error}</p> : null}
       {approval === "requested" ? (
@@ -275,6 +261,7 @@ export default async function BookingDetailPage({
               today={today}
               bookingId={booking.id}
               readOnly={!manage}
+              checkoutDue={guestCheckoutDue(booking.due, booking.source, booking.otaPaymentMode)}
               ota={otaDebt}
               otaHotel={ota && !otaDebt}
               totals={{

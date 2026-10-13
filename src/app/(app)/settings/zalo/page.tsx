@@ -1,8 +1,8 @@
 import { redirect } from "next/navigation";
-import { disconnectZaloAction, saveZaloPhoneAction } from "@/actions/zalo";
+import { disconnectZaloAction, saveZaloEnabledAction, saveZaloPhoneAction } from "@/actions/zalo";
 import { SettingsNav } from "@/components/settings-nav";
 import { ZaloConnectButton, ZaloGroupManager, ZaloMessageManager, ZaloTestSend } from "@/components/zalo-settings";
-import { Btn, Card, Field, TabChip } from "@/components/ui";
+import { Btn, Card, Chip, Field, TabChip } from "@/components/ui";
 import { getSession } from "@/lib/auth";
 import { formatDateTime } from "@/lib/datetime";
 import { can } from "@/lib/permissions";
@@ -10,6 +10,7 @@ import { sepayWebhookUrl } from "@/lib/sepay";
 import { platformOrigin } from "@/lib/site";
 import { loadZaloPublicStatus } from "@/lib/zalo-session";
 import { ZALO_GROUP_SLOTS, ZALO_MESSAGE_DEFS } from "@/lib/zalo-messages";
+import { zaloOutboxCounts } from "@/lib/zalo-outbox";
 
 const SAVED: Record<string, string> = {
   phone: "Đã lưu số Zalo.",
@@ -22,8 +23,10 @@ const SAVED: Record<string, string> = {
   "booking-updated": "Đã lưu tin sửa booking.",
   "booking-checkin-paid": "Đã lưu tin check-in đã thu đủ.",
   "money-in": "Đã lưu tin tiền vào tài khoản.",
-  test: "Đã gửi tin thử.",
+  test: "Đã xếp tin vào hàng gửi. Máy Windows sẽ gửi.",
   cleared: "Đã xóa phiên Zalo.",
+  on: "Đã bật gửi tin Zalo.",
+  off: "Đã tắt gửi tin Zalo.",
 };
 
 const EVENT_LABEL = {
@@ -43,7 +46,7 @@ export default async function ZaloSettingsPage({
   if (!can(user.role, "manageSettings")) redirect("/settings");
   const { error, saved, tab } = await searchParams;
   const current = tab === "messages" ? "messages" : "groups";
-  const zalo = await loadZaloPublicStatus();
+  const [zalo, queue] = await Promise.all([loadZaloPublicStatus(), zaloOutboxCounts()]);
   const webhookUrl = sepayWebhookUrl(await platformOrigin());
   const savedText = saved ? SAVED[saved] || "" : "";
 
@@ -56,6 +59,25 @@ export default async function ZaloSettingsPage({
       <SettingsNav role={user.role} current="/settings/zalo" />
       {error ? <p className="text-sm font-medium text-[#c23b3b]">{error}</p> : null}
       {savedText ? <p className="text-sm font-medium text-[#1b7a4e]">{savedText}</p> : null}
+
+      <Card>
+        <div className="mb-2 flex items-center justify-between gap-3">
+          <h2 className="font-bold">Gửi tin</h2>
+          <Chip tone={zalo.enabled ? "ok" : "warn"}>{zalo.enabled ? "Đang bật" : "Đang tắt"}</Chip>
+        </div>
+        <form action={saveZaloEnabledAction} className="space-y-3">
+          <label className="flex min-h-12 items-center gap-3 rounded-xl border border-line bg-white px-3 py-2">
+            <input type="checkbox" name="enabled" defaultChecked={zalo.enabled} />
+            <span className="text-sm font-semibold">Bật gửi tin Zalo</span>
+          </label>
+          <p className="text-xs leading-5 text-[#5c6665]">
+            Tắt thì không xếp tin mới. Tin đã xếp được máy Windows tại khách sạn gửi, không gửi từ máy chủ Mỹ.
+            {queue.pending ? ` Đang chờ gửi: ${queue.pending}.` : ""}
+            {queue.failed ? ` Lỗi: ${queue.failed}.` : ""}
+          </p>
+          <Btn type="submit">Lưu</Btn>
+        </form>
+      </Card>
 
       <Card>
         <h2 className="mb-2 font-bold">Số gửi tin</h2>

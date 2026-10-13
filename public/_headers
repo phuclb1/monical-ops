@@ -4,6 +4,9 @@
 /logo.png
   Cache-Control: public, max-age=31536000, immutable
 
+/QRCODE.png
+  Cache-Control: public, max-age=86400
+
 /icon-192.png
   Cache-Control: public, max-age=31536000, immutable
 

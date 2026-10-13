@@ -57,6 +57,7 @@ export {
   isSaleSource,
   isOtaSource,
   isOtaDebt,
+  guestCheckoutDue,
   parseSaleSource,
   formatOpsBookingCode,
   parseOpsBookingCode,
@@ -86,3 +87,12 @@ export { bookingSearchText, matchesBookingSearch } from "./search";
 export type { BookingSearchRow } from "./search";
 export { BOOKING_LIST_VIEWS, bookingMatchesListView, isBookingListView } from "./list-view";
 export type { BookingListView } from "./list-view";
+export {
+  BOOKING_LIFE_STEPS,
+  BOOKING_LIFE_STEP_LABEL,
+  BOOKING_LIFE_CHIP_LABEL,
+  BOOKING_LIFE_CHIP_TONE,
+  bookingLifecycle,
+  bookingLifeChip,
+} from "./lifecycle";
+export type { BookingLifeStep, BookingLifePhase, BookingLifeState, BookingLifecycle } from "./lifecycle";

@@ -14,6 +14,7 @@ import { notifyBookingChange } from "./notify";
 import { extraAmount } from "../../extras";
 import { insertSaleExtras, resolveSaleExtras } from "./extras";
 import { applySaleRoomState, syncStayFromSale } from "./stay";
+import { dispatchBookingWebhook } from "@/lib/booking-webhook";
 import { dispatchBookingZalo, dispatchCheckinPaidZalo } from "@/lib/zalo-notify";
 
 export async function createRoomSale(user: SessionUser, data: SaleInput) {
@@ -151,6 +152,11 @@ export async function createRoomSale(user: SessionUser, data: SaleInput) {
       await dispatchCheckinPaidZalo(user.id, bookingId, false).catch((error) => console.error("zalo booking", error));
     }
   }
+  await dispatchBookingWebhook({
+    actor: user,
+    bookingId,
+    events: existing ? ["booking.rooms_added"] : ["booking.created"],
+  }).catch((error) => console.error("booking webhook", error));
   return { id: ids[0], bookingId };
 }
 

@@ -1,0 +1,11 @@
+{
+  "name": "monical-zalo-sender",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "zca-js": "^2.2.0"
+  }
+}

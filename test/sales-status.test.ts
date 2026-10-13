@@ -18,6 +18,7 @@ import {
   isLegacyOpsBookingCode,
   isOpsBookingCode,
   isOtaDebt,
+  guestCheckoutDue,
   occupiesNight,
   parseOpsBookingCode,
   isOtaSource,
@@ -53,6 +54,10 @@ test("OTA / walk-in source aliases and booking codes", () => {
   assert.equal(isOtaDebt("agoda", "debt"), true);
   assert.equal(isOtaDebt("agoda", "hotel"), false);
   assert.equal(isOtaDebt("walk_in", "debt"), false);
+  assert.equal(guestCheckoutDue(750_000, "walk_in"), 750_000);
+  assert.equal(guestCheckoutDue(750_000, "agoda", "hotel"), 750_000);
+  assert.equal(guestCheckoutDue(750_000, "agoda", "debt"), 0);
+  assert.equal(guestCheckoutDue(0, "walk_in"), 0);
   assert.equal(parseSaleSource("dien thoai"), "phone");
   assert.equal(formatOpsBookingCode(3, 9), "BK-09-3");
   assert.deepEqual(parseOpsBookingCode("BK-09-3"), { month: 9, seq: 3 });

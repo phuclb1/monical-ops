@@ -1,14 +1,15 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { Btn, Card, Chip, Empty, Field, TabChip } from "@/components/ui";
+import { BookingLifeChips } from "@/components/booking-lifecycle";
+import { Btn, Card, Empty, Field, TabChip } from "@/components/ui";
 import { getSession } from "@/lib/auth";
-import { SALE_ORIGIN_LABEL, SALE_SOURCE_LABEL, SALE_STATUS_LABEL } from "@/lib/constants";
+import { SALE_ORIGIN_LABEL, SALE_SOURCE_LABEL } from "@/lib/constants";
 import { formatDateLong, formatDateNumeric, todayVN } from "@/lib/datetime";
 import { maskName } from "@/lib/mask";
 import { can } from "@/lib/permissions";
 import { listBookings } from "@/lib/repos";
-import { bookingMatchesListView, formatVnd, isBookingListView, isOpsBookingCode, isOtaDebt, isOtaSource, matchesBookingSearch, paidNote, type BookingListView } from "@/lib/sales";
-import type { SaleOrigin, SaleSource, SaleStatus } from "@/lib/types";
+import { bookingLifecycle, bookingMatchesListView, formatVnd, isBookingListView, isOpsBookingCode, isOtaDebt, isOtaSource, matchesBookingSearch, type BookingListView } from "@/lib/sales";
+import type { SaleOrigin, SaleSource } from "@/lib/types";
 
 const VIEWS = [
   { id: "new", label: "Mới nhất" },
@@ -23,14 +24,6 @@ const TABS = [
   { id: "done", label: "Đã đóng" },
   { id: "all", label: "Tất cả" },
 ] as const;
-
-const STATUS_TONE: Record<SaleStatus, "ok" | "warn" | "danger" | "gold" | "neutral"> = {
-  reserved: "gold",
-  inhouse: "ok",
-  departed: "neutral",
-  cancelled: "danger",
-  no_show: "warn",
-};
 
 function isTab(value: string): value is (typeof TABS)[number]["id"] {
   return TABS.some((tab) => tab.id === value);
@@ -206,16 +199,7 @@ export default async function BookingsPage({
                       ) : null}
                     </div>
                     <div className="flex flex-col items-end gap-1">
-                      <Chip tone={STATUS_TONE[row.status]}>{SALE_STATUS_LABEL[row.status]}</Chip>
-                      {isOtaDebt(row.source, row.otaPaymentMode) ? (
-                        <Chip tone="gold">Công nợ OTA</Chip>
-                      ) : isOtaSource(row.source) ? (
-                        <Chip tone="ok">Thanh toán tại KS</Chip>
-                      ) : row.deposit ? (
-                        <Chip tone="ok">Đã cọc {formatVnd(row.deposit)}{paidNote(row) ? ` · ${paidNote(row)}` : ""}</Chip>
-                      ) : row.status === "reserved" || row.status === "inhouse" ? (
-                        <Chip tone="warn">Chưa cọc</Chip>
-                      ) : null}
+                      <BookingLifeChips life={bookingLifecycle(row)} />
                       <span className="text-xs text-[#5c6665]">Phải thu {formatVnd(row.total)}</span>
                       <span className="text-xs font-semibold">
                         {isOtaDebt(row.source, row.otaPaymentMode)
@@ -268,16 +252,7 @@ export default async function BookingsPage({
                 <p className="text-sm">{invoiceLabel(row)}</p>
                 <p className="text-sm">{SALE_SOURCE_LABEL[row.source as SaleSource] || row.source}</p>
                 <div className="flex flex-col items-start gap-1">
-                  <Chip tone={STATUS_TONE[row.status]}>{SALE_STATUS_LABEL[row.status]}</Chip>
-                  {isOtaDebt(row.source, row.otaPaymentMode) ? (
-                    <Chip tone="gold">Công nợ OTA</Chip>
-                  ) : isOtaSource(row.source) ? (
-                    <Chip tone="ok">Thanh toán tại KS</Chip>
-                  ) : row.deposit ? (
-                    <Chip tone="ok">Đã cọc{paidNote(row) ? ` · ${paidNote(row)}` : ""}</Chip>
-                  ) : row.status === "reserved" || row.status === "inhouse" ? (
-                    <Chip tone="warn">Chưa cọc</Chip>
-                  ) : null}
+                  <BookingLifeChips life={bookingLifecycle(row)} />
                 </div>
                 <div className="booking-list-money">
                   <p className="whitespace-nowrap text-xs text-[#5c6665]">{formatVnd(row.total)}</p>

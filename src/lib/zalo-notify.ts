@@ -14,7 +14,7 @@ import { collectedSplit, isOtaDebt } from "@/lib/sales";
 import type { SaleSource } from "@/lib/types";
 import type { SepayTransaction } from "@/lib/sepay";
 import { sendZaloToGroup } from "@/lib/zalo-client";
-import { claimZaloSchedule, loadZaloGroups, loadZaloMessages, zaloChannel } from "@/lib/zalo-session";
+import { claimZaloSchedule, loadZaloGroups, loadZaloMessages, zaloChannel, zaloMessagingEnabled } from "@/lib/zalo-session";
 import { scheduleIsDue, type ZaloMessageEvent } from "@/lib/zalo-messages";
 import {
   bookingCheckinPaidReady,
@@ -34,7 +34,8 @@ import {
 
 export async function sendZaloChannel(actorId: string, key: ZaloChannelKey, vars: Record<string, string | number>) {
   const channel = await zaloChannel(key);
-  if (!channel.groupId) return { sent: false as const, channel };
+  if (!(await zaloMessagingEnabled())) return { sent: false as const, channel, reason: "off" as const };
+  if (!channel.groupId) return { sent: false as const, channel, reason: "no-group" as const };
   const message = zaloOutbound(renderZaloTemplate(channel.template, vars));
   await sendZaloToGroup(actorId, channel.groupId, message);
   return { sent: true as const, channel, message };
@@ -114,6 +115,7 @@ async function recentEditText(bookingId: string, actorId: string) {
 }
 
 export async function dispatchBookingZalo(actorId: string, event: ZaloMessageEvent, bookingId: string) {
+  if (!(await zaloMessagingEnabled())) return;
   const booking = await getBooking(bookingId);
   if (!booking) return;
   const first = [...booking.rooms].sort((a, b) => a.createdAt.localeCompare(b.createdAt))[0];
@@ -170,6 +172,7 @@ export async function dispatchBookingZalo(actorId: string, event: ZaloMessageEve
 }
 
 export async function dispatchMoneyInZalo(tx: SepayTransaction) {
+  if (!(await zaloMessagingEnabled())) return { sent: false as const, reason: "off" as const };
   const [messages, groups] = await Promise.all([loadZaloMessages(), loadZaloGroups()]);
   const targets = messages.filter((message) => message.enabled && message.kind === "trigger" && message.event === "money_in");
   if (!targets.length) return { sent: false as const, reason: "disabled" as const };
@@ -224,6 +227,7 @@ export async function sendReceptionZalo(actorId: string, date = todayVN()) {
 }
 
 export async function runDueZaloSchedules(now = new Date()) {
+  if (!(await zaloMessagingEnabled())) return [];
   const [messages, groups] = await Promise.all([loadZaloMessages(), loadZaloGroups()]);
   const sent: string[] = [];
   for (const message of messages) {

@@ -30,6 +30,7 @@ import { assertSaleWindow, paymentOf } from "./helpers";
 import { notifyBookingChange } from "./notify";
 import { bookingCheckinPaidReady } from "@/lib/zalo-templates";
 import { dispatchBookingZalo, dispatchCheckinPaidZalo } from "@/lib/zalo-notify";
+import { dispatchBookingWebhook, bookingWebhookRooms } from "@/lib/booking-webhook";
 import { getBooking } from "./queries";
 import { cancelRoomSale } from "./lifecycle";
 import { syncStayFromSale } from "./stay";
@@ -258,5 +259,10 @@ export async function updateBooking(
   });
   await dispatchBookingZalo(user.id, "booking_updated", key).catch((error) => console.error("zalo booking", error));
   await dispatchCheckinPaidZalo(user.id, key, wasPaidInhouse).catch((error) => console.error("zalo booking", error));
+  await dispatchBookingWebhook({
+    actor: user,
+    bookingId: key,
+    beforeRooms: prior ? bookingWebhookRooms(prior) : null,
+  }).catch((error) => console.error("booking webhook", error));
   return key;
 }

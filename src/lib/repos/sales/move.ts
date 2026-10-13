@@ -7,6 +7,7 @@ import { bookingKey, catalogRate, isActiveSaleStatus, isOtaSource, rateForRoomMo
 import type { SessionUser } from "../../types";
 import { audit } from "../audit";
 import { assertSaleWindow } from "./helpers";
+import { dispatchBookingWebhook } from "@/lib/booking-webhook";
 import { bookingCreatedBy, notifyBookingChange } from "./notify";
 import { syncStayFromSale } from "./stay";
 
@@ -62,5 +63,18 @@ export async function moveGanttSale(
     title: `Sửa booking · ${before.guestName}`,
     body: `${user.fullName} · ${checkIn} → ${checkOut}`,
   });
+  await dispatchBookingWebhook({
+    actor: user,
+    bookingId,
+    beforeRooms: [
+      {
+        saleId: before.id,
+        roomId: before.roomId,
+        roomNumber: current.number,
+        checkIn: before.checkIn,
+        checkOut: before.checkOut,
+      },
+    ],
+  }).catch((error) => console.error("booking webhook", error));
   return bookingId;
 }

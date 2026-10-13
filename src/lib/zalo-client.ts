@@ -3,10 +3,12 @@ import {
   loadZaloCredentials,
   saveZaloCookies,
   saveZaloLogin,
+  zaloMessagingEnabled,
   type ZaloCredentials,
 } from "@/lib/zalo-session";
 import { normalizeZaloPhone, zaloPhonesMatch } from "@/lib/zalo";
 import { zaloOutbound } from "@/lib/zalo-templates";
+import { enqueueZaloOutbox } from "@/lib/zalo-outbox";
 
 const ZALO_UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:133.0) Gecko/20100101 Firefox/133.0";
 
@@ -106,11 +108,10 @@ export async function rememberZaloGroup(actorId: string, groupId: string) {
 }
 
 export async function sendZaloToGroup(actorId: string, groupId: string, message: string) {
-  return withZaloSession(actorId, async (api) => {
-    await api.keepAlive().catch(() => undefined);
-    const { ThreadType } = await import("zca-js");
-    await api.sendMessage(zaloOutbound(message), groupId, ThreadType.Group);
-  });
+  if (!(await zaloMessagingEnabled())) throw new Error("Đang tắt gửi tin Zalo.");
+  const stored = await loadZaloCredentials();
+  if (!stored) throw new Error("Quản lý chưa kết nối Zalo trong Cài đặt.");
+  await enqueueZaloOutbox(actorId, groupId, zaloOutbound(message));
 }
 
 async function withZaloSession<T>(actorId: string, run: (api: ZaloApi) => Promise<T>) {

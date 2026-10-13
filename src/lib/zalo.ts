@@ -37,6 +37,10 @@ export function zaloPhoneError(raw: string) {
   return null;
 }
 
+export function zaloMessagingOn(value: string | null | undefined) {
+  return value !== "0";
+}
+
 export function zaloPhonesMatch(left: string, right: string) {
   const a = normalizeZaloPhone(left);
   const b = normalizeZaloPhone(right);

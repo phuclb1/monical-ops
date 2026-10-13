@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { cookieDeadline, normalizeZaloPhone, zaloPhoneError, zaloPhonesMatch } from "../src/lib/zalo";
+import { cookieDeadline, normalizeZaloPhone, zaloMessagingOn, zaloPhoneError, zaloPhonesMatch } from "../src/lib/zalo";
 
 test("số Zalo lưu dạng 10 số bắt đầu bằng 0", () => {
   assert.equal(normalizeZaloPhone("+84 90 111 1007"), "0901111007");
@@ -10,6 +10,13 @@ test("số Zalo lưu dạng 10 số bắt đầu bằng 0", () => {
   assert.equal(zaloPhoneError("123"), "Số Zalo cần là số di động 10 chữ số.");
   assert.equal(zaloPhonesMatch("+84901111007", "0901111007"), true);
   assert.equal(zaloPhonesMatch("0901111007", "0902222008"), false);
+});
+
+test("chưa lưu thì vẫn gửi tin, chỉ giá trị 0 là tắt", () => {
+  assert.equal(zaloMessagingOn(undefined), true);
+  assert.equal(zaloMessagingOn(""), true);
+  assert.equal(zaloMessagingOn("1"), true);
+  assert.equal(zaloMessagingOn("0"), false);
 });
 
 test("hạn phiên lấy từ cookie mã hóa và cookie đăng nhập", () => {

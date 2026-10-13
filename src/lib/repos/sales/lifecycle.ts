@@ -4,7 +4,7 @@ import * as t from "@/db/schema";
 import { nowISO, todayVN } from "../../datetime";
 import { ensureTodayRoomTasks } from "../../checklist-ops";
 import { can } from "../../permissions";
-import { applyPaidAmount, collectedSplit, depositRefundSplit, isActiveSaleStatus, isPaymentMethod, parsePaymentMethod, salePaid } from "../../sales";
+import { applyPaidAmount, collectedSplit, depositRefundSplit, formatVnd, guestCheckoutDue, isActiveSaleStatus, isPaymentMethod, parsePaymentMethod, salePaid } from "../../sales";
 import type { SaleStatus, SessionUser } from "../../types";
 import { audit } from "../audit";
 import { bookingCheckinPaidReady } from "../../zalo-templates";
@@ -111,11 +111,18 @@ export async function checkinRoomSale(user: SessionUser, id: string, opts?: { sk
   await dispatchCheckinPaidZalo(user.id, bookingId, wasPaidInhouse).catch((error) => console.error("zalo booking", error));
 }
 
+function assertCheckoutCollected(booking: Awaited<ReturnType<typeof getBooking>>) {
+  if (!booking) throw new Error("Không tìm thấy booking");
+  const due = guestCheckoutDue(booking.due, booking.source, booking.otaPaymentMode);
+  if (due > 0) throw new Error(`Chưa thu đủ. Còn phải thu ${formatVnd(due)}`);
+}
+
 export async function checkoutRoomSale(user: SessionUser, id: string, opts?: { skipHandoff?: boolean }) {
   const db = await getDb();
   const before = (await db.select().from(t.roomSales).where(eq(t.roomSales.id, id)).limit(1))[0];
   if (!before) throw new Error("Không tìm thấy chỗ bán");
   if (before.status !== "inhouse") throw new Error("Chỉ trả phòng khi khách đang ở");
+  await assertCheckoutCollected(await getBooking(before.bookingId || before.id));
   const today = todayVN();
   const checkOut = today < before.checkOut ? today : before.checkOut;
   if (checkOut < before.checkIn) throw new Error("Ngày trả không hợp lệ");
@@ -155,6 +162,7 @@ export async function checkoutBooking(user: SessionUser, bookingId: string) {
   if (!booking) throw new Error("Không tìm thấy booking");
   const staying = booking.rooms.filter((row) => row.status === "inhouse");
   if (!staying.length) throw new Error("Không có phòng đang ở");
+  assertCheckoutCollected(booking);
   for (const row of staying) await checkoutRoomSale(user, row.id);
   return booking.id;
 }

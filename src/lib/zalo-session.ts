@@ -2,7 +2,7 @@ import { inArray } from "drizzle-orm";
 import { getDb } from "@/db";
 import { appSettings } from "@/db/schema";
 import { nowISO } from "@/lib/datetime";
-import { cookieDeadline, normalizeZaloPhone } from "@/lib/zalo";
+import { cookieDeadline, normalizeZaloPhone, zaloMessagingOn } from "@/lib/zalo";
 import { normalizeZaloChannels, type ZaloChannel, type ZaloChannelKey } from "@/lib/zalo-templates";
 import {
   normalizeZaloGroups,
@@ -12,6 +12,7 @@ import {
   type ZaloMessage,
 } from "@/lib/zalo-messages";
 
+const ENABLED = "zalo_enabled";
 const PHONE = "zalo_sender_phone";
 const CREDENTIALS = "zalo_credentials";
 const ACCOUNT_NAME = "zalo_account_name";
@@ -24,7 +25,7 @@ const GROUPS = "zalo_groups";
 const MESSAGES = "zalo_messages";
 const SAVED_AT = "zalo_session_saved_at";
 
-const SESSION_KEYS = [PHONE, CREDENTIALS, ACCOUNT_NAME, ACCOUNT_UID, ACCOUNT_PHONE, GROUP_ID, GROUP_NAME, CHANNELS, GROUPS, MESSAGES, SAVED_AT];
+const SESSION_KEYS = [ENABLED, PHONE, CREDENTIALS, ACCOUNT_NAME, ACCOUNT_UID, ACCOUNT_PHONE, GROUP_ID, GROUP_NAME, CHANNELS, GROUPS, MESSAGES, SAVED_AT];
 
 export type ZaloCredentials = {
   imei: string;
@@ -34,6 +35,7 @@ export type ZaloCredentials = {
 };
 
 export type ZaloPublicStatus = {
+  enabled: boolean;
   phone: string;
   connected: boolean;
   accountName: string;
@@ -57,6 +59,7 @@ export async function loadZaloPublicStatus(): Promise<ZaloPublicStatus> {
   const messages = messagesFrom(values, channels);
   const task = channels.find((item) => item.key === "task");
   return {
+    enabled: zaloMessagingOn(values[ENABLED]),
     phone: values[PHONE] || "",
     connected: Boolean(credentials),
     accountName: values[ACCOUNT_NAME] || "",
@@ -89,6 +92,15 @@ export async function loadZaloCredentials() {
     groupId: values[GROUP_ID] || "",
     groupName: values[GROUP_NAME] || "",
   };
+}
+
+export async function zaloMessagingEnabled() {
+  const values = await readKeys();
+  return zaloMessagingOn(values[ENABLED]);
+}
+
+export async function saveZaloEnabled(actorId: string, enabled: boolean) {
+  await writeSetting(ENABLED, enabled ? "1" : "0", actorId);
 }
 
 export async function saveZaloPhone(actorId: string, phone: string) {

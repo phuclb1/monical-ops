@@ -691,6 +691,73 @@ label {
   letter-spacing: 0.02em;
 }
 
+.booking-life {
+  display: flex;
+  align-items: flex-start;
+  margin-top: 0.85rem;
+  padding: 0.7rem 0.35rem 0.15rem;
+  overflow-x: auto;
+  border-top: 1px solid var(--line);
+}
+
+.booking-life-step {
+  position: relative;
+  display: flex;
+  flex: 1 1 0;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.3rem;
+  min-width: 4.25rem;
+  text-align: center;
+}
+
+.booking-life-step:not(:last-child)::after {
+  content: "";
+  position: absolute;
+  top: 0.5rem;
+  left: calc(50% + 0.7rem);
+  right: calc(-50% + 0.7rem);
+  height: 2px;
+  background: #ead9c4;
+}
+
+.booking-life-step.is-done:not(:last-child)::after,
+.booking-life-step.is-current:not(:last-child)::after {
+  background: #1b7a4e;
+}
+
+.booking-life-dot {
+  z-index: 1;
+  width: 0.95rem;
+  height: 0.95rem;
+  border: 2px solid #ead9c4;
+  border-radius: 999px;
+  background: #fffdf8;
+}
+
+.booking-life-step.is-done .booking-life-dot {
+  border-color: #1b7a4e;
+  background: #1b7a4e;
+}
+
+.booking-life-step.is-current .booking-life-dot {
+  border-color: #5c1a1b;
+  background: #5c1a1b;
+  box-shadow: 0 0 0 3px rgb(92 26 27 / 16%);
+}
+
+.booking-life-label {
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.2;
+  color: #8a8078;
+}
+
+.booking-life-step.is-done .booking-life-label,
+.booking-life-step.is-current .booking-life-label {
+  color: var(--ink);
+}
+
 @media (max-width: 767px) {
   ::-webkit-scrollbar {
     width: 0;
@@ -1951,7 +2018,7 @@ label {
 
 .booking-sheet-pay {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: 1.22fr 0.88fr;
   gap: 0.55rem;
   align-items: start;
 }
@@ -1963,6 +2030,32 @@ label {
 
 .booking-sheet-pay .booking-sheet-kv th {
   width: 8.2rem;
+}
+
+.booking-sheet-bank {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 0.45rem;
+  break-inside: avoid;
+  page-break-inside: avoid;
+}
+
+.booking-sheet-bank .booking-sheet-kv {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.booking-sheet-bank .booking-sheet-kv th {
+  width: 6.4rem;
+}
+
+.booking-sheet-qr {
+  width: 6.4rem;
+  height: auto;
+  flex: 0 0 auto;
+  print-color-adjust: exact;
+  -webkit-print-color-adjust: exact;
 }
 
 .booking-sheet-remain-label {

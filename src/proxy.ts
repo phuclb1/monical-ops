@@ -18,7 +18,9 @@ const PUBLIC = [
   "/api/auth/forgot-password",
   "/api/auth/reset-password",
   "/api/ingest",
+  "/api/open",
   "/api/zalo/cron",
+  "/api/zalo/agent",
   "/api/webhooks/sepay",
 ];
 

@@ -1,13 +1,17 @@
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
-import { saveAccessSettingsAction } from "@/actions/settings";
+import { saveAccessSettingsAction, saveOpenApiWebhookAction } from "@/actions/settings";
+import { OpenApiTokenPanel } from "@/components/open-api-settings";
 import { SettingsNav } from "@/components/settings-nav";
 import { Btn, Card, Chip, Empty, Field } from "@/components/ui";
 import { getSession } from "@/lib/auth";
 import { formatAuditWhen } from "@/lib/audit-view";
+import { formatDateTime } from "@/lib/datetime";
+import { loadOpenApiSettings } from "@/lib/open-api-settings";
 import { can } from "@/lib/permissions";
 import { clientIp } from "@/lib/reception-ip";
 import { listLoginEvents, loadReceptionIpPolicy } from "@/lib/repos/access";
+import { appOrigin } from "@/lib/site";
 
 const RESULT_LABEL = {
   ok: "Thành công",
@@ -24,21 +28,31 @@ export default async function AccessSettingsPage({
   if (!user) redirect("/login");
   if (!can(user.role, "manageSettings")) redirect("/settings");
   const { error, saved } = await searchParams;
-  const [policy, events, here] = await Promise.all([
+  const [policy, events, here, openApi, origin] = await Promise.all([
     loadReceptionIpPolicy(),
     listLoginEvents(),
     headers().then((store) => clientIp(store)),
+    loadOpenApiSettings(),
+    appOrigin(),
   ]);
+  const savedText =
+    saved === "open-api-cleared"
+      ? "Đã xóa token Open API."
+      : saved === "open-api-webhook"
+        ? "Đã lưu URL webhook Codex."
+        : saved
+          ? "Đã lưu cấu hình."
+          : "";
 
   return (
     <main className="space-y-3 px-3 py-4">
       <div>
         <h1 className="text-xl font-bold">Cấu hình</h1>
-        <p className="text-xs text-[#5c6665]">Chỉ quản lý. Giới hạn máy lễ tân đăng nhập, và xem lịch sử đăng nhập.</p>
+        <p className="text-xs text-[#5c6665]">Chỉ quản lý. IP lễ tân, token Open API cho agent Codex, và lịch sử đăng nhập.</p>
       </div>
       <SettingsNav role={user.role} current="/settings/access" />
       {error ? <p className="text-sm font-medium text-[#c23b3b]">{error}</p> : null}
-      {saved ? <p className="text-sm font-medium text-[#1b7a4e]">Đã lưu cấu hình.</p> : null}
+      {savedText ? <p className="text-sm font-medium text-[#1b7a4e]">{savedText}</p> : null}
 
       <Card>
         <h2 className="mb-2 font-bold">IP tài khoản lễ tân</h2>
@@ -55,6 +69,52 @@ export default async function AccessSettingsPage({
             {here ? ` IP hiện tại của bạn: ${here}.` : ""}
           </p>
           <Btn type="submit">Lưu</Btn>
+        </form>
+      </Card>
+
+      <Card>
+        <div className="mb-2 flex items-center justify-between gap-3">
+          <h2 className="font-bold">Open API</h2>
+          <Chip tone={openApi.hasToken ? "ok" : "warn"}>{openApi.hasToken ? "Đã có token" : "Chưa có token"}</Chip>
+        </div>
+        <p className="mb-3 text-xs leading-5 text-[#5c6665]">
+          Agent Codex gọi API này để tạo / đọc booking rồi sync ezCloud. Token tạo ở đây, không để trong wrangler.
+          Agent trên máy bạn nên GET booking mới mỗi 2 phút — không cần webhook.
+          {openApi.tokenUpdatedAt ? ` Tạo lần cuối: ${formatDateTime(openApi.tokenUpdatedAt)}.` : ""}
+        </p>
+        <div className="mb-3 space-y-2">
+          <Field label="Kéo booking mới / vừa sửa (poll 2 phút)">
+            <input readOnly value={`${origin}/api/open/bookings?since=<polledAt lần trước>`} />
+          </Field>
+          <Field label="Tạo booking">
+            <input readOnly value={`${origin}/api/open/bookings`} />
+          </Field>
+          <Field label="Lấy một booking">
+            <input readOnly value={`${origin}/api/open/bookings/:id`} />
+          </Field>
+        </div>
+        <OpenApiTokenPanel hasToken={openApi.hasToken} hint={openApi.tokenHint} />
+      </Card>
+
+      <Card>
+        <h2 className="mb-2 font-bold">Webhook Codex</h2>
+        <p className="mb-3 text-xs leading-5 text-[#5c6665]">
+          Ops (máy chủ Cloudflare) POST tới URL này khi lễ tân tạo booking, đổi phòng hoặc thêm ngày. Để trống thì không gửi.
+          URL phải là địa chỉ internet mà agent của bạn đang lắng nghe — không dùng localhost, vì máy chủ không gọi được máy bạn.
+          Chạy Codex ở máy local thì mở tunnel (Cloudflare Tunnel / ngrok), rồi dán URL public, ví dụ https://ten-ban.trycloudflare.com/webhooks/ops-booking.
+          Secret ký HMAC được tạo cùng API token.
+        </p>
+        <form action={saveOpenApiWebhookAction} className="space-y-3">
+          <Field label="URL webhook">
+            <input
+              name="webhookUrl"
+              defaultValue={openApi.webhookUrl}
+              placeholder="https://ten-ban.trycloudflare.com/webhooks/ops-booking"
+              autoComplete="off"
+            />
+          </Field>
+          <p className="text-xs text-[#5c6665]">{openApi.hasWebhookSecret ? "Đã có secret ký webhook (hiện khi tạo token)." : "Chưa có secret. Tạo API token để sinh secret."}</p>
+          <Btn type="submit">Lưu webhook</Btn>
         </form>
       </Card>
 

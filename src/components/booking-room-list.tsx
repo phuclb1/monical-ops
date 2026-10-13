@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
-import { checkinBookingRoomAction, checkoutBookingRoomAction } from "@/actions/sales";
+import { checkinBookingRoomAction } from "@/actions/sales";
+import { BookingCheckoutButton } from "@/components/booking-checkout";
 import { Btn, Chip } from "@/components/ui";
 import { CHECK_IN_TIME, CHECK_OUT_TIME, SALE_STATUS_LABEL } from "@/lib/constants";
 import { formatDateNumeric, formatTime } from "@/lib/datetime";
@@ -161,7 +162,19 @@ function RoomLink({ href, className, children }: { href?: string; className: str
   );
 }
 
-function RoomStay({ row, today, bookingId, readOnly }: { row: RoomRow; today: string; bookingId: string; readOnly?: boolean }) {
+function RoomStay({
+  row,
+  today,
+  bookingId,
+  readOnly,
+  checkoutDue,
+}: {
+  row: RoomRow;
+  today: string;
+  bookingId: string;
+  readOnly?: boolean;
+  checkoutDue: number;
+}) {
   const note = stayNote(row);
   const canIn = !readOnly && row.status === "reserved" && today >= row.checkIn;
   const canOut = !readOnly && row.status === "inhouse";
@@ -176,13 +189,7 @@ function RoomStay({ row, today, bookingId, readOnly }: { row: RoomRow; today: st
           <Btn type="submit">Check in</Btn>
         </form>
       ) : null}
-      {canOut ? (
-        <form action={checkoutBookingRoomAction}>
-          <input type="hidden" name="bookingId" value={bookingId} />
-          <input type="hidden" name="id" value={row.id} />
-          <Btn type="submit" variant="gold">Check out</Btn>
-        </form>
-      ) : null}
+      {canOut ? <BookingCheckoutButton bookingId={bookingId} saleId={row.id} due={checkoutDue} /> : null}
     </div>
   );
 }
@@ -196,6 +203,7 @@ export function BookingRoomList({
   today,
   bookingId,
   readOnly = false,
+  checkoutDue = 0,
 }: {
   rooms: RoomRow[];
   quotes: QuoteLine[];
@@ -204,6 +212,7 @@ export function BookingRoomList({
   today: string;
   bookingId: string;
   readOnly?: boolean;
+  checkoutDue?: number;
   totals: {
     roomTotal: number;
     discount: number;
@@ -250,7 +259,7 @@ export function BookingRoomList({
                 ) : null}
                 <p className="booking-room-total">{formatVnd(quote?.total ?? 0)}</p>
               </RoomLink>
-              <RoomStay row={row} today={today} bookingId={bookingId} readOnly={readOnly} />
+              <RoomStay row={row} today={today} bookingId={bookingId} readOnly={readOnly} checkoutDue={checkoutDue} />
             </article>
           );
         })}
@@ -307,7 +316,7 @@ export function BookingRoomList({
                     <Chip tone={STATUS_TONE[row.status as SaleStatus]}>{SALE_STATUS_LABEL[row.status as SaleStatus]}</Chip>
                   </td>
                   <td>
-                    <RoomStay row={row} today={today} bookingId={bookingId} readOnly={readOnly} />
+                    <RoomStay row={row} today={today} bookingId={bookingId} readOnly={readOnly} checkoutDue={checkoutDue} />
                   </td>
                 </tr>
               );

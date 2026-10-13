@@ -128,6 +128,7 @@ export const FIELD_LABEL: Record<string, string> = {
   departmentCode: "Bộ phận",
   active: "Hoạt động",
   enabled: "Giới hạn IP lễ tân",
+  sending: "Gửi tin Zalo",
   ip: "IP được phép",
   type: "Loại",
   name: "Tên",

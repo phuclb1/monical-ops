@@ -5,7 +5,7 @@ import { requireSession } from "@/lib/auth";
 import { can } from "@/lib/permissions";
 import { audit } from "@/lib/repos";
 import { listZaloGroups, rememberZaloGroup, sendZaloToGroup } from "@/lib/zalo-client";
-import { clearZaloLogin, loadZaloMessages, loadZaloPublicStatus, saveZaloChannel, saveZaloGroupSlot, saveZaloMessage, saveZaloPhone, zaloChannel } from "@/lib/zalo-session";
+import { clearZaloLogin, loadZaloMessages, loadZaloPublicStatus, saveZaloChannel, saveZaloEnabled, saveZaloGroupSlot, saveZaloMessage, saveZaloPhone, zaloChannel } from "@/lib/zalo-session";
 import { normalizeZaloPhone, zaloPhoneError } from "@/lib/zalo";
 import { sendChannelPreview, sendMessagePreview, sendReceptionZalo } from "@/lib/zalo-notify";
 import { isZaloChannelKey, zaloChannelDef } from "@/lib/zalo-templates";
@@ -20,6 +20,15 @@ async function requireManager() {
   const user = await requireSession();
   if (!can(user.role, "manageSettings")) throw new Error("Chỉ quản lý sửa Zalo");
   return user;
+}
+
+export async function saveZaloEnabledAction(formData: FormData) {
+  const user = await requireManager();
+  const enabled = formData.get("enabled") === "on";
+  const before = await loadZaloPublicStatus();
+  await saveZaloEnabled(user.id, enabled);
+  await audit(user.id, "settings", "zalo_sending", "save", { sending: before.enabled ? "bật" : "tắt" }, { sending: enabled ? "bật" : "tắt" });
+  redirect(`/settings/zalo?saved=${enabled ? "on" : "off"}`);
 }
 
 export async function saveZaloPhoneAction(formData: FormData) {
@@ -136,7 +145,9 @@ export async function sendReceptionZaloAction() {
     const channel = await zaloChannel("reception");
     if (!channel.groupId) redirect(`/settings/zalo?error=${encodeURIComponent("Chọn nhóm lễ tân trước khi gửi.")}`);
     const result = await sendReceptionZalo(user.id);
-    if (!result.sent) redirect(`/settings/zalo?error=${encodeURIComponent("Chưa gửi được bản tin lễ tân.")}`);
+    if (!result.sent) {
+      redirect(`/settings/zalo?error=${encodeURIComponent(result.reason === "off" ? "Đang tắt gửi tin Zalo." : "Chưa gửi được bản tin lễ tân.")}`);
+    }
     await audit(user.id, "settings", "zalo_reception", "send", undefined, { groupId: channel.groupId });
   } catch (error) {
     redirect(`/settings/zalo?error=${encodeURIComponent(error instanceof Error ? error.message : "Không gửi được bản tin lễ tân.")}`);
@@ -166,7 +177,11 @@ export async function sendZaloTemplateTestAction(formData: FormData) {
   if (!isZaloChannelKey(key)) redirect(`/settings/zalo?error=${encodeURIComponent("Không có loại thông báo này.")}`);
   try {
     const result = await sendChannelPreview(user.id, key);
-    if (!result.sent) redirect(`/settings/zalo?error=${encodeURIComponent(`Chọn ${zaloChannelDef(key).label.toLowerCase()} trước khi gửi thử.`)}`);
+    if (!result.sent) {
+      redirect(
+        `/settings/zalo?error=${encodeURIComponent(result.reason === "off" ? "Đang tắt gửi tin Zalo." : `Chọn ${zaloChannelDef(key).label.toLowerCase()} trước khi gửi thử.`)}`,
+      );
+    }
     await audit(user.id, "settings", "zalo_test", "send", undefined, { key, groupId: result.channel.groupId });
   } catch (error) {
     redirect(`/settings/zalo?error=${encodeURIComponent(error instanceof Error ? error.message : "Không gửi được tin thử.")}`);

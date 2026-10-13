@@ -7,7 +7,7 @@ const LINKS = [
   {
     href: "/settings/access",
     label: "Cấu hình",
-    text: "IP máy lễ tân và lịch sử đăng nhập.",
+    text: "IP máy lễ tân, token Open API và lịch sử đăng nhập.",
     show: (role: Parameters<typeof can>[0]) => can(role, "manageSettings"),
   },
   {
@@ -40,7 +40,7 @@ export default async function SettingsPage() {
     <main className="space-y-3 px-3 py-4">
       <div>
         <h1 className="text-xl font-bold">Cài đặt</h1>
-        <p className="text-xs text-[#5c6665]">Cấu hình quầy, Zalo, lịch lễ tân và tài khoản nhân viên.</p>
+        <p className="text-xs text-[#5c6665]">Cấu hình quầy, Open API, Zalo, lịch lễ tân và tài khoản nhân viên.</p>
       </div>
       <div className="list-cards">
         {links.map((item) => (

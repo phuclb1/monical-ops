@@ -41,6 +41,15 @@ export function isOtaDebt(source: string | null | undefined, mode?: string | nul
   return isOtaSource(source) && mode !== "hotel";
 }
 
+export function guestCheckoutDue(
+  due: number | null | undefined,
+  source?: string | null,
+  otaPaymentMode?: string | null,
+) {
+  if (isOtaDebt(source, otaPaymentMode)) return 0;
+  return Math.max(0, Math.round(due || 0));
+}
+
 export function parseSaleSource(raw: string | null | undefined): SaleSource {
   const original = String(raw || "").trim().toLowerCase();
   if (isSaleSource(original)) return original;

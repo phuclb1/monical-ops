@@ -8,9 +8,10 @@ export const HOTEL_ADDRESS =
 export const HOTEL_EMAIL = process.env.NEXT_PUBLIC_HOTEL_EMAIL ?? "monicalhoteldalat.support@gmail.com";
 export const HOTEL_PHONE = process.env.NEXT_PUBLIC_HOTEL_PHONE ?? "0976 775 768";
 export const HOTEL_WEBSITE = process.env.NEXT_PUBLIC_HOTEL_WEBSITE ?? "https://monicalhoteldalat.com";
-export const HOTEL_BANK_HOLDER = process.env.NEXT_PUBLIC_HOTEL_BANK_HOLDER ?? "BÙI HÀ AN";
-export const HOTEL_BANK_NUMBER = process.env.NEXT_PUBLIC_HOTEL_BANK_NUMBER ?? "681779339";
-export const HOTEL_BANK_NAME = process.env.NEXT_PUBLIC_HOTEL_BANK_NAME ?? "Ngân Hàng VIB";
+export const HOTEL_BANK_HOLDER = process.env.NEXT_PUBLIC_HOTEL_BANK_HOLDER ?? "CONG TY TNHH MACCAL DA LAT";
+export const HOTEL_BANK_NUMBER = process.env.NEXT_PUBLIC_HOTEL_BANK_NUMBER ?? "1273326868";
+export const HOTEL_BANK_NAME = process.env.NEXT_PUBLIC_HOTEL_BANK_NAME ?? "Vietcombank CN Lâm Đồng";
+export const HOTEL_BANK_QR = process.env.NEXT_PUBLIC_HOTEL_BANK_QR ?? "/QRCODE.png";
 export const CHECK_IN_TIME = "14:00";
 export const CHECK_OUT_TIME = "12:00";
 

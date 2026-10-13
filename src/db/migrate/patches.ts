@@ -196,4 +196,18 @@ export const SCHEMA_PATCHES = [
   notified INTEGER NOT NULL DEFAULT 0,
   received_at TEXT NOT NULL
 )`,
+  `CREATE TABLE IF NOT EXISTS zalo_outbox (
+  id TEXT PRIMARY KEY,
+  actor_id TEXT NOT NULL,
+  group_id TEXT NOT NULL,
+  body TEXT NOT NULL,
+  status TEXT NOT NULL,
+  attempts INTEGER NOT NULL DEFAULT 0,
+  error TEXT,
+  claim_id TEXT,
+  claimed_at TEXT,
+  sent_at TEXT,
+  created_at TEXT NOT NULL
+)`,
+  "CREATE INDEX IF NOT EXISTS zalo_outbox_status ON zalo_outbox (status, created_at)",
 ];

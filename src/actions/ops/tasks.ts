@@ -63,7 +63,9 @@ export async function sendZaloAction(formData: FormData) {
     if (!data) throw new Error("Không tìm thấy việc");
     const message = await messageFromTask(data);
     const result = await sendZaloChannel(user.id, "task", { noiDung: message });
-    if (!result.sent) throw new Error("Quản lý chưa chọn nhóm việc trong Cài đặt Zalo.");
+    if (!result.sent) {
+      throw new Error(result.reason === "off" ? "Đang tắt gửi tin Zalo." : "Quản lý chưa chọn nhóm việc trong Cài đặt Zalo.");
+    }
     await repo.saveZaloDraft(id, message);
     await repo.markZaloSent(user, id);
     await repo.audit(user.id, "task", id, "zalo_send", undefined, { groupId: result.channel.groupId });
