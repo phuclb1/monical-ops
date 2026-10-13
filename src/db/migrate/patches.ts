@@ -210,4 +210,8 @@ export const SCHEMA_PATCHES = [
   created_at TEXT NOT NULL
 )`,
   "CREATE INDEX IF NOT EXISTS zalo_outbox_status ON zalo_outbox (status, created_at)",
+  "CREATE INDEX IF NOT EXISTS room_sales_created ON room_sales (created_at)",
+  "CREATE INDEX IF NOT EXISTS room_sales_check_in ON room_sales (check_in)",
+  "CREATE INDEX IF NOT EXISTS room_sales_check_out ON room_sales (check_out)",
+  "CREATE INDEX IF NOT EXISTS room_sales_refunded ON room_sales (refunded_at)",
 ];

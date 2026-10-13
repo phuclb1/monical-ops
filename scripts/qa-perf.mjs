@@ -26,12 +26,17 @@ const ROUTES = [
   { id: "sales", path: "/sales", auth: true },
   { id: "sales-15", path: "/sales?view=15", auth: true },
   { id: "sales-month", path: "/sales?view=month", auth: true },
-  { id: "bookings", path: "/sales/bookings", auth: true },
+  { id: "bookings", path: "/sales/bookings", auth: true, serverCache: true, maxLinks: 80, maxEncodedKb: 350 },
+  { id: "bookings-all", path: "/sales/bookings?tab=all", auth: true, serverCache: true, maxLinks: 80, maxEncodedKb: 350 },
+  { id: "bookings-page", path: "/sales/bookings?page=2", auth: true, maxLinks: 80, maxEncodedKb: 350 },
+  { id: "bookings-search", path: "/sales/bookings?q=a", auth: true, serverCache: true, maxLinks: 80, maxEncodedKb: 350 },
   { id: "kitchen", path: "/kitchen", auth: true },
   { id: "rooms", path: "/rooms", auth: true },
   { id: "tasks", path: "/tasks", auth: true },
   { id: "reception", path: "/reception", auth: true },
   { id: "reports", path: "/reports/sales", auth: true },
+  { id: "cash", path: "/reports/cash", auth: true, serverCache: true, maxRows: 40, maxEncodedKb: 500 },
+  { id: "cash-year", path: "/reports/cash?grain=year", auth: true, serverCache: true, maxRows: 40, maxEncodedKb: 700 },
   { id: "notifications", path: "/notifications", auth: true },
 ];
 
@@ -103,6 +108,7 @@ async function measure(page, path, label) {
   const response = await page.goto(`${base}${path}`, { waitUntil: "load", timeout: 45000 });
   await page.waitForTimeout(500);
   const nav = await collectNav(page);
+  const shape = await pageShape(page);
   const wallMs = Date.now() - started;
   return {
     id: label,
@@ -110,6 +116,7 @@ async function measure(page, path, label) {
     status: response?.status() ?? 0,
     wallMs,
     ...nav,
+    ...shape,
     ttfbMs: round(nav.ttfbMs),
     dclMs: round(nav.dclMs),
     loadMs: round(nav.loadMs),
@@ -128,7 +135,23 @@ function verdict(row, extra = {}) {
     if (row.loadMs > BUDGET.loadMs) fails.push(`load ${row.loadMs}ms > ${BUDGET.loadMs}ms`);
     if (row.lcpMs > BUDGET.lcpMs) fails.push(`LCP ${row.lcpMs}ms > ${BUDGET.lcpMs}ms`);
   }
+  if (extra.maxEncodedKb && row.encodedKb > extra.maxEncodedKb) {
+    fails.push(`HTML ${row.encodedKb}KB > ${extra.maxEncodedKb}KB`);
+  }
+  if (extra.maxLinks != null && row.bookingLinks > extra.maxLinks) {
+    fails.push(`${row.bookingLinks} booking link > ${extra.maxLinks}`);
+  }
+  if (extra.maxRows != null && row.cashRows > extra.maxRows) {
+    fails.push(`${row.cashRows} dòng tiền > ${extra.maxRows}`);
+  }
   return fails;
+}
+
+async function pageShape(page) {
+  return page.evaluate(() => ({
+    bookingLinks: document.querySelectorAll('a[href^="/sales/bookings/"]').length,
+    cashRows: document.querySelectorAll(".cash-flow-table tbody tr").length,
+  }));
 }
 
 const samples = [];
@@ -202,7 +225,13 @@ try {
     await client.send("Network.setCacheDisabled", { cacheDisabled: true });
     const cold = await measure(page, route.path, `${route.id}-cold`);
     await page.screenshot({ path: join(outDir, `${route.id}.png`), fullPage: true }).catch(() => {});
-    record(`PERF-${route.id}-cold`, `GET ${route.path} cold`, cold);
+    record(`PERF-${route.id}-cold`, `GET ${route.path} cold`, cold, route);
+
+    if (route.serverCache) {
+      await client.send("Network.setCacheDisabled", { cacheDisabled: true });
+      const again = await measure(page, route.path, `${route.id}-server`);
+      record(`PERF-${route.id}-server`, `GET ${route.path} server cache`, again, route);
+    }
 
     await client.send("Network.setCacheDisabled", { cacheDisabled: false });
     const warm = await measure(page, route.path, `${route.id}-warm`);

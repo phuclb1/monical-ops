@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 import { cashFlowXlsx } from "@/lib/cash-flow-xlsx";
 import { can } from "@/lib/permissions";
-import { listBookings } from "@/lib/repos";
+import { listCashPeriodBookings } from "@/lib/repos";
 import { cashFlowReport, parsePeriodQuery } from "@/lib/sales-report";
 
 export async function GET(request: Request) {
@@ -11,7 +11,7 @@ export async function GET(request: Request) {
   if (!can(user.role, "viewSalesRevenue")) return NextResponse.json({ error: "Không có quyền" }, { status: 403 });
   const date = new URL(request.url).searchParams.get("date") || undefined;
   const { window } = parsePeriodQuery("month", date);
-  const report = cashFlowReport(await listBookings(), window.from, window.to);
+  const report = cashFlowReport(await listCashPeriodBookings(window.from, window.to), window.from, window.to);
   const bytes = cashFlowXlsx(report);
   const filename = `dong-tien-${window.from.slice(0, 7)}.xlsx`;
   return new NextResponse(new Blob([bytes]), {

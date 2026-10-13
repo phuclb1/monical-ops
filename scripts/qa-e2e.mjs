@@ -242,7 +242,19 @@ try {
 
   await check("E2E-S1", "Tìm booking theo tên — tab mặc định gồm đã giữ", async (shot) => {
     await go(`/sales/bookings?q=${encodeURIComponent(GUEST)}`);
-    await must(shot, [GUEST, "Tìm booking", "Đã giữ", "Đang mở / đã trả"]);
+    await must(shot, [GUEST, "Tìm booking", "Giữ chỗ", "Đang mở / đã trả"]);
+  });
+
+  await check("E2E-S3", "Danh sách đặt phòng chỉ render một trang", async (shot) => {
+    await go("/sales/bookings");
+    await must(shot, ["Đặt phòng", "Tìm booking", "Mới nhất", "Đang mở / đã trả"]);
+    const links = await page.locator('a[href^="/sales/bookings/"]').count();
+    if (links > 80) throw new Error(`Render ${links} booking link, vượt một trang`);
+    await go("/sales/bookings?tab=all&page=2");
+    const text = await must(shot, ["Đặt phòng", "Tất cả"]);
+    if (text.includes("Application error")) throw new Error("Trang 2 lỗi");
+    const pageLinks = await page.locator('a[href^="/sales/bookings/"]').count();
+    if (pageLinks > 80) throw new Error(`Trang 2 render ${pageLinks} booking link`);
   });
 
   await check("E2E-R5", "Gửi HK kiểm phòng standby — chưa cho nhận", async (shot) => {
@@ -457,6 +469,21 @@ try {
     await login("quanly");
     await go("/reports/sales");
     await must(shot, ["OTA sau hoa hồng", "phải trả hoa hồng", "phải thu đối tác", "OTA đã thu tại KS", "E2E OTA", "Công nợ OTA"]);
+  });
+
+  await check("E2E-CF1", "Dòng tiền một trang, tổng cả kỳ vẫn hiện", async (shot) => {
+    await go("/reports/cash");
+    await must(shot, ["Báo cáo dòng tiền", "Xuất Excel", "Tiền mặt"]);
+    const monthText = (await pageText()).toLocaleLowerCase("vi");
+    if (!monthText.includes("tổng gồm vat")) throw new Error("Thiếu tổng gồm VAT");
+    const rows = await page.locator(".cash-flow-table tbody tr").count();
+    if (rows > 40) throw new Error(`Bảng dòng tiền ${rows} dòng, vượt một trang`);
+    if (rows > 0 && !monthText.includes("tổng kỳ")) throw new Error("Thiếu tổng cả kỳ");
+    await go("/reports/cash?grain=year&page=2");
+    const yearText = await must(shot, ["Báo cáo dòng tiền", "Năm"]);
+    if (!yearText.toLocaleLowerCase("vi").includes("tổng gồm vat")) throw new Error("Thiếu tổng gồm VAT của năm");
+    const yearRows = await page.locator(".cash-flow-table tbody tr").count();
+    if (yearRows > 40) throw new Error(`Dòng tiền năm ${yearRows} dòng, vượt một trang`);
   });
 
   await check("E2E-C2", "Quản lý mở trang chi phí từ Thêm", async (shot) => {

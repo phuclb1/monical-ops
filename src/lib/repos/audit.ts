@@ -2,6 +2,9 @@ import { and, desc, eq, lt } from "drizzle-orm";
 import { getDb } from "@/db";
 import * as t from "@/db/schema";
 import { nid, nowISO } from "../datetime";
+import { bumpBookingReadCache } from "./sales/read-cache";
+
+const BOOKING_READS = new Set(["room_sale", "booking", "sale_extra", "room"]);
 
 export async function audit(actorId: string, entity: string, entityId: string, action: string, before?: unknown, after?: unknown) {
   const db = await getDb();
@@ -15,6 +18,7 @@ export async function audit(actorId: string, entity: string, entityId: string, a
     afterJson: after ? JSON.stringify(after) : null,
     createdAt: nowISO(),
   });
+  if (BOOKING_READS.has(entity)) bumpBookingReadCache();
 }
 
 export function parseAuditJson(raw: string | null) {

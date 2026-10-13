@@ -1,12 +1,13 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { Card, Chip, Empty, Stat, TabChip } from "@/components/ui";
+import { Card, Chip, Empty, ListPager, Stat, TabChip } from "@/components/ui";
 import { ReportTabs } from "@/components/report-tabs";
 import { getSession } from "@/lib/auth";
+import { CASH_FLOW_PAGE_SIZE, pageBounds, parsePage } from "@/lib/booking-desk";
 import { SALE_SOURCE_LABEL } from "@/lib/constants";
 import { formatDateNumeric, formatPeriodLabel } from "@/lib/datetime";
 import { can } from "@/lib/permissions";
-import { listBookings } from "@/lib/repos";
+import { listCashPeriodBookings } from "@/lib/repos";
 import { bookingDisplayCode, formatVnd } from "@/lib/sales";
 import { CASH_FLOW_KIND_LABEL, cashFlowReport, parsePeriodQuery, type ReportGrain } from "@/lib/sales-report";
 import type { SaleSource } from "@/lib/types";
@@ -17,8 +18,10 @@ const GRAINS: { id: ReportGrain; label: string }[] = [
   { id: "year", label: "Năm" },
 ];
 
-function hrefFor(grain: ReportGrain, date: string) {
-  return `/reports/cash?grain=${grain}&date=${date}`;
+function hrefFor(grain: ReportGrain, date: string, page = 1) {
+  const params = new URLSearchParams({ grain, date });
+  if (page > 1) params.set("page", String(page));
+  return `/reports/cash?${params}`;
 }
 
 function formatFlowVnd(value: number) {
@@ -30,16 +33,18 @@ function formatFlowVnd(value: number) {
 export default async function CashFlowPage({
   searchParams,
 }: {
-  searchParams: Promise<{ grain?: string; date?: string }>;
+  searchParams: Promise<{ grain?: string; date?: string; page?: string }>;
 }) {
   const user = await getSession();
   if (!user) redirect("/login");
   if (!can(user.role, "viewSalesRevenue")) redirect("/more");
-  const { grain: rawGrain, date: rawDate } = await searchParams;
+  const { grain: rawGrain, date: rawDate, page: rawPage } = await searchParams;
   const { grain, window } = parsePeriodQuery(rawGrain, rawDate);
   const year = window.from.slice(0, 4);
-  const bookings = await listBookings();
+  const bookings = await listCashPeriodBookings(window.from, window.to);
   const report = cashFlowReport(bookings, window.from, window.to);
+  const bounds = pageBounds(report.rows.length, parsePage(rawPage), CASH_FLOW_PAGE_SIZE);
+  const rows = report.rows.slice(bounds.start, bounds.start + bounds.take);
   const monthChips = Array.from({ length: 12 }, (_, i) => {
     const month = String(i + 1).padStart(2, "0");
     return { date: `${year}-${month}-01`, label: String(i + 1) };
@@ -155,10 +160,10 @@ export default async function CashFlowPage({
                 </tr>
               </thead>
               <tbody>
-                {report.rows.map(({ booking, flow }) => (
+                {rows.map(({ booking, flow }) => (
                   <tr key={`${booking.id}-${flow.refund ? "refund" : "stay"}`}>
                     <td>
-                      <Link href={`/sales/bookings/${booking.id}`} className="font-bold text-teal">
+                      <Link href={`/sales/bookings/${booking.id}`} prefetch={false} className="font-bold text-teal">
                         {booking.guestName}
                       </Link>
                     </td>
@@ -189,7 +194,7 @@ export default async function CashFlowPage({
               </tbody>
               <tfoot>
                 <tr>
-                  <td>Tổng</td>
+                  <td>Tổng kỳ</td>
                   <td />
                   <td />
                   <td />
@@ -215,6 +220,18 @@ export default async function CashFlowPage({
             <Empty title="Không có booking nhận trong kỳ" text="Đổi tháng / quý / năm." />
           </div>
         )}
+        {bounds.pages > 1 ? (
+          <div className="px-4 py-3">
+            <ListPager
+              page={bounds.page}
+              pages={bounds.pages}
+              from={bounds.from}
+              to={bounds.to}
+              total={bounds.total}
+              hrefFor={(next) => hrefFor(grain, window.from, next)}
+            />
+          </div>
+        ) : null}
       </Card>
     </main>
   );

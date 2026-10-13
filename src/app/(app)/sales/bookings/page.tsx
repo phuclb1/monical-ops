@@ -1,14 +1,15 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { BookingLifeChips } from "@/components/booking-lifecycle";
-import { Btn, Card, Empty, Field, TabChip } from "@/components/ui";
+import { Btn, Card, Empty, Field, ListPager, TabChip } from "@/components/ui";
 import { getSession } from "@/lib/auth";
+import { isBookingDeskTab, parsePage } from "@/lib/booking-desk";
 import { SALE_ORIGIN_LABEL, SALE_SOURCE_LABEL } from "@/lib/constants";
 import { formatDateLong, formatDateNumeric, todayVN } from "@/lib/datetime";
 import { maskName } from "@/lib/mask";
 import { can } from "@/lib/permissions";
-import { listBookings } from "@/lib/repos";
-import { bookingLifecycle, bookingMatchesListView, formatVnd, isBookingListView, isOpsBookingCode, isOtaDebt, isOtaSource, matchesBookingSearch, type BookingListView } from "@/lib/sales";
+import { listBookingDesk } from "@/lib/repos";
+import { bookingLifecycle, formatVnd, isBookingListView, isOpsBookingCode, isOtaDebt, isOtaSource, type BookingListView } from "@/lib/sales";
 import type { SaleOrigin, SaleSource } from "@/lib/types";
 
 const VIEWS = [
@@ -26,14 +27,15 @@ const TABS = [
 ] as const;
 
 function isTab(value: string): value is (typeof TABS)[number]["id"] {
-  return TABS.some((tab) => tab.id === value);
+  return isBookingDeskTab(value);
 }
 
-function bookingsHref(view: BookingListView, tab: (typeof TABS)[number]["id"], q: string) {
+function bookingsHref(view: BookingListView, tab: (typeof TABS)[number]["id"], q: string, page = 1) {
   const params = new URLSearchParams();
   if (view !== "new") params.set("view", view);
   if (tab !== "open") params.set("tab", tab);
   if (q) params.set("q", q);
+  if (page > 1) params.set("page", String(page));
   const text = params.toString();
   return text ? `/sales/bookings?${text}` : "/sales/bookings";
 }
@@ -47,18 +49,10 @@ function invoiceLabel(row: { invoiceRequested?: boolean | null; rooms?: { invoic
   return on ? "Có" : "Không";
 }
 
-function matchesTab(status: string, tab: (typeof TABS)[number]["id"]) {
-  if (tab === "open") return status === "reserved" || status === "inhouse" || status === "departed";
-  if (tab === "reserved") return status === "reserved";
-  if (tab === "inhouse") return status === "inhouse";
-  if (tab === "done") return status === "departed" || status === "cancelled" || status === "no_show";
-  return true;
-}
-
 export default async function BookingsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ tab?: string; q?: string; view?: string }>;
+  searchParams: Promise<{ tab?: string; q?: string; view?: string; page?: string }>;
 }) {
   const user = await getSession();
   if (!user) redirect("/login");
@@ -66,31 +60,15 @@ export default async function BookingsPage({
   if (!manage && !can(user.role, "viewBookings")) redirect("/more");
   const showNames = can(user.role, "viewGuestPii");
   const guestLabel = (name: string) => (showNames ? name : maskName(name, user.role));
-  const { tab: rawTab, q: rawQ, view: rawView } = await searchParams;
+  const { tab: rawTab, q: rawQ, view: rawView, page: rawPage } = await searchParams;
   const tabValue = rawTab || "";
   const viewValue = rawView || "";
   const tab = isTab(tabValue) ? tabValue : "open";
   const view = isBookingListView(viewValue) ? viewValue : "new";
   const q = (rawQ || "").trim();
   const today = todayVN();
-  const bookings = await listBookings();
-  const matched = q ? bookings.filter((row) => matchesBookingSearch(row, q)) : bookings;
-  const viewed = matched.filter((row) => bookingMatchesListView(row, view, today));
-  const counts = {
-    open: viewed.filter((row) => matchesTab(row.status, "open")).length,
-    reserved: viewed.filter((row) => matchesTab(row.status, "reserved")).length,
-    inhouse: viewed.filter((row) => matchesTab(row.status, "inhouse")).length,
-    done: viewed.filter((row) => matchesTab(row.status, "done")).length,
-    all: viewed.length,
-  };
-  const viewCounts = {
-    new: matched.filter((row) => matchesTab(row.status, tab)).length,
-    checkin: matched.filter((row) => matchesTab(row.status, tab) && bookingMatchesListView(row, "checkin", today)).length,
-    checkout: matched.filter((row) => matchesTab(row.status, tab) && bookingMatchesListView(row, "checkout", today)).length,
-  };
-  const rows = viewed
-    .filter((row) => matchesTab(row.status, tab))
-    .sort((a, b) => b.createdAt.localeCompare(a.createdAt) || b.id.localeCompare(a.id));
+  const desk = await listBookingDesk({ tab, view, q, page: parsePage(rawPage), today });
+  const { rows, counts, viewCounts, page, pages, total, from, to } = desk;
 
   return (
     <main className="booking-desk space-y-3 px-3 py-4 md:space-y-4">
@@ -170,7 +148,7 @@ export default async function BookingsPage({
       ) : null}
       {q ? (
         <p className="text-xs text-[#5c6665]">
-          {rows.length} kết quả trong tab này · {counts.all} booking khớp “{q}”
+          {total} kết quả trong tab này · {counts.all} booking khớp “{q}”
         </p>
       ) : null}
 
@@ -178,7 +156,7 @@ export default async function BookingsPage({
         <>
           <div className="booking-list-cards space-y-2">
             {rows.map((row) => (
-              <Link key={row.id} href={`/sales/bookings/${row.id}`} className="block">
+              <Link key={row.id} href={`/sales/bookings/${row.id}`} prefetch={false} className="block">
                 <Card className="min-h-16">
                   <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0">
@@ -228,7 +206,7 @@ export default async function BookingsPage({
               <span className="booking-list-money">Còn thu</span>
             </div>
             {rows.map((row) => (
-              <Link key={row.id} href={`/sales/bookings/${row.id}`} className="booking-list-row">
+              <Link key={row.id} href={`/sales/bookings/${row.id}`} prefetch={false} className="booking-list-row">
                 <div className="min-w-0">
                   <p className="truncate font-bold">{guestLabel(row.guestName)}</p>
                   {row.pmsCode ? (
@@ -278,6 +256,7 @@ export default async function BookingsPage({
           }
         />
       )}
+      <ListPager page={page} pages={pages} from={from} to={to} total={total} hrefFor={(next) => bookingsHref(view, tab, q, next)} />
     </main>
   );
 }

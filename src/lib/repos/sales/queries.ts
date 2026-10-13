@@ -1,3 +1,5 @@
+import { cache } from "react";
+import { inArray, or } from "drizzle-orm";
 import { addDaysVN, datesUntil } from "../../datetime";
 import { rekeyLegacyOpsBookingCodes } from "@/db/ops-codes";
 import { getDb } from "@/db";
@@ -122,13 +124,15 @@ function withBookingExtras<T extends { id: string; nights: number; roomTotal?: n
   return { ...view, extras: rows, extrasTotal, roomTotal, total, due: bookingDue(total, view.deposit) };
 }
 
+/** D1 allows 100 bound parameters. Each id is bound on both booking_id and id. */
+export const BOOKING_LOOKUP_CHUNK = 40;
+
 async function listSaleExtras() {
   const db = await getDb();
   return db.select().from(t.saleExtras);
 }
 
-export async function listBookings() {
-  const [sales, extras] = await Promise.all([listRoomSales(), listSaleExtras()]);
+function assembleBookings(sales: Awaited<ReturnType<typeof listRoomSales>>, extras: Awaited<ReturnType<typeof listSaleExtras>>) {
   const extraByBooking = new Map<string, (typeof extras)[number][]>();
   for (const row of extras) {
     const list = extraByBooking.get(row.bookingId) || [];
@@ -139,6 +143,37 @@ export async function listBookings() {
     .filter(({ id }) => !id.startsWith("seq-hold-"))
     .map(({ id, rooms }) => withBookingExtras(toBookingView(id, rooms), extraByBooking.get(id) || []))
     .sort((a, b) => b.checkIn.localeCompare(a.checkIn) || a.guestName.localeCompare(b.guestName));
+}
+
+export async function loadAllBookings() {
+  const [sales, extras] = await Promise.all([listRoomSales(), listSaleExtras()]);
+  return assembleBookings(sales, extras);
+}
+
+export const listBookings = cache(loadAllBookings);
+
+export async function bookingsByIds(ids: string[]) {
+  const unique = [...new Set(ids.map((id) => id.trim()).filter((id) => id && !id.startsWith("seq-hold-")))];
+  if (!unique.length) return [];
+  const db = await getDb();
+  await rekeyLegacyOpsBookingCodes(db);
+  const rooms = await listRooms();
+  const sales: (typeof t.roomSales.$inferSelect)[] = [];
+  const extras: (typeof t.saleExtras.$inferSelect)[] = [];
+  for (let index = 0; index < unique.length; index += BOOKING_LOOKUP_CHUNK) {
+    const chunk = unique.slice(index, index + BOOKING_LOOKUP_CHUNK);
+    const [saleRows, extraRows] = await Promise.all([
+      db.select().from(t.roomSales).where(or(inArray(t.roomSales.bookingId, chunk), inArray(t.roomSales.id, chunk))),
+      db.select().from(t.saleExtras).where(inArray(t.saleExtras.bookingId, chunk)),
+    ]);
+    sales.push(...saleRows);
+    extras.push(...extraRows);
+  }
+  const wanted = new Set(unique);
+  return assembleBookings(
+    sales.map((sale) => withSaleRoom(sale, rooms)),
+    extras,
+  ).filter((row) => wanted.has(row.id));
 }
 
 export async function getBooking(id: string) {

@@ -43,6 +43,8 @@ export {
   listRoomSales,
   getRoomSale,
   listBookings,
+  listBookingDesk,
+  listCashPeriodBookings,
   getBooking,
   listBookingLogs,
   salesBoard,

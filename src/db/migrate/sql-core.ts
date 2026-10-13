@@ -95,6 +95,10 @@ CREATE INDEX IF NOT EXISTS room_sales_room ON room_sales (room_id);
 CREATE INDEX IF NOT EXISTS room_sales_dates ON room_sales (check_in, check_out);
 CREATE INDEX IF NOT EXISTS room_sales_status ON room_sales (status);
 CREATE INDEX IF NOT EXISTS room_sales_booking ON room_sales (booking_id);
+CREATE INDEX IF NOT EXISTS room_sales_created ON room_sales (created_at);
+CREATE INDEX IF NOT EXISTS room_sales_check_in ON room_sales (check_in);
+CREATE INDEX IF NOT EXISTS room_sales_check_out ON room_sales (check_out);
+CREATE INDEX IF NOT EXISTS room_sales_refunded ON room_sales (refunded_at);
 CREATE TABLE IF NOT EXISTS booking_change_requests (
   id TEXT PRIMARY KEY,
   booking_id TEXT NOT NULL,

@@ -210,6 +210,52 @@ export function PayMethodField({
   );
 }
 
+export function ListPager({
+  page,
+  pages,
+  from,
+  to,
+  total,
+  hrefFor,
+}: {
+  page: number;
+  pages: number;
+  from: number;
+  to: number;
+  total: number;
+  hrefFor: (page: number) => string;
+}) {
+  if (pages <= 1) return null;
+  const link = "inline-flex min-h-11 items-center rounded-xl px-3 text-sm font-semibold text-teal";
+  const idle = "inline-flex min-h-11 items-center px-3 text-sm font-semibold text-[#b7aea4]";
+  return (
+    <div className="flex items-center justify-between gap-3">
+      <p className="text-xs text-[#5c6665]">
+        {from}–{to} / {total}
+      </p>
+      <div className="flex items-center gap-1">
+        {page > 1 ? (
+          <Link href={hrefFor(page - 1)} className={link}>
+            Trước
+          </Link>
+        ) : (
+          <span className={idle}>Trước</span>
+        )}
+        <span className="px-2 text-sm font-semibold">
+          {page}/{pages}
+        </span>
+        {page < pages ? (
+          <Link href={hrefFor(page + 1)} className={link}>
+            Sau
+          </Link>
+        ) : (
+          <span className={idle}>Sau</span>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export function Stat({ label, value, tone }: { label: string; value: number | string; tone?: string }) {
   return (
     <div className="card flex flex-col gap-1 p-3">
