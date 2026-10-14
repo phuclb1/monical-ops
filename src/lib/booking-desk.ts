@@ -3,6 +3,7 @@ import { bookingMatchesListView, type BookingListView } from "@/lib/sales";
 
 export const BOOKING_PAGE_SIZE = 40;
 export const CASH_FLOW_PAGE_SIZE = 40;
+export const PHONE_PAGE_SIZE = 10;
 
 export const BOOKING_DESK_TABS = ["open", "reserved", "inhouse", "done", "all"] as const;
 export type BookingDeskTab = (typeof BOOKING_DESK_TABS)[number];
@@ -24,6 +25,15 @@ export function parsePage(raw: string | undefined) {
   const page = Number(raw);
   if (!Number.isInteger(page) || page < 1) return 1;
   return Math.min(page, 10_000);
+}
+
+export function isPhoneUserAgent(ua: string) {
+  if (/iPad|Tablet/i.test(ua)) return false;
+  return /iPhone|iPod|Android.+Mobile|(?:^|[^a-z])Mobile(?:[^a-z]|$)/i.test(ua);
+}
+
+export function listPageSize(ua: string | null | undefined) {
+  return isPhoneUserAgent(ua || "") ? PHONE_PAGE_SIZE : BOOKING_PAGE_SIZE;
 }
 
 export function matchesBookingTab(status: string, tab: BookingDeskTab) {

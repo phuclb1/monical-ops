@@ -1,9 +1,10 @@
 import Link from "next/link";
+import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { Card, Chip, Empty, ListPager, Stat, TabChip } from "@/components/ui";
 import { ReportTabs } from "@/components/report-tabs";
 import { getSession } from "@/lib/auth";
-import { CASH_FLOW_PAGE_SIZE, pageBounds, parsePage } from "@/lib/booking-desk";
+import { listPageSize, pageBounds, parsePage } from "@/lib/booking-desk";
 import { SALE_SOURCE_LABEL } from "@/lib/constants";
 import { formatDateNumeric, formatPeriodLabel } from "@/lib/datetime";
 import { can } from "@/lib/permissions";
@@ -43,7 +44,7 @@ export default async function CashFlowPage({
   const year = window.from.slice(0, 4);
   const bookings = await listCashPeriodBookings(window.from, window.to);
   const report = cashFlowReport(bookings, window.from, window.to);
-  const bounds = pageBounds(report.rows.length, parsePage(rawPage), CASH_FLOW_PAGE_SIZE);
+  const bounds = pageBounds(report.rows.length, parsePage(rawPage), listPageSize((await headers()).get("user-agent")));
   const rows = report.rows.slice(bounds.start, bounds.start + bounds.take);
   const monthChips = Array.from({ length: 12 }, (_, i) => {
     const month = String(i + 1).padStart(2, "0");

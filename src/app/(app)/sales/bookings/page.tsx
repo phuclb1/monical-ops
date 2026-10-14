@@ -1,9 +1,10 @@
 import Link from "next/link";
+import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { BookingLifeChips } from "@/components/booking-lifecycle";
 import { Btn, Card, Empty, Field, ListPager, TabChip } from "@/components/ui";
 import { getSession } from "@/lib/auth";
-import { isBookingDeskTab, parsePage } from "@/lib/booking-desk";
+import { isBookingDeskTab, listPageSize, parsePage } from "@/lib/booking-desk";
 import { SALE_ORIGIN_LABEL, SALE_SOURCE_LABEL } from "@/lib/constants";
 import { formatDateLong, formatDateNumeric, todayVN } from "@/lib/datetime";
 import { maskName } from "@/lib/mask";
@@ -67,7 +68,8 @@ export default async function BookingsPage({
   const view = isBookingListView(viewValue) ? viewValue : "new";
   const q = (rawQ || "").trim();
   const today = todayVN();
-  const desk = await listBookingDesk({ tab, view, q, page: parsePage(rawPage), today });
+  const pageSize = listPageSize((await headers()).get("user-agent"));
+  const desk = await listBookingDesk({ tab, view, q, page: parsePage(rawPage), pageSize, today });
   const { rows, counts, viewCounts, page, pages, total, from, to } = desk;
 
   return (

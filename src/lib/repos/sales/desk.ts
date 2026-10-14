@@ -46,11 +46,11 @@ async function cachedBookings() {
   return rememberBookingRead("booking-views", () => loadAllBookings());
 }
 
-async function searchDesk(input: { tab: BookingDeskTab; view: BookingListView; q: string; page: number; today: string }): Promise<BookingDeskPage> {
+async function searchDesk(input: { tab: BookingDeskTab; view: BookingListView; q: string; page: number; pageSize: number; today: string }): Promise<BookingDeskPage> {
   const bookings = await cachedBookings();
   const matched = bookings.filter((row) => matchesBookingSearch(row, input.q));
   const summary = summarizeBookingDesk(matched, input.tab, input.view, input.today);
-  const bounds = pageBounds(summary.list.length, input.page, BOOKING_PAGE_SIZE);
+  const bounds = pageBounds(summary.list.length, input.page, input.pageSize);
   return {
     rows: summary.list.slice(bounds.start, bounds.start + bounds.take),
     counts: summary.counts,
@@ -63,7 +63,7 @@ async function searchDesk(input: { tab: BookingDeskTab; view: BookingListView; q
   };
 }
 
-async function sqlDesk(input: { tab: BookingDeskTab; view: BookingListView; page: number; today: string }): Promise<BookingDeskPage> {
+async function sqlDesk(input: { tab: BookingDeskTab; view: BookingListView; page: number; pageSize: number; today: string }): Promise<BookingDeskPage> {
   const db = await getDb();
   const counts = (await db.all<CountRow>(bookingDeskCountQuery(input.today, input.view, input.tab)))[0];
   const open = countOf(counts?.open_count);
@@ -71,7 +71,7 @@ async function sqlDesk(input: { tab: BookingDeskTab; view: BookingListView; page
   const inhouse = countOf(counts?.inhouse_count);
   const done = countOf(counts?.done_count);
   const all = countOf(counts?.all_count);
-  const bounds = pageBounds(countOf(counts?.list_count), input.page, BOOKING_PAGE_SIZE);
+  const bounds = pageBounds(countOf(counts?.list_count), input.page, input.pageSize);
   const ids = bounds.take
     ? await db.all<{ bid: string }>(bookingDeskPageQuery(input.today, input.view, input.tab, bounds.take, bounds.start))
     : [];
@@ -98,12 +98,14 @@ export const listBookingDesk = cache(async function listBookingDesk(input: {
   view: BookingListView;
   q: string;
   page: number;
+  pageSize?: number;
   today: string;
 }): Promise<BookingDeskPage> {
   const q = input.q.trim();
-  const key = `desk:${input.tab}:${input.view}:${input.today}:${input.page}:${q}`;
-  if (q) return rememberBookingRead(key, () => searchDesk({ ...input, q }));
-  return rememberBookingRead(key, () => sqlDesk(input));
+  const pageSize = input.pageSize && input.pageSize > 0 ? input.pageSize : BOOKING_PAGE_SIZE;
+  const key = `desk:${input.tab}:${input.view}:${input.today}:${input.page}:${pageSize}:${q}`;
+  if (q) return rememberBookingRead(key, () => searchDesk({ ...input, q, pageSize }));
+  return rememberBookingRead(key, () => sqlDesk({ ...input, pageSize }));
 });
 
 export const listCashPeriodBookings = cache(async function listCashPeriodBookings(from: string, to: string) {

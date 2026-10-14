@@ -10,6 +10,8 @@ import {
   bookingDeskCountQuery,
   bookingDeskPageQuery,
   cashPeriodIdsQuery,
+  isPhoneUserAgent,
+  listPageSize,
   matchesBookingTab,
   pageBounds,
   parsePage,
@@ -21,9 +23,23 @@ const today = "2026-10-13";
 test("booking id lookup stays inside D1's 100 bound parameters", () => {
   const chunk = Array.from({ length: BOOKING_LOOKUP_CHUNK }, (_, index) => `id-${index}`);
   const where = or(inArray(roomSales.bookingId, chunk), inArray(roomSales.id, chunk));
+  assert.ok(where);
   const query = new SQLiteSyncDialect().sqlToQuery(where);
   assert.ok(query.params.length <= 100, `${query.params.length} params`);
   assert.equal(BOOKING_LOOKUP_CHUNK, 40);
+});
+
+test("phone PWA pages ten rows and desktop pages forty", () => {
+  const iphone = "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 Mobile/15E148";
+  const android = "Mozilla/5.0 (Linux; Android 14; Pixel 7) AppleWebKit/537.36 Chrome/120.0.0.0 Mobile Safari/537.36";
+  const desktop = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 Chrome/120.0.0.0 Safari/537.36";
+  assert.equal(isPhoneUserAgent(iphone), true);
+  assert.equal(isPhoneUserAgent(android), true);
+  assert.equal(isPhoneUserAgent(desktop), false);
+  assert.equal(listPageSize(iphone), 10);
+  assert.equal(listPageSize(android), 10);
+  assert.equal(listPageSize(desktop), 40);
+  assert.equal(listPageSize(""), 40);
 });
 
 test("page bounds clamp to the last page", () => {
