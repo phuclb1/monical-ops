@@ -1,5 +1,5 @@
 import { cache } from "react";
-import { desc, eq } from "drizzle-orm";
+import { desc, eq, inArray } from "drizzle-orm";
 import { getDb } from "@/db";
 import * as t from "@/db/schema";
 import { currentShiftType, nid, nowISO, todayVN } from "../datetime";
@@ -48,7 +48,10 @@ export async function getShiftBundle(shiftId: string, departmentCode?: string) {
   const filtered = departmentCode
     ? lists.filter((l) => l.departmentCode === departmentCode || departmentCode === "management")
     : lists;
-  const items = await db.select().from(t.checklistItems);
+  const ids = filtered.map((row) => row.id);
+  const items = ids.length
+    ? await db.select().from(t.checklistItems).where(inArray(t.checklistItems.checklistId, ids))
+    : [];
   return {
     shift,
     checklists: filtered.map((c) => ({

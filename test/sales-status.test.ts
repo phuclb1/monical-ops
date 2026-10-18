@@ -22,6 +22,7 @@ import {
   guestCheckoutDue,
   occupiesNight,
   parseOpsBookingCode,
+  summarizeSalesNight,
   isOtaSource,
   parseSaleSource,
   quoteLinesBySaleId,
@@ -37,6 +38,24 @@ test("stay windows and active statuses", () => {
   assert.equal(rangesOverlap("2026-09-19", "2026-09-20", "2026-09-20", "2026-09-21"), false);
   assert.equal(occupiesNight("2026-09-19", "2026-09-21", "2026-09-20"), true);
   assert.equal(occupiesNight("2026-09-19", "2026-09-21", "2026-09-21"), false);
+  const night = summarizeSalesNight(
+    [
+      { id: "r1", opsStatus: "vacant_clean" },
+      { id: "r2", opsStatus: "vacant_clean" },
+      { id: "r3", opsStatus: "ooo" },
+    ],
+    [
+      { id: "s1", roomId: "r1", status: "inhouse", checkIn: "2026-09-19", checkOut: "2026-09-21" },
+      { id: "s2", roomId: "r2", status: "reserved", checkIn: "2026-09-22", checkOut: "2026-09-23" },
+    ],
+    "2026-09-20",
+    new Map([["s1", { nights: 2, total: 1_600_000 }]]),
+  );
+  assert.equal(night.inhouse, 1);
+  assert.equal(night.vacant, 1);
+  assert.equal(night.ooo, 1);
+  assert.equal(night.sold, 1);
+  assert.equal(night.revenue, 800_000);
   assert.equal(isActiveSaleStatus("reserved"), true);
   assert.equal(isActiveSaleStatus("cancelled"), false);
   assert.equal(isGanttSaleStatus("departed"), true);

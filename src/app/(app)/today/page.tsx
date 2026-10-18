@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { getSession } from "@/lib/auth";
 import { redirect } from "next/navigation";
-import { currentOpenShift, getDashboard, getShiftBundle, salesBoard } from "@/lib/repos";
+import { getDashboard, salesTodaySummary } from "@/lib/repos";
 import { SHIFT_LABEL } from "@/lib/constants";
 import { can } from "@/lib/permissions";
 import { formatDateLong, formatTime, nextDate, remainingLabel, todayVN } from "@/lib/datetime";
@@ -16,15 +16,15 @@ export default async function TodayPage() {
   const user = await getSession();
   if (!user) redirect("/login");
   if (user.role === "owner") redirect("/owner");
-  const data = await getDashboard(user);
-  const open = await currentOpenShift();
-  const bundle = open ? await getShiftBundle(open.id, user.role === "manager" ? undefined : user.departmentCode) : null;
-  const myShiftLists = (bundle?.checklists ?? []).slice().sort((a) => (a.kind === "shift_open" ? -1 : 1));
+  const [data, sales] = await Promise.all([
+    getDashboard(user),
+    can(user.role, "manageSales") ? salesTodaySummary(todayVN()) : Promise.resolve(null),
+  ]);
+  const myShiftLists = data.shiftLists;
   const roomJobs = data.nowTasks.filter((task) =>
     ["checkin", "checkout", "inspect", "housekeeping", "checkout_clean"].includes(task.kind),
   );
   const otherNow = data.nowTasks.filter((task) => !isChecklistTaskKind(task.kind) && !["inspect", "housekeeping", "checkout_clean"].includes(task.kind));
-  const sales = can(user.role, "manageSales") ? await salesBoard(todayVN()) : null;
 
   return (
     <main className="today-grid space-y-4 px-3 py-4 md:space-y-0">

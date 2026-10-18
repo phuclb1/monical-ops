@@ -1,6 +1,7 @@
 import { SALE_SOURCE_GROUPS } from "../constants";
 import type { SaleOrigin, SaleSource, SaleStatus } from "../types";
 import { ACTIVE_SALE_STATUSES, SALE_SOURCES } from "../types";
+import { nightlyNetFromLine } from "./quote";
 
 const OTA_SOURCES = new Set<string>(SALE_SOURCE_GROUPS.find((group) => group.label === "OTA")?.values ?? []);
 
@@ -10,6 +11,35 @@ export function rangesOverlap(aIn: string, aOut: string, bIn: string, bOut: stri
 
 export function occupiesNight(checkIn: string, checkOut: string, date: string) {
   return checkIn <= date && date < checkOut;
+}
+
+export function summarizeSalesNight<
+  Room extends { id: string; opsStatus: string },
+  Sale extends { id: string; roomId: string; status: string; checkIn: string; checkOut: string },
+>(
+  rooms: Room[],
+  sales: Sale[],
+  date: string,
+  lineById?: Map<string, { nights: number; total: number }>,
+) {
+  const nightSales = sales.filter((sale) => isActiveSaleStatus(sale.status) && occupiesNight(sale.checkIn, sale.checkOut, date));
+  const byRoom = new Map(nightSales.map((sale) => [sale.roomId, sale]));
+  let vacant = 0;
+  let reserved = 0;
+  let inhouse = 0;
+  let ooo = 0;
+  for (const room of rooms) {
+    if (room.opsStatus === "ooo") {
+      ooo += 1;
+      continue;
+    }
+    const sale = byRoom.get(room.id);
+    if (!sale) vacant += 1;
+    else if (sale.status === "inhouse") inhouse += 1;
+    else reserved += 1;
+  }
+  const revenue = nightSales.reduce((sum, sale) => sum + nightlyNetFromLine(lineById?.get(sale.id)), 0);
+  return { vacant, reserved, inhouse, ooo, sold: reserved + inhouse, revenue, nightSales };
 }
 
 export function isActiveSaleStatus(status: string): status is SaleStatus {

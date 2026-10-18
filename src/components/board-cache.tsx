@@ -21,6 +21,8 @@ export function BoardCache({
   }, [userId, board, payload]);
 
   useEffect(() => {
+    const nav = performance.getEntriesByType("navigation")[0] as PerformanceNavigationTiming | undefined;
+    if (nav && nav.transferSize === 0) router.refresh();
     const onVis = () => {
       if (document.visibilityState === "visible") router.refresh();
     };

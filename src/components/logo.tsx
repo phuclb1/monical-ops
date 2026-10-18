@@ -14,8 +14,9 @@ export function Logo({
     <Image
       src="/logo.png"
       alt={alt}
-      width={1024}
-      height={1536}
+      width={280}
+      height={420}
+      sizes="(min-width: 768px) 280px, 220px"
       className={clsx("h-auto", className)}
       priority={priority}
     />

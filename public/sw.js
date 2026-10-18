@@ -1,9 +1,37 @@
-const CACHE = "ops-monical-v6";
-const SHELL = ["/login", "/offline.html", "/logo.png", "/icon-192.png", "/icon-512.png", "/manifest.webmanifest"];
+const CACHE = "ops-monical-v7";
+const SHELL = ["/offline.html", "/logo.png", "/icon-192.png", "/icon-512.png", "/manifest.webmanifest"];
 const STATIC_EXT = /\.(?:js|css|woff2?|png|jpe?g|gif|webp|svg|ico)$/;
+const SKIP_HTML = /^\/(login|forgot-password|reset-password)(?:\/|$)/;
 
 function isStatic(url) {
   return url.pathname.startsWith("/_next/static") || STATIC_EXT.test(url.pathname);
+}
+
+function isSameOrigin(url) {
+  return url.origin === self.location.origin;
+}
+
+function putCache(req, res) {
+  if (!res || !res.ok || res.type !== "basic") return res;
+  const copy = res.clone();
+  caches.open(CACHE).then((cache) => cache.put(req, copy)).catch(() => {});
+  return res;
+}
+
+function networkFirstNavigate(req, timeoutMs = 1400) {
+  return caches.open(CACHE).then(async (cache) => {
+    const cached = await cache.match(req);
+    const network = fetch(req)
+      .then((res) => putCache(req, res))
+      .catch(() => null);
+    if (!cached) return (await network) || cache.match("/offline.html");
+    const raced = await Promise.race([
+      network,
+      new Promise((resolve) => setTimeout(() => resolve("timeout"), timeoutMs)),
+    ]);
+    if (raced && raced !== "timeout") return raced;
+    return cached;
+  });
 }
 
 self.addEventListener("install", (event) => {
@@ -22,22 +50,25 @@ self.addEventListener("fetch", (event) => {
   const req = event.request;
   if (req.method !== "GET") return;
   const url = new URL(req.url);
-  if (url.pathname.startsWith("/api/") || url.pathname === "/sw.js") return;
+  if (!isSameOrigin(url) || url.pathname.startsWith("/api/") || url.pathname === "/sw.js") return;
 
   if (isStatic(url)) {
     event.respondWith(
       caches.match(req).then(
         (cached) =>
           cached ||
-          fetch(req).then((res) => {
-            if (res.ok) {
-              const copy = res.clone();
-              caches.open(CACHE).then((cache) => cache.put(req, copy)).catch(() => {});
-            }
-            return res;
-          }),
+          fetch(req).then((res) => putCache(req, res)),
       ),
     );
+    return;
+  }
+
+  if (req.mode === "navigate") {
+    if (SKIP_HTML.test(url.pathname)) {
+      event.respondWith(fetch(req).catch(() => caches.match("/offline.html")));
+      return;
+    }
+    event.respondWith(networkFirstNavigate(req));
     return;
   }
 

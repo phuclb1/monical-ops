@@ -1,7 +1,6 @@
 import { cache } from "react";
-import { inArray, or } from "drizzle-orm";
+import { and, gt, inArray, lte, or } from "drizzle-orm";
 import { addDaysVN, datesUntil } from "../../datetime";
-import { rekeyLegacyOpsBookingCodes } from "@/db/ops-codes";
 import { getDb } from "@/db";
 import * as t from "@/db/schema";
 import {
@@ -22,19 +21,20 @@ import {
   rangesOverlap,
   rollupBookingStatus,
   salePaid,
+  summarizeSalesNight,
 } from "../../sales";
 import { extraAmount } from "../../extras";
+import { ACTIVE_SALE_STATUSES } from "../../types";
 import { listRooms, listRoomTypes } from "../rooms";
 import { withSaleRoom } from "./helpers";
 
-export async function listRoomSales() {
+export const listRoomSales = cache(async () => {
   const db = await getDb();
-  await rekeyLegacyOpsBookingCodes(db);
-  const [sales, rooms] = await Promise.all([db.select().from(t.roomSales), db.select().from(t.rooms)]);
+  const [sales, rooms] = await Promise.all([db.select().from(t.roomSales), listRooms()]);
   return sales
     .map((sale) => withSaleRoom(sale, rooms))
     .sort((a, b) => b.checkIn.localeCompare(a.checkIn) || (a.room?.number || "").localeCompare(b.room?.number || ""));
-}
+});
 
 export async function getRoomSale(id: string) {
   const sales = await listRoomSales();
@@ -156,7 +156,6 @@ export async function bookingsByIds(ids: string[]) {
   const unique = [...new Set(ids.map((id) => id.trim()).filter((id) => id && !id.startsWith("seq-hold-")))];
   if (!unique.length) return [];
   const db = await getDb();
-  await rekeyLegacyOpsBookingCodes(db);
   const rooms = await listRooms();
   const sales: (typeof t.roomSales.$inferSelect)[] = [];
   const extras: (typeof t.saleExtras.$inferSelect)[] = [];
@@ -204,17 +203,31 @@ export async function salesBoard(date: string) {
         room.opsStatus === "ooo" ? "ooo" : sale?.status === "inhouse" ? "inhouse" : sale ? "reserved" : "vacant";
       return { room, sale, kind };
     });
-  const vacant = cells.filter((cell) => cell.kind === "vacant").length;
-  const reserved = cells.filter((cell) => cell.kind === "reserved").length;
-  const inhouse = cells.filter((cell) => cell.kind === "inhouse").length;
-  const ooo = cells.filter((cell) => cell.kind === "ooo").length;
   const lineById = quoteLinesBySaleId(sales.filter((sale) => isActiveSaleStatus(sale.status)));
-  const revenue = nightSales.reduce((sum, sale) => sum + nightlyNetFromLine(lineById.get(sale.id)), 0);
+  const counts = summarizeSalesNight(rooms, sales, date, lineById);
   const upcoming = sales
     .filter((sale) => sale.status === "reserved" && sale.checkIn > date && sale.checkIn <= addDaysVN(date, 14))
     .sort((a, b) => a.checkIn.localeCompare(b.checkIn));
-  return { date, types, cells, vacant, reserved, inhouse, ooo, sold: reserved + inhouse, revenue, nightSales, upcoming };
+  return { date, types, cells, ...counts, upcoming };
 }
+
+export const salesTodaySummary = cache(async (date: string) => {
+  const db = await getDb();
+  const [rooms, sales] = await Promise.all([
+    listRooms(),
+    db
+      .select()
+      .from(t.roomSales)
+      .where(
+        and(
+          inArray(t.roomSales.status, ACTIVE_SALE_STATUSES),
+          lte(t.roomSales.checkIn, date),
+          gt(t.roomSales.checkOut, date),
+        ),
+      ),
+  ]);
+  return summarizeSalesNight(rooms, sales, date, quoteLinesBySaleId(sales));
+});
 
 export async function salesGantt(from: string, toExclusive: string) {
   const days = datesUntil(from, toExclusive);

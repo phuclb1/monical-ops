@@ -50,6 +50,7 @@ export {
 export {
   rangesOverlap,
   occupiesNight,
+  summarizeSalesNight,
   isActiveSaleStatus,
   billableSaleRows,
   isGanttSaleStatus,

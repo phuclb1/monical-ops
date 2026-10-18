@@ -20,6 +20,16 @@ export function PwaBoot() {
     if ("serviceWorker" in navigator) {
       navigator.serviceWorker.register("/sw.js").catch(() => {});
     }
+    const bootBeacon = () => {
+      if (document.querySelector("script[data-cf-beacon]")) return;
+      const script = document.createElement("script");
+      script.src = "https://static.cloudflareinsights.com/beacon.min.js";
+      script.async = true;
+      script.dataset.cfBeacon = JSON.stringify({ token: "05bacc66e32843c5af5ae8014545bdff" });
+      document.body.appendChild(script);
+    };
+    if (document.readyState === "complete") bootBeacon();
+    else window.addEventListener("load", bootBeacon, { once: true });
     const onPrompt = (e: Event) => {
       e.preventDefault();
       setInstall(e);

@@ -1,6 +1,6 @@
 export { bookingCreatedBy, notifyBookingChange } from "./notify";
 export type { SaleInput } from "./helpers";
-export { listRoomSales, getRoomSale, listBookings, getBooking, salesBoard, salesGantt } from "./queries";
+export { listRoomSales, getRoomSale, listBookings, getBooking, salesBoard, salesTodaySummary, salesGantt } from "./queries";
 export { listBookingDesk, listCashPeriodBookings } from "./desk";
 export { listBookingLogs } from "./logs";
 export { createRoomSale, addRoomsToBooking } from "./create";

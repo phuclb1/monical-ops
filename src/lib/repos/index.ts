@@ -48,6 +48,7 @@ export {
   getBooking,
   listBookingLogs,
   salesBoard,
+  salesTodaySummary,
   salesGantt,
   createRoomSale,
   addRoomsToBooking,

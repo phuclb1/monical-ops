@@ -58,12 +58,12 @@ export async function receptionDuty(date: string, shiftType: ShiftType): Promise
 }
 
 export async function receptionDutyDay(date: string) {
-  const shifts = {
-    morning: await receptionDuty(date, "morning"),
-    afternoon: await receptionDuty(date, "afternoon"),
-    night: await receptionDuty(date, "night"),
-  };
-  return { date, weekday: weekdayISO(date), shifts };
+  const [morning, afternoon, night] = await Promise.all([
+    receptionDuty(date, "morning"),
+    receptionDuty(date, "afternoon"),
+    receptionDuty(date, "night"),
+  ]);
+  return { date, weekday: weekdayISO(date), shifts: { morning, afternoon, night } };
 }
 
 export async function listWeekRoster(date = todayVN()) {
