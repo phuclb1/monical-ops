@@ -18,6 +18,7 @@ import {
   isLegacyOpsBookingCode,
   isOpsBookingCode,
   isOtaDebt,
+  otaDebtByDefault,
   guestCheckoutDue,
   occupiesNight,
   parseOpsBookingCode,
@@ -44,6 +45,13 @@ test("stay windows and active statuses", () => {
 
 test("OTA / walk-in source aliases and booking codes", () => {
   assert.equal(parseSaleSource("Traveloka"), "traveloka");
+  assert.equal(parseSaleSource("Trip.com"), "trip");
+  assert.equal(parseSaleSource("Ctrip"), "trip");
+  assert.equal(parseSaleSource("Tripadvisor"), "ota");
+  assert.equal(otaDebtByDefault("agoda"), true);
+  assert.equal(otaDebtByDefault("traveloka"), true);
+  assert.equal(otaDebtByDefault("trip"), true);
+  assert.equal(otaDebtByDefault("booking"), false);
   assert.equal(parseSaleSource("vãng lai"), "walk_in");
   assert.equal(parseSaleSource("fb"), "facebook");
   assert.equal(parseSaleSource("TikTok"), "tiktok");

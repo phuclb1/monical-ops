@@ -10,6 +10,7 @@ import { formatDateLong, formatDayMonth, nextDate, prevDate, todayVN } from "@/l
 import { maskPhone } from "@/lib/mask";
 import { can } from "@/lib/permissions";
 import { listRoomSales, listRoomTypes } from "@/lib/repos";
+import { isOtaSource } from "@/lib/sales";
 import type { SaleSource } from "@/lib/types";
 
 function parseDate(raw: string | undefined, today: string) {
@@ -24,7 +25,7 @@ function hrefFor(date: string) {
 
 function sourceLine(source: string | null, guestName: string) {
   const label = source ? SALE_SOURCE_LABEL[source as SaleSource] : "";
-  if (label && (source === "traveloka" || source === "booking" || source === "agoda" || source === "expedia" || source === "airbnb" || source === "ota")) {
+  if (label && isOtaSource(source)) {
     return `${label} · ${guestName}`;
   }
   return guestName;

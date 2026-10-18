@@ -56,6 +56,7 @@ export {
   isSaleOrigin,
   isSaleSource,
   isOtaSource,
+  otaDebtByDefault,
   isOtaDebt,
   guestCheckoutDue,
   parseSaleSource,

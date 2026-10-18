@@ -85,6 +85,7 @@ export const SALE_SOURCES = [
   "booking",
   "agoda",
   "traveloka",
+  "trip",
   "expedia",
   "airbnb",
   "ota",

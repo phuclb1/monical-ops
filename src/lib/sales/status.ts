@@ -37,6 +37,12 @@ export function isOtaSource(value: string | null | undefined) {
   return OTA_SOURCES.has(String(value || ""));
 }
 
+const OTA_DEBT_BY_DEFAULT = new Set(["agoda", "traveloka", "trip"]);
+
+export function otaDebtByDefault(source: string | null | undefined) {
+  return OTA_DEBT_BY_DEFAULT.has(String(source || ""));
+}
+
 export function isOtaDebt(source: string | null | undefined, mode?: string | null) {
   return isOtaSource(source) && mode !== "hotel";
 }
@@ -59,6 +65,7 @@ export function parseSaleSource(raw: string | null | undefined): SaleSource {
     .replace(/[\s._-]+/g, "");
   if (compact.includes("agoda")) return "agoda";
   if (compact.includes("traveloka") || compact.includes("tvlk")) return "traveloka";
+  if (compact === "trip" || compact.startsWith("tripcom") || compact.includes("ctrip")) return "trip";
   if (compact.includes("expedia") || compact.includes("hotelscom")) return "expedia";
   if (compact.includes("airbnb")) return "airbnb";
   if (compact.includes("booking")) return "booking";

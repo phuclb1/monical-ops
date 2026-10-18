@@ -4,7 +4,7 @@ import { useEffect, useRef, useState, type FormEvent } from "react";
 import { Btn, Field, MoneyMethodField } from "@/components/ui";
 import { SALE_SOURCE_GROUPS, SALE_SOURCE_LABEL } from "@/lib/constants";
 import { formatDateNumeric } from "@/lib/datetime";
-import { bookingDue, bookingPayMethods, bookingQuote, catalogRate, collectedSplit, formatVnd, isOtaDebt, isOtaSource, nightsBetween, parseMoney, parseDiscountValue, rangesOverlap, rateForRoomMove, roomAdultCap, roomMoveKind } from "@/lib/sales";
+import { bookingDue, bookingPayMethods, bookingQuote, catalogRate, collectedSplit, formatVnd, isOtaDebt, isOtaSource, nightsBetween, otaDebtByDefault, parseMoney, parseDiscountValue, rangesOverlap, rateForRoomMove, roomAdultCap, roomMoveKind } from "@/lib/sales";
 import { extraAmount } from "@/lib/extras";
 import type { PaymentMethod } from "@/lib/types";
 import { OtaCommissionFields, type CommissionKind } from "./commission";
@@ -330,7 +330,15 @@ export function BookingForm({
         <input name="guestPhone" type="tel" defaultValue={defaults.guestPhone || ""} placeholder="090..." />
       </Field>
       <Field label="Nền tảng">
-        <select name="source" value={source} onChange={(e) => setSource(e.target.value)}>
+        <select
+          name="source"
+          value={source}
+          onChange={(e) => {
+            const next = e.target.value;
+            setSource(next);
+            if (otaDebtByDefault(next)) setOtaPaymentMode("debt");
+          }}
+        >
           {SALE_SOURCE_GROUPS.map((group) => (
             <optgroup key={group.label} label={group.label}>
               {group.values.map((value) => (

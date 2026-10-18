@@ -11,6 +11,7 @@ import {
   catalogRate,
   defaultCheckout,
   isOtaSource,
+  otaDebtByDefault,
   nightsBetween,
   formatVnd,
   parseMoney,
@@ -268,7 +269,15 @@ export function SaleForm({
       {defaults.id ? <input type="hidden" name="id" value={defaults.id} /> : null}
       {defaults.date ? <input type="hidden" name="date" value={defaults.date} /> : null}
       <Field label="Nền tảng">
-        <select name="source" value={source} onChange={(e) => setSource(e.target.value)}>
+        <select
+          name="source"
+          value={source}
+          onChange={(e) => {
+            const next = e.target.value;
+            setSource(next);
+            if (otaDebtByDefault(next)) setOtaPaymentMode("debt");
+          }}
+        >
           {SALE_SOURCE_GROUPS.map((group) => (
             <optgroup key={group.label} label={group.label}>
               {group.values.map((value) => (
