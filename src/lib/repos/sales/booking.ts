@@ -33,6 +33,7 @@ import { dispatchBookingZalo, dispatchCheckinPaidZalo } from "@/lib/zalo-notify"
 import { dispatchBookingWebhook, bookingWebhookRooms } from "@/lib/booking-webhook";
 import { getBooking } from "./queries";
 import { cancelRoomSale } from "./lifecycle";
+import { syncBookingMoney } from "./money-sync";
 import { syncStayFromSale } from "./stay";
 
 export type BookingUpdateInput = {
@@ -249,6 +250,7 @@ export async function updateBooking(
     })
     .filter(Boolean);
   for (const id of removeIds) await cancelRoomSale(user, id, false, { silent: true });
+  await syncBookingMoney(key);
   await ensureTodayRoomTasks(db, { actorId: user.id });
   await notifyBookingChange({
     actor: user,

@@ -168,6 +168,8 @@ export const FIELD_LABEL: Record<string, string> = {
   discountValue: "Mức chiết khấu",
   deposit: "Đặt cọc / đã thu",
   checkinPaid: "Thu đủ khi check-in",
+  bookingTotal: "Tổng booking",
+  refundTotal: "Hoàn trả",
   checkinMethod: "Hình thức thu check-in",
   cashPaid: "Đã thu tiền mặt",
   transferPaid: "Đã thu chuyển khoản cá nhân",

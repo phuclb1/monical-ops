@@ -99,6 +99,7 @@ export {
   saleStatusToStay,
   defaultCheckout,
 } from "./pax";
+export { computeBookingMoney } from "./booking-totals";
 export { bookingSearchText, matchesBookingSearch } from "./search";
 export type { BookingSearchRow } from "./search";
 export { BOOKING_LIST_VIEWS, bookingMatchesListView, isBookingListView } from "./list-view";

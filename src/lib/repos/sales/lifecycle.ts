@@ -11,6 +11,7 @@ import { audit } from "../audit";
 import { bookingCheckinPaidReady } from "../../zalo-templates";
 import { dispatchCheckinPaidZalo } from "../../zalo-notify";
 import { bookingCreatedBy, notifyBookingChange } from "./notify";
+import { syncBookingMoney } from "./money-sync";
 import { getBooking } from "./queries";
 import { applySaleRoomState, syncStayFromSale } from "./stay";
 import { assertSaleHandoff, spawnCheckoutClean } from "../room-handoff";
@@ -60,6 +61,7 @@ export async function recordBookingPayment(
     await db.update(t.roomSales).set(patch).where(eq(t.roomSales.id, row.id));
     await audit(user.id, "room_sale", row.id, "update", { deposit: row.deposit, checkinPaid: row.checkinPaid, checkinMethod: row.checkinMethod, cashPaid: row.cashPaid, transferPaid: row.transferPaid, companyPaid: row.companyPaid }, patch);
   }
+  await syncBookingMoney(booking.id);
   await dispatchCheckinPaidZalo(user.id, booking.id, bookingCheckinPaidReady(booking)).catch((error) => console.error("zalo booking", error));
   return booking.id;
 }
@@ -103,6 +105,7 @@ export async function recordBookingRefund(
       refundReason: row.refundReason,
     }, patch);
   }
+  await syncBookingMoney(booking.id);
   const createdBy = [...booking.rooms].sort((a, b) => a.createdAt.localeCompare(b.createdAt))[0]?.createdBy;
   await notifyBookingChange({
     actor: user,
@@ -197,6 +200,7 @@ export async function checkoutRoomSale(user: SessionUser, id: string, opts?: { s
   });
   await ensureTodayRoomTasks(db, { actorId: user.id });
   await audit(user.id, "room_sale", id, "checkout", before, { status: "departed", checkOut, checkedOutAt: now });
+  await syncBookingMoney(before.bookingId || before.id);
 }
 
 export async function checkinBooking(user: SessionUser, bookingId: string) {
@@ -236,6 +240,7 @@ export async function cancelRoomSale(user: SessionUser, id: string, asNoShow = f
   await syncStayFromSale(user.id, { ...before, status });
   await ensureTodayRoomTasks(db, { actorId: user.id });
   await audit(user.id, "room_sale", id, asNoShow ? "no_show" : "cancel", before, { status, ...refund });
+  await syncBookingMoney(before.bookingId || before.id);
   if (opts?.silent) return;
   const bookingId = before.bookingId || before.id;
   await notifyBookingChange({

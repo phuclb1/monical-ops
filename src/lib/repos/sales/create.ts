@@ -13,6 +13,7 @@ import { assertSaleWindow, paymentOf, saleLineWindow, type SaleInput, uniqueSale
 import { notifyBookingChange } from "./notify";
 import { extraAmount } from "../../extras";
 import { insertSaleExtras, resolveSaleExtras } from "./extras";
+import { syncBookingMoney } from "./money-sync";
 import { applySaleRoomState, syncStayFromSale } from "./stay";
 import { dispatchBookingWebhook } from "@/lib/booking-webhook";
 import { dispatchBookingZalo, dispatchCheckinPaidZalo } from "@/lib/zalo-notify";
@@ -116,6 +117,8 @@ export async function createRoomSale(user: SessionUser, data: SaleInput) {
       discountValue: row.discountValue,
       deposit: paid.deposit,
       checkinPaid: Math.max(0, Math.round(data.checkinPaid || 0)),
+      bookingTotal,
+      refundTotal: 0,
       checkinMethod: Math.max(0, Math.round(data.checkinPaid || 0)) ? data.checkinMethod || parsePaymentMethod(data.paymentMethod) : "",
       cashPaid: paid.cashPaid,
       transferPaid: paid.transferPaid,
@@ -135,6 +138,7 @@ export async function createRoomSale(user: SessionUser, data: SaleInput) {
     ids.push(id);
   }
   await insertSaleExtras(user, bookingId, preparedExtras);
+  await syncBookingMoney(bookingId);
   await ensureTodayRoomTasks(db, { actorId: user.id });
   const roomLabel = rooms.length === 1 ? `P.${rooms[0].room.number}` : `${rooms.length} phòng`;
   const spanIn = rooms.reduce((min, row) => (row.checkIn < min ? row.checkIn : min), rooms[0].checkIn);

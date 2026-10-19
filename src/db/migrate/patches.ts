@@ -165,6 +165,8 @@ export const SCHEMA_PATCHES = [
   "ALTER TABLE room_sales ADD COLUMN refund_company INTEGER NOT NULL DEFAULT 0",
   "ALTER TABLE room_sales ADD COLUMN refunded_at TEXT",
   "ALTER TABLE room_sales ADD COLUMN refund_reason TEXT NOT NULL DEFAULT ''",
+  "ALTER TABLE room_sales ADD COLUMN refund_total INTEGER NOT NULL DEFAULT 0",
+  "ALTER TABLE room_sales ADD COLUMN booking_total INTEGER NOT NULL DEFAULT 0",
   "ALTER TABLE room_sales ADD COLUMN checked_in_at TEXT",
   "ALTER TABLE room_sales ADD COLUMN checked_out_at TEXT",
   `CREATE TABLE IF NOT EXISTS expenses (

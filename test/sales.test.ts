@@ -5,6 +5,7 @@ import {
   bookingDue,
   bookingRefundKeep,
   bookingSettledTotal,
+  computeBookingMoney,
   bookingDisplayCode,
   bookingPdfFilename,
   bookingQuote,
@@ -122,6 +123,35 @@ test("payment split, due, labels, codes", () => {
   assert.equal(bookingSettledTotal(2_340_000, 2_340_000, 520_000), 1_820_000);
   assert.equal(bookingSettledTotal(1_040_000, 2_340_000, 1_300_000), 1_040_000);
   assert.equal(bookingSettledTotal(1_040_000, 2_340_000, 0), 1_040_000);
+});
+
+test("computeBookingMoney stores room quote, collected, refund and settled total", () => {
+  const money = computeBookingMoney(
+    [
+      {
+        status: "inhouse",
+        rate: 1_300_000,
+        checkIn: "2026-10-15",
+        checkOut: "2026-10-16",
+        discountKind: "amount",
+        discountValue: 260_000,
+        deposit: 2_340_000,
+        checkinPaid: 0,
+        companyPaid: 2_340_000,
+        refundCompany: 520_000,
+      },
+    ],
+  );
+  assert.equal(money.roomTotal, 1_040_000);
+  assert.equal(money.deposit, 2_340_000);
+  assert.equal(money.checkinPaid, 0);
+  assert.equal(money.refunded, 520_000);
+  assert.equal(money.total, 1_820_000);
+  assert.equal(money.due, 0);
+  assert.equal(money.refundKeep, 780_000);
+});
+
+test("payment labels and codes", () => {
   assert.equal(primaryPaymentMethod({ cashPaid: 10, transferPaid: 5, companyPaid: 0, deposit: 15 }), "cash");
   assert.equal(parsePaymentMethod("company"), "company");
   assert.equal(parsePaymentMethod("other"), "personal");

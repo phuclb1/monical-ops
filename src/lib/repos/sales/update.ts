@@ -10,6 +10,7 @@ import { assertSaleWindow, paymentOf, type SaleInput, uniqueSaleRoomIds } from "
 import { bookingCreatedBy, notifyBookingChange } from "./notify";
 import { bookingCheckinPaidReady } from "@/lib/zalo-templates";
 import { dispatchBookingZalo, dispatchCheckinPaidZalo } from "@/lib/zalo-notify";
+import { syncBookingMoney } from "./money-sync";
 import { getBooking } from "./queries";
 import { syncStayFromSale } from "./stay";
 
@@ -87,4 +88,5 @@ export async function updateRoomSale(user: SessionUser, id: string, data: SaleIn
   });
   await dispatchBookingZalo(user.id, "booking_updated", bookingId).catch((error) => console.error("zalo booking", error));
   await dispatchCheckinPaidZalo(user.id, bookingId, wasPaidInhouse).catch((error) => console.error("zalo booking", error));
+  await syncBookingMoney(bookingId);
 }

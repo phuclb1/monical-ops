@@ -6,6 +6,7 @@ import { can } from "../../permissions";
 import { isActiveSaleStatus } from "../../sales";
 import type { SessionUser } from "../../types";
 import { audit } from "../audit";
+import { syncBookingMoney } from "./money-sync";
 import { getBooking } from "./queries";
 
 export async function listSaleExtraTypes() {
@@ -58,6 +59,7 @@ export async function insertSaleExtras(user: SessionUser, bookingId: string, row
     await db.insert(t.saleExtras).values(record);
     await audit(user.id, "sale_extra", record.id, "create", undefined, record);
   }
+  await syncBookingMoney(bookingId);
 }
 
 export async function addBookingExtra(user: SessionUser, bookingId: string, data: SaleExtraDraft) {
@@ -78,5 +80,6 @@ export async function removeBookingExtra(user: SessionUser, extraId: string) {
   if (!booking.rooms.some((row) => isActiveSaleStatus(row.status))) throw new Error("Booking đã đóng");
   await db.delete(t.saleExtras).where(eq(t.saleExtras.id, extraId));
   await audit(user.id, "sale_extra", extraId, "delete", before, undefined);
+  await syncBookingMoney(booking.id);
   return booking.id;
 }

@@ -9,6 +9,7 @@ import { audit } from "../audit";
 import { assertSaleWindow } from "./helpers";
 import { dispatchBookingWebhook } from "@/lib/booking-webhook";
 import { bookingCreatedBy, notifyBookingChange } from "./notify";
+import { syncBookingMoney } from "./money-sync";
 import { syncStayFromSale } from "./stay";
 
 export async function moveGanttSale(
@@ -53,6 +54,7 @@ export async function moveGanttSale(
   };
   await db.update(t.roomSales).set(patch).where(eq(t.roomSales.id, before.id));
   await syncStayFromSale(user.id, { ...before, ...patch }, before.roomId);
+  await syncBookingMoney(bookingKey(before));
   await ensureTodayRoomTasks(db, { actorId: user.id });
   await audit(user.id, "room_sale", before.id, "update", before, patch);
   const bookingId = bookingKey(before);

@@ -3,6 +3,7 @@ import { getDb } from "@/db";
 import * as t from "@/db/schema";
 import { nid, nowISO } from "./datetime";
 import { audit } from "./repos";
+import { syncBookingMoney } from "./repos/sales/money-sync";
 import { ensureTodayRoomTasks } from "./checklist-ops";
 import { catalogRate, clampBreakfastPax, clampRoomAdults, isActiveSaleStatus, normalizeDiscount, parseSaleSource, rangesOverlap, applyPaidAmount, roomAdultCap, salePaid } from "./sales";
 import type { SaleOrigin, SaleStatus, StayStatus } from "./types";
@@ -232,6 +233,7 @@ async function ingestOne(raw: IngestBooking): Promise<IngestResult> {
   if (saleRow) {
     await db.update(t.roomSales).set(salePayload).where(eq(t.roomSales.id, saleRow.id));
     await audit(INGEST_ACTOR_ID, "room_sale", saleRow.id, "ingest", saleRow, salePayload);
+    await syncBookingMoney(saleRow.bookingId || saleRow.id);
     return { pmsCode, stay: stayResult, sale: "updated" };
   }
 
@@ -245,5 +247,6 @@ async function ingestOne(raw: IngestBooking): Promise<IngestResult> {
     createdBy: INGEST_ACTOR_ID,
   });
   await audit(INGEST_ACTOR_ID, "room_sale", saleId, "ingest", null, salePayload);
+  await syncBookingMoney(bookingId);
   return { pmsCode, stay: stayResult, sale: "created" };
 }
