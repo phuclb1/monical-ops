@@ -8,6 +8,7 @@ import {
   isOtaDebt,
   isOtaSource,
   refundParts,
+  refundReasonLabel,
   salePaid,
 } from "./sales";
 import type { PaymentMethod } from "./types";
@@ -47,6 +48,7 @@ type BookingMoney = {
   refundTransfer?: number | null;
   refundCompany?: number | null;
   refundedAt?: string | null;
+  refundReason?: string | null;
   source?: string | null;
   otaPaymentMode?: string | null;
   otaCommissionPercent?: number | null;
@@ -474,7 +476,7 @@ function refundTxs<T extends ActualCashBooking>(booking: T) {
     id: `${meta.bookingId}-refund-${part.method}`,
     amount: -Math.abs(part.amount),
     kind: "refund" as const,
-    typeLabel: ACTUAL_CASH_KIND_LABEL.refund,
+    typeLabel: refundReasonLabel(booking.refundReason),
     method: part.method,
   }));
 }

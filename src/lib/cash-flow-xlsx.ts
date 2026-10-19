@@ -1,6 +1,6 @@
 import { PAYMENT_METHOD_LABEL, SALE_SOURCE_LABEL } from "./constants";
 import { formatDateNumeric } from "./datetime";
-import { bookingDisplayCode } from "./sales";
+import { bookingDisplayCode, refundReasonLabel } from "./sales";
 import {
   CASH_FLOW_KIND_LABEL,
   type ActualCashTotals,
@@ -41,10 +41,11 @@ type ExportBooking = {
   createdAt: string;
   checkIn: string;
   refundedAt?: string | null;
+  refundReason?: string | null;
 };
 
-function statusOf(flow: CashFlowLine) {
-  if (flow.refund) return "Hoàn cọc";
+function statusOf(flow: CashFlowLine, booking: ExportBooking) {
+  if (flow.refund) return refundReasonLabel(booking.refundReason);
   return flow.recognized ? "Đã ghi nhận" : "Chưa ghi nhận";
 }
 
@@ -69,7 +70,7 @@ export function cashFlowXlsx<T extends ExportBooking>(
       CASH_FLOW_KIND_LABEL[flow.kind],
       formatDateNumeric(booking.createdAt),
       formatDateNumeric(flow.refund ? booking.refundedAt || booking.checkIn : booking.checkIn),
-      statusOf(flow),
+      statusOf(flow, booking),
       flow.gross,
       flow.net,
       flow.vat,

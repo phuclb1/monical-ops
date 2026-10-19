@@ -3,8 +3,8 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import * as repo from "@/lib/repos";
-import { collectedSplit, isActiveSaleStatus, parseCommissionKind, parseCommissionValue, parseDiscountKind, parseDiscountValue, parseMoney, parsePaymentMethod, salePaid } from "@/lib/sales";
-import { actionBack, assertDepositRefund, fail, refresh, requireCancel, requireSales, saleFromForm } from "./shared";
+import { collectedSplit, isActiveSaleStatus, parseCommissionKind, parseCommissionValue, parseDiscountKind, parseDiscountValue, parseMoney, parsePaymentMethod, parseStayRefundReason, salePaid } from "@/lib/sales";
+import { actionBack, assertDepositRefund, fail, refresh, requireCancel, requireRefund, requireSales, saleFromForm } from "./shared";
 
 export async function createSaleAction(formData: FormData) {
   const user = await requireSales();
@@ -179,6 +179,28 @@ export async function recordBookingPaymentAction(formData: FormData) {
   }
   refresh();
   revalidatePath(back);
+  redirect(back);
+}
+
+export async function recordBookingRefundAction(formData: FormData) {
+  const user = await requireRefund();
+  const bookingId = String(formData.get("bookingId") || "");
+  const back = actionBack(formData, `/sales/bookings/${bookingId}`);
+  if (String(formData.get("refunded") || "") !== "1") {
+    fail(back, new Error("Xác nhận đã hoàn tiền trước khi ghi"));
+  }
+  try {
+    await repo.recordBookingRefund(user, bookingId, {
+      amount: parseMoney(formData.get("amount")),
+      paymentMethod: parsePaymentMethod(formData.get("paymentMethod")),
+      reason: parseStayRefundReason(formData.get("reason")),
+    });
+  } catch (e) {
+    fail(back, e);
+  }
+  refresh();
+  revalidatePath(back);
+  revalidatePath(`/sales/bookings/${bookingId}`);
   redirect(back);
 }
 

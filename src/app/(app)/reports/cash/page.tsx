@@ -9,7 +9,7 @@ import { PAYMENT_METHOD_LABEL, SALE_SOURCE_LABEL } from "@/lib/constants";
 import { formatDateNumeric, formatPeriodLabel } from "@/lib/datetime";
 import { can } from "@/lib/permissions";
 import { listCashPeriodBookings } from "@/lib/repos";
-import { bookingDisplayCode, formatVnd } from "@/lib/sales";
+import { bookingDisplayCode, formatVnd, refundReasonLabel } from "@/lib/sales";
 import {
   CASH_FLOW_KIND_LABEL,
   actualCashFlowReport,
@@ -280,7 +280,7 @@ export default async function CashFlowPage({
                     <td>{formatDateNumeric(flow.refund ? booking.refundedAt || booking.checkIn : booking.checkIn)}</td>
                     <td>
                       {flow.refund ? (
-                        <Chip tone="danger">Hoàn cọc</Chip>
+                        <Chip tone="danger">{refundReasonLabel(booking.refundReason)}</Chip>
                       ) : (
                         <Chip tone={flow.recognized ? "ok" : "gold"}>{flow.recognized ? "Đã ghi nhận" : "Chưa ghi nhận"}</Chip>
                       )}

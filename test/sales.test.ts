@@ -3,6 +3,8 @@ import { test } from "node:test";
 import {
   applyPaidAmount,
   bookingDue,
+  bookingRefundKeep,
+  bookingSettledTotal,
   bookingDisplayCode,
   bookingPdfFilename,
   bookingQuote,
@@ -20,9 +22,17 @@ import {
   parsePaymentMethod,
   parkingLabel,
   primaryPaymentMethod,
+  addRefundSplit,
   depositRefundAllowed,
   depositRefundSplit,
   refundParts,
+  refundReasonLabel,
+  refundSplitFromMethod,
+  refundTotal,
+  stayNightlyRate,
+  stayRefundOverpay,
+  stayRefundQuote,
+  stayRefundable,
   salePaid,
   saleQuote,
   saleTotal,
@@ -106,6 +116,12 @@ test("payment split, due, labels, codes", () => {
   const reduced = applyPaidAmount(increased, 50_000, "personal");
   assert.equal(reduced.deposit, 50_000);
   assert.equal(bookingDue(1_000_000, 250_000), 750_000);
+  assert.equal(bookingDue(1_560_000, 2_340_000, 520_000), 0);
+  assert.equal(bookingSettledTotal(1_040_000, 2_340_000, 520_000), 1_820_000);
+  assert.equal(bookingRefundKeep(1_040_000, 1_820_000), 780_000);
+  assert.equal(bookingSettledTotal(2_340_000, 2_340_000, 520_000), 1_820_000);
+  assert.equal(bookingSettledTotal(1_040_000, 2_340_000, 1_300_000), 1_040_000);
+  assert.equal(bookingSettledTotal(1_040_000, 2_340_000, 0), 1_040_000);
   assert.equal(primaryPaymentMethod({ cashPaid: 10, transferPaid: 5, companyPaid: 0, deposit: 15 }), "cash");
   assert.equal(parsePaymentMethod("company"), "company");
   assert.equal(parsePaymentMethod("other"), "personal");
@@ -131,4 +147,19 @@ test("deposit refund needs 7 days before check-in and returns the hold account",
   });
   assert.deepEqual(split, { refundCash: 0, refundTransfer: 300_000, refundCompany: 0 });
   assert.deepEqual(refundParts(split), [{ method: "personal", amount: 300_000 }]);
+});
+
+test("stay refund quotes unused nights and 50% cancel-night from the room rate", () => {
+  assert.equal(stayNightlyRate(3_000_000, 3), 1_000_000);
+  assert.equal(stayRefundQuote({ reason: "early_out", nights: 2, roomTotal: 1_000_000, stayNights: 1 }), 2_000_000);
+  assert.equal(stayRefundQuote({ reason: "cancel_night", nights: 1, roomTotal: 1_000_000, stayNights: 1 }), 500_000);
+  assert.equal(stayRefundQuote({ reason: "other", roomTotal: 1_000_000, stayNights: 1, amount: 250_000 }), 250_000);
+  assert.equal(stayRefundable(3_000_000, 500_000), 2_500_000);
+  assert.equal(stayRefundOverpay(3_000_000, 0, 1_000_000), 2_000_000);
+  assert.equal(refundReasonLabel("early_out"), "Hoàn trả sớm");
+  assert.equal(refundReasonLabel("cancel_night"), "Hoàn hủy đêm");
+  assert.equal(refundReasonLabel(""), "Hoàn cọc");
+  const next = addRefundSplit({ refundCash: 0, refundTransfer: 200_000, refundCompany: 0 }, refundSplitFromMethod(500_000, "cash"));
+  assert.deepEqual(next, { refundCash: 500_000, refundTransfer: 200_000, refundCompany: 0 });
+  assert.equal(refundTotal(next), 700_000);
 });

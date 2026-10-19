@@ -3,6 +3,7 @@ import { notFound, redirect } from "next/navigation";
 import { addRoomsToBookingAction } from "@/actions/sales";
 import { AddBookingRoomsForm } from "@/components/sale-form";
 import { BookingCancelActions } from "@/components/booking-cancel";
+import { BookingRefundPanel } from "@/components/booking-refund";
 import { RoomHandoffPanel } from "@/components/room-handoff";
 import { Card, Chip } from "@/components/ui";
 import { getSession } from "@/lib/auth";
@@ -11,7 +12,7 @@ import { formatDateLong, formatDateTime, todayVN } from "@/lib/datetime";
 import { can } from "@/lib/permissions";
 import { getRoomSale, getRoomDayChecklists, getBooking, listRooms, listRoomHandoff } from "@/lib/repos";
 import { canCheckinAfterStandby, canCheckoutAfterInspect } from "@/lib/room-handoff";
-import { bookingDue, bookingPayMethods, bookingQuote, collectedSplit, depositRefundAllowed, discountLabel, formatVnd, isActiveSaleStatus, isOpsBookingCode, isOtaDebt, isOtaSource, paidNote, refundParts } from "@/lib/sales";
+import { bookingDue, bookingPayMethods, bookingQuote, collectedSplit, depositRefundAllowed, discountLabel, formatVnd, isActiveSaleStatus, isOpsBookingCode, isOtaDebt, isOtaSource, paidNote, primaryPaymentMethod, refundParts, refundReasonLabel, refundTotal, stayRefundOverpay, stayRefundable } from "@/lib/sales";
 import type { SaleOrigin, SaleSource, SaleStatus } from "@/lib/types";
 
 const STATUS_TONE: Record<SaleStatus, "ok" | "warn" | "danger" | "gold" | "neutral"> = {
@@ -52,6 +53,10 @@ export default async function SaleDetailPage({
   const hold = otherActive ? 0 : collectedSplit(sale.deposit || 0, sale.checkinPaid).hold;
   const canRefund = hold > 0 && depositRefundAllowed(sale.checkIn, today);
   const refunds = refundParts(sale);
+  const staySource = booking || sale;
+  const alreadyRefunded = refundTotal(staySource);
+  const stayRefundableAmount = stayRefundable(staySource.deposit || 0, alreadyRefunded);
+  const canStayRefund = can(user.role, "cancelBooking") && (sale.status === "departed" || sale.status === "inhouse") && stayRefundableAmount > 0;
   const group = [sale, ...sale.peers].sort((a, b) => (a.room?.number || "").localeCompare(b.room?.number || ""));
   const booked = bookingQuote(group);
   const quote = booked.lines[group.findIndex((row) => row.id === sale.id)] || booked.lines[0];
@@ -116,7 +121,7 @@ export default async function SaleDetailPage({
               </p>
             ) : null}
             <p className="mt-1 text-sm font-semibold">
-              Công nợ OTA {formatVnd(booking?.due ?? bookingDue(booked.total, sale.deposit || 0))}
+              Công nợ OTA {formatVnd(booking?.due ?? bookingDue(booked.total, sale.deposit || 0, alreadyRefunded))}
             </p>
           </>
         ) : ota ? (
@@ -131,7 +136,7 @@ export default async function SaleDetailPage({
               <p className="mt-1 text-sm text-[#c47b12]">Chưa thu tại KS</p>
             )}
             <p className="mt-1 text-sm font-semibold">
-              Còn khách thanh toán {formatVnd(booking?.due ?? bookingDue(booked.total, sale.deposit || 0))}
+              Còn khách thanh toán {formatVnd(booking?.due ?? bookingDue(booked.total, sale.deposit || 0, alreadyRefunded))}
             </p>
           </>
         ) : (
@@ -144,14 +149,17 @@ export default async function SaleDetailPage({
             ) : (
               <p className="mt-1 text-sm text-[#c47b12]">Chưa đặt cọc</p>
             )}
-            <p className="mt-1 text-sm font-semibold">Còn phải thu {formatVnd(booking?.due ?? bookingDue(booked.total, sale.deposit || 0))}</p>
+            <p className="mt-1 text-sm font-semibold">Còn phải thu {formatVnd(booking?.due ?? bookingDue(booked.total, sale.deposit || 0, alreadyRefunded))}</p>
           </>
         )}
         {refunds.map((part) => (
           <p key={part.method} className="mt-1 text-sm font-semibold text-[#c23b3b]">
-            Hoàn tiền {formatVnd(part.amount)} từ {PAYMENT_METHOD_LABEL[part.method]}
+            {refundReasonLabel(sale.refundReason)} {formatVnd(part.amount)} từ {PAYMENT_METHOD_LABEL[part.method]}
           </p>
         ))}
+        {sale.refundedAt && refunds.length ? (
+          <p className="mt-1 text-xs text-[#5c6665]">Ngày hoàn {formatDateLong(sale.refundedAt)}</p>
+        ) : null}
         {sale.guestPhone ? <p className="mt-1 text-sm">SĐT {sale.guestPhone}</p> : null}
         {sale.pmsCode ? <p className="mt-1 text-sm">{isOpsBookingCode(sale.pmsCode) ? "Mã Ops" : "PMS"} {sale.pmsCode}</p> : null}
         {sale.notes ? <p className="mt-2 text-sm text-[#5c6665]">{sale.notes}</p> : null}
@@ -227,6 +235,22 @@ export default async function SaleDetailPage({
           accountLabel={PAYMENT_METHOD_LABEL[bookingPayMethods(sale).deposit]}
           variant="block"
         />
+      ) : null}
+
+      {canStayRefund ? (
+        <Card>
+          <BookingRefundPanel
+            bookingId={sale.bookingKey}
+            collected={staySource.deposit || 0}
+            refunded={alreadyRefunded}
+            refundable={stayRefundableAmount}
+            overpay={stayRefundOverpay(staySource.deposit || 0, alreadyRefunded, booking?.total ?? booked.total)}
+            roomTotal={booking?.roomTotal ?? booked.total}
+            nights={booking?.nights ?? quote.nights}
+            defaultMethod={primaryPaymentMethod(staySource)}
+            back={`/sales/${sale.id}`}
+          />
+        </Card>
       ) : null}
 
       {active ? (

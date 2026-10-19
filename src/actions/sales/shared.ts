@@ -17,6 +17,12 @@ export async function requireCancel() {
   return user;
 }
 
+export async function requireRefund() {
+  const user = await requireSession();
+  if (!can(user.role, "cancelBooking")) throw new Error("Chỉ quản lý mới hoàn tiền");
+  return user;
+}
+
 export function assertDepositRefund(hold: number, checkIn: string, formData: FormData) {
   const refunded = String(formData.get("depositRefunded") || "") === "1";
   const amount = Math.max(0, Math.round(hold || 0));

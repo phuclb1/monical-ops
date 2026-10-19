@@ -63,6 +63,11 @@ const ENUM_LABEL: Record<string, Record<string, string>> = {
     hotel: "Khách thanh toán tại khách sạn",
   },
   paymentMethod: PAYMENT_METHOD_LABEL,
+  refundReason: {
+    early_out: "Trả sớm",
+    cancel_night: "Hủy đêm (giữ 50%)",
+    other: "Hoàn khác",
+  },
   unit: {
     night: "Theo đêm",
     once: "Một lần",
@@ -81,6 +86,9 @@ const MONEY_FIELDS = new Set([
   "cashPaid",
   "transferPaid",
   "companyPaid",
+  "refundCash",
+  "refundTransfer",
+  "refundCompany",
   "rate",
   "discountValue",
   "unitPrice",
@@ -89,7 +97,7 @@ const MONEY_FIELDS = new Set([
   "total",
   "due",
 ]);
-const DATE_FIELDS = new Set(["checkIn", "checkOut", "arrivalDate", "departureDate", "date", "effectiveFrom"]);
+const DATE_FIELDS = new Set(["checkIn", "checkOut", "arrivalDate", "departureDate", "date", "effectiveFrom", "refundedAt"]);
 const DATE_TIME_FIELDS = new Set(["dueAt", "checkedInAt", "checkedOutAt"]);
 
 function formatDateOnly(value: string) {

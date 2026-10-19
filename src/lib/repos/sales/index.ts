@@ -10,6 +10,7 @@ export type { BookingUpdateInput } from "./booking";
 export { moveGanttSale } from "./move";
 export {
   recordBookingPayment,
+  recordBookingRefund,
   cancelBooking,
   checkinRoomSale,
   checkoutRoomSale,

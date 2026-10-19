@@ -6,6 +6,7 @@ import { BookingCancelActions } from "@/components/booking-cancel";
 import { BookingApprovals } from "@/components/booking-approvals";
 import { BookingExtrasPanel } from "@/components/booking-extras";
 import { BookingPaymentPanel } from "@/components/booking-payment";
+import { BookingRefundPanel } from "@/components/booking-refund";
 import { BookingRoomList } from "@/components/booking-room-list";
 import { BookingLog } from "@/components/booking-log";
 import { BookingLifeChips, BookingLifecycleBar } from "@/components/booking-lifecycle";
@@ -17,7 +18,7 @@ import { extraDetail } from "@/lib/extras";
 import { maskName, maskPhone } from "@/lib/mask";
 import { can } from "@/lib/permissions";
 import { getBooking, listBookingChangeRequests, listBookingLogs, listRooms, listRoomSales, listRoomTypes, listSaleExtraTypes } from "@/lib/repos";
-import { bookingLifecycle, bookingPayMethods, bookingQuote, collectedSplit, commissionAmount, depositRefundAllowed, formatVnd, guestCheckoutDue, isActiveSaleStatus, isOpsBookingCode, isOtaDebt, isOtaSource, paidNote, parkingLabel, refundParts } from "@/lib/sales";
+import { bookingLifecycle, bookingPayMethods, bookingQuote, collectedSplit, commissionAmount, depositRefundAllowed, formatVnd, guestCheckoutDue, isActiveSaleStatus, isOpsBookingCode, isOtaDebt, isOtaSource, paidNote, parkingLabel, primaryPaymentMethod, refundParts, refundReasonLabel, refundTotal, stayRefundOverpay, stayRefundable } from "@/lib/sales";
 import type { SaleOrigin, SaleSource } from "@/lib/types";
 
 export default async function BookingDetailPage({
@@ -64,6 +65,10 @@ export default async function BookingDetailPage({
   const earliestIn = activeRooms.reduce((min, row) => (row.checkIn < min ? row.checkIn : min), activeRooms[0]?.checkIn || booking.checkIn);
   const canRefund = paidSplit.hold > 0 && depositRefundAllowed(earliestIn, today);
   const refunds = refundParts(booking);
+  const alreadyRefunded = refundTotal(booking);
+  const stayRefundableAmount = stayRefundable(booking.deposit, alreadyRefunded);
+  const stayed = booking.rooms.some((row) => row.status === "departed" || row.status === "inhouse");
+  const canStayRefund = can(user.role, "cancelBooking") && stayed && stayRefundableAmount > 0;
   const holdSuffix = ` · ${PAYMENT_METHOD_LABEL[payMethods.deposit]}`;
   const checkinSuffix = ` · ${PAYMENT_METHOD_LABEL[payMethods.checkin]}`;
   const activeIds = new Set(activeRooms.map((row) => row.id));
@@ -202,9 +207,12 @@ export default async function BookingDetailPage({
             )}
             {refunds.map((part) => (
               <p key={part.method} className="mt-1 text-sm font-semibold text-[#c23b3b]">
-                Hoàn tiền {formatVnd(part.amount)} từ {PAYMENT_METHOD_LABEL[part.method]}
+                {refundReasonLabel(booking.refundReason)} {formatVnd(part.amount)} từ {PAYMENT_METHOD_LABEL[part.method]}
               </p>
             ))}
+            {booking.refundedAt && refunds.length ? (
+              <p className="mt-1 text-xs text-[#5c6665]">Ngày hoàn {formatDateLong(booking.refundedAt)}</p>
+            ) : null}
             {guestPhone ? <p className="mt-1 text-sm">SĐT {guestPhone}</p> : null}
             {booking.pmsCode ? (
               <p className="mt-1 text-sm">
@@ -223,6 +231,20 @@ export default async function BookingDetailPage({
                   cashPaid={booking.cashPaid}
                   transferPaid={booking.transferPaid}
                   companyPaid={booking.companyPaid}
+                />
+              </div>
+            ) : null}
+            {canStayRefund ? (
+              <div className="mt-3 border-t border-line pt-3">
+                <BookingRefundPanel
+                  bookingId={booking.id}
+                  collected={booking.deposit}
+                  refunded={alreadyRefunded}
+                  refundable={stayRefundableAmount}
+                  overpay={stayRefundOverpay(booking.deposit, alreadyRefunded, booking.total)}
+                  roomTotal={booking.roomTotal}
+                  nights={booking.nights}
+                  defaultMethod={primaryPaymentMethod(booking)}
                 />
               </div>
             ) : null}
@@ -269,6 +291,8 @@ export default async function BookingDetailPage({
                 discount: booking.discount,
                 breakfastOff: booking.breakfastOff,
                 extrasTotal: booking.extrasTotal,
+                refundKeep: booking.refundKeep,
+                refunded: alreadyRefunded,
                 total: booking.total,
                 deposit: booking.deposit,
                 due: booking.due,

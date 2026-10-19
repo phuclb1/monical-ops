@@ -10,6 +10,7 @@ export {
   checkoutSaleAction,
   cancelSaleAction,
   recordBookingPaymentAction,
+  recordBookingRefundAction,
   updateBookingAction,
   moveGanttSaleAction,
   cancelBookingAction,

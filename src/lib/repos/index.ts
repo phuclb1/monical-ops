@@ -56,6 +56,7 @@ export {
   updateBooking,
   moveGanttSale,
   recordBookingPayment,
+  recordBookingRefund,
   cancelBooking,
   checkinRoomSale,
   checkoutRoomSale,

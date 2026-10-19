@@ -74,8 +74,21 @@ export function bookingPdfFilename(booking: { pmsCode?: string | null; id: strin
   return `${safe}.pdf`;
 }
 
-export function bookingDue(total: number, deposit: number) {
-  return Math.max(0, Math.round(total || 0) - Math.max(0, Math.round(deposit || 0)));
+export function bookingDue(total: number, deposit: number, refunded = 0) {
+  const collected = Math.max(0, Math.round(deposit || 0) - Math.max(0, Math.round(refunded || 0)));
+  return Math.max(0, Math.round(total || 0) - collected);
+}
+
+export function bookingSettledTotal(quoteTotal: number, deposit: number, refunded: number) {
+  const quoted = Math.max(0, Math.round(quoteTotal || 0));
+  const refund = Math.max(0, Math.round(refunded || 0));
+  if (!refund) return quoted;
+  const paid = Math.max(0, Math.round(deposit || 0));
+  return Math.max(0, Math.max(quoted, paid) - refund);
+}
+
+export function bookingRefundKeep(quoteTotal: number, settledTotal: number) {
+  return Math.max(0, Math.round(settledTotal || 0) - Math.max(0, Math.round(quoteTotal || 0)));
 }
 
 export function collectedSplit(deposit: number, checkinPaid?: number | null) {
@@ -217,6 +230,79 @@ export function refundParts(row: { refundCash?: number | null; refundTransfer?: 
   if (row.refundTransfer) parts.push({ method: "personal", amount: Math.round(row.refundTransfer) });
   if (row.refundCash) parts.push({ method: "cash", amount: Math.round(row.refundCash) });
   return parts;
+}
+
+export const STAY_REFUND_REASONS = ["early_out", "cancel_night", "other"] as const;
+export type StayRefundReason = (typeof STAY_REFUND_REASONS)[number];
+
+export const STAY_REFUND_REASON_LABEL: Record<StayRefundReason, string> = {
+  early_out: "Trả sớm",
+  cancel_night: "Hủy đêm (giữ 50%)",
+  other: "Hoàn khác",
+};
+
+export function parseStayRefundReason(value: FormDataEntryValue | string | null | undefined): StayRefundReason {
+  const raw = String(value || "");
+  if (raw === "early_out" || raw === "cancel_night" || raw === "other") return raw;
+  return "other";
+}
+
+export function refundReasonLabel(value?: string | null) {
+  if (value === "early_out") return "Hoàn trả sớm";
+  if (value === "cancel_night") return "Hoàn hủy đêm";
+  if (value === "other") return "Hoàn tiền";
+  return "Hoàn cọc";
+}
+
+export function stayNightlyRate(roomTotal: number, nights: number) {
+  const stayNights = Math.max(1, Math.round(nights || 0));
+  return Math.round(Math.max(0, Math.round(roomTotal || 0)) / stayNights);
+}
+
+export function stayRefundQuote(input: {
+  reason: StayRefundReason;
+  nights?: number;
+  roomTotal: number;
+  stayNights: number;
+  amount?: number;
+}) {
+  const nightly = stayNightlyRate(input.roomTotal, input.stayNights);
+  const nights = Math.max(1, Math.round(input.nights || 1));
+  if (input.reason === "early_out") return nights * nightly;
+  if (input.reason === "cancel_night") return Math.round(nights * nightly * 0.5);
+  return Math.max(0, Math.round(input.amount || 0));
+}
+
+export function refundTotal(row: { refundCash?: number | null; refundTransfer?: number | null; refundCompany?: number | null }) {
+  return Math.max(0, Math.round(row.refundCash || 0) + Math.round(row.refundTransfer || 0) + Math.round(row.refundCompany || 0));
+}
+
+export function stayRefundable(collected: number, alreadyRefunded: number) {
+  return Math.max(0, Math.round(collected || 0) - Math.max(0, Math.round(alreadyRefunded || 0)));
+}
+
+export function stayRefundOverpay(collected: number, alreadyRefunded: number, currentTotal: number) {
+  return Math.max(0, stayRefundable(collected, alreadyRefunded) - Math.max(0, Math.round(currentTotal || 0)));
+}
+
+export function refundSplitFromMethod(amount: number, method: PaymentMethod) {
+  const paid = paidFromMethod(amount, method);
+  return {
+    refundCash: paid.cashPaid,
+    refundTransfer: paid.transferPaid,
+    refundCompany: paid.companyPaid,
+  };
+}
+
+export function addRefundSplit(
+  current: { refundCash?: number | null; refundTransfer?: number | null; refundCompany?: number | null },
+  extra: { refundCash: number; refundTransfer: number; refundCompany: number },
+) {
+  return {
+    refundCash: Math.max(0, Math.round(current.refundCash || 0)) + extra.refundCash,
+    refundTransfer: Math.max(0, Math.round(current.refundTransfer || 0)) + extra.refundTransfer,
+    refundCompany: Math.max(0, Math.round(current.refundCompany || 0)) + extra.refundCompany,
+  };
 }
 
 export function paidNote(row: PaidSplit) {

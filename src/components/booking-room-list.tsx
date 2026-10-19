@@ -59,6 +59,8 @@ function Totals({
     discount: number;
     breakfastOff?: number;
     extrasTotal: number;
+    refundKeep?: number;
+    refunded?: number;
     total: number;
     deposit: number;
     due: number;
@@ -87,6 +89,12 @@ function Totals({
         <li className="is-add">
           <span>Chi phí phát sinh</span>
           <span>+{formatVnd(totals.extrasTotal)}</span>
+        </li>
+      ) : null}
+      {totals.refundKeep ? (
+        <li className="is-add">
+          <span>Đêm hủy còn tính</span>
+          <span>+{formatVnd(totals.refundKeep)}</span>
         </li>
       ) : null}
       <li className="is-total">
@@ -129,6 +137,12 @@ function Totals({
             <span>Đã đặt cọc</span>
             <span>{formatVnd(totals.deposit)}</span>
           </li>
+          {totals.refunded ? (
+            <li className="is-off">
+              <span>Hoàn tiền</span>
+              <span>−{formatVnd(totals.refunded)}</span>
+            </li>
+          ) : null}
           <li className="is-due">
             <span>Còn lại</span>
             <span>{formatVnd(totals.due)}</span>
@@ -218,6 +232,8 @@ export function BookingRoomList({
     discount: number;
     breakfastOff?: number;
     extrasTotal: number;
+    refundKeep?: number;
+    refunded?: number;
     total: number;
     deposit: number;
     due: number;

@@ -8,6 +8,8 @@ import {
   bookingStayPax,
   bookingDue,
   bookingKey,
+  bookingRefundKeep,
+  bookingSettledTotal,
   bookingQuote,
   ganttSpan,
   groupByBooking,
@@ -20,6 +22,7 @@ import {
   quoteLinesBySaleId,
   rangesOverlap,
   rollupBookingStatus,
+  refundTotal,
   salePaid,
   summarizeSalesNight,
 } from "../../sales";
@@ -87,6 +90,7 @@ function toBookingView(id: string, rooms: Awaited<ReturnType<typeof listRoomSale
     refundTransfer: rooms.reduce((max, row) => Math.max(max, row.refundTransfer || 0), 0),
     refundCompany: rooms.reduce((max, row) => Math.max(max, row.refundCompany || 0), 0),
     refundedAt: rooms.map((row) => row.refundedAt).filter(Boolean).sort()[0] || null,
+    refundReason: rooms.map((row) => row.refundReason).filter(Boolean).at(-1) || "",
     due: bookingDue(quote.total, paid.deposit),
     createdAt: sorted.reduce((min, row) => (row.createdAt < min ? row.createdAt : min), sorted[0].createdAt),
     checkIn,
@@ -113,15 +117,28 @@ function decorateExtras(rows: (typeof t.saleExtras.$inferSelect)[], nights: numb
     .sort((a, b) => a.createdAt.localeCompare(b.createdAt) || a.name.localeCompare(b.name));
 }
 
-function withBookingExtras<T extends { id: string; nights: number; roomTotal?: number; total: number; deposit: number }>(
+function withBookingExtras<T extends {
+  id: string;
+  nights: number;
+  roomTotal?: number;
+  total: number;
+  deposit: number;
+  refundCash?: number | null;
+  refundTransfer?: number | null;
+  refundCompany?: number | null;
+  refundReason?: string | null;
+}>(
   view: T,
   extras: (typeof t.saleExtras.$inferSelect)[],
 ) {
   const rows = decorateExtras(extras, view.nights);
   const extrasTotal = rows.reduce((sum, row) => sum + row.amount, 0);
   const roomTotal = view.roomTotal ?? view.total;
-  const total = roomTotal + extrasTotal;
-  return { ...view, extras: rows, extrasTotal, roomTotal, total, due: bookingDue(total, view.deposit) };
+  const refunded = refundTotal(view);
+  const quoted = roomTotal + extrasTotal;
+  const total = bookingSettledTotal(quoted, view.deposit, refunded);
+  const refundKeep = bookingRefundKeep(quoted, total);
+  return { ...view, extras: rows, extrasTotal, roomTotal, refundKeep, total, due: bookingDue(total, view.deposit, refunded) };
 }
 
 /** D1 allows 100 bound parameters. Each id is bound on both booking_id and id. */

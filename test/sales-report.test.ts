@@ -395,6 +395,52 @@ test("actual cash flow lists each collected payment and can group by booking", (
   assert.equal(report.groups[1].amount, -200_000);
 });
 
+test("actual cash flow labels stay refunds by reason and account", () => {
+  const report = actualCashFlowReport(
+    [
+      {
+        id: "bk-early",
+        guestName: "Trả sớm",
+        roomLabel: "P.301",
+        checkIn: "2026-09-01",
+        checkOut: "2026-09-02",
+        status: "departed",
+        total: 1_000_000,
+        due: 0,
+        deposit: 3_000_000,
+        cashPaid: 3_000_000,
+        refundCash: 1_000_000,
+        refundedAt: "2026-09-08",
+        refundReason: "early_out",
+      },
+      {
+        id: "bk-night",
+        guestName: "Hủy đêm",
+        roomLabel: "P.302",
+        checkIn: "2026-10-01",
+        checkOut: "2026-10-03",
+        status: "departed",
+        total: 2_000_000,
+        due: 0,
+        deposit: 2_000_000,
+        transferPaid: 2_000_000,
+        refundTransfer: 500_000,
+        refundedAt: "2026-09-09",
+        refundReason: "cancel_night",
+      },
+    ],
+    "2026-09-01",
+    "2026-10-01",
+  );
+  assert.deepEqual(
+    report.rows.filter((row) => row.kind === "refund").map((row) => [row.typeLabel, row.amount, row.method]),
+    [
+      ["Hoàn trả sớm", -1_000_000, "cash"],
+      ["Hoàn hủy đêm", -500_000, "personal"],
+    ],
+  );
+});
+
 test("actual cash flow filters by guest, booking code and stay dates", () => {
   const report = actualCashFlowReport(
     [

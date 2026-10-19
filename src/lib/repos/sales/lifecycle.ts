@@ -4,7 +4,8 @@ import * as t from "@/db/schema";
 import { nowISO, todayVN } from "../../datetime";
 import { ensureTodayRoomTasks } from "../../checklist-ops";
 import { can } from "../../permissions";
-import { applyPaidAmount, collectedSplit, depositRefundSplit, formatVnd, guestCheckoutDue, isActiveSaleStatus, isPaymentMethod, parsePaymentMethod, salePaid } from "../../sales";
+import { PAYMENT_METHOD_LABEL } from "../../constants";
+import { addRefundSplit, applyPaidAmount, collectedSplit, depositRefundSplit, formatVnd, guestCheckoutDue, isActiveSaleStatus, isPaymentMethod, parsePaymentMethod, parseStayRefundReason, refundSplitFromMethod, refundTotal, salePaid, stayRefundable, STAY_REFUND_REASON_LABEL } from "../../sales";
 import type { SaleStatus, SessionUser } from "../../types";
 import { audit } from "../audit";
 import { bookingCheckinPaidReady } from "../../zalo-templates";
@@ -60,6 +61,56 @@ export async function recordBookingPayment(
     await audit(user.id, "room_sale", row.id, "update", { deposit: row.deposit, checkinPaid: row.checkinPaid, checkinMethod: row.checkinMethod, cashPaid: row.cashPaid, transferPaid: row.transferPaid, companyPaid: row.companyPaid }, patch);
   }
   await dispatchCheckinPaidZalo(user.id, booking.id, bookingCheckinPaidReady(booking)).catch((error) => console.error("zalo booking", error));
+  return booking.id;
+}
+
+export async function recordBookingRefund(
+  user: SessionUser,
+  bookingId: string,
+  data: { amount?: number; paymentMethod?: string; reason?: string },
+) {
+  if (!can(user.role, "cancelBooking")) throw new Error("Chỉ quản lý mới hoàn tiền");
+  const booking = await getBooking(bookingId);
+  if (!booking) throw new Error("Không tìm thấy booking");
+  const stayed = booking.rooms.some((row) => row.status === "departed" || row.status === "inhouse");
+  if (!stayed) throw new Error("Chỉ hoàn tiền khi khách đã nhận hoặc đã trả phòng");
+  const collected = salePaid(booking).deposit;
+  const already = refundTotal(booking);
+  const refundable = stayRefundable(collected, already);
+  if (refundable <= 0) throw new Error("Không còn tiền để hoàn");
+  const amount = Math.max(0, Math.round(data.amount || 0));
+  if (amount <= 0) throw new Error("Nhập số tiền hoàn");
+  if (amount > refundable) throw new Error(`Không hoàn quá số đã thu còn lại ${formatVnd(refundable)}`);
+  const method = parsePaymentMethod(data.paymentMethod);
+  const reason = parseStayRefundReason(data.reason);
+  const next = addRefundSplit(booking, refundSplitFromMethod(amount, method));
+  const db = await getDb();
+  const now = nowISO();
+  const patch = {
+    ...next,
+    refundedAt: todayVN(),
+    refundReason: reason,
+    updatedAt: now,
+    updatedBy: user.id,
+  };
+  for (const row of booking.rooms) {
+    await db.update(t.roomSales).set(patch).where(eq(t.roomSales.id, row.id));
+    await audit(user.id, "room_sale", row.id, "refund", {
+      refundCash: row.refundCash,
+      refundTransfer: row.refundTransfer,
+      refundCompany: row.refundCompany,
+      refundedAt: row.refundedAt,
+      refundReason: row.refundReason,
+    }, patch);
+  }
+  const createdBy = [...booking.rooms].sort((a, b) => a.createdAt.localeCompare(b.createdAt))[0]?.createdBy;
+  await notifyBookingChange({
+    actor: user,
+    bookingId: booking.id,
+    createdBy,
+    title: `Hoàn tiền · ${booking.guestName}`,
+    body: `${user.fullName} · ${formatVnd(amount)} từ ${PAYMENT_METHOD_LABEL[method]} · ${STAY_REFUND_REASON_LABEL[reason]}`,
+  });
   return booking.id;
 }
 
