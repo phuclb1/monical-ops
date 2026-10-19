@@ -7,7 +7,7 @@ export {
 } from "@/modules/notifications/models/notifications";
 
 export { audit, listAuditLogs } from "./audit";
-export { listUsers } from "./users";
+export { listUsers, getUser, usersByIds } from "./users";
 export { listDepartments, getStaff, createStaff, updateStaff, setStaffActive, resetStaffPassword } from "./staff";
 export {
   type ReceptionDuty,
@@ -40,9 +40,13 @@ export {
 } from "./rooms";
 export { roomFocusBoard } from "./rooms-focus";
 export {
-  listRoomSales,
+  listActiveRoomSales,
+  listRoomSalesOverlapping,
   getRoomSale,
-  listBookings,
+  listBookingsByCheckIn,
+  listBookingsOverlapping,
+  listBookingsOnStayDate,
+  listHomeBookings,
   listBookingDesk,
   listCashPeriodBookings,
   getBooking,
@@ -76,8 +80,8 @@ export {
   submitGanttMove,
   submitRemoveExtra,
 } from "./sales";
-export { listStays, getStay, getRoomDayChecklists, updateStay, addVehicle, addGuestRequest, completeRequest } from "./stays";
-export { pendingHandover, listHandovers, buildHandoverDraft, createHandover, acceptHandover } from "./handovers";
+export { listStays, getStay, findStayForSale, getRoomDayChecklists, updateStay, addVehicle, addGuestRequest, completeRequest } from "./stays";
+export { pendingHandover, listHandovers, getHandover, buildHandoverDraft, createHandover, acceptHandover } from "./handovers";
 export { getBreakfast, upsertBreakfast, confirmBreakfast } from "./kitchen";
 export { listForms, getForm, saveForm } from "./forms";
 export { listIncidents, createIncident, approveIncident } from "./incidents";

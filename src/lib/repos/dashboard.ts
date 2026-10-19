@@ -1,10 +1,9 @@
 import { cache } from "react";
-import { and, eq, inArray, isNotNull, lt, ne, notInArray, or, sql } from "drizzle-orm";
+import { and, eq, inArray, isNotNull, lt, notInArray, or, sql } from "drizzle-orm";
 import { getDb } from "@/db";
 import * as t from "@/db/schema";
 import { visibleNotifications } from "@/modules/notifications/models/notifications";
 import { addDaysVN, currentShiftType, nextDate, nowISO, shiftWindow, todayVN } from "../datetime";
-import { ensureShiftChecklists } from "../checklist-ops";
 import type { SessionUser, ShiftType } from "../types";
 import { pendingHandover } from "./handovers";
 import { receptionDuty, receptionDutyDay } from "./roster";
@@ -17,11 +16,10 @@ export const getDashboard = cache(async (user: SessionUser) => {
   const db = await getDb();
   const today = todayVN();
   const shift = await currentOpenShift();
-  if (shift) await ensureShiftChecklists(db, shift, { actorId: user.id });
   const shiftType = (shift?.type as ShiftType) || currentShiftType();
   const [rooms, stays, openRequests, breakfast, handover, unreadRows, tasks, duty, tomorrowDuty, bundle] = await Promise.all([
     db.select().from(t.rooms),
-    db.select().from(t.stays).where(ne(t.stays.status, "departed")),
+    db.select().from(t.stays).where(inArray(t.stays.status, ["arriving", "inhouse", "departing", "no_show"])),
     db.select().from(t.guestRequests).where(eq(t.guestRequests.status, "open")),
     db.select().from(t.breakfasts).where(eq(t.breakfasts.date, addDaysVN(today, 1))).limit(1).then((rows) => rows[0]),
     pendingHandover(),

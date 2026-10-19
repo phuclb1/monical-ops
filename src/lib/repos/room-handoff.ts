@@ -1,10 +1,10 @@
-import { eq } from "drizzle-orm";
+import { and, desc, eq, inArray, ne } from "drizzle-orm";
 import { getDb } from "@/db";
 import * as t from "@/db/schema";
 import { spawnRoomChecklist } from "../checklist-ops";
 import { notify } from "@/modules/notifications/models/notifications";
-import { isActiveSaleStatus } from "../sales";
-import { stayForSale } from "../checklist-ops/room-jobs";
+import { findStayForSale } from "./stays";
+import { ACTIVE_SALE_STATUSES, type SessionUser } from "../types";
 import {
   canCheckinAfterStandby,
   canCheckoutAfterInspect,
@@ -16,7 +16,6 @@ import {
   type HandoffPurpose,
 } from "../room-handoff";
 import { isOpenTaskStatus } from "../task-types";
-import type { SessionUser } from "../types";
 import { createTask } from "./tasks";
 import { updateRoom } from "./rooms";
 
@@ -24,22 +23,28 @@ const HANDOFF_KINDS = new Set(["inspect", "housekeeping", "checkout_clean", "che
 
 export async function listRoomHandoff(roomId: string) {
   const db = await getDb();
-  const [rows, sales] = await Promise.all([
-    db.select().from(t.tasks).where(eq(t.tasks.roomId, roomId)),
-    db.select().from(t.roomSales).where(eq(t.roomSales.roomId, roomId)),
+  const [rows, sale] = await Promise.all([
+    db
+      .select()
+      .from(t.tasks)
+      .where(and(eq(t.tasks.roomId, roomId), inArray(t.tasks.kind, [...HANDOFF_KINDS]), ne(t.tasks.status, "archive"))),
+    activeSaleForRoom(roomId),
   ]);
-  const sale = sales.find((row) => isActiveSaleStatus(row.status));
-  return rows.filter((task) => {
-    if (!HANDOFF_KINDS.has(task.kind) || task.status === "archive") return false;
-    if (sale?.createdAt && task.createdAt < sale.createdAt) return false;
-    return true;
-  });
+  return rows.filter((task) => !sale?.createdAt || task.createdAt >= sale.createdAt);
 }
 
 export async function activeSaleForRoom(roomId: string) {
   const db = await getDb();
-  const rows = await db.select().from(t.roomSales).where(eq(t.roomSales.roomId, roomId));
-  return rows.find((row) => isActiveSaleStatus(row.status)) ?? null;
+  return (
+    (
+      await db
+        .select()
+        .from(t.roomSales)
+        .where(and(eq(t.roomSales.roomId, roomId), inArray(t.roomSales.status, ACTIVE_SALE_STATUSES)))
+        .orderBy(desc(t.roomSales.createdAt))
+        .limit(1)
+    )[0] ?? null
+  );
 }
 
 export async function requestHkHandoff(
@@ -54,9 +59,7 @@ export async function requestHkHandoff(
   if (!room) throw new Error("Không tìm thấy phòng");
   const sale = data.saleId
     ? (await db.select().from(t.roomSales).where(eq(t.roomSales.id, data.saleId)).limit(1))[0]
-    : (
-        await db.select().from(t.roomSales).where(eq(t.roomSales.roomId, data.roomId))
-      ).find((row) => isActiveSaleStatus(row.status));
+    : await activeSaleForRoom(data.roomId);
   const guestName = sale?.guestName || "khách";
   if (data.purpose === "standby" && sale && sale.status !== "reserved") {
     throw new Error("Chỉ gửi HK standby khi phòng còn giữ chỗ");
@@ -67,12 +70,12 @@ export async function requestHkHandoff(
   if (data.purpose === "checkout_inspect" && sale && sale.status !== "inhouse") {
     throw new Error("Chỉ gửi HK kiểm phòng trả khi khách đang ở");
   }
-  const stays = await db.select().from(t.stays);
-  const stay = data.stayId
-    ? stays.find((row) => row.id === data.stayId)
-    : sale
-      ? stayForSale(stays, sale)
-      : stays.find((row) => row.roomId === data.roomId && (row.status === "arriving" || row.status === "inhouse" || row.status === "departing"));
+  const stay = await findStayForSale({
+    roomId: data.roomId,
+    guestName: sale?.guestName || "",
+    pmsCode: sale?.pmsCode,
+    stayId: data.stayId,
+  });
   const tasks = await listRoomHandoff(data.roomId);
   const open = openHandoff(tasks, data.purpose);
   if (open) return open.id;
@@ -96,9 +99,7 @@ export async function onHkInspectDone(user: SessionUser, task: { id: string; kin
   const db = await getDb();
   const room = (await db.select().from(t.rooms).where(eq(t.rooms.id, task.roomId)).limit(1))[0];
   if (!room) return;
-  const sales = await db.select().from(t.roomSales);
-  const stays = await db.select().from(t.stays);
-  const sale = sales.find((row) => row.roomId === task.roomId && isActiveSaleStatus(row.status));
+  const sale = await activeSaleForRoom(task.roomId);
   const kind = receptionKindAfterInspect(task.formCode, sale?.status);
   if (kind === "checkin") {
     if (room.opsStatus !== "ooo") {
@@ -106,7 +107,12 @@ export async function onHkInspectDone(user: SessionUser, task: { id: string; kin
     }
   }
   if (!kind) return;
-  const stay = sale ? stayForSale(stays, sale) : stays.find((row) => row.id === task.stayId);
+  const stay = await findStayForSale({
+    roomId: task.roomId,
+    guestName: sale?.guestName || "",
+    pmsCode: sale?.pmsCode,
+    stayId: task.stayId,
+  });
   await spawnRoomChecklist(db, {
     kind,
     guestName: sale?.guestName || stay?.guestName || "khách",

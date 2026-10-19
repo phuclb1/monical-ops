@@ -1,8 +1,7 @@
 import { catalogRate, parseMoney, parseSaleSource } from "@/lib/sales";
-import { bookingKey } from "@/lib/sales/status";
 import { loadOpenApiToken } from "@/lib/open-api-settings";
 import { listRooms, listRoomTypes } from "@/lib/repos/rooms";
-import { getBooking, listBookings, listRoomSales } from "@/lib/repos/sales/queries";
+import { bookingsByIds, findBookingRefByPmsCode, getBooking, listOpenBookingRefs } from "@/lib/repos/sales/queries";
 import type { SaleInput } from "@/lib/repos/sales/helpers";
 import type { SessionUser } from "@/lib/types";
 
@@ -177,10 +176,9 @@ export async function getOpenBooking(ref: string) {
   if (!value) return null;
   const byId = await getBooking(value);
   if (byId) return serializeOpenBooking(byId);
-  const sales = await listRoomSales();
-  const hit = sales.find((row) => row.pmsCode && row.pmsCode.toLowerCase() === value.toLowerCase());
-  if (!hit) return null;
-  const booking = await getBooking(bookingKey(hit));
+  const key = await findBookingRefByPmsCode(value);
+  if (!key) return null;
+  const booking = await getBooking(key);
   return booking ? serializeOpenBooking(booking) : null;
 }
 
@@ -201,7 +199,15 @@ export async function listOpenBookings(input: {
   const activeOnly = statusFilter.includes("active") || (!all && !statusFilter.length);
   const origin = input.origin?.trim().toLowerCase() || "";
   const since = parseOpenSince(input.since);
-  const rows = (await listBookings()).filter((booking) => {
+  const ids = await listOpenBookingRefs({
+    from: input.from,
+    to: input.to,
+    statuses: all ? undefined : activeOnly ? ["reserved", "inhouse"] : statusFilter,
+    origin,
+    since,
+    limit: Math.min(400, limit * 4),
+  });
+  const rows = (await bookingsByIds(ids)).filter((booking) => {
     if (origin && booking.origin !== origin) return false;
     if (since && !openBookingChangedSince(booking, since)) return false;
     if (input.from && booking.checkOut <= input.from) return false;

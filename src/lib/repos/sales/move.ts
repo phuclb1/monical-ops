@@ -17,15 +17,13 @@ export async function moveGanttSale(
   data: { saleId: string; roomId: string; checkIn: string; checkOut: string },
 ) {
   const db = await getDb();
-  const [all, rooms, types] = await Promise.all([
-    db.select().from(t.roomSales),
-    db.select().from(t.rooms),
+  const [before, types] = await Promise.all([
+    db.select().from(t.roomSales).where(eq(t.roomSales.id, data.saleId)).limit(1).then((rows) => rows[0]),
     db.select().from(t.roomTypes),
   ]);
-  const before = all.find((row) => row.id === data.saleId);
   if (!before) throw new Error("Không tìm thấy chỗ bán");
   if (!isActiveSaleStatus(before.status)) throw new Error("Chỗ đã đóng, không kéo trên sơ đồ");
-  const current = rooms.find((room) => room.id === before.roomId);
+  const current = (await db.select().from(t.rooms).where(eq(t.rooms.id, before.roomId)).limit(1))[0];
   if (!current) throw new Error("Không tìm thấy phòng hiện tại");
   const today = todayVN();
   const checkIn = data.checkIn;

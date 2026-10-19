@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { eq, or } from "drizzle-orm";
 import { getDb } from "@/db";
 import * as t from "@/db/schema";
 import { nowISO, todayVN } from "../../datetime";
@@ -83,15 +83,15 @@ export async function updateBooking(
   const prior = await getBooking(bookingId);
   const wasPaidInhouse = prior ? bookingCheckinPaidReady(prior) : false;
   const db = await getDb();
+  const key = prior?.id || bookingId;
   const [all, rooms, types] = await Promise.all([
-    db.select().from(t.roomSales),
+    db.select().from(t.roomSales).where(or(eq(t.roomSales.bookingId, key), eq(t.roomSales.id, key))),
     db.select().from(t.rooms),
     db.select().from(t.roomTypes),
   ]);
-  const hit = all.find((row) => row.id === bookingId || row.bookingId === bookingId);
+  const hit = all.find((row) => row.id === bookingId || row.bookingId === bookingId || bookingKey(row) === key);
   if (!hit) throw new Error("Không tìm thấy booking");
-  const key = bookingKey(hit);
-  const active = all.filter((row) => bookingKey(row) === key && isActiveSaleStatus(row.status));
+  const active = all.filter((row) => bookingKey(row) === bookingKey(hit) && isActiveSaleStatus(row.status));
   if (!active.length) throw new Error("Booking đã đóng, không sửa");
   const guestName = data.guestName !== undefined ? data.guestName.trim() : hit.guestName;
   if (!guestName) throw new Error("Nhập tên khách");
@@ -249,7 +249,7 @@ export async function updateBooking(
       return number ? `P.${number}` : "";
     })
     .filter(Boolean);
-  for (const id of removeIds) await cancelRoomSale(user, id, false, { silent: true });
+  for (const id of removeIds) await cancelRoomSale(user, id, false, { silent: true, skipMoneySync: true });
   await syncBookingMoney(key);
   await ensureTodayRoomTasks(db, { actorId: user.id });
   await notifyBookingChange({

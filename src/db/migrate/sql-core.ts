@@ -86,6 +86,13 @@ CREATE TABLE IF NOT EXISTS room_sales (
   bikes INTEGER NOT NULL DEFAULT 0,
   pms_code TEXT,
   notes TEXT,
+  refund_cash INTEGER NOT NULL DEFAULT 0,
+  refund_transfer INTEGER NOT NULL DEFAULT 0,
+  refund_company INTEGER NOT NULL DEFAULT 0,
+  refunded_at TEXT,
+  refund_reason TEXT NOT NULL DEFAULT '',
+  refund_total INTEGER NOT NULL DEFAULT 0,
+  booking_total INTEGER NOT NULL DEFAULT 0,
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL,
   created_by TEXT,
@@ -99,6 +106,7 @@ CREATE INDEX IF NOT EXISTS room_sales_created ON room_sales (created_at);
 CREATE INDEX IF NOT EXISTS room_sales_check_in ON room_sales (check_in);
 CREATE INDEX IF NOT EXISTS room_sales_check_out ON room_sales (check_out);
 CREATE INDEX IF NOT EXISTS room_sales_refunded ON room_sales (refunded_at);
+CREATE INDEX IF NOT EXISTS room_sales_pms ON room_sales (pms_code);
 CREATE TABLE IF NOT EXISTS booking_change_requests (
   id TEXT PRIMARY KEY,
   booking_id TEXT NOT NULL,

@@ -28,6 +28,10 @@ export const SCHEMA_SQL_OPS = `CREATE TABLE IF NOT EXISTS stays (
   created_by TEXT,
   updated_by TEXT
 );
+CREATE INDEX IF NOT EXISTS stays_status ON stays (status);
+CREATE INDEX IF NOT EXISTS stays_room ON stays (room_id);
+CREATE INDEX IF NOT EXISTS stays_pms ON stays (pms_code);
+CREATE INDEX IF NOT EXISTS stays_arrival ON stays (arrival_date);
 CREATE TABLE IF NOT EXISTS vehicles (
   id TEXT PRIMARY KEY,
   stay_id TEXT NOT NULL,
@@ -38,6 +42,7 @@ CREATE TABLE IF NOT EXISTS vehicles (
   notes TEXT,
   created_at TEXT NOT NULL
 );
+CREATE INDEX IF NOT EXISTS vehicles_stay ON vehicles (stay_id);
 CREATE TABLE IF NOT EXISTS reception_week_slots (
   id TEXT PRIMARY KEY,
   weekday INTEGER NOT NULL,
@@ -93,6 +98,8 @@ CREATE TABLE IF NOT EXISTS checklist_items (
   photo TEXT,
   sort_order INTEGER NOT NULL DEFAULT 0
 );
+CREATE INDEX IF NOT EXISTS checklist_items_list ON checklist_items (checklist_id);
+CREATE INDEX IF NOT EXISTS checklists_stay ON checklists (stay_id);
 CREATE TABLE IF NOT EXISTS tasks (
   id TEXT PRIMARY KEY,
   kind TEXT NOT NULL DEFAULT 'general',
@@ -118,6 +125,8 @@ CREATE TABLE IF NOT EXISTS tasks (
   updated_by TEXT,
   updated_at TEXT NOT NULL
 );
+CREATE INDEX IF NOT EXISTS tasks_status_created ON tasks (status, created_at);
+CREATE INDEX IF NOT EXISTS tasks_room ON tasks (room_id);
 CREATE TABLE IF NOT EXISTS task_history (
   id TEXT PRIMARY KEY,
   task_id TEXT NOT NULL,
@@ -141,6 +150,8 @@ CREATE TABLE IF NOT EXISTS guest_requests (
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL
 );
+CREATE INDEX IF NOT EXISTS guest_requests_stay ON guest_requests (stay_id);
+CREATE INDEX IF NOT EXISTS guest_requests_status_kind ON guest_requests (status, kind);
 CREATE TABLE IF NOT EXISTS handovers (
   id TEXT PRIMARY KEY,
   from_shift_id TEXT NOT NULL,
@@ -161,6 +172,7 @@ CREATE TABLE IF NOT EXISTS handover_items (
   summary TEXT NOT NULL,
   note TEXT
 );
+CREATE INDEX IF NOT EXISTS handover_items_handover ON handover_items (handover_id);
 CREATE TABLE IF NOT EXISTS form_submissions (
   id TEXT PRIMARY KEY,
   form_code TEXT NOT NULL,
@@ -175,6 +187,7 @@ CREATE TABLE IF NOT EXISTS form_submissions (
   updated_at TEXT NOT NULL,
   deleted_at TEXT
 );
+CREATE INDEX IF NOT EXISTS form_submissions_code_created ON form_submissions (form_code, created_at);
 CREATE TABLE IF NOT EXISTS incidents (
   id TEXT PRIMARY KEY,
   type TEXT NOT NULL,
@@ -216,6 +229,7 @@ CREATE TABLE IF NOT EXISTS notifications (
   read INTEGER NOT NULL DEFAULT 0,
   created_at TEXT NOT NULL
 );
+CREATE INDEX IF NOT EXISTS notifications_user_read ON notifications (user_id, read, created_at);
 CREATE TABLE IF NOT EXISTS audit_logs (
   id TEXT PRIMARY KEY,
   entity TEXT NOT NULL,
@@ -226,6 +240,7 @@ CREATE TABLE IF NOT EXISTS audit_logs (
   after_json TEXT,
   created_at TEXT NOT NULL
 );
+CREATE INDEX IF NOT EXISTS audit_logs_entity_id ON audit_logs (entity_id);
 CREATE TABLE IF NOT EXISTS push_subscriptions (
   id TEXT PRIMARY KEY,
   user_id TEXT NOT NULL,

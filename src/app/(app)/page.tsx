@@ -7,7 +7,7 @@ import { ROLE_LABEL, SALE_SOURCE_LABEL, TASK_STATUS_LABEL } from "@/lib/constant
 import { addDaysVN, formatDateLong, todayVN } from "@/lib/datetime";
 import { homePath } from "@/lib/nav";
 import { can } from "@/lib/permissions";
-import { getDashboard, listBookings, salesBoard } from "@/lib/repos";
+import { getDashboard, listHomeBookings, salesBoard } from "@/lib/repos";
 import { formatVnd } from "@/lib/sales";
 import { roomRevenueReport } from "@/lib/sales-report";
 import type { SaleSource, TaskStatus } from "@/lib/types";
@@ -24,7 +24,7 @@ export default async function DashboardPage() {
   const revenueVisible = can(user.role, "viewSalesRevenue");
   const [data, bookings, board] = await Promise.all([
     getDashboard(user),
-    salesVisible || revenueVisible ? listBookings() : Promise.resolve([]),
+    salesVisible || revenueVisible ? listHomeBookings(today) : Promise.resolve([]),
     salesVisible ? salesBoard(today) : Promise.resolve(null),
   ]);
   const tomorrow = addDaysVN(today, 1);

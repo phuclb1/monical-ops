@@ -11,7 +11,7 @@ export default async function WorkReportPage() {
   const user = await getSession();
   if (!user) redirect("/login");
   if (!can(user.role, "viewReports")) redirect("/more");
-  const [overdue, forms] = await Promise.all([overdueReport(), listForms({ date: undefined })]);
+  const [overdue, forms] = await Promise.all([overdueReport(), listForms({ limit: 8 })]);
 
   return (
     <main className="space-y-3 px-3 py-4">
@@ -46,7 +46,7 @@ export default async function WorkReportPage() {
       </Card>
       <Card>
         <h2 className="mb-2 font-bold">Biểu mẫu gần đây</h2>
-        {forms.slice(0, 8).map((form) => (
+        {forms.map((form) => (
           <Link key={form.id} href={`/forms/${form.formCode}/${form.id}`} className="block text-sm">
             {form.formCode} · {formatDateTime(form.createdAt)}
           </Link>

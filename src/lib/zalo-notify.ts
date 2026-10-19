@@ -5,11 +5,11 @@ import { parseAuditJson } from "@/lib/repos/audit";
 import { auditActorName } from "@/lib/audit-view/view";
 import { SALE_SOURCE_LABEL } from "@/lib/constants";
 import { breakfastDay } from "@/lib/breakfast-report";
-import { addDaysVN, todayVN } from "@/lib/datetime";
+import { addDaysVN, prevDate, todayVN } from "@/lib/datetime";
 import { listRooms, listRoomTypes } from "@/lib/repos/rooms";
 import { listBookingLogs } from "@/lib/repos/sales/logs";
-import { getBooking, listBookings, listRoomSales } from "@/lib/repos/sales/queries";
-import { listUsers } from "@/lib/repos/users";
+import { getBooking, listBookingsOnStayDate, listRoomSalesOverlapping } from "@/lib/repos/sales/queries";
+import { getUser } from "@/lib/repos/users";
 import { collectedSplit, isOtaDebt } from "@/lib/sales";
 import type { SaleSource } from "@/lib/types";
 import type { SepayTransaction } from "@/lib/sepay";
@@ -43,7 +43,7 @@ export async function sendZaloChannel(actorId: string, key: ZaloChannelKey, vars
 
 async function staffName(userId: string) {
   if (!userId) return "—";
-  const person = (await listUsers()).find((item) => item.id === userId);
+  const person = await getUser(userId);
   return auditActorName(userId, person?.fullName);
 }
 
@@ -207,12 +207,15 @@ export async function dispatchCheckinPaidZalo(actorId: string, bookingId: string
 }
 
 export async function receptionNoticeVars(date = todayVN()) {
-  const bookings = await listBookings();
+  const bookings = await listBookingsOnStayDate(date);
   return receptionZaloVars(receptionDigest(bookings, date), date);
 }
 
 export async function breakfastNoticeVars(date = todayVN()) {
-  const [sales, types] = await Promise.all([listRoomSales(), listRoomTypes()]);
+  const [sales, types] = await Promise.all([
+    listRoomSalesOverlapping(prevDate(date), date, ["reserved", "inhouse", "departed"]),
+    listRoomTypes(),
+  ]);
   return breakfastZaloVars(breakfastDay(sales, date, types));
 }
 

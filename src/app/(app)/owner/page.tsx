@@ -5,7 +5,7 @@ import { getSession } from "@/lib/auth";
 import { SALE_STATUS_LABEL } from "@/lib/constants";
 import { formatDateNumeric } from "@/lib/datetime";
 import { can } from "@/lib/permissions";
-import { listBookings } from "@/lib/repos";
+import { listBookingsByCheckIn } from "@/lib/repos";
 import { formatVnd, isOtaDebt, isOtaSource, paidNote } from "@/lib/sales";
 import { parsePeriodQuery, roomRevenueReport } from "@/lib/sales-report";
 import type { SaleStatus } from "@/lib/types";
@@ -28,7 +28,7 @@ export default async function OwnerRevenuePage({
   if (!can(user.role, "viewOwner")) redirect("/today");
   const { grain: rawGrain, date: rawDate } = await searchParams;
   const { grain, window } = parsePeriodQuery(rawGrain, rawDate);
-  const bookings = await listBookings();
+  const bookings = await listBookingsByCheckIn(window.from, window.to);
   const report = roomRevenueReport(bookings, window.from, window.to);
 
   return (

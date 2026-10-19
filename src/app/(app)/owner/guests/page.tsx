@@ -5,7 +5,7 @@ import { getSession } from "@/lib/auth";
 import { SALE_SOURCE_LABEL, SALE_STATUS_LABEL } from "@/lib/constants";
 import { formatDateNumeric } from "@/lib/datetime";
 import { can } from "@/lib/permissions";
-import { listBookings } from "@/lib/repos";
+import { listBookingsOverlapping } from "@/lib/repos";
 import { formatVnd } from "@/lib/sales";
 import { ownerGuestReport, parsePeriodQuery } from "@/lib/sales-report";
 import type { SaleSource, SaleStatus } from "@/lib/types";
@@ -28,7 +28,7 @@ export default async function OwnerGuestsPage({
   if (!can(user.role, "viewOwner")) redirect("/today");
   const { grain: rawGrain, date: rawDate } = await searchParams;
   const { grain, window } = parsePeriodQuery(rawGrain, rawDate);
-  const bookings = await listBookings();
+  const bookings = await listBookingsOverlapping(window.from, window.to);
   const report = ownerGuestReport(bookings, window.from, window.to);
   const topSource = report.bySource[0];
 

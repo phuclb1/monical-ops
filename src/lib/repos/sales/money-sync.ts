@@ -20,8 +20,6 @@ export async function syncBookingMoney(bookingId: string) {
     refundTotal: money.refunded,
     updatedAt: now,
   };
-  for (const row of rooms) {
-    await db.update(t.roomSales).set(patch).where(eq(t.roomSales.id, row.id));
-  }
+  await db.update(t.roomSales).set(patch).where(or(eq(t.roomSales.bookingId, id), eq(t.roomSales.id, id)));
   return money;
 }

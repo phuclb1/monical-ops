@@ -1,5 +1,5 @@
 import { cache } from "react";
-import { and, gt, inArray, lte, or } from "drizzle-orm";
+import { and, desc, eq, gt, gte, inArray, lt, lte, or, sql, type SQL } from "drizzle-orm";
 import { addDaysVN, datesUntil } from "../../datetime";
 import { getDb } from "@/db";
 import * as t from "@/db/schema";
@@ -31,27 +31,55 @@ import { ACTIVE_SALE_STATUSES } from "../../types";
 import { listRooms, listRoomTypes } from "../rooms";
 import { withSaleRoom } from "./helpers";
 
-export const listRoomSales = cache(async () => {
-  const db = await getDb();
-  const [sales, rooms] = await Promise.all([db.select().from(t.roomSales), listRooms()]);
-  return sales
-    .map((sale) => withSaleRoom(sale, rooms))
-    .sort((a, b) => b.checkIn.localeCompare(a.checkIn) || (a.room?.number || "").localeCompare(b.room?.number || ""));
-});
+const GANTT_SALE_STATUSES = ["reserved", "inhouse", "departed"] as const;
+const LIVE_SALE_STATUSES = ["reserved", "inhouse", "departed"] as const;
 
-export async function getRoomSale(id: string) {
-  const sales = await listRoomSales();
-  const sale = sales.find((row) => row.id === id) ?? null;
-  if (!sale) return null;
-  const peers = sale.bookingId
-    ? sales
-        .filter((row) => row.bookingId === sale.bookingId && row.id !== sale.id)
-        .sort((a, b) => (a.room?.number || "").localeCompare(b.room?.number || ""))
-    : [];
-  return { ...sale, peers, bookingKey: bookingKey(sale) };
+function sortSales<T extends { checkIn: string; room?: { number: string } | null }>(sales: T[]) {
+  return sales.sort((a, b) => b.checkIn.localeCompare(a.checkIn) || (a.room?.number || "").localeCompare(b.room?.number || ""));
 }
 
-function toBookingView(id: string, rooms: Awaited<ReturnType<typeof listRoomSales>>) {
+export function bookingIdsOf(rows: { id: string; bookingId?: string | null }[]) {
+  return [...new Set(rows.map((row) => bookingKey(row)).filter((id) => id && !id.startsWith("seq-hold-")))];
+}
+
+export function bookingMatchesLookup(booking: { id: string; rooms: { id: string }[] }, wanted: Set<string>) {
+  return wanted.has(booking.id) || booking.rooms.some((room) => wanted.has(room.id));
+}
+
+async function decorateSales(sales: (typeof t.roomSales.$inferSelect)[]) {
+  const rooms = await listRooms();
+  return sortSales(sales.map((sale) => withSaleRoom(sale, rooms)));
+}
+
+type DecoratedSale = Awaited<ReturnType<typeof decorateSales>>[number];
+
+export const listActiveRoomSales = cache(async () => {
+  const db = await getDb();
+  return decorateSales(await db.select().from(t.roomSales).where(inArray(t.roomSales.status, ACTIVE_SALE_STATUSES)));
+});
+
+export async function listRoomSalesOverlapping(from: string, toExclusive: string, statuses?: readonly string[]) {
+  const db = await getDb();
+  const clauses: SQL[] = [lt(t.roomSales.checkIn, toExclusive), gt(t.roomSales.checkOut, from)];
+  if (statuses?.length) clauses.push(inArray(t.roomSales.status, [...statuses]));
+  return decorateSales(await db.select().from(t.roomSales).where(and(...clauses)));
+}
+
+export async function getRoomSale(id: string) {
+  const db = await getDb();
+  const rooms = await listRooms();
+  const sale = (await db.select().from(t.roomSales).where(eq(t.roomSales.id, id)).limit(1))[0];
+  if (!sale) return null;
+  const peers = sale.bookingId
+    ? (await db.select().from(t.roomSales).where(eq(t.roomSales.bookingId, sale.bookingId)))
+        .filter((row) => row.id !== sale.id)
+        .map((row) => withSaleRoom(row, rooms))
+        .sort((a, b) => (a.room?.number || "").localeCompare(b.room?.number || ""))
+    : [];
+  return { ...withSaleRoom(sale, rooms), peers, bookingKey: bookingKey(sale) };
+}
+
+function toBookingView(id: string, rooms: DecoratedSale[]) {
   const sorted = [...rooms].sort((a, b) => (a.room?.number || "").localeCompare(b.room?.number || ""));
   const priced = billableSaleRows(sorted);
   const head = priced[0];
@@ -147,12 +175,7 @@ function withBookingExtras<T extends {
 /** D1 allows 100 bound parameters. Each id is bound on both booking_id and id. */
 export const BOOKING_LOOKUP_CHUNK = 40;
 
-async function listSaleExtras() {
-  const db = await getDb();
-  return db.select().from(t.saleExtras);
-}
-
-function assembleBookings(sales: Awaited<ReturnType<typeof listRoomSales>>, extras: Awaited<ReturnType<typeof listSaleExtras>>) {
+function assembleBookings(sales: DecoratedSale[], extras: (typeof t.saleExtras.$inferSelect)[]) {
   const extraByBooking = new Map<string, (typeof extras)[number][]>();
   for (const row of extras) {
     const list = extraByBooking.get(row.bookingId) || [];
@@ -164,13 +187,6 @@ function assembleBookings(sales: Awaited<ReturnType<typeof listRoomSales>>, extr
     .map(({ id, rooms }) => withBookingExtras(toBookingView(id, rooms), extraByBooking.get(id) || []))
     .sort((a, b) => b.checkIn.localeCompare(a.checkIn) || a.guestName.localeCompare(b.guestName));
 }
-
-export async function loadAllBookings() {
-  const [sales, extras] = await Promise.all([listRoomSales(), listSaleExtras()]);
-  return assembleBookings(sales, extras);
-}
-
-export const listBookings = cache(loadAllBookings);
 
 export async function bookingsByIds(ids: string[]) {
   const unique = [...new Set(ids.map((id) => id.trim()).filter((id) => id && !id.startsWith("seq-hold-")))];
@@ -192,26 +208,113 @@ export async function bookingsByIds(ids: string[]) {
   return assembleBookings(
     sales.map((sale) => withSaleRoom(sale, rooms)),
     extras,
-  ).filter((row) => wanted.has(row.id));
+  ).filter((row) => bookingMatchesLookup(row, wanted));
+}
+
+async function bookingIdsWhere(where: SQL) {
+  const db = await getDb();
+  const rows = await db.select({ id: t.roomSales.id, bookingId: t.roomSales.bookingId }).from(t.roomSales).where(where);
+  return bookingIdsOf(rows);
+}
+
+export async function resolveBookingKey(id: string) {
+  const trimmed = id.trim();
+  if (!trimmed || trimmed.startsWith("seq-hold-")) return null;
+  const keys = await bookingIdsWhere(or(eq(t.roomSales.bookingId, trimmed), eq(t.roomSales.id, trimmed)));
+  return keys[0] ?? null;
+}
+
+export async function findBookingRefByPmsCode(code: string) {
+  const value = code.trim();
+  if (!value) return null;
+  const db = await getDb();
+  const rows = await db
+    .select({ id: t.roomSales.id, bookingId: t.roomSales.bookingId })
+    .from(t.roomSales)
+    .where(sql`lower(${t.roomSales.pmsCode}) = ${value.toLowerCase()}`)
+    .limit(1);
+  return rows[0] ? bookingKey(rows[0]) : null;
 }
 
 export async function getBooking(id: string) {
-  const sales = await listRoomSales();
-  const hit = sales.find((row) => row.id === id || row.bookingId === id);
-  if (!hit) return null;
-  const key = bookingKey(hit);
-  const extras = (await listSaleExtras()).filter((row) => row.bookingId === key);
-  return withBookingExtras(
-    toBookingView(
-      key,
-      sales.filter((row) => bookingKey(row) === key),
-    ),
-    extras,
+  const key = await resolveBookingKey(id);
+  if (!key) return null;
+  return (await bookingsByIds([key]))[0] ?? null;
+}
+
+export const listBookingsByCheckIn = cache(async (from: string, toExclusive: string) => {
+  const ids = await bookingIdsWhere(
+    and(gte(t.roomSales.checkIn, from), lt(t.roomSales.checkIn, toExclusive), inArray(t.roomSales.status, [...LIVE_SALE_STATUSES])),
   );
+  return bookingsByIds(ids);
+});
+
+export const listBookingsOverlapping = cache(async (from: string, toExclusive: string) => {
+  const ids = await bookingIdsWhere(
+    and(lt(t.roomSales.checkIn, toExclusive), gt(t.roomSales.checkOut, from), inArray(t.roomSales.status, [...LIVE_SALE_STATUSES])),
+  );
+  return bookingsByIds(ids);
+});
+
+export const listBookingsOnStayDate = cache(async (date: string) => {
+  const ids = await bookingIdsWhere(or(eq(t.roomSales.checkIn, date), eq(t.roomSales.checkOut, date)));
+  return bookingsByIds(ids);
+});
+
+async function recentBookingIds(limit: number) {
+  const db = await getDb();
+  const rows = await db.all<{ bid: string }>(sql`
+    SELECT CASE WHEN booking_id IS NOT NULL AND trim(booking_id) != '' THEN booking_id ELSE id END AS bid
+    FROM room_sales
+    WHERE (CASE WHEN booking_id IS NOT NULL AND trim(booking_id) != '' THEN booking_id ELSE id END) NOT LIKE 'seq-hold-%'
+    GROUP BY bid
+    ORDER BY MIN(created_at) DESC
+    LIMIT ${limit}
+  `);
+  return rows.map((row) => row.bid).filter(Boolean);
+}
+
+export const listHomeBookings = cache(async (today: string) => {
+  const from = addDaysVN(today, -6);
+  const to = addDaysVN(today, 1);
+  const [checkInIds, createdIds, recent] = await Promise.all([
+    bookingIdsWhere(and(gte(t.roomSales.checkIn, from), lt(t.roomSales.checkIn, to), inArray(t.roomSales.status, [...LIVE_SALE_STATUSES]))),
+    bookingIdsWhere(and(gte(t.roomSales.createdAt, today), lt(t.roomSales.createdAt, to))),
+    recentBookingIds(6),
+  ]);
+  return bookingsByIds([...checkInIds, ...createdIds, ...recent]);
+});
+
+export async function listOpenBookingRefs(input: {
+  from?: string;
+  to?: string;
+  statuses?: string[];
+  origin?: string;
+  since?: string;
+  limit: number;
+}) {
+  const clauses: SQL[] = [];
+  if (input.statuses?.length) clauses.push(inArray(t.roomSales.status, input.statuses));
+  if (input.origin) clauses.push(eq(t.roomSales.origin, input.origin));
+  if (input.from) clauses.push(gt(t.roomSales.checkOut, input.from));
+  if (input.to) clauses.push(lt(t.roomSales.checkIn, input.to));
+  if (input.since) clauses.push(or(gt(t.roomSales.updatedAt, input.since), gt(t.roomSales.createdAt, input.since)));
+  const db = await getDb();
+  const rows = await db
+    .select({
+      id: t.roomSales.id,
+      bookingId: t.roomSales.bookingId,
+      createdAt: t.roomSales.createdAt,
+      updatedAt: t.roomSales.updatedAt,
+    })
+    .from(t.roomSales)
+    .where(clauses.length ? and(...clauses) : sql`1 = 1`)
+    .orderBy(desc(t.roomSales.createdAt));
+  return bookingIdsOf(rows).slice(0, input.limit);
 }
 
 export async function salesBoard(date: string) {
-  const [rooms, types, sales] = await Promise.all([listRooms(), listRoomTypes(), listRoomSales()]);
+  const [rooms, types, sales] = await Promise.all([listRooms(), listRoomTypes(), listActiveRoomSales()]);
   const nightSales = sales.filter((sale) => isActiveSaleStatus(sale.status) && occupiesNight(sale.checkIn, sale.checkOut, date));
   const byRoom = new Map(nightSales.map((sale) => [sale.roomId, sale]));
   const cells = rooms
@@ -251,7 +354,7 @@ export const salesTodaySummary = cache(async (date: string) => {
 
 export async function salesGantt(from: string, toExclusive: string) {
   const days = datesUntil(from, toExclusive);
-  const [rooms, sales] = await Promise.all([listRooms(), listRoomSales()]);
+  const [rooms, sales] = await Promise.all([listRooms(), listRoomSalesOverlapping(from, toExclusive, GANTT_SALE_STATUSES)]);
   const active = sales.filter(
     (sale) => isGanttSaleStatus(sale.status) && rangesOverlap(sale.checkIn, sale.checkOut, from, toExclusive),
   );

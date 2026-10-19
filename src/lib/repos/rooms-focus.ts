@@ -1,15 +1,15 @@
-import { and, eq } from "drizzle-orm";
+import { and, eq, ne, notInArray } from "drizzle-orm";
 import { getDb } from "@/db";
 import * as t from "@/db/schema";
 import { buildRoomFocus, isDirtyRoom } from "../room-focus";
 import { listRooms } from "./rooms";
-import { listRoomSales } from "./sales/queries";
+import { listActiveRoomSales } from "./sales/queries";
 
 export async function roomFocusBoard(date: string) {
   const db = await getDb();
   const [rooms, sales, stays, hkTasks, hkReqs] = await Promise.all([
     listRooms(),
-    listRoomSales(),
+    listActiveRoomSales(),
     db
       .select({
         id: t.stays.id,
@@ -19,11 +19,12 @@ export async function roomFocusBoard(date: string) {
         arrivalDate: t.stays.arrivalDate,
         departureDate: t.stays.departureDate,
       })
-      .from(t.stays),
+      .from(t.stays)
+      .where(ne(t.stays.status, "departed")),
     db
       .select({ roomId: t.tasks.roomId, stayId: t.tasks.stayId, status: t.tasks.status })
       .from(t.tasks)
-      .where(eq(t.tasks.kind, "housekeeping")),
+      .where(and(eq(t.tasks.kind, "housekeeping"), notInArray(t.tasks.status, ["done", "checked", "archive"]))),
     db
       .select({ roomId: t.guestRequests.roomId, stayId: t.guestRequests.stayId })
       .from(t.guestRequests)

@@ -3,6 +3,7 @@ import {
   BOOKING_PAGE_SIZE,
   bookingDeskCountQuery,
   bookingDeskPageQuery,
+  bookingSearchIdsQuery,
   cashPeriodIdsQuery,
   pageBounds,
   summarizeBookingDesk,
@@ -10,10 +11,10 @@ import {
 } from "@/lib/booking-desk";
 import { getDb } from "@/db";
 import { matchesBookingSearch, type BookingListView } from "@/lib/sales";
-import { bookingsByIds, loadAllBookings } from "./queries";
+import { bookingsByIds } from "./queries";
 import { rememberBookingRead } from "./read-cache";
 
-type DeskBooking = Awaited<ReturnType<typeof loadAllBookings>>[number];
+type DeskBooking = Awaited<ReturnType<typeof bookingsByIds>>[number];
 
 export type BookingDeskPage = {
   rows: DeskBooking[];
@@ -42,12 +43,11 @@ function countOf(value: number | null | undefined) {
   return Number(value) || 0;
 }
 
-async function cachedBookings() {
-  return rememberBookingRead("booking-views", () => loadAllBookings());
-}
-
 async function searchDesk(input: { tab: BookingDeskTab; view: BookingListView; q: string; page: number; pageSize: number; today: string }): Promise<BookingDeskPage> {
-  const bookings = await cachedBookings();
+  const db = await getDb();
+  const query = bookingSearchIdsQuery(input.q);
+  const ids = query ? await db.all<{ bid: string }>(query) : [];
+  const bookings = await bookingsByIds(ids.map((row) => row.bid));
   const matched = bookings.filter((row) => matchesBookingSearch(row, input.q));
   const summary = summarizeBookingDesk(matched, input.tab, input.view, input.today);
   const bounds = pageBounds(summary.list.length, input.page, input.pageSize);

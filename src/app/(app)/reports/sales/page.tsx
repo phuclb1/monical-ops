@@ -7,7 +7,7 @@ import { getSession } from "@/lib/auth";
 import { SALE_SOURCE_LABEL, SALE_STATUS_LABEL } from "@/lib/constants";
 import { formatDateNumeric, formatPeriodLabel } from "@/lib/datetime";
 import { can } from "@/lib/permissions";
-import { listBookings } from "@/lib/repos";
+import { listBookingsByCheckIn } from "@/lib/repos";
 import { formatVnd, isOtaDebt, isOtaSource, paidNote } from "@/lib/sales";
 import { parsePeriodQuery, revenueTrend, roomRevenueReport, type ReportGrain } from "@/lib/sales-report";
 import type { SaleSource, SaleStatus } from "@/lib/types";
@@ -41,7 +41,7 @@ export default async function SalesRevenuePage({
   const { grain: rawGrain, date: rawDate } = await searchParams;
   const { grain, window } = parsePeriodQuery(rawGrain, rawDate);
   const year = window.from.slice(0, 4);
-  const bookings = await listBookings();
+  const bookings = await listBookingsByCheckIn(window.from, window.to);
   const report = roomRevenueReport(bookings, window.from, window.to);
   const trend = revenueTrend(bookings, window.from, window.to, grain);
   const revenueBySource = new Map<string, number>();

@@ -219,8 +219,13 @@ export async function spawnRoomChecklist(
   },
 ) {
   const date = input.date || todayVN();
-  const lists = await db.select().from(t.checklists);
-  const exists = lists.some((row) => row.kind === input.kind && row.roomId === input.roomId && row.date === date);
+  const exists = (
+    await db
+      .select({ id: t.checklists.id })
+      .from(t.checklists)
+      .where(and(eq(t.checklists.kind, input.kind), eq(t.checklists.roomId, input.roomId), eq(t.checklists.date, date)))
+      .limit(1)
+  )[0];
   if (exists) return null;
   const verb = input.kind === "checkin" ? "Nhận" : "Trả";
   const assigneeId = await morningAssignee(db, date);

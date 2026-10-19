@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
+import { bookingSearchIdsQuery } from "../src/lib/booking-desk";
 import { matchesBookingSearch, type BookingSearchRow } from "../src/lib/sales";
 import { foldSearchText, matchesSearchText, searchTokens } from "../src/lib/search-text";
 
@@ -32,6 +33,13 @@ test("matchesSearchText requires every token, including compact codes", () => {
   assert.equal(matchesSearchText("P.101 Deluxe", "101 305"), false);
   assert.equal(matchesSearchText("Điện thoại Lê Hoàng", "hoa"), false);
   assert.equal(matchesSearchText("VIP cần hoa", "hoa"), true);
+});
+
+test("bookingSearchIdsQuery is empty for blank input and built for tokens", () => {
+  assert.equal(bookingSearchIdsQuery("   "), null);
+  assert.ok(bookingSearchIdsQuery("dang tuan"));
+  assert.ok(bookingSearchIdsQuery("20/09/2026"));
+  assert.ok(bookingSearchIdsQuery("bk091"));
 });
 
 test("booking full-text search covers guest, phone, room, code, notes, extras, source", () => {

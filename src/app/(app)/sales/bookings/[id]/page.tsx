@@ -17,7 +17,7 @@ import { formatDateLong, todayVN } from "@/lib/datetime";
 import { extraDetail } from "@/lib/extras";
 import { maskName, maskPhone } from "@/lib/mask";
 import { can } from "@/lib/permissions";
-import { getBooking, listBookingChangeRequests, listBookingLogs, listRooms, listRoomSales, listRoomTypes, listSaleExtraTypes } from "@/lib/repos";
+import { getBooking, listBookingChangeRequests, listBookingLogs, listRoomBusyRanges, listRooms, listRoomTypes, listSaleExtraTypes } from "@/lib/repos";
 import { bookingLifecycle, bookingPayMethods, bookingQuote, collectedSplit, commissionAmount, depositRefundAllowed, formatVnd, guestCheckoutDue, isActiveSaleStatus, isOpsBookingCode, isOtaDebt, isOtaSource, paidNote, parkingLabel, primaryPaymentMethod, refundParts, refundReasonLabel, refundTotal, stayRefundOverpay, stayRefundable } from "@/lib/sales";
 import type { SaleOrigin, SaleSource } from "@/lib/types";
 
@@ -35,11 +35,11 @@ export default async function BookingDetailPage({
   const showPii = can(user.role, "viewGuestPii");
   const { id } = await params;
   const { error, approval } = await searchParams;
-  const [booking, rooms, types, sales, extraTypes, logs, approvals] = await Promise.all([
+  const [booking, rooms, types, busyRanges, extraTypes, logs, approvals] = await Promise.all([
     getBooking(id),
     listRooms(),
     listRoomTypes(),
-    listRoomSales(),
+    listRoomBusyRanges(),
     listSaleExtraTypes(),
     listBookingLogs(id),
     listBookingChangeRequests(id),
@@ -71,10 +71,7 @@ export default async function BookingDetailPage({
   const canStayRefund = can(user.role, "cancelBooking") && stayed && stayRefundableAmount > 0;
   const holdSuffix = ` · ${PAYMENT_METHOD_LABEL[payMethods.deposit]}`;
   const checkinSuffix = ` · ${PAYMENT_METHOD_LABEL[payMethods.checkin]}`;
-  const activeIds = new Set(activeRooms.map((row) => row.id));
-  const busy = sales
-    .filter((row) => isActiveSaleStatus(row.status) && !activeIds.has(row.id))
-    .map((row) => ({ roomId: row.roomId, checkIn: row.checkIn, checkOut: row.checkOut }));
+  const busy = busyRanges.filter((row) => !activeRooms.some((sale) => sale.roomId === row.roomId && sale.checkIn === row.checkIn && sale.checkOut === row.checkOut));
 
   return (
     <main className="booking-desk space-y-3 px-3 py-4 md:space-y-4">

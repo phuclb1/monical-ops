@@ -6,7 +6,7 @@ import { SALE_STATUS_LABEL } from "@/lib/constants";
 import { formatDateNumeric } from "@/lib/datetime";
 import { homePath } from "@/lib/nav";
 import { can } from "@/lib/permissions";
-import { listBookings } from "@/lib/repos";
+import { listBookingsByCheckIn } from "@/lib/repos";
 import { formatVnd, isOtaDebt, isOtaSource, paidNote } from "@/lib/sales";
 import { invoiceRevenueReport, parsePeriodQuery, roomRevenueReport } from "@/lib/sales-report";
 import type { SaleStatus } from "@/lib/types";
@@ -19,7 +19,7 @@ const STATUS_TONE: Record<SaleStatus, "ok" | "warn" | "danger" | "gold" | "neutr
   no_show: "warn",
 };
 
-function paymentLabel(row: Awaited<ReturnType<typeof listBookings>>[number]) {
+function paymentLabel(row: Awaited<ReturnType<typeof listBookingsByCheckIn>>[number]) {
   if (isOtaDebt(row.source, row.otaPaymentMode)) return `Công nợ OTA ${formatVnd(row.due)}`;
   return paidNote(row) || (row.due > 0 ? "Chưa thanh toán" : "Đã thanh toán");
 }
@@ -35,7 +35,7 @@ export default async function AccountingPage({
 
   const { grain: rawGrain, date: rawDate } = await searchParams;
   const { grain, window } = parsePeriodQuery(rawGrain, rawDate);
-  const bookings = await listBookings();
+  const bookings = await listBookingsByCheckIn(window.from, window.to);
   const report = roomRevenueReport(bookings, window.from, window.to);
   const invoice = invoiceRevenueReport(report.recognized);
   const invoiceMoney = invoice.money;

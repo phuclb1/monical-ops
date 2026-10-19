@@ -3,7 +3,7 @@ import { getDb } from "@/db";
 import * as t from "@/db/schema";
 import { collapseAuditBurst } from "../../audit-view";
 import { parseAuditJson } from "../audit";
-import { listUsers } from "../users";
+import { getUser } from "../users";
 import { getBooking } from "./queries";
 
 export async function listBookingLogs(bookingId: string) {
@@ -45,7 +45,7 @@ export async function listBookingLogs(bookingId: string) {
   if (!hasCreate) {
     const first = [...booking.rooms].sort((a, b) => a.createdAt.localeCompare(b.createdAt))[0];
     if (first?.createdBy) {
-      const creator = (await listUsers()).find((person) => person.id === first.createdBy);
+      const creator = await getUser(first.createdBy);
       mapped.push({
         id: `created-${booking.id}`,
         entity: "room_sale",

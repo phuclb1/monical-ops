@@ -1,14 +1,14 @@
-import { eq } from "drizzle-orm";
+import { and, eq, gt, inArray, lt } from "drizzle-orm";
 import { getDb } from "@/db";
 import * as t from "@/db/schema";
 import {
   applyPaidAmount,
-  isActiveSaleStatus,
   normalizeDiscount,
   paidFromMethod,
   parsePaymentMethod,
   rangesOverlap,
 } from "../../sales";
+import { ACTIVE_SALE_STATUSES } from "../../types";
 
 export type SaleInput = {
   roomId?: string;
@@ -94,13 +94,18 @@ export function withSaleRoom<T extends { roomId: string }>(sale: T, rooms: { id:
 async function overlappingSale(roomId: string, checkIn: string, checkOut: string, exceptId?: string | string[]) {
   const db = await getDb();
   const skip = new Set(Array.isArray(exceptId) ? exceptId : exceptId ? [exceptId] : []);
-  const rows = await db.select().from(t.roomSales).where(eq(t.roomSales.roomId, roomId));
-  return rows.find(
-    (sale) =>
-      !skip.has(sale.id) &&
-      isActiveSaleStatus(sale.status) &&
-      rangesOverlap(checkIn, checkOut, sale.checkIn, sale.checkOut),
-  );
+  const rows = await db
+    .select()
+    .from(t.roomSales)
+    .where(
+      and(
+        eq(t.roomSales.roomId, roomId),
+        inArray(t.roomSales.status, ACTIVE_SALE_STATUSES),
+        lt(t.roomSales.checkIn, checkOut),
+        gt(t.roomSales.checkOut, checkIn),
+      ),
+    );
+  return rows.find((sale) => !skip.has(sale.id) && rangesOverlap(checkIn, checkOut, sale.checkIn, sale.checkOut));
 }
 
 export async function assertSaleWindow(roomId: string, checkIn: string, checkOut: string, exceptId?: string | string[]) {

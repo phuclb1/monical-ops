@@ -1,16 +1,22 @@
-import { desc, eq } from "drizzle-orm";
+import { and, desc, eq, inArray, isNotNull, isNull, ne, or, sql, type SQL } from "drizzle-orm";
 import { getDb } from "@/db";
 import * as t from "@/db/schema";
 import { notify } from "@/modules/notifications/models/notifications";
 import { currentShiftType, nid, nowISO, shiftWindow } from "../datetime";
 import { ensureTodayRoomTasks, loadChecklistByTask } from "../checklist-ops";
-import { getTaskType, taskBoardColumn, type TaskBoardColumn } from "../task-types";
+import { foldSearchText, sqlFolded } from "../search-text";
+import { getTaskType, TASK_BOARD, type TaskBoardColumn } from "../task-types";
 import type { SessionUser, TaskStatus } from "../types";
 import { audit } from "./audit";
-import { listUsers } from "./users";
+import { listUsers, usersByIds } from "./users";
+
+function likeContains(value: string) {
+  return `%${value.replace(/[%_]/g, "")}%`;
+}
 
 export async function listTasks(filter?: {
   status?: string;
+  statuses?: string[];
   mine?: string;
   q?: string;
   kind?: string;
@@ -19,19 +25,20 @@ export async function listTasks(filter?: {
 }) {
   const db = await getDb();
   await ensureTodayRoomTasks(db, { actorId: "system" });
-  let rows = await db.select().from(t.tasks).orderBy(desc(t.tasks.createdAt));
-  if (filter?.status) rows = rows.filter((r) => r.status === filter.status);
-  if (filter?.column) rows = rows.filter((r) => taskBoardColumn(r.status) === filter.column);
-  if (!filter?.status && !filter?.column) rows = rows.filter((r) => r.status !== "archive");
-  if (filter?.kind) rows = rows.filter((r) => r.kind === filter.kind);
-  if (filter?.group === "room") rows = rows.filter((r) => !!r.roomId);
-  if (filter?.group === "general") rows = rows.filter((r) => !r.roomId);
-  if (filter?.mine) rows = rows.filter((r) => r.assigneeId === filter.mine || r.toDept === filter.mine);
+  const clauses: SQL[] = [];
+  if (filter?.status) clauses.push(eq(t.tasks.status, filter.status));
+  else if (filter?.statuses?.length) clauses.push(inArray(t.tasks.status, filter.statuses));
+  else if (filter?.column) clauses.push(inArray(t.tasks.status, [...TASK_BOARD[filter.column]]));
+  else clauses.push(ne(t.tasks.status, "archive"));
+  if (filter?.kind) clauses.push(eq(t.tasks.kind, filter.kind));
+  if (filter?.group === "room") clauses.push(isNotNull(t.tasks.roomId));
+  if (filter?.group === "general") clauses.push(isNull(t.tasks.roomId));
+  if (filter?.mine) clauses.push(or(eq(t.tasks.assigneeId, filter.mine), eq(t.tasks.toDept, filter.mine))!);
   if (filter?.q) {
-    const q = filter.q.toLowerCase();
-    rows = rows.filter((r) => r.content.toLowerCase().includes(q) || (r.area || "").toLowerCase().includes(q));
+    const like = likeContains(foldSearchText(filter.q));
+    clauses.push(or(sql`${sqlFolded(sql`${t.tasks.content}`)} LIKE ${like}`, sql`${sqlFolded(sql`ifnull(${t.tasks.area}, '')`)} LIKE ${like}`)!);
   }
-  return rows;
+  return db.select().from(t.tasks).where(and(...clauses)).orderBy(desc(t.tasks.createdAt));
 }
 
 export async function getTask(id: string) {
@@ -39,8 +46,10 @@ export async function getTask(id: string) {
   const task = (await db.select().from(t.tasks).where(eq(t.tasks.id, id)))[0];
   if (!task) return null;
   const history = await db.select().from(t.taskHistory).where(eq(t.taskHistory.taskId, id)).orderBy(desc(t.taskHistory.createdAt));
-  const users = await db.select().from(t.users);
-  const room = task.roomId ? (await db.select().from(t.rooms).where(eq(t.rooms.id, task.roomId)))[0] : null;
+  const [users, room] = await Promise.all([
+    usersByIds([task.assigneeId, task.createdBy, ...history.map((row) => row.actorId)]),
+    task.roomId ? db.select().from(t.rooms).where(eq(t.rooms.id, task.roomId)).limit(1).then((rows) => rows[0] ?? null) : Promise.resolve(null),
+  ]);
   const checklist = await loadChecklistByTask(db, id);
   return { task, history, users, room, checklist };
 }

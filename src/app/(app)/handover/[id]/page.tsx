@@ -3,13 +3,13 @@ import { acceptHandoverAction } from "@/actions/ops";
 import { Btn, Card, Chip } from "@/components/ui";
 import { getSession } from "@/lib/auth";
 import { formatDateTime } from "@/lib/datetime";
-import { listHandovers } from "@/lib/repos";
+import { getHandover } from "@/lib/repos";
 
 export default async function HandoverDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const user = await getSession();
   if (!user) redirect("/login");
   const { id } = await params;
-  const ho = (await listHandovers()).find((h) => h.id === id);
+  const ho = await getHandover(id);
   if (!ho) notFound();
   const cats = Object.entries(
     ho.items.reduce<Record<string, typeof ho.items>>((acc, item) => {

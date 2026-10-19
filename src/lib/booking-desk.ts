@@ -1,7 +1,11 @@
 import { sql, type SQL } from "drizzle-orm";
+import { SALE_ORIGIN_LABEL, SALE_SOURCE_LABEL, SALE_STATUS_LABEL } from "@/lib/constants";
 import { bookingMatchesListView, type BookingListView } from "@/lib/sales";
+import { compactSearchText, foldSearchText, searchTokens, sqlCompact, sqlFoldSteps } from "@/lib/search-text";
+import { SALE_ORIGINS, SALE_SOURCES, SALE_STATUSES } from "@/lib/types";
 
 export const BOOKING_PAGE_SIZE = 40;
+export const BOOKING_SEARCH_CANDIDATE_LIMIT = 400;
 export const CASH_FLOW_PAGE_SIZE = 40;
 export const PHONE_PAGE_SIZE = 10;
 
@@ -151,6 +155,109 @@ FROM heads
 WHERE ${viewFilter(view)} AND ${tabFilter(tab)}
 ORDER BY created_at DESC, bid DESC
 LIMIT ${limit} OFFSET ${offset}`;
+}
+
+function likeContains(value: string) {
+  return `%${value.replace(/[%_]/g, "")}%`;
+}
+
+function isoFromSearchToken(token: string) {
+  const numeric = token.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if (numeric) return `${numeric[3]}-${numeric[2].padStart(2, "0")}-${numeric[1].padStart(2, "0")}`;
+  if (/^\d{4}-\d{2}-\d{2}$/.test(token)) return token;
+  return "";
+}
+
+function codesMatchingLabel<T extends string>(codes: readonly T[], labels: Record<T, string>, token: string) {
+  return codes.filter((code) => {
+    const compact = compactSearchText(token);
+    return (
+      foldSearchText(code).includes(token) ||
+      foldSearchText(labels[code] || "").includes(token) ||
+      (compact.length >= 3 && compactSearchText(foldSearchText(labels[code] || "")).includes(compact))
+    );
+  });
+}
+
+function bookingSearchTokenClause(token: string) {
+  const like = likeContains(token);
+  const compact = compactSearchText(token);
+  const digits = token.replace(/\D/g, "");
+  const iso = isoFromSearchToken(token);
+  const sources = codesMatchingLabel(SALE_SOURCES, SALE_SOURCE_LABEL, token);
+  const statuses = codesMatchingLabel(SALE_STATUSES, SALE_STATUS_LABEL, token);
+  const origins = codesMatchingLabel(SALE_ORIGINS, SALE_ORIGIN_LABEL, token);
+  const clauses: SQL[] = [sql`hay LIKE ${like}`];
+  if (compact) {
+    clauses.push(sql`${sqlCompact(sql`ifnull(pms_code, '')`)} LIKE ${likeContains(compact)}`);
+    clauses.push(sql`${sqlCompact(sql`ifnull(guest_phone, '')`)} LIKE ${likeContains(compact)}`);
+    clauses.push(sql`${sqlCompact(sql`id`)} LIKE ${likeContains(compact)}`);
+  }
+  if (digits) {
+    clauses.push(sql`replace(replace(ifnull(guest_phone, ''), ' ', ''), '-', '') LIKE ${likeContains(digits)}`);
+    clauses.push(sql`room_number LIKE ${likeContains(digits)}`);
+  }
+  if (iso) {
+    clauses.push(sql`check_in = ${iso}`);
+    clauses.push(sql`check_out = ${iso}`);
+  }
+  if (sources.length) clauses.push(sql`source IN (${sql.join(sources.map((value) => sql`${value}`), sql`, `)})`);
+  if (statuses.length) clauses.push(sql`status IN (${sql.join(statuses.map((value) => sql`${value}`), sql`, `)})`);
+  if (origins.length) clauses.push(sql`origin IN (${sql.join(origins.map((value) => sql`${value}`), sql`, `)})`);
+  return clauses.reduce((left, right) => sql`${left} OR ${right}`);
+}
+
+const SEARCH_COLS = sql`bid, id, guest_phone, pms_code, source, origin, status, check_in, check_out, room_number`;
+
+export function bookingSearchIdsQuery(query: string) {
+  const tokens = searchTokens(query);
+  if (!tokens.length) return null;
+  const match = tokens.map(bookingSearchTokenClause).reduce((left, right) => sql`(${left}) AND (${right})`);
+  const steps = sqlFoldSteps(sql`hay`);
+  const layers = steps.map((expr, index) => {
+    const from = index === 0 ? sql`src` : sql.raw(`f${index - 1}`);
+    return sql`${sql.raw(`f${index}`)} AS (SELECT ${SEARCH_COLS}, ${expr} AS hay FROM ${from})`;
+  });
+  const last = sql.raw(`f${Math.max(steps.length - 1, 0)}`);
+  return sql`
+WITH src AS (
+  SELECT
+    CASE WHEN s.booking_id IS NOT NULL AND trim(s.booking_id) != '' THEN s.booking_id ELSE s.id END AS bid,
+    s.id,
+    s.guest_phone,
+    s.pms_code,
+    s.source,
+    s.origin,
+    s.status,
+    s.check_in,
+    s.check_out,
+    r.number AS room_number,
+    lower(s.guest_name) || ' ' ||
+      lower(ifnull(s.guest_phone, '')) || ' ' ||
+      lower(ifnull(s.pms_code, '')) || ' ' ||
+      lower(ifnull(s.notes, '')) || ' ' ||
+      lower(s.id) || ' ' ||
+      lower(ifnull(s.booking_id, '')) || ' ' ||
+      lower(s.source) || ' ' ||
+      lower(s.origin) || ' ' ||
+      lower(s.status) || ' ' ||
+      s.check_in || ' ' ||
+      s.check_out || ' ' ||
+      lower(ifnull(r.number, '')) || ' ' ||
+      lower(ifnull(r.type, '')) || ' ' ||
+      ('p.' || ifnull(r.number, '')) || ' ' ||
+      lower(ifnull(e.name, '')) AS hay
+  FROM room_sales s
+  LEFT JOIN rooms r ON r.id = s.room_id
+  LEFT JOIN sale_extras e ON e.booking_id = CASE WHEN s.booking_id IS NOT NULL AND trim(s.booking_id) != '' THEN s.booking_id ELSE s.id END
+  WHERE (CASE WHEN s.booking_id IS NOT NULL AND trim(s.booking_id) != '' THEN s.booking_id ELSE s.id END) NOT LIKE 'seq-hold-%'
+),
+${sql.join(layers, sql`,
+`)}
+SELECT DISTINCT bid
+FROM ${last}
+WHERE ${match}
+LIMIT ${BOOKING_SEARCH_CANDIDATE_LIMIT}`;
 }
 
 export function cashPeriodIdsQuery(from: string, to: string) {

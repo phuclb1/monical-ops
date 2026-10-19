@@ -9,6 +9,7 @@ import { BOOKING_LOOKUP_CHUNK } from "../src/lib/repos/sales/queries";
 import {
   bookingDeskCountQuery,
   bookingDeskPageQuery,
+  bookingSearchIdsQuery,
   cashPeriodIdsQuery,
   isPhoneUserAgent,
   listPageSize,
@@ -138,4 +139,62 @@ test("booking desk SQL pages by rolled-up status and created time", async () => 
     cash.map((row) => String((row as { bid: string }).bid)).sort(),
     ["b-mix", "b-old", "b-out"].sort(),
   );
+});
+
+test("booking search SQL stays inside D1's 100 bound parameters", () => {
+  const query = bookingSearchIdsQuery("dang tuan 0901222333");
+  assert.ok(query);
+  const compiled = new SQLiteSyncDialect().sqlToQuery(query);
+  assert.ok(compiled.params.length <= 100, `${compiled.params.length} params`);
+});
+
+test("booking search SQL finds folded Vietnamese names and compact codes", async () => {
+  const client = createClient({ url: ":memory:" });
+  const db = drizzle(client);
+  await client.execute("CREATE TABLE rooms (id TEXT PRIMARY KEY, number TEXT, type TEXT)");
+  await client.execute("CREATE TABLE sale_extras (id TEXT PRIMARY KEY, booking_id TEXT NOT NULL, name TEXT NOT NULL)");
+  await client.execute(`
+    CREATE TABLE room_sales (
+      id TEXT PRIMARY KEY,
+      booking_id TEXT,
+      room_id TEXT,
+      guest_name TEXT NOT NULL,
+      guest_phone TEXT,
+      origin TEXT NOT NULL DEFAULT 'ops',
+      source TEXT NOT NULL,
+      status TEXT NOT NULL,
+      check_in TEXT NOT NULL,
+      check_out TEXT NOT NULL,
+      pms_code TEXT,
+      notes TEXT
+    )
+  `);
+  await client.execute({
+    sql: "INSERT INTO rooms (id, number, type) VALUES (?, ?, ?)",
+    args: ["r1", "101", "Deluxe"],
+  });
+  await client.execute({
+    sql: `INSERT INTO room_sales
+      (id, booking_id, room_id, guest_name, guest_phone, origin, source, status, check_in, check_out, pms_code, notes)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    args: ["s1", "bk-1", "r1", "Đặng Minh Tuấn", "0901 222 333", "ops", "booking", "reserved", "2026-09-20", "2026-09-22", "BK-09-1", "cần hoa"],
+  });
+  await client.execute({
+    sql: "INSERT INTO sale_extras (id, booking_id, name) VALUES (?, ?, ?)",
+    args: ["e1", "bk-1", "Thêm đệm"],
+  });
+
+  async function ids(query: string) {
+    const sqlQuery = bookingSearchIdsQuery(query);
+    assert.ok(sqlQuery);
+    return (await db.all(sqlQuery)).map((row) => String((row as { bid: string }).bid));
+  }
+
+  assert.deepEqual(await ids("dang tuan"), ["bk-1"]);
+  assert.deepEqual(await ids("0901222333"), ["bk-1"]);
+  assert.deepEqual(await ids("p.101"), ["bk-1"]);
+  assert.deepEqual(await ids("them dem"), ["bk-1"]);
+  assert.deepEqual(await ids("20/09/2026"), ["bk-1"]);
+  assert.deepEqual(await ids("bk091"), ["bk-1"]);
+  assert.deepEqual(await ids("hang 101"), []);
 });

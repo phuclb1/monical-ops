@@ -1,5 +1,5 @@
 import { cache } from "react";
-import { and, desc, eq, ne, or } from "drizzle-orm";
+import { and, desc, eq, inArray, ne, or } from "drizzle-orm";
 import { getDb } from "@/db";
 import * as t from "@/db/schema";
 import { notify } from "@/modules/notifications/models/notifications";
@@ -7,7 +7,7 @@ import { nowISO } from "../datetime";
 import { can } from "../permissions";
 import { isActiveSaleStatus } from "../sales";
 import { defaultAdultsForRoomType, floorOf, roomIdOf, slugTypeName } from "../rooms-catalog";
-import type { SessionUser } from "../types";
+import { ACTIVE_SALE_STATUSES, type SessionUser } from "../types";
 import { audit } from "./audit";
 
 export const listRooms = cache(async () => {
@@ -26,26 +26,24 @@ export async function listRoomBusyRanges() {
     db
       .select({
         roomId: t.roomSales.roomId,
-        status: t.roomSales.status,
         checkIn: t.roomSales.checkIn,
         checkOut: t.roomSales.checkOut,
       })
-      .from(t.roomSales),
+      .from(t.roomSales)
+      .where(inArray(t.roomSales.status, [...ACTIVE_SALE_STATUSES])),
     db
       .select({
         roomId: t.stays.roomId,
-        status: t.stays.status,
         checkIn: t.stays.arrivalDate,
         checkOut: t.stays.departureDate,
       })
-      .from(t.stays),
+      .from(t.stays)
+      .where(inArray(t.stays.status, ["arriving", "inhouse", "departing"])),
   ]);
   return [
-    ...sales
-      .filter((row) => isActiveSaleStatus(row.status))
-      .map((row) => ({ roomId: row.roomId, checkIn: row.checkIn, checkOut: row.checkOut })),
+    ...sales.map((row) => ({ roomId: row.roomId, checkIn: row.checkIn, checkOut: row.checkOut })),
     ...stays
-      .filter((row) => row.roomId && ["arriving", "inhouse", "departing"].includes(row.status))
+      .filter((row) => row.roomId)
       .map((row) => ({ roomId: row.roomId as string, checkIn: row.checkIn, checkOut: row.checkOut })),
   ];
 }

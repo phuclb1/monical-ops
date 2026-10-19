@@ -6,10 +6,10 @@ import { Chip, Empty } from "@/components/ui";
 import { getSession } from "@/lib/auth";
 import { SALE_SOURCE_LABEL } from "@/lib/constants";
 import { breakfastWeek } from "@/lib/breakfast-report";
-import { formatDateLong, formatDayMonth, nextDate, prevDate, todayVN } from "@/lib/datetime";
+import { addDaysVN, formatDateLong, formatDayMonth, nextDate, prevDate, todayVN } from "@/lib/datetime";
 import { maskPhone } from "@/lib/mask";
 import { can } from "@/lib/permissions";
-import { listRoomSales, listRoomTypes } from "@/lib/repos";
+import { listRoomSalesOverlapping, listRoomTypes } from "@/lib/repos";
 import { isOtaSource } from "@/lib/sales";
 import type { SaleSource } from "@/lib/types";
 
@@ -42,7 +42,10 @@ export default async function KitchenPage({
   const today = todayVN();
   const { date: rawDate } = await searchParams;
   const date = parseDate(rawDate, today);
-  const [sales, types] = await Promise.all([listRoomSales(), listRoomTypes()]);
+  const [sales, types] = await Promise.all([
+    listRoomSalesOverlapping(prevDate(date), addDaysVN(date, 6), ["reserved", "inhouse", "departed"]),
+    listRoomTypes(),
+  ]);
   const week = breakfastWeek(sales, date, types);
   const day = week[0];
   const canOpenBooking = can(user.role, "manageSales");

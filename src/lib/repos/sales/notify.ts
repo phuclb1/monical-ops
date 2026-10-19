@@ -3,7 +3,7 @@ import { getDb } from "@/db";
 import * as t from "@/db/schema";
 import { notify } from "@/modules/notifications/models/notifications";
 import type { SessionUser } from "../../types";
-import { listUsers } from "../users";
+import { getUser } from "../users";
 
 export async function bookingCreatedBy(bookingId: string, fallback?: string | null) {
   const db = await getDb();
@@ -25,7 +25,7 @@ export async function notifyBookingChange(input: {
   const payload = { title: input.title, body: input.body, link: `/sales/bookings/${input.bookingId}` };
   await notify({ ...payload, role: "manager" });
   if (!input.createdBy) return;
-  const creator = (await listUsers()).find((person) => person.id === input.createdBy);
+  const creator = await getUser(input.createdBy);
   if (creator?.role !== "reception") return;
   await notify({ ...payload, userId: creator.id });
 }

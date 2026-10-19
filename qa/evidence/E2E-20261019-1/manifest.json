@@ -1,8 +1,8 @@
 {
   "runId": "E2E-20261019-1",
-  "date": "2026-10-19T06:07:29.838Z",
-  "commit": "e9b6dc6-dirty",
-  "env": "http://localhost:3000",
+  "date": "2026-10-19T15:21:49.933Z",
+  "commit": "d638b74-dirty",
+  "env": "http://localhost:3002",
   "guest": "E2E Van A",
   "room": "101",
   "pass": 40,

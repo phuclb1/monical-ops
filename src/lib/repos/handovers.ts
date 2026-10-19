@@ -1,4 +1,4 @@
-import { desc, eq } from "drizzle-orm";
+import { desc, eq, inArray } from "drizzle-orm";
 import { getDb } from "@/db";
 import * as t from "@/db/schema";
 import { notify } from "@/modules/notifications/models/notifications";
@@ -14,6 +14,16 @@ import { currentOpenShift } from "./shifts";
 import { listStays } from "./stays";
 import { listTasks } from "./tasks";
 
+const USER_NAME = { id: t.users.id, fullName: t.users.fullName };
+
+async function usersByIds(ids: (string | null | undefined)[]) {
+  const unique = [...new Set(ids.filter((id): id is string => Boolean(id)))];
+  if (!unique.length) return new Map<string, { id: string; fullName: string }>();
+  const db = await getDb();
+  const rows = await db.select(USER_NAME).from(t.users).where(inArray(t.users.id, unique));
+  return new Map(rows.map((row) => [row.id, row]));
+}
+
 export async function pendingHandover() {
   const db = await getDb();
   const rows = await db.select().from(t.handovers).where(eq(t.handovers.status, "submitted")).orderBy(desc(t.handovers.createdAt)).limit(1);
@@ -25,14 +35,28 @@ export async function pendingHandover() {
 export async function listHandovers() {
   const db = await getDb();
   const rows = await db.select().from(t.handovers).orderBy(desc(t.handovers.createdAt));
-  const items = await db.select().from(t.handoverItems);
-  const users = await db.select().from(t.users);
+  const users = await usersByIds(rows.flatMap((row) => [row.createdBy, row.acceptedBy]));
   return rows.map((h) => ({
     ...h,
-    items: items.filter((i) => i.handoverId === h.id),
-    creator: users.find((u) => u.id === h.createdBy),
-    acceptor: users.find((u) => u.id === h.acceptedBy),
+    creator: users.get(h.createdBy),
+    acceptor: h.acceptedBy ? users.get(h.acceptedBy) : undefined,
   }));
+}
+
+export async function getHandover(id: string) {
+  const db = await getDb();
+  const ho = (await db.select().from(t.handovers).where(eq(t.handovers.id, id)).limit(1))[0];
+  if (!ho) return null;
+  const [items, users] = await Promise.all([
+    db.select().from(t.handoverItems).where(eq(t.handoverItems.handoverId, id)),
+    usersByIds([ho.createdBy, ho.acceptedBy]),
+  ]);
+  return {
+    ...ho,
+    items,
+    creator: users.get(ho.createdBy),
+    acceptor: ho.acceptedBy ? users.get(ho.acceptedBy) : undefined,
+  };
 }
 
 function stayTag(s: { pmsCode: string; guestName: string; room?: { number: string } | null }) {
@@ -42,7 +66,7 @@ function stayTag(s: { pmsCode: string; guestName: string; room?: { number: strin
 export async function buildHandoverDraft() {
   const stays = await listStays();
   const rooms = await listRooms();
-  const tasks = await listTasks();
+  const tasks = await listTasks({ statuses: ["new", "accepted", "in_progress", "blocked"] });
   const requests = stays.flatMap((s) => s.requests.map((r) => ({ ...r, room: s.room?.number })));
   const items: { category: string; refType: string; refId: string; summary: string }[] = [];
   const openTask = new Set(["new", "accepted", "in_progress"]);
