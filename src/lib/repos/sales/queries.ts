@@ -211,7 +211,8 @@ export async function bookingsByIds(ids: string[]) {
   ).filter((row) => bookingMatchesLookup(row, wanted));
 }
 
-async function bookingIdsWhere(where: SQL) {
+async function bookingIdsWhere(where: SQL | undefined) {
+  if (!where) return [];
   const db = await getDb();
   const rows = await db.select({ id: t.roomSales.id, bookingId: t.roomSales.bookingId }).from(t.roomSales).where(where);
   return bookingIdsOf(rows);
@@ -298,7 +299,10 @@ export async function listOpenBookingRefs(input: {
   if (input.origin) clauses.push(eq(t.roomSales.origin, input.origin));
   if (input.from) clauses.push(gt(t.roomSales.checkOut, input.from));
   if (input.to) clauses.push(lt(t.roomSales.checkIn, input.to));
-  if (input.since) clauses.push(or(gt(t.roomSales.updatedAt, input.since), gt(t.roomSales.createdAt, input.since)));
+  if (input.since) {
+    const since = or(gt(t.roomSales.updatedAt, input.since), gt(t.roomSales.createdAt, input.since));
+    if (since) clauses.push(since);
+  }
   const db = await getDb();
   const rows = await db
     .select({
