@@ -1,5 +1,16 @@
 import { addDaysVN, addMonthsVN, datesUntil, periodWindow, todayVN, type PeriodGrain } from "./datetime";
-import { commissionAmount, isOtaDebt, isOtaSource, salePaid } from "./sales";
+import { matchesSearchText } from "./search-text";
+import {
+  bookingDisplayCode,
+  bookingPayMethods,
+  collectedSplit,
+  commissionAmount,
+  isOtaDebt,
+  isOtaSource,
+  refundParts,
+  salePaid,
+} from "./sales";
+import type { PaymentMethod } from "./types";
 
 export const PERIOD_GRAINS = ["month", "quarter", "year"] as const;
 export type ReportGrain = (typeof PERIOD_GRAINS)[number];
@@ -262,7 +273,11 @@ export function cashFlowReport<T extends BookingMoney>(bookings: T[], from: stri
     return [{ booking, flow }];
   });
   const rows = [...stays, ...refunds];
-  const totals = rows.reduce((acc, { flow }) => {
+  return { rows, totals: cashTotalsOf(rows) };
+}
+
+function cashTotalsOf(rows: { flow: CashFlowLine }[]) {
+  return rows.reduce((acc, { flow }) => {
     acc.gross += flow.gross;
     acc.vat += flow.vat;
     acc.net += flow.net;
@@ -278,7 +293,266 @@ export function cashFlowReport<T extends BookingMoney>(bookings: T[], from: stri
     if (!flow.refund && flow.recognized) acc.recognizedCount += 1;
     return acc;
   }, emptyCashTotals());
-  return { rows, totals };
+}
+
+export function parseIsoDate(raw?: string | null) {
+  const value = String(raw || "").slice(0, 10);
+  return /^\d{4}-\d{2}-\d{2}$/.test(value) ? value : "";
+}
+
+export function filterCashFlowReport<T extends BookingMoney & { id?: string; guestName?: string; pmsCode?: string | null }>(
+  report: { rows: { booking: T; flow: CashFlowLine }[] },
+  input: { q?: string | null; arrive?: string | null; depart?: string | null } = {},
+) {
+  const q = String(input.q || "").trim();
+  const arrive = parseIsoDate(input.arrive);
+  const depart = parseIsoDate(input.depart);
+  const rows = report.rows.filter(({ booking }) => {
+    if (arrive && booking.checkIn !== arrive) return false;
+    if (depart && booking.checkOut !== depart) return false;
+    if (!q) return true;
+    const code = bookingDisplayCode({ id: booking.id || "", pmsCode: booking.pmsCode });
+    return matchesSearchText([booking.guestName, code, booking.id].filter(Boolean).join(" "), q);
+  });
+  return { rows, totals: cashTotalsOf(rows) };
+}
+
+export const ACTUAL_CASH_KIND_LABEL = {
+  deposit: "Đặt cọc",
+  checkin: "Thu đủ",
+  extra: "Phụ thu",
+  refund: "Hoàn cọc",
+} as const;
+
+export type ActualCashKind = keyof typeof ACTUAL_CASH_KIND_LABEL;
+
+export type ActualCashTx = {
+  id: string;
+  bookingId: string;
+  bookingCode: string;
+  guestName: string;
+  roomLabel: string;
+  checkIn: string;
+  checkOut: string;
+  amount: number;
+  kind: ActualCashKind;
+  typeLabel: string;
+  method: PaymentMethod;
+};
+
+export type ActualCashGroup = {
+  bookingId: string;
+  bookingCode: string;
+  guestName: string;
+  roomLabel: string;
+  checkIn: string;
+  checkOut: string;
+  amount: number;
+  cash: number;
+  transfer: number;
+  company: number;
+  rows: ActualCashTx[];
+};
+
+export type ActualCashTotals = {
+  count: number;
+  bookingCount: number;
+  amount: number;
+  inflow: number;
+  refund: number;
+  cash: number;
+  transfer: number;
+  company: number;
+};
+
+type ActualCashBooking = BookingMoney & {
+  id?: string;
+  guestName?: string;
+  pmsCode?: string | null;
+  roomLabel?: string;
+  checkinPaid?: number | null;
+  checkinMethod?: string | null;
+  extras?: { id?: string; name?: string | null; amount?: number | null }[];
+};
+
+const KIND_ORDER: Record<ActualCashKind, number> = { deposit: 0, checkin: 1, extra: 2, refund: 3 };
+
+function methodAmount(method: PaymentMethod, amount: number) {
+  return {
+    cash: method === "cash" ? amount : 0,
+    transfer: method === "personal" ? amount : 0,
+    company: method === "company" ? amount : 0,
+  };
+}
+
+function addMethod(acc: { cash: number; transfer: number; company: number }, method: PaymentMethod, amount: number) {
+  const part = methodAmount(method, amount);
+  acc.cash += part.cash;
+  acc.transfer += part.transfer;
+  acc.company += part.company;
+}
+
+function emptyActualTotals(): ActualCashTotals {
+  return { count: 0, bookingCount: 0, amount: 0, inflow: 0, refund: 0, cash: 0, transfer: 0, company: 0 };
+}
+
+function bookingMeta<T extends ActualCashBooking>(booking: T) {
+  const id = booking.id || `${booking.guestName || "booking"}-${booking.checkIn}`;
+  return {
+    bookingId: id,
+    bookingCode: bookingDisplayCode({ id, pmsCode: booking.pmsCode }),
+    guestName: booking.guestName || "—",
+    roomLabel: booking.roomLabel?.trim() || "—",
+    checkIn: booking.checkIn,
+    checkOut: booking.checkOut,
+  };
+}
+
+function pushTx(
+  rows: ActualCashTx[],
+  booking: ReturnType<typeof bookingMeta>,
+  input: { id: string; amount: number; kind: ActualCashKind; typeLabel?: string; method: PaymentMethod },
+) {
+  if (!input.amount) return;
+  rows.push({
+    ...booking,
+    id: input.id,
+    amount: input.amount,
+    kind: input.kind,
+    typeLabel: input.typeLabel || ACTUAL_CASH_KIND_LABEL[input.kind],
+    method: input.method,
+  });
+}
+
+function collectedTxs<T extends ActualCashBooking>(booking: T) {
+  const meta = bookingMeta(booking);
+  const paid = salePaid(booking);
+  const split = collectedSplit(paid.deposit, booking.checkinPaid);
+  const methods = bookingPayMethods(booking);
+  let holdLeft = split.hold;
+  let checkinLeft = split.checkin;
+  const extras = [...(booking.extras || [])].map((extra, index) => ({
+    id: extra.id || `extra-${index + 1}`,
+    name: extra.name?.trim() || ACTUAL_CASH_KIND_LABEL.extra,
+    amount: Math.max(0, Math.round(extra.amount || 0)),
+  }));
+  const rows: ActualCashTx[] = [];
+  for (const extra of extras) {
+    if (!extra.amount) continue;
+    const fromCheckin = Math.min(extra.amount, checkinLeft);
+    if (fromCheckin) {
+      pushTx(rows, meta, {
+        id: `${meta.bookingId}-extra-${extra.id}-checkin`,
+        amount: fromCheckin,
+        kind: "extra",
+        typeLabel: extra.name,
+        method: methods.checkin,
+      });
+      checkinLeft -= fromCheckin;
+    }
+    const fromHold = Math.min(extra.amount - fromCheckin, holdLeft);
+    if (fromHold) {
+      pushTx(rows, meta, {
+        id: `${meta.bookingId}-extra-${extra.id}-deposit`,
+        amount: fromHold,
+        kind: "extra",
+        typeLabel: extra.name,
+        method: methods.deposit,
+      });
+      holdLeft -= fromHold;
+    }
+  }
+  pushTx(rows, meta, { id: `${meta.bookingId}-deposit`, amount: holdLeft, kind: "deposit", method: methods.deposit });
+  pushTx(rows, meta, { id: `${meta.bookingId}-checkin`, amount: checkinLeft, kind: "checkin", method: methods.checkin });
+  return rows;
+}
+
+function refundTxs<T extends ActualCashBooking>(booking: T) {
+  const meta = bookingMeta(booking);
+  return refundParts(booking).map((part) => ({
+    ...meta,
+    id: `${meta.bookingId}-refund-${part.method}`,
+    amount: -Math.abs(part.amount),
+    kind: "refund" as const,
+    typeLabel: ACTUAL_CASH_KIND_LABEL.refund,
+    method: part.method,
+  }));
+}
+
+function compareActualTx(a: ActualCashTx, b: ActualCashTx) {
+  return (
+    a.checkIn.localeCompare(b.checkIn) ||
+    a.bookingCode.localeCompare(b.bookingCode) ||
+    a.guestName.localeCompare(b.guestName) ||
+    KIND_ORDER[a.kind] - KIND_ORDER[b.kind] ||
+    a.typeLabel.localeCompare(b.typeLabel) ||
+    a.id.localeCompare(b.id)
+  );
+}
+
+function summarizeActualCash(rows: ActualCashTx[]) {
+  const groupMap = new Map<string, ActualCashGroup>();
+  const totals = emptyActualTotals();
+  for (const row of rows) {
+    totals.count += 1;
+    totals.amount += row.amount;
+    if (row.amount >= 0) totals.inflow += row.amount;
+    else totals.refund += row.amount;
+    addMethod(totals, row.method, row.amount);
+    const current = groupMap.get(row.bookingId) || {
+      bookingId: row.bookingId,
+      bookingCode: row.bookingCode,
+      guestName: row.guestName,
+      roomLabel: row.roomLabel,
+      checkIn: row.checkIn,
+      checkOut: row.checkOut,
+      amount: 0,
+      cash: 0,
+      transfer: 0,
+      company: 0,
+      rows: [],
+    };
+    current.amount += row.amount;
+    addMethod(current, row.method, row.amount);
+    current.rows.push(row);
+    groupMap.set(row.bookingId, current);
+  }
+  const groups = [...groupMap.values()].sort(
+    (a, b) => a.checkIn.localeCompare(b.checkIn) || a.bookingCode.localeCompare(b.bookingCode) || a.guestName.localeCompare(b.guestName),
+  );
+  totals.bookingCount = groups.length;
+  return { rows, groups, totals };
+}
+
+export function actualCashFlowReport<T extends ActualCashBooking>(bookings: T[], from: string, to: string) {
+  const rows = bookings
+    .flatMap((booking) => {
+      const stay = countsAsBookingRevenue(booking.status) && booking.checkIn >= from && booking.checkIn < to;
+      const refundDate = String(booking.refundedAt || "").slice(0, 10);
+      const refunded = /^\d{4}-\d{2}-\d{2}$/.test(refundDate) && refundDate >= from && refundDate < to;
+      return [...(stay ? collectedTxs(booking) : []), ...(refunded ? refundTxs(booking) : [])];
+    })
+    .sort(compareActualTx);
+  return summarizeActualCash(rows);
+}
+
+function actualSearchText(row: ActualCashTx) {
+  return [row.bookingCode, row.bookingId, row.guestName, row.roomLabel].filter(Boolean).join(" ");
+}
+
+export function filterActualCashFlow(
+  report: { rows: ActualCashTx[] },
+  input: { q?: string | null; arrive?: string | null; depart?: string | null } = {},
+) {
+  const q = String(input.q || "").trim();
+  const arrive = parseIsoDate(input.arrive);
+  const depart = parseIsoDate(input.depart);
+  const rows = report.rows.filter((row) => {
+    if (arrive && row.checkIn !== arrive) return false;
+    if (depart && row.checkOut !== depart) return false;
+    return !q || matchesSearchText(actualSearchText(row), q);
+  });
+  return summarizeActualCash(rows);
 }
 
 export function roomRevenueReport<T extends BookingMoney>(bookings: T[], from: string, to: string, today = todayVN()) {

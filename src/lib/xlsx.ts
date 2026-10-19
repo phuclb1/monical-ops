@@ -60,16 +60,31 @@ function sheetXml(rows: SheetCell[][], numericColumns: Set<number>) {
 </worksheet>`;
 }
 
-function workbookFiles(sheet: SheetInput) {
-  const name = xml(sheet.name.slice(0, 31) || "Sheet1");
-  const numeric = new Set(sheet.numericColumns || []);
+function workbookFiles(sheets: SheetInput[]) {
+  const list = sheets.length ? sheets : [{ name: "Sheet1", rows: [] }];
+  const names = new Set<string>();
+  const overrides = list
+    .map((_, index) => `<Override PartName="/xl/worksheets/sheet${index + 1}.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>`)
+    .join("");
+  const sheetTags = list
+    .map((sheet, index) => {
+      const raw = xml((sheet.name || `Sheet${index + 1}`).slice(0, 31));
+      let name = raw || `Sheet${index + 1}`;
+      while (names.has(name)) name = `${name.slice(0, 28)}_${index + 1}`;
+      names.add(name);
+      return `<sheet name="${name}" sheetId="${index + 1}" r:id="rId${index + 1}"/>`;
+    })
+    .join("");
+  const sheetRels = list
+    .map((_, index) => `<Relationship Id="rId${index + 1}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet${index + 1}.xml"/>`)
+    .join("");
   const files: Record<string, string> = {
     "[Content_Types].xml": `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
 <Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
 <Default Extension="xml" ContentType="application/xml"/>
 <Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>
-<Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>
+${overrides}
 <Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>
 </Types>`,
     "_rels/.rels": `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
@@ -78,12 +93,12 @@ function workbookFiles(sheet: SheetInput) {
 </Relationships>`,
     "xl/workbook.xml": `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
-<sheets><sheet name="${name}" sheetId="1" r:id="rId1"/></sheets>
+<sheets>${sheetTags}</sheets>
 </workbook>`,
     "xl/_rels/workbook.xml.rels": `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
-<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/>
-<Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>
+${sheetRels}
+<Relationship Id="rId${list.length + 1}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>
 </Relationships>`,
     "xl/styles.xml": `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
@@ -98,8 +113,10 @@ function workbookFiles(sheet: SheetInput) {
 <xf numFmtId="164" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/>
 </cellXfs>
 </styleSheet>`,
-    "xl/worksheets/sheet1.xml": sheetXml(sheet.rows, numeric),
   };
+  list.forEach((sheet, index) => {
+    files[`xl/worksheets/sheet${index + 1}.xml`] = sheetXml(sheet.rows, new Set(sheet.numericColumns || []));
+  });
   return files;
 }
 
@@ -184,5 +201,9 @@ function zipStore(files: Record<string, string>) {
 }
 
 export function workbookXlsx(sheet: SheetInput) {
-  return zipStore(workbookFiles(sheet));
+  return workbookXlsxSheets([sheet]);
+}
+
+export function workbookXlsxSheets(sheets: SheetInput[]) {
+  return zipStore(workbookFiles(sheets));
 }

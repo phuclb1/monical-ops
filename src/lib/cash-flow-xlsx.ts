@@ -1,8 +1,14 @@
-import { SALE_SOURCE_LABEL } from "./constants";
+import { PAYMENT_METHOD_LABEL, SALE_SOURCE_LABEL } from "./constants";
 import { formatDateNumeric } from "./datetime";
 import { bookingDisplayCode } from "./sales";
-import { CASH_FLOW_KIND_LABEL, type CashFlowLine, type CashFlowTotals } from "./sales-report";
-import { workbookXlsx } from "./xlsx";
+import {
+  CASH_FLOW_KIND_LABEL,
+  type ActualCashTotals,
+  type ActualCashTx,
+  type CashFlowLine,
+  type CashFlowTotals,
+} from "./sales-report";
+import { workbookXlsxSheets } from "./xlsx";
 import type { SaleSource } from "./types";
 
 const HEADERS = [
@@ -42,10 +48,18 @@ function statusOf(flow: CashFlowLine) {
   return flow.recognized ? "Đã ghi nhận" : "Chưa ghi nhận";
 }
 
-export function cashFlowXlsx<T extends ExportBooking>(report: {
-  rows: { booking: T; flow: CashFlowLine }[];
-  totals: CashFlowTotals;
-}) {
+const ACTUAL_HEADERS = ["Booking ID", "Họ tên", "Số phòng", "Ngày đến", "Ngày đi", "Số tiền", "Loại", "Hình thức"] as const;
+
+export function cashFlowXlsx<T extends ExportBooking>(
+  report: {
+    rows: { booking: T; flow: CashFlowLine }[];
+    totals: CashFlowTotals;
+  },
+  actual?: {
+    rows: ActualCashTx[];
+    totals: ActualCashTotals;
+  },
+) {
   const rows: (string | number)[][] = [
     [...HEADERS],
     ...report.rows.map(({ booking, flow }) => [
@@ -87,5 +101,26 @@ export function cashFlowXlsx<T extends ExportBooking>(report: {
       report.totals.guestDue,
     ],
   ];
-  return workbookXlsx({ name: "Dòng tiền", rows, numericColumns: MONEY_COLUMNS });
+  const sheets = [{ name: "Dòng tiền", rows, numericColumns: MONEY_COLUMNS }];
+  if (actual) {
+    sheets.push({
+      name: "Thực tế",
+      numericColumns: [5],
+      rows: [
+        [...ACTUAL_HEADERS],
+        ...actual.rows.map((row) => [
+          row.bookingCode,
+          row.guestName,
+          row.roomLabel,
+          formatDateNumeric(row.checkIn),
+          formatDateNumeric(row.checkOut),
+          row.amount,
+          row.typeLabel,
+          PAYMENT_METHOD_LABEL[row.method],
+        ]),
+        ["Tổng", "", "", "", "", actual.totals.amount, "", ""],
+      ],
+    });
+  }
+  return workbookXlsxSheets(sheets);
 }

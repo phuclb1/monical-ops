@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { ACCOUNTING_NAV, homePath, isAccountingAllowedPath, isAccountingPath, MANAGER_NAV, sidebarNav } from "../src/lib/nav";
 import { datesUntil } from "../src/lib/datetime";
-import { cashFlowReport, invoiceRevenueReport, revenueTrend, roomPerformanceSummary, roomRevenueReport } from "../src/lib/sales-report";
+import { actualCashFlowReport, cashFlowReport, filterActualCashFlow, filterCashFlowReport, invoiceRevenueReport, revenueTrend, roomPerformanceSummary, roomRevenueReport } from "../src/lib/sales-report";
 
 function row(partial: {
   checkIn: string;
@@ -317,6 +317,148 @@ test("cash flow records a deposit refund on the account and date it was returned
   assert.equal(report.rows[1].flow.transfer, -500_000);
   assert.equal(report.rows[1].flow.cash, 0);
   assert.equal(report.totals.transfer, 300_000 - 500_000);
+});
+
+test("actual cash flow lists each collected payment and can group by booking", () => {
+  const report = actualCashFlowReport(
+    [
+      {
+        id: "bk-1",
+        guestName: "Mai Hà",
+        pmsCode: "BK-09",
+        roomLabel: "P.101 · P.102",
+        checkIn: "2026-09-10",
+        checkOut: "2026-09-12",
+        status: "inhouse",
+        total: 1_450_000,
+        due: 0,
+        deposit: 1_000_000,
+        checkinPaid: 500_000,
+        checkinMethod: "cash",
+        cashPaid: 500_000,
+        transferPaid: 500_000,
+        companyPaid: 0,
+        extras: [{ id: "ex-1", name: "Phụ thu người lớn", amount: 300_000 }],
+      },
+      {
+        id: "bk-2",
+        guestName: "Hoàn cọc",
+        roomLabel: "P.201",
+        checkIn: "2026-10-20",
+        checkOut: "2026-10-21",
+        status: "cancelled",
+        total: 0,
+        due: 0,
+        deposit: 0,
+        refundTransfer: 200_000,
+        refundedAt: "2026-09-05",
+      },
+      {
+        id: "bk-3",
+        guestName: "OTA công nợ",
+        checkIn: "2026-09-11",
+        checkOut: "2026-09-12",
+        status: "reserved",
+        total: 1_000_000,
+        due: 0,
+        deposit: 0,
+        source: "agoda",
+        otaPaymentMode: "debt",
+      },
+    ],
+    "2026-09-01",
+    "2026-10-01",
+  );
+
+  assert.deepEqual(
+    report.rows.map((item) => [item.bookingCode, item.typeLabel, item.amount, item.method]),
+    [
+      ["BK-09", "Đặt cọc", 500_000, "personal"],
+      ["BK-09", "Thu đủ", 200_000, "cash"],
+      ["BK-09", "Phụ thu người lớn", 300_000, "cash"],
+      ["bk-2", "Hoàn cọc", -200_000, "personal"],
+    ],
+  );
+  assert.equal(report.rows[0].guestName, "Mai Hà");
+  assert.equal(report.rows[0].roomLabel, "P.101 · P.102");
+  assert.equal(report.rows[0].checkIn, "2026-09-10");
+  assert.equal(report.rows[0].checkOut, "2026-09-12");
+  assert.equal(report.totals.count, 4);
+  assert.equal(report.totals.bookingCount, 2);
+  assert.equal(report.totals.inflow, 1_000_000);
+  assert.equal(report.totals.refund, -200_000);
+  assert.equal(report.totals.cash, 500_000);
+  assert.equal(report.totals.transfer, 300_000);
+  assert.equal(report.groups.length, 2);
+  assert.equal(report.groups[0].rows.length, 3);
+  assert.equal(report.groups[0].amount, 1_000_000);
+  assert.equal(report.groups[1].amount, -200_000);
+});
+
+test("actual cash flow filters by guest, booking code and stay dates", () => {
+  const report = actualCashFlowReport(
+    [
+      {
+        id: "bk-1",
+        guestName: "Mai Hà",
+        pmsCode: "BK-09",
+        roomLabel: "P.101",
+        checkIn: "2026-09-10",
+        checkOut: "2026-09-12",
+        status: "inhouse",
+        total: 1_000_000,
+        due: 0,
+        deposit: 500_000,
+        transferPaid: 500_000,
+      },
+      {
+        id: "bk-2",
+        guestName: "Đặng Minh Tuấn",
+        pmsCode: "BK-10",
+        roomLabel: "P.401",
+        checkIn: "2026-09-11",
+        checkOut: "2026-09-13",
+        status: "inhouse",
+        total: 1_200_000,
+        due: 0,
+        deposit: 400_000,
+        cashPaid: 400_000,
+      },
+    ],
+    "2026-09-01",
+    "2026-10-01",
+  );
+
+  const byName = filterActualCashFlow(report, { q: "mai ha" });
+  assert.deepEqual(byName.rows.map((row) => row.bookingCode), ["BK-09"]);
+  assert.equal(byName.totals.bookingCount, 1);
+  assert.equal(byName.totals.amount, 500_000);
+
+  const byCode = filterActualCashFlow(report, { q: "BK-10" });
+  assert.deepEqual(byCode.rows.map((row) => row.guestName), ["Đặng Minh Tuấn"]);
+
+  const byArrive = filterActualCashFlow(report, { arrive: "2026-09-11" });
+  assert.equal(byArrive.rows.length, 1);
+  assert.equal(byArrive.rows[0].bookingCode, "BK-10");
+
+  const byStay = filterActualCashFlow(report, { arrive: "2026-09-10", depart: "2026-09-12" });
+  assert.equal(byStay.rows[0].guestName, "Mai Hà");
+  assert.equal(filterActualCashFlow(report, { arrive: "2026-09-10", depart: "2026-09-13" }).rows.length, 0);
+});
+
+test("cash flow summary filter keeps matching booking rows", () => {
+  const report = cashFlowReport(
+    [
+      { id: "bk-1", guestName: "Mai Hà", pmsCode: "BK-09", checkIn: "2026-09-10", checkOut: "2026-09-12", status: "reserved", total: 100, due: 0, deposit: 0 },
+      { id: "bk-2", guestName: "Đặng", checkIn: "2026-09-11", checkOut: "2026-09-13", status: "inhouse", total: 200, due: 0, deposit: 0 },
+    ],
+    "2026-09-01",
+    "2026-10-01",
+  );
+  const filtered = filterCashFlowReport(report, { q: "BK-09", arrive: "2026-09-10" });
+  assert.equal(filtered.rows.length, 1);
+  assert.equal(filtered.rows[0].booking.guestName, "Mai Hà");
+  assert.equal(filtered.totals.count, 1);
 });
 
 test("invoice revenue includes direct bookings that request an invoice and all OTA", () => {
