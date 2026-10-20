@@ -284,3 +284,12 @@ WHERE bid NOT LIKE 'seq-hold-%'
     )
   )`;
 }
+
+export function cashTxPeriodIdsQuery(from: string, to: string) {
+  return sql`
+SELECT DISTINCT booking_id AS bid
+FROM booking_transactions
+WHERE booking_id NOT LIKE 'seq-hold-%'
+  AND paid_on >= ${from}
+  AND paid_on < ${to}`;
+}

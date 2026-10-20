@@ -52,6 +52,8 @@ export type SaleInput = {
   origin?: string;
   extras?: { typeId?: string; name?: string; qty?: number; unitPrice?: number }[];
   otaTotal?: number;
+  depositPhoto?: string;
+  checkinPhoto?: string;
 };
 
 export function saleLineWindow(data: SaleInput, roomId: string) {

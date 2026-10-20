@@ -269,3 +269,40 @@ export function addMinutes(iso: string, minutes: number) {
 export function nid() {
   return crypto.randomUUID();
 }
+
+export function paidOnVN(iso?: string | null) {
+  if (!iso) return todayVN();
+  if (/^\d{4}-\d{2}-\d{2}$/.test(iso)) return iso;
+  const parsed = new Date(iso);
+  if (Number.isNaN(parsed.getTime())) return todayVN();
+  return todayVN(parsed);
+}
+
+export function dateStartISO(isoDate: string) {
+  const date = /^\d{4}-\d{2}-\d{2}$/.test(isoDate) ? isoDate : paidOnVN(isoDate);
+  return new Date(`${date}T00:00:00+07:00`).toISOString();
+}
+
+export function datetimeLocalVN(iso?: string | null) {
+  const parsed = iso ? new Date(iso) : new Date();
+  const safe = Number.isNaN(parsed.getTime()) ? new Date() : parsed;
+  const date = todayVN(safe);
+  const parts = new Intl.DateTimeFormat("en-GB", {
+    timeZone: TZ,
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  }).formatToParts(safe);
+  const hour = parts.find((part) => part.type === "hour")?.value || "00";
+  const minute = parts.find((part) => part.type === "minute")?.value || "00";
+  return `${date}T${hour}:${minute}`;
+}
+
+export function parseDatetimeLocalVN(value: string | null | undefined) {
+  const raw = String(value || "").trim();
+  if (!raw) return nowISO();
+  if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(raw)) return new Date(`${raw}:00+07:00`).toISOString();
+  if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) return dateStartISO(raw);
+  const parsed = new Date(raw);
+  return Number.isNaN(parsed.getTime()) ? nowISO() : parsed.toISOString();
+}

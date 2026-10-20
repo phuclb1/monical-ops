@@ -64,6 +64,7 @@ export function refresh() {
   revalidatePath("/reports");
   revalidatePath("/reports/sales");
   revalidatePath("/reports/rooms");
+  revalidatePath("/reports/ledger");
   revalidatePath("/notifications");
   revalidatePath("/kitchen");
 }
@@ -133,6 +134,7 @@ export function saleFromForm(formData: FormData) {
     discountKind: parseDiscountKind(formData.get("discountKind")),
     discountValue: parseMoney(formData.get("discountValue")),
     deposit: parseMoney(formData.get("deposit")),
+    depositPhoto: String(formData.get("depositPhoto") || ""),
     paymentMethod: parsePaymentMethod(formData.get("paymentMethod")),
     pmsCode: String(formData.get("pmsCode") || ""),
     notes: String(formData.get("notes") || ""),

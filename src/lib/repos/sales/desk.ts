@@ -5,6 +5,7 @@ import {
   bookingDeskPageQuery,
   bookingSearchIdsQuery,
   cashPeriodIdsQuery,
+  cashTxPeriodIdsQuery,
   pageBounds,
   summarizeBookingDesk,
   type BookingDeskTab,
@@ -111,7 +112,10 @@ export const listBookingDesk = cache(async function listBookingDesk(input: {
 export const listCashPeriodBookings = cache(async function listCashPeriodBookings(from: string, to: string) {
   return rememberBookingRead(`cash:${from}:${to}`, async () => {
     const db = await getDb();
-    const ids = await db.all<{ bid: string }>(cashPeriodIdsQuery(from, to));
-    return bookingsByIds(ids.map((row) => row.bid));
+    const [saleIds, txIds] = await Promise.all([
+      db.all<{ bid: string }>(cashPeriodIdsQuery(from, to)),
+      db.all<{ bid: string }>(cashTxPeriodIdsQuery(from, to)).catch(() => []),
+    ]);
+    return bookingsByIds([...new Set([...saleIds, ...txIds].map((row) => row.bid))]);
   });
 });

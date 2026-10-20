@@ -4,7 +4,7 @@ import { getDb } from "@/db";
 import * as t from "@/db/schema";
 import { nid, nowISO, todayVN } from "../../datetime";
 import { ensureTodayRoomTasks } from "../../checklist-ops";
-import { bookingQuote, catalogRate, clampBreakfastPax, isActiveSaleStatus, isOtaSource, isSaleSource, nightsBetween, normalizeCommission, parsePaymentMethod, ratesFromBookingTotal, roomStayPax } from "../../sales";
+import { bookingQuote, catalogRate, clampBreakfastPax, collectedSplit, isActiveSaleStatus, isOtaDebt, isOtaSource, isSaleSource, nightsBetween, normalizeCommission, parsePaymentMethod, ratesFromBookingTotal, roomStayPax } from "../../sales";
 import { defaultAdultsForRoomType } from "../../rooms-catalog";
 import type { SaleStatus, SessionUser } from "../../types";
 import { audit } from "../audit";
@@ -14,6 +14,7 @@ import { notifyBookingChange } from "./notify";
 import { extraAmount } from "../../extras";
 import { insertSaleExtras, resolveSaleExtras } from "./extras";
 import { syncBookingMoney } from "./money-sync";
+import { insertBookingTransaction } from "./transactions";
 import { applySaleRoomState, syncStayFromSale } from "./stay";
 import { dispatchBookingWebhook } from "@/lib/booking-webhook";
 import { dispatchBookingZalo, dispatchCheckinPaidZalo } from "@/lib/zalo-notify";
@@ -138,6 +139,28 @@ export async function createRoomSale(user: SessionUser, data: SaleInput) {
     ids.push(id);
   }
   await insertSaleExtras(user, bookingId, preparedExtras);
+  if (!requestedBookingId && !isOtaDebt(data.source, data.otaPaymentMode === "hotel" ? "hotel" : "debt")) {
+    const split = collectedSplit(paid.deposit, data.checkinPaid);
+    const method = parsePaymentMethod(data.paymentMethod);
+    if (split.hold > 0) {
+      await insertBookingTransaction(user, bookingId, {
+        kind: "deposit",
+        amount: split.hold,
+        method,
+        paidAt: now,
+        photo: data.depositPhoto,
+      });
+    }
+    if (split.checkin > 0) {
+      await insertBookingTransaction(user, bookingId, {
+        kind: "checkin",
+        amount: split.checkin,
+        method: data.checkinMethod || method,
+        paidAt: now,
+        photo: data.checkinPhoto,
+      });
+    }
+  }
   await syncBookingMoney(bookingId);
   await ensureTodayRoomTasks(db, { actorId: user.id });
   const roomLabel = rooms.length === 1 ? `P.${rooms[0].room.number}` : `${rooms.length} phòng`;

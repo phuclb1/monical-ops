@@ -5,8 +5,10 @@ import { AddBookingRoomsForm, BookingForm } from "@/components/sale-form";
 import { BookingCancelActions } from "@/components/booking-cancel";
 import { BookingApprovals } from "@/components/booking-approvals";
 import { BookingExtrasPanel } from "@/components/booking-extras";
+import { BookingOtaSettlePanel } from "@/components/booking-ota-settle";
 import { BookingPaymentPanel } from "@/components/booking-payment";
 import { BookingRefundPanel } from "@/components/booking-refund";
+import { BookingTransactionList } from "@/components/booking-transactions";
 import { BookingRoomList } from "@/components/booking-room-list";
 import { BookingLog } from "@/components/booking-log";
 import { BookingLifeChips, BookingLifecycleBar } from "@/components/booking-lifecycle";
@@ -18,7 +20,7 @@ import { extraDetail } from "@/lib/extras";
 import { maskName, maskPhone } from "@/lib/mask";
 import { can } from "@/lib/permissions";
 import { getBooking, listBookingChangeRequests, listBookingLogs, listRoomBusyRanges, listRooms, listRoomTypes, listSaleExtraTypes } from "@/lib/repos";
-import { bookingLifecycle, bookingPayMethods, bookingQuote, collectedSplit, commissionAmount, depositRefundAllowed, formatVnd, guestCheckoutDue, isActiveSaleStatus, isOpsBookingCode, isOtaDebt, isOtaSource, paidNote, parkingLabel, primaryPaymentMethod, refundParts, refundReasonLabel, refundTotal, stayRefundOverpay, stayRefundable } from "@/lib/sales";
+import { bookingLifecycle, bookingPayMethods, bookingQuote, canSettleOtaDebt, collectedSplit, commissionAmount, depositRefundAllowed, formatVnd, guestCheckoutDue, isActiveSaleStatus, isOpsBookingCode, isOtaDebt, isOtaSource, paidNote, parkingLabel, primaryPaymentMethod, refundParts, refundReasonLabel, refundTotal, stayRefundOverpay, stayRefundable } from "@/lib/sales";
 import type { SaleOrigin, SaleSource } from "@/lib/types";
 
 export default async function BookingDetailPage({
@@ -218,6 +220,10 @@ export default async function BookingDetailPage({
             ) : null}
             {booking.notes ? <p className="mt-2 text-sm text-[#5c6665]">{booking.notes}</p> : null}
             <p className="mt-1 text-sm">{booking.invoiceRequested ? "Yêu cầu xuất hóa đơn" : "Không xuất hóa đơn"}</p>
+            <div className="mt-3 border-t border-line pt-3">
+              <p className="mb-2 text-xs font-semibold text-[#5c6665]">Giao dịch</p>
+              <BookingTransactionList rows={booking.transactions || []} />
+            </div>
             {manage && firstActive && !otaDebt ? (
               <div className="mt-3 border-t border-line pt-3">
                 <p className="mb-2 text-xs font-semibold text-[#5c6665]">Thanh toán</p>
@@ -228,6 +234,15 @@ export default async function BookingDetailPage({
                   cashPaid={booking.cashPaid}
                   transferPaid={booking.transferPaid}
                   companyPaid={booking.companyPaid}
+                />
+              </div>
+            ) : null}
+            {manage && otaDebt ? (
+              <div className="mt-3 border-t border-line pt-3">
+                <BookingOtaSettlePanel
+                  bookingId={booking.id}
+                  amount={canSettleOtaDebt(booking) ? booking.due : 0}
+                  settledAt={booking.transactions?.find((row) => row.kind === "ota")?.paidAt || null}
                 />
               </div>
             ) : null}
@@ -338,7 +353,7 @@ export default async function BookingDetailPage({
               <p className="mb-2 text-xs text-[#5c6665]">Sửa tên, SĐT, kênh. Số người lớn theo từng phòng, mặc định bằng hạng phòng và chỉ giảm được. Đổi sang phòng bất kỳ hạng nào. Xóa bớt phòng, giữ ít nhất một phòng.</p>
               {user.role === "reception" ? (
                 <p className="mb-3 rounded-xl bg-[#fff1d6] px-3 py-2 text-xs font-semibold text-[#9a5b00]">
-                  Đổi ngày, phòng, xóa phòng, tiền, ăn sáng, chiết khấu hoặc hoa hồng OTA sẽ gửi quản lý duyệt. Booking chỉ đổi sau khi được duyệt.
+                  Đổi ngày, phòng, xóa phòng, ăn sáng, chiết khấu hoặc hoa hồng OTA sẽ gửi quản lý duyệt. Booking chỉ đổi sau khi được duyệt. Tiền thu/hoàn ở danh sách giao dịch.
                 </p>
               ) : null}
               <BookingForm
@@ -363,6 +378,7 @@ export default async function BookingDetailPage({
                 busy={busy}
                 extras={booking.extras}
                 requiresApproval={user.role === "reception"}
+                lockMoney
                 defaults={{
                   bookingId: booking.id,
                   guestName: booking.guestName,

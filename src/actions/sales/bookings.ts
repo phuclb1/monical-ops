@@ -173,6 +173,27 @@ export async function recordBookingPaymentAction(formData: FormData) {
       amount: parseMoney(formData.get("amount")),
       settle: String(formData.get("settle") || "") === "1",
       paymentMethod: parsePaymentMethod(formData.get("paymentMethod")),
+      paidAt: String(formData.get("paidAt") || ""),
+      note: String(formData.get("note") || ""),
+      photo: String(formData.get("photo") || ""),
+    });
+  } catch (e) {
+    fail(back, e);
+  }
+  refresh();
+  revalidatePath(back);
+  redirect(back);
+}
+
+export async function settleOtaDebtAction(formData: FormData) {
+  const user = await requireSales();
+  const bookingId = String(formData.get("bookingId") || "");
+  const back = `/sales/bookings/${bookingId}`;
+  try {
+    await repo.settleOtaDebt(user, bookingId, {
+      paidAt: String(formData.get("paidAt") || ""),
+      note: String(formData.get("note") || ""),
+      photo: String(formData.get("photo") || ""),
     });
   } catch (e) {
     fail(back, e);
@@ -194,6 +215,9 @@ export async function recordBookingRefundAction(formData: FormData) {
       amount: parseMoney(formData.get("amount")),
       paymentMethod: parsePaymentMethod(formData.get("paymentMethod")),
       reason: parseStayRefundReason(formData.get("reason")),
+      paidAt: String(formData.get("paidAt") || ""),
+      note: String(formData.get("note") || ""),
+      photo: String(formData.get("photo") || ""),
     });
   } catch (e) {
     fail(back, e);
@@ -234,10 +258,6 @@ export async function updateBookingAction(formData: FormData) {
       breakfastChildren: Number(formData.get("breakfastChildren") || 0),
       cars: Math.max(0, Number(formData.get("cars") || 0) || 0),
       bikes: Math.max(0, Number(formData.get("bikes") || 0) || 0),
-      deposit: parseMoney(formData.get("deposit")),
-      checkinPaid: parseMoney(formData.get("checkinPaid")),
-      paymentMethod: parsePaymentMethod(formData.get("paymentMethod")),
-      checkinPaymentMethod: parsePaymentMethod(formData.get("checkinPaymentMethod")),
       notes: String(formData.get("notes") || ""),
       removedSaleIds: formData.getAll("removeSaleId").map(String).filter(Boolean),
     });

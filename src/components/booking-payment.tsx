@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { recordBookingPaymentAction } from "@/actions/sales";
+import { BookingTxFields } from "@/components/booking-tx-fields";
 import { Btn, PayMethodField } from "@/components/ui";
 import { PAYMENT_METHOD_LABEL } from "@/lib/constants";
 import { formatVnd, paidNote, parseMoney } from "@/lib/sales";
@@ -49,7 +50,8 @@ export function BookingPaymentPanel({
           placeholder={String(due)}
         />
       </label>
-      <PayMethodField label="Hình thức thu đủ" value={method} onChange={setMethod} />
+      <PayMethodField label="Hình thức" value={method} onChange={setMethod} />
+      <BookingTxFields />
       {note ? <p className="text-xs text-[#5c6665]">Đã thu {note}</p> : null}
       {extra && extra < due ? <p className="text-xs text-[#5c6665]">Sau lần này còn {formatVnd(due - extra)}</p> : null}
       <Btn type="submit" className="w-full">

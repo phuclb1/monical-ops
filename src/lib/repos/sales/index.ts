@@ -17,6 +17,8 @@ export {
   salesGantt,
 } from "./queries";
 export { listBookingDesk, listCashPeriodBookings } from "./desk";
+export { listLedger, listBookingTransactions } from "./transactions";
+export type { LedgerEntry } from "./transactions";
 export { listBookingLogs } from "./logs";
 export { createRoomSale, addRoomsToBooking } from "./create";
 export { updateRoomSale } from "./update";
@@ -26,6 +28,7 @@ export { moveGanttSale } from "./move";
 export {
   recordBookingPayment,
   recordBookingRefund,
+  settleOtaDebt,
   cancelBooking,
   checkinRoomSale,
   checkoutRoomSale,

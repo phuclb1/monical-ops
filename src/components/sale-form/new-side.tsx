@@ -1,6 +1,8 @@
 "use client";
 
+import { useRef, useState } from "react";
 import { Btn, Field, PayMethodField } from "@/components/ui";
+import { compressImage } from "@/lib/image";
 import { PAYMENT_METHOD_LABEL } from "@/lib/constants";
 import { formatVnd } from "@/lib/sales";
 import type { PaymentMethod } from "@/lib/types";
@@ -76,6 +78,7 @@ export function SaleFormSide(props: {
             <input name="deposit" inputMode="numeric" value={deposit} onChange={(e) => setDeposit(e.target.value)} placeholder="0" />
           </Field>
           {depositAmount ? <PayMethodField value={payMethod} onChange={setPayMethod} /> : <input type="hidden" name="paymentMethod" value={payMethod} />}
+          <DepositPhotoField />
         </>
       )}
       <div className="rounded-xl bg-sand px-3 py-2 text-sm">
@@ -233,5 +236,28 @@ export function SaleFormSide(props: {
         {saveLabel}
       </Btn>
       </div>
+  );
+}
+
+function DepositPhotoField() {
+  const [photo, setPhoto] = useState("");
+  const fileRef = useRef<HTMLInputElement>(null);
+  return (
+    <div className="space-y-1">
+      <input type="hidden" name="depositPhoto" value={photo} />
+      <input
+        ref={fileRef}
+        type="file"
+        accept="image/*"
+        className="text-xs"
+        onChange={(e) => {
+          const file = e.target.files?.[0];
+          if (!file) return;
+          void compressImage(file).then(setPhoto);
+        }}
+      />
+      <p className="text-xs text-[#8a918f]">Ảnh bill cọc — tuỳ chọn</p>
+      {photo ? <img src={photo} alt="Cọc" className="h-12 w-12 rounded-lg object-cover" /> : null}
+    </div>
   );
 }

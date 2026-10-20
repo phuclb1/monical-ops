@@ -301,6 +301,35 @@ Chạy độc lập trên staging bằng lễ tân `ngan.lt` và quản lý `qua
 | APP-A10 | Quản lý chấp nhận | Hiện cả Đã đặt cọc 300.000₫ và Thu đủ khi check-in 50.000₫ |
 | APP-A8 | Quản lý hủy booking E2E | Booking được hủy để giải phóng phòng staging |
 
+> Sau sổ cái: APP-A2 / A5 / A9 / A10 **không còn** sửa tiền trên form booking. Tiền đi qua danh sách giao dịch (TX-* bên dưới). Approval e2e sẽ đổi sang trigger ngày/phòng.
+
+### Sổ cái giao dịch booking — test local rồi staging
+
+Chạy **local trước** (`npm run db:reseed-local` · `http://localhost:3002` · `quanly` / `tuyen`). Pass hết rồi mới staging (`https://ops-staging.monicalhoteldalat.com`). Không deploy PRD cho đến khi TX-* pass cả hai môi trường.
+
+**Tự động (sau khi build):** `npm test` — file `test/booking-transactions.test.ts` (projector backfill, projectPaid, OTA settle rule).
+
+**Tay / E2E:** role `quanly` trừ khi ghi khác. Dùng phòng trống; hủy booking test khi xong.
+
+| ID | Môi trường | Làm gì | Kỳ vọng |
+|---|---|---|---|
+| TX-01 | local + staging | Mở booking cũ đã có cọc (sau deploy/backfill) | Có danh sách GD; 1 dòng Đặt cọc = số cọc cũ; giờ = lúc tạo booking; không ảnh |
+| TX-02 | local + staging | Booking OTA công nợ cũ, chưa thu, đã/ chưa checkout | 0 dòng GD; vẫn “Công nợ OTA”; **chưa** tự mark nhận tiền |
+| TX-03 | local | `/sales/new` walk-in, cọc 500.000₫ CK cá nhân, đính 1 ảnh bill | Booking: Đã đặt cọc 500.000₫; 1 GD Đặt cọc, giờ ≈ lúc tạo, có thumbnail ảnh |
+| TX-04 | local | Cùng booking: Thu thêm 200.000₫ tiền mặt, ghi chú “CK phụ”, chọn giờ, có/không ảnh | Thêm 1 GD Thu thêm; còn phải thu giảm 200.000₫; 2 dòng trong list |
+| TX-05 | local | Thu đủ phần còn lại (để trống số = thu đủ) | 1 GD nữa; “Đã thu đủ”; form Thu thêm biến mất |
+| TX-06 | local | Sửa booking (tên/SĐT/ngày) | Form **không** còn ô Đặt cọc / Thu đủ; tổng tiền không đổi |
+| TX-07 | local | `quanly` hoàn một phần từ panel Hoàn tiền, có giờ | 1 GD Hoàn (số âm / chữ đỏ); còn hoàn được giảm; báo cáo tiền mặt tháng `paid_on` có dòng hoàn |
+| TX-08 | local | Tạo Agoda **công nợ**, không cọc | Không GD; Công nợ OTA = phải thu; **không** nút Đã nhận tiền OTA khi còn giữ chỗ / đang ở |
+| TX-09 | local | Cùng OTA: nhận + trả phòng (không bắt thu tại KS) | Sau checkout mới hiện nút **Đã nhận tiền OTA** = số còn lại |
+| TX-10 | local | Bấm Đã nhận tiền OTA, sửa giờ (vd +30 ngày), optional ảnh | 1 GD “Nhận OTA” đủ số; due = 0; nút thành “Đã nhận tiền OTA {ngày giờ}”; bấm lại không tạo dòng thứ 2 |
+| TX-11 | local | `/reports/cash` tháng = `paid_on` của TX-10 (không phải tháng check-in) | Có dòng Nhận OTA đúng số; không gán nhầm tháng check-in |
+| TX-12 | local | Tạo Agoda **thu tại KS**, cọc + Thu thêm | Giống walk-in; không nút nhận OTA |
+| TX-13 | local | Restart app / F5 booking TX-03 | Backfill không nhân đôi GD (vẫn 1 cọc + các lần thu thêm) |
+| TX-14 | staging | Lặp TX-01, TX-02 trên data clone (không seed) | Booking thật: tổng GD = deposit cache; OTA nợ 0đ không bịa dòng |
+| TX-15 | staging | 1 booking walk-in mới: cọc + 2 lần CK phụ + 1 ảnh | List đúng 3 dòng; due khớp; không đụng booking khác |
+| TX-16 | staging | 1 OTA công nợ đã checkout trên staging: mark nhận | 1 GD OTA; due 0; báo cáo tháng mark có dòng. **Hủy/rollback tay nếu booking thật** |
+
 ---
 
 ## Lịch sử run

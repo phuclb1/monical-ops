@@ -73,6 +73,20 @@ export const saleExtras = sqliteTable("sale_extras", {
   createdBy: text("created_by"),
 });
 
+export const bookingTransactions = sqliteTable("booking_transactions", {
+  id: text("id").primaryKey(),
+  bookingId: text("booking_id").notNull(),
+  kind: text("kind").notNull(),
+  amount: integer("amount").notNull(),
+  method: text("method").notNull(),
+  paidAt: text("paid_at").notNull(),
+  paidOn: text("paid_on").notNull(),
+  note: text("note").notNull().default(""),
+  photo: text("photo"),
+  createdAt: text("created_at").notNull(),
+  createdBy: text("created_by"),
+});
+
 export const bookingChangeRequests = sqliteTable("booking_change_requests", {
   id: text("id").primaryKey(),
   bookingId: text("booking_id").notNull(),

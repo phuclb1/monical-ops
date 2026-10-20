@@ -17,6 +17,7 @@ const SECTIONS = [
     title: "Quản lý",
     links: [
       { href: "/reports", label: "Báo cáo", show: (r: Parameters<typeof can>[0]) => can(r, "viewReports") || can(r, "viewSalesRevenue") },
+      { href: "/reports/ledger", label: "Sổ cái — từng lần thu / hoàn theo ngày", show: (r: Parameters<typeof can>[0]) => can(r, "viewLedger") },
       { href: "/expenses", label: "Chi phí — ngày chi, hạng mục, ai chi, hóa đơn, nguồn tiền", show: (r: Parameters<typeof can>[0]) => can(r, "manageExpenses") },
     ],
   },

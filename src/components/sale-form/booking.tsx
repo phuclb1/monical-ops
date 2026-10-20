@@ -22,6 +22,7 @@ export function BookingForm({
   extras = [],
   defaults,
   requiresApproval = false,
+  lockMoney = false,
 }: {
   action: (formData: FormData) => void | Promise<void>;
   lines: {
@@ -44,6 +45,7 @@ export function BookingForm({
   busy?: { roomId: string; checkIn: string; checkOut: string }[];
   extras?: { name: string; qty: number; unitPrice: number; unit: string }[];
   requiresApproval?: boolean;
+  lockMoney?: boolean;
   defaults: {
     bookingId: string;
     guestName?: string;
@@ -464,7 +466,9 @@ export function BookingForm({
           })}
         </div>
       ) : null}
-      {otaDebt ? (
+      {lockMoney ? (
+        <p className="text-xs text-[#5c6665]">Tiền cọc / thu thêm / hoàn sửa ở danh sách giao dịch bên trái.</p>
+      ) : otaDebt ? (
         <>
           <input type="hidden" name="deposit" value="0" />
           <input type="hidden" name="checkinPaid" value="0" />

@@ -7,6 +7,7 @@ import {
   commissionAmount,
   isOtaDebt,
   isOtaSource,
+  parsePaymentMethod,
   refundParts,
   refundReasonLabel,
   salePaid,
@@ -322,6 +323,8 @@ export function filterCashFlowReport<T extends BookingMoney & { id?: string; gue
 export const ACTUAL_CASH_KIND_LABEL = {
   deposit: "Đặt cọc",
   checkin: "Thu đủ",
+  payment: "Thu thêm",
+  ota: "Nhận OTA",
   extra: "Phụ thu",
   refund: "Hoàn cọc",
 } as const;
@@ -375,9 +378,18 @@ type ActualCashBooking = BookingMoney & {
   checkinPaid?: number | null;
   checkinMethod?: string | null;
   extras?: { id?: string; name?: string | null; amount?: number | null }[];
+  transactions?: {
+    id: string;
+    kind: string;
+    amount: number;
+    method: string;
+    paidOn?: string | null;
+    paidAt?: string | null;
+    note?: string | null;
+  }[];
 };
 
-const KIND_ORDER: Record<ActualCashKind, number> = { deposit: 0, checkin: 1, extra: 2, refund: 3 };
+const KIND_ORDER: Record<ActualCashKind, number> = { deposit: 0, checkin: 1, payment: 2, ota: 3, extra: 4, refund: 5 };
 
 function methodAmount(method: PaymentMethod, amount: number) {
   return {
@@ -526,9 +538,28 @@ function summarizeActualCash(rows: ActualCashTx[]) {
   return { rows, groups, totals };
 }
 
+function ledgerTxs<T extends ActualCashBooking>(booking: T, from: string, to: string) {
+  const meta = bookingMeta(booking);
+  const rows: ActualCashTx[] = [];
+  for (const tx of booking.transactions || []) {
+    const on = String(tx.paidOn || "").slice(0, 10);
+    if (!on || on < from || on >= to) continue;
+    const kind = (tx.kind in ACTUAL_CASH_KIND_LABEL ? tx.kind : tx.kind === "refund" ? "refund" : "payment") as ActualCashKind;
+    pushTx(rows, meta, {
+      id: tx.id,
+      amount: kind === "refund" ? -Math.abs(tx.amount) : Math.abs(tx.amount),
+      kind,
+      typeLabel: tx.note?.trim() || ACTUAL_CASH_KIND_LABEL[kind],
+      method: parsePaymentMethod(tx.method),
+    });
+  }
+  return rows;
+}
+
 export function actualCashFlowReport<T extends ActualCashBooking>(bookings: T[], from: string, to: string) {
   const rows = bookings
     .flatMap((booking) => {
+      if (booking.transactions) return ledgerTxs(booking, from, to);
       const stay = countsAsBookingRevenue(booking.status) && booking.checkIn >= from && booking.checkIn < to;
       const refundDate = String(booking.refundedAt || "").slice(0, 10);
       const refunded = /^\d{4}-\d{2}-\d{2}$/.test(refundDate) && refundDate >= from && refundDate < to;

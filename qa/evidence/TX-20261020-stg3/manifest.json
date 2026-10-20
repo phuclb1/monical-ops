@@ -1,0 +1,44 @@
+{
+  "runId": "TX-20261020-stg3",
+  "commit": "10e8166-dirty",
+  "env": "https://ops-staging.monicalhoteldalat.com",
+  "passed": 5,
+  "failed": 0,
+  "results": [
+    {
+      "id": "TX-14",
+      "title": "Booking cũ hiện mục Giao dịch sau backfill",
+      "result": "pass",
+      "evidence": "qa/evidence/TX-20261020-stg3/TX-14.png",
+      "note": ""
+    },
+    {
+      "id": "TX-15a",
+      "title": "Tạo walk-in có cọc → 1 dòng Đặt cọc",
+      "result": "pass",
+      "evidence": "qa/evidence/TX-20261020-stg3/TX-15a.png",
+      "note": ""
+    },
+    {
+      "id": "TX-15b",
+      "title": "Thu thêm 200.000₫ → thêm dòng Thu thêm",
+      "result": "pass",
+      "evidence": "qa/evidence/TX-20261020-stg3/TX-15b.png",
+      "note": ""
+    },
+    {
+      "id": "TX-06",
+      "title": "Form sửa không còn ô đặt cọc / thu đủ",
+      "result": "pass",
+      "evidence": "qa/evidence/TX-20261020-stg3/TX-06.png",
+      "note": ""
+    },
+    {
+      "id": "TX-15c",
+      "title": "Hủy booking kiểm thử",
+      "result": "pass",
+      "evidence": "qa/evidence/TX-20261020-stg3/TX-15c.png",
+      "note": ""
+    }
+  ]
+}

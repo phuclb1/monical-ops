@@ -175,16 +175,29 @@ function withBookingExtras<T extends {
 /** D1 allows 100 bound parameters. Each id is bound on both booking_id and id. */
 export const BOOKING_LOOKUP_CHUNK = 40;
 
-function assembleBookings(sales: DecoratedSale[], extras: (typeof t.saleExtras.$inferSelect)[]) {
+function assembleBookings(
+  sales: DecoratedSale[],
+  extras: (typeof t.saleExtras.$inferSelect)[],
+  txs: (typeof t.bookingTransactions.$inferSelect)[] = [],
+) {
   const extraByBooking = new Map<string, (typeof extras)[number][]>();
   for (const row of extras) {
     const list = extraByBooking.get(row.bookingId) || [];
     list.push(row);
     extraByBooking.set(row.bookingId, list);
   }
+  const txByBooking = new Map<string, (typeof txs)[number][]>();
+  for (const row of txs) {
+    const list = txByBooking.get(row.bookingId) || [];
+    list.push(row);
+    txByBooking.set(row.bookingId, list);
+  }
   return groupByBooking(sales)
     .filter(({ id }) => !id.startsWith("seq-hold-"))
-    .map(({ id, rooms }) => withBookingExtras(toBookingView(id, rooms), extraByBooking.get(id) || []))
+    .map(({ id, rooms }) => ({
+      ...withBookingExtras(toBookingView(id, rooms), extraByBooking.get(id) || []),
+      transactions: (txByBooking.get(id) || []).sort((a, b) => a.paidAt.localeCompare(b.paidAt) || a.createdAt.localeCompare(b.createdAt)),
+    }))
     .sort((a, b) => b.checkIn.localeCompare(a.checkIn) || a.guestName.localeCompare(b.guestName));
 }
 
@@ -195,19 +208,23 @@ export async function bookingsByIds(ids: string[]) {
   const rooms = await listRooms();
   const sales: (typeof t.roomSales.$inferSelect)[] = [];
   const extras: (typeof t.saleExtras.$inferSelect)[] = [];
+  const txs: (typeof t.bookingTransactions.$inferSelect)[] = [];
   for (let index = 0; index < unique.length; index += BOOKING_LOOKUP_CHUNK) {
     const chunk = unique.slice(index, index + BOOKING_LOOKUP_CHUNK);
-    const [saleRows, extraRows] = await Promise.all([
+    const [saleRows, extraRows, txRows] = await Promise.all([
       db.select().from(t.roomSales).where(or(inArray(t.roomSales.bookingId, chunk), inArray(t.roomSales.id, chunk))),
       db.select().from(t.saleExtras).where(inArray(t.saleExtras.bookingId, chunk)),
+      db.select().from(t.bookingTransactions).where(inArray(t.bookingTransactions.bookingId, chunk)),
     ]);
     sales.push(...saleRows);
     extras.push(...extraRows);
+    txs.push(...txRows);
   }
   const wanted = new Set(unique);
   return assembleBookings(
     sales.map((sale) => withSaleRoom(sale, rooms)),
     extras,
+    txs,
   ).filter((row) => bookingMatchesLookup(row, wanted));
 }
 

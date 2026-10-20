@@ -233,4 +233,19 @@ export const SCHEMA_PATCHES = [
   "CREATE INDEX IF NOT EXISTS notifications_user_read ON notifications (user_id, read, created_at)",
   "CREATE INDEX IF NOT EXISTS audit_logs_entity_id ON audit_logs (entity_id)",
   "CREATE INDEX IF NOT EXISTS form_submissions_code_created ON form_submissions (form_code, created_at)",
+  `CREATE TABLE IF NOT EXISTS booking_transactions (
+  id TEXT PRIMARY KEY,
+  booking_id TEXT NOT NULL,
+  kind TEXT NOT NULL,
+  amount INTEGER NOT NULL,
+  method TEXT NOT NULL,
+  paid_at TEXT NOT NULL,
+  paid_on TEXT NOT NULL,
+  note TEXT NOT NULL DEFAULT '',
+  photo TEXT,
+  created_at TEXT NOT NULL,
+  created_by TEXT
+)`,
+  "CREATE INDEX IF NOT EXISTS booking_transactions_booking ON booking_transactions (booking_id, paid_at)",
+  "CREATE INDEX IF NOT EXISTS booking_transactions_paid_on ON booking_transactions (paid_on)",
 ];

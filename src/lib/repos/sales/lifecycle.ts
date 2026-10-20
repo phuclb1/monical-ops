@@ -5,7 +5,7 @@ import { nowISO, todayVN } from "../../datetime";
 import { ensureTodayRoomTasks } from "../../checklist-ops";
 import { can } from "../../permissions";
 import { PAYMENT_METHOD_LABEL } from "../../constants";
-import { addRefundSplit, applyPaidAmount, collectedSplit, depositRefundSplit, formatVnd, guestCheckoutDue, isActiveSaleStatus, isPaymentMethod, parsePaymentMethod, parseStayRefundReason, refundSplitFromMethod, refundTotal, salePaid, stayRefundable, STAY_REFUND_REASON_LABEL } from "../../sales";
+import { addRefundSplit, canSettleOtaDebt, collectedSplit, depositMethodOf, depositRefundSplit, formatVnd, guestCheckoutDue, isActiveSaleStatus, parsePaymentMethod, parseStayRefundReason, refundSplitFromMethod, refundTotal, salePaid, stayRefundable, STAY_REFUND_REASON_LABEL } from "../../sales";
 import type { SaleStatus, SessionUser } from "../../types";
 import { audit } from "../audit";
 import { bookingCheckinPaidReady } from "../../zalo-templates";
@@ -16,61 +16,62 @@ import { getBooking } from "./queries";
 import { applySaleRoomState, syncStayFromSale } from "./stay";
 import { assertSaleHandoff, spawnCheckoutClean } from "../room-handoff";
 import { findStayForSale } from "../stays";
+import { insertBookingTransaction } from "./transactions";
 
 export async function recordBookingPayment(
   user: SessionUser,
   bookingId: string,
-  data: { amount?: number; settle?: boolean; paymentMethod?: string },
+  data: { amount?: number; settle?: boolean; paymentMethod?: string; paidAt?: string; note?: string; photo?: string },
 ) {
   const booking = await getBooking(bookingId);
   if (!booking) throw new Error("Không tìm thấy booking");
   const active = booking.rooms.filter((row) => isActiveSaleStatus(row.status));
   if (!active.length) throw new Error("Booking đã đóng, không thu thêm");
-  const current = salePaid(booking);
   const due = Math.max(0, Math.round(booking.due || 0));
+  if (due <= 0) throw new Error("Booking đã thu đủ");
   const amount = Math.max(0, Math.round(data.amount || 0));
-  let next = current.deposit;
-  if (data.settle || !amount) {
-    if (due <= 0) throw new Error("Booking đã thu đủ");
-    next = current.deposit + due;
-  } else {
-    next = current.deposit + amount;
-  }
+  const added = data.settle || !amount ? due : Math.min(amount, due);
   const method = parsePaymentMethod(data.paymentMethod);
-  const paid = applyPaidAmount(current, next, method);
-  const added = Math.max(0, paid.deposit - current.deposit);
-  const checkinPaid = collectedSplit(paid.deposit, (booking.checkinPaid || 0) + added).checkin;
-  const previousMethod = isPaymentMethod(booking.checkinMethod || "") ? booking.checkinMethod : "";
-  const checkinMethod = !checkinPaid
-    ? ""
-    : !previousMethod || !(booking.checkinPaid || 0) || previousMethod === method
-      ? method
-      : previousMethod;
-  const db = await getDb();
-  const now = nowISO();
-  for (const row of active) {
-    const patch = {
-      deposit: paid.deposit,
-      checkinPaid,
-      checkinMethod,
-      cashPaid: paid.cashPaid,
-      transferPaid: paid.transferPaid,
-      companyPaid: paid.companyPaid,
-      updatedAt: now,
-      updatedBy: user.id,
-    };
-    await db.update(t.roomSales).set(patch).where(eq(t.roomSales.id, row.id));
-    await audit(user.id, "room_sale", row.id, "update", { deposit: row.deposit, checkinPaid: row.checkinPaid, checkinMethod: row.checkinMethod, cashPaid: row.cashPaid, transferPaid: row.transferPaid, companyPaid: row.companyPaid }, patch);
-  }
+  const tx = await insertBookingTransaction(user, booking.id, {
+    kind: "payment",
+    amount: added,
+    method,
+    paidAt: data.paidAt,
+    note: data.note,
+    photo: data.photo,
+  });
+  await audit(user.id, "booking_tx", tx.id, "create", null, { bookingId: booking.id, kind: "payment", amount: added, method });
   await syncBookingMoney(booking.id);
   await dispatchCheckinPaidZalo(user.id, booking.id, bookingCheckinPaidReady(booking)).catch((error) => console.error("zalo booking", error));
+  return booking.id;
+}
+
+export async function settleOtaDebt(
+  user: SessionUser,
+  bookingId: string,
+  data: { paidAt?: string; note?: string; photo?: string } = {},
+) {
+  const booking = await getBooking(bookingId);
+  if (!booking) throw new Error("Không tìm thấy booking");
+  if (!canSettleOtaDebt(booking)) throw new Error("Chỉ ghi nhận OTA sau khi mọi phòng đã checkout và còn công nợ");
+  const amount = Math.max(0, Math.round(booking.due || 0));
+  const tx = await insertBookingTransaction(user, booking.id, {
+    kind: "ota",
+    amount,
+    method: "company",
+    paidAt: data.paidAt,
+    note: data.note || "Đã nhận tiền OTA",
+    photo: data.photo,
+  });
+  await audit(user.id, "booking_tx", tx.id, "create", null, { bookingId: booking.id, kind: "ota", amount, method: "company" });
+  await syncBookingMoney(booking.id);
   return booking.id;
 }
 
 export async function recordBookingRefund(
   user: SessionUser,
   bookingId: string,
-  data: { amount?: number; paymentMethod?: string; reason?: string },
+  data: { amount?: number; paymentMethod?: string; reason?: string; paidAt?: string; note?: string; photo?: string },
 ) {
   if (!can(user.role, "cancelBooking")) throw new Error("Chỉ quản lý mới hoàn tiền");
   const booking = await getBooking(bookingId);
@@ -86,13 +87,20 @@ export async function recordBookingRefund(
   if (amount > refundable) throw new Error(`Không hoàn quá số đã thu còn lại ${formatVnd(refundable)}`);
   const method = parsePaymentMethod(data.paymentMethod);
   const reason = parseStayRefundReason(data.reason);
-  const next = addRefundSplit(booking, refundSplitFromMethod(amount, method));
+  const tx = await insertBookingTransaction(user, booking.id, {
+    kind: "refund",
+    amount,
+    method,
+    paidAt: data.paidAt,
+    note: data.note || STAY_REFUND_REASON_LABEL[reason],
+    photo: data.photo,
+  });
   const db = await getDb();
   const now = nowISO();
+  const next = addRefundSplit(booking, refundSplitFromMethod(amount, method));
   const patch = {
-    ...next,
-    refundedAt: todayVN(),
     refundReason: reason,
+    refundedAt: todayVN(),
     updatedAt: now,
     updatedBy: user.id,
   };
@@ -104,7 +112,7 @@ export async function recordBookingRefund(
       refundCompany: row.refundCompany,
       refundedAt: row.refundedAt,
       refundReason: row.refundReason,
-    }, patch);
+    }, { ...next, ...patch, txId: tx.id });
   }
   await syncBookingMoney(booking.id);
   const createdBy = [...booking.rooms].sort((a, b) => a.createdAt.localeCompare(b.createdAt))[0]?.createdBy;
@@ -130,6 +138,16 @@ export async function cancelBooking(user: SessionUser, bookingId: string, asNoSh
   if (!active.length) throw new Error("Booking đã đóng");
   if (asNoShow && active.some((row) => row.status !== "reserved")) {
     throw new Error("No-show chỉ khi mọi phòng còn giữ chỗ");
+  }
+  if (opts?.refundDeposit) {
+    const hold = collectedSplit(salePaid(booking).deposit, booking.checkinPaid).hold;
+    if (hold > 0) {
+      await insertBookingTransaction(user, booking.id, {
+        kind: "refund",
+        amount: hold,
+        method: depositMethodOf(booking, booking.checkinPaid, booking.checkinMethod),
+      });
+    }
   }
   for (const row of active) {
     await cancelRoomSale(user, row.id, asNoShow, { silent: true, refundDeposit: Boolean(opts?.refundDeposit), skipMoneySync: true });
@@ -238,6 +256,16 @@ export async function cancelRoomSale(user: SessionUser, id: string, asNoShow = f
   const refund = !asNoShow && opts?.refundDeposit
     ? { ...depositRefundSplit(before), refundedAt: todayVN() }
     : {};
+  if (!asNoShow && opts?.refundDeposit && !opts.skipMoneySync) {
+    const hold = collectedSplit(salePaid(before).deposit, before.checkinPaid).hold;
+    if (hold > 0) {
+      await insertBookingTransaction(user, before.bookingId || before.id, {
+        kind: "refund",
+        amount: hold,
+        method: depositMethodOf(before, before.checkinPaid, before.checkinMethod),
+      });
+    }
+  }
   await db
     .update(t.roomSales)
     .set({ status, ...refund, updatedAt: nowISO(), updatedBy: user.id })

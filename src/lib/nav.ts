@@ -100,6 +100,7 @@ export function sidebarNav(role: Role): SidebarModel {
 
   const manage = [
     { href: "/reports", label: "Báo cáo", show: can(role, "viewReports") },
+    { href: "/reports/ledger", label: "Sổ cái", show: can(role, "viewLedger") },
     { href: "/expenses", label: "Chi phí", show: can(role, "manageExpenses") },
   ]
     .filter((item) => item.show)

@@ -20,6 +20,7 @@ export const CAN = {
   closeShift: OPS,
   viewReports: ["manager", "reception"] as Role[],
   viewSalesRevenue: ["manager"] as Role[],
+  viewLedger: ["manager"] as Role[],
   viewOwner: ["owner"] as Role[],
   viewAccounting: ["accounting"] as Role[],
   viewRoomChart: ["accounting"] as Role[],

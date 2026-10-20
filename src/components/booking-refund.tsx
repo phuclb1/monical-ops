@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { useFormStatus } from "react-dom";
 import { recordBookingRefundAction } from "@/actions/sales";
+import { BookingTxFields } from "@/components/booking-tx-fields";
 import { Btn, PayMethodField } from "@/components/ui";
 import { PAYMENT_METHOD_LABEL } from "@/lib/constants";
 import { formatVnd, parseMoney, stayNightlyRate, stayRefundQuote, type StayRefundReason } from "@/lib/sales";
@@ -117,6 +118,7 @@ export function BookingRefundPanel({
       )}
 
       <PayMethodField label="Hoàn từ tài khoản" value={method} onChange={setMethod} />
+      <BookingTxFields showNote={false} />
 
       {payable > 0 ? (
         <p className="text-xs text-[#5c6665]">

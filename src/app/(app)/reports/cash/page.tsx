@@ -33,6 +33,8 @@ const GRAINS: { id: ReportGrain; label: string }[] = [
 const KIND_TONE: Record<ActualCashKind, "gold" | "ok" | "teal" | "danger"> = {
   deposit: "gold",
   checkin: "ok",
+  payment: "ok",
+  ota: "teal",
   extra: "teal",
   refund: "danger",
 };

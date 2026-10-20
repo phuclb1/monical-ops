@@ -4,6 +4,7 @@ import { SCHEMA_PATCHES, SCHEMA_SQL } from "./migrate";
 import { rekeyLegacyOpsBookingCodes } from "./ops-codes";
 import { splitLegacyBookingPax } from "./split-legacy-pax";
 import { seedIfEmpty } from "./seed";
+import { backfillBookingTransactions } from "./backfill-booking-txs";
 
 export type AppDb = LibSQLDatabase<typeof schema>;
 
@@ -61,6 +62,11 @@ async function prepareD1(db: AppDb) {
   await rekeyLegacyOpsBookingCodes(db);
   await seedIfEmpty(db);
   await splitLegacyBookingPax(db);
+  try {
+    await backfillBookingTransactions(db);
+  } catch (error) {
+    console.error("booking_tx backfill failed", error);
+  }
 }
 
 async function prepareLocal(db: AppDb) {
@@ -86,6 +92,11 @@ async function prepareLocal(db: AppDb) {
   await rekeyLegacyOpsBookingCodes(db);
   await seedIfEmpty(db);
   await splitLegacyBookingPax(db);
+  try {
+    await backfillBookingTransactions(db);
+  } catch (error) {
+    console.error("booking_tx backfill failed", error);
+  }
 }
 
 async function applyPatches(db: AppDb) {

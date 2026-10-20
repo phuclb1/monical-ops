@@ -127,4 +127,19 @@ CREATE INDEX IF NOT EXISTS booking_change_requests_booking ON booking_change_req
 CREATE INDEX IF NOT EXISTS booking_change_requests_status ON booking_change_requests (status, requested_at);
 CREATE UNIQUE INDEX IF NOT EXISTS booking_change_requests_one_pending
   ON booking_change_requests (booking_id) WHERE status = 'pending';
+CREATE TABLE IF NOT EXISTS booking_transactions (
+  id TEXT PRIMARY KEY,
+  booking_id TEXT NOT NULL,
+  kind TEXT NOT NULL,
+  amount INTEGER NOT NULL,
+  method TEXT NOT NULL,
+  paid_at TEXT NOT NULL,
+  paid_on TEXT NOT NULL,
+  note TEXT NOT NULL DEFAULT '',
+  photo TEXT,
+  created_at TEXT NOT NULL,
+  created_by TEXT
+);
+CREATE INDEX IF NOT EXISTS booking_transactions_booking ON booking_transactions (booking_id, paid_at);
+CREATE INDEX IF NOT EXISTS booking_transactions_paid_on ON booking_transactions (paid_on);
 `;

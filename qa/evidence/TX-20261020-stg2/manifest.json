@@ -1,0 +1,44 @@
+{
+  "runId": "TX-20261020-stg2",
+  "commit": "10e8166-dirty",
+  "env": "https://ops-staging.monicalhoteldalat.com",
+  "passed": 1,
+  "failed": 4,
+  "results": [
+    {
+      "id": "TX-14",
+      "title": "Booking cũ hiện mục Giao dịch sau backfill",
+      "result": "fail",
+      "evidence": "qa/evidence/TX-20261020-stg2/TX-14.png",
+      "note": "Thiếu: Giao dịch · URL https://ops-staging.monicalhoteldalat.com/sales/bookings/dc66d594-9538-4e7f-8518-98b71f853ba4"
+    },
+    {
+      "id": "TX-15a",
+      "title": "Tạo walk-in có cọc → 1 dòng Đặt cọc",
+      "result": "fail",
+      "evidence": "qa/evidence/TX-20261020-stg2/TX-15a.png",
+      "note": "page.waitForURL: Timeout 30000ms exceeded.\n=========================== logs ===========================\nwaiting for navigation until \"load\"\n============================================================"
+    },
+    {
+      "id": "TX-15b",
+      "title": "Thu thêm 200.000₫ → thêm dòng Thu thêm",
+      "result": "fail",
+      "evidence": "qa/evidence/TX-20261020-stg2/TX-15b.png",
+      "note": "locator.fill: Timeout 30000ms exceeded.\nCall log:\n  - waiting for locator('input[name=\"amount\"]')\n"
+    },
+    {
+      "id": "TX-06",
+      "title": "Form sửa không còn ô đặt cọc / thu đủ",
+      "result": "fail",
+      "evidence": "qa/evidence/TX-20261020-stg2/TX-06.png",
+      "note": "locator.waitFor: Timeout 15000ms exceeded.\nCall log:\n  - waiting for locator('textarea[name=\"notes\"]') to be visible\n"
+    },
+    {
+      "id": "TX-15c",
+      "title": "Hủy booking kiểm thử",
+      "result": "pass",
+      "evidence": "qa/evidence/TX-20261020-stg2/TX-15c.png",
+      "note": ""
+    }
+  ]
+}
