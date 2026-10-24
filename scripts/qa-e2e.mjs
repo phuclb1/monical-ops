@@ -11,10 +11,7 @@ const hkUser = process.env.OPS_HK_USER || "uyen";
 const password = process.env.OPS_PASSWORD || "123456";
 const GUEST = process.env.OPS_GUEST || "E2E Van A";
 const ROOM = process.env.OPS_ROOM || "101";
-const STANDBY = `Standby P.${ROOM}`;
-const STAYOVER = `Dọn phòng khách ở P.${ROOM}`;
-const INSPECT = `Kiểm phòng trả P.${ROOM}`;
-const CHECKOUT_CLEAN = `Dọn phòng trả P.${ROOM}`;
+const REMOVED_OPS = ["/today", "/tasks", "/handover", "/shifts", "/reception", "/rooms", "/forms", "/incidents", "/roster"];
 
 function gitCommit() {
   const short = execSync("git rev-parse --short HEAD", { cwd: root }).toString().trim();
@@ -36,6 +33,8 @@ const page = await browser.newPage({
 });
 
 const results = [];
+let bookedRoom = ROOM;
+let guestBookingPath = "";
 
 async function ready() {
   await page.waitForLoadState("networkidle", { timeout: 30000 }).catch(() => {});
@@ -73,34 +72,16 @@ async function asReception() {
   await login(receptionUser);
 }
 
-async function asHk() {
-  await logout();
-  await login(hkUser);
-}
-
-async function openGuestHandoff() {
-  await go("/sales/bookings");
-  await page.getByRole("link").filter({ hasText: GUEST }).first().click();
-  await ready();
-  await page.getByRole("link", { name: new RegExp(`P\\.${ROOM}.*Giao việc HK`) }).click();
-  await page.waitForURL(/\/sales\/(?!bookings)/, { timeout: 20000 });
-  await ready();
-}
-
-async function completeOpenTask(needle) {
-  await go("/tasks");
-  await page.getByRole("link").filter({ hasText: needle }).first().click();
-  await page.waitForURL(/\/tasks\/(?!new)/, { timeout: 20000 });
-  await ready();
-  const ticks = page.locator("button.hit-check");
-  const n = await ticks.count();
-  for (let i = 0; i < n; i += 1) {
-    await ticks.nth(i).click();
-    await ready();
+async function openGuestBooking() {
+  if (guestBookingPath) {
+    await go(guestBookingPath);
+    await waitForBookingReady(GUEST);
+    return;
   }
-  await page.locator('select[name="status"]').selectOption("done");
-  await page.getByRole("button", { name: "Lưu trạng thái" }).click();
-  await ready();
+  await go(`/sales/bookings?q=${encodeURIComponent(GUEST)}`);
+  await page.getByRole("link").filter({ hasText: GUEST }).first().click();
+  await page.waitForURL(/\/sales\/bookings\/[^/]+$/, { timeout: 20000 });
+  await waitForBookingReady(GUEST);
 }
 
 function todayVN() {
@@ -146,7 +127,16 @@ async function mustNot(shot, needles) {
   return text;
 }
 
-async function saveBooking() {
+async function waitForBookingReady(guest) {
+  await page.locator('main[aria-busy="true"]').waitFor({ state: "hidden", timeout: 45000 }).catch(() => {});
+  const heading = guest
+    ? page.getByRole("heading", { name: guest }).first()
+    : page.locator("main h1").first();
+  await heading.waitFor({ state: "visible", timeout: 45000 });
+  await ready();
+}
+
+async function saveBooking(guest) {
   await page.getByRole("button", { name: /Lưu/ }).click();
   const dialog = page.getByRole("dialog", { name: "Xác nhận lưu booking" });
   await dialog.waitFor({ timeout: 10000 });
@@ -154,10 +144,22 @@ async function saveBooking() {
     page.waitForURL(/\/sales\/bookings\//, { timeout: 25000 }),
     dialog.getByRole("button", { name: /Lưu|Gửi phê duyệt/ }).click(),
   ]);
-  await ready();
+  await waitForBookingReady(guest);
 }
 
 async function pickOpenRoom() {
+  const preferred = page.locator("label").filter({ hasText: `P.${ROOM}` }).locator('input[name="roomId"]');
+  if (await preferred.count()) {
+    if (!(await preferred.isChecked())) await preferred.check();
+    const extras = page.locator('input[name="roomId"][type="checkbox"]');
+    const n = await extras.count();
+    for (let i = 0; i < n; i += 1) {
+      const box = extras.nth(i);
+      const val = await box.getAttribute("value");
+      if (val !== `r-${ROOM}` && (await box.isChecked())) await box.uncheck();
+    }
+    return ROOM;
+  }
   const boxes = page.locator('input[name="roomId"][type="checkbox"]');
   const n = await boxes.count();
   if (!n) throw new Error("Không còn phòng trống");
@@ -170,6 +172,37 @@ async function pickOpenRoom() {
     if (await item.isChecked()) await item.uncheck();
   }
   return String(id || "").replace(/^r-/, "");
+}
+
+async function collectDue() {
+  const pay = page.getByRole("button", { name: /^Thu đủ/ });
+  if (!(await pay.count())) return;
+  await pay.first().click();
+  await page.getByText("Đã thu đủ", { exact: false }).waitFor({ timeout: 30000 });
+  await ready();
+}
+
+async function cancelOpenBooking(name) {
+  await go(`/sales/bookings?q=${encodeURIComponent(name)}`);
+  const link = page.getByRole("link").filter({ hasText: name }).first();
+  if (!(await link.count())) return;
+  await link.click();
+  await page.waitForURL(/\/sales\/bookings\/[^/]+$/, { timeout: 20000 }).catch(() => {});
+  await ready();
+  const cancel = page.getByRole("button", { name: "Hủy booking" });
+  if (!(await cancel.count())) return;
+  await cancel.click();
+  await ready();
+  const refund = page.locator('input[type="checkbox"]').filter({ hasText: /Đã hoàn cọc/ });
+  if (await refund.count()) await refund.check();
+  const confirm = page.getByRole("dialog").getByRole("button", { name: "Hủy booking" });
+  if (await confirm.count()) {
+    await Promise.all([
+      page.waitForLoadState("networkidle", { timeout: 25000 }).catch(() => {}),
+      confirm.click(),
+    ]);
+    await ready();
+  }
 }
 
 async function check(id, title, fn) {
@@ -192,52 +225,35 @@ async function check(id, title, fn) {
 }
 
 try {
-  await check("E2E-R1", "Lễ tân vào Today — ca đang mở + đầu ca", async (shot) => {
+  await check("E2E-R1", "Lễ tân vào Đặt phòng — không còn Today / ca", async (shot) => {
     await login(receptionUser);
-    const text = await pageText();
-    if (text.includes("Chưa mở ca") || text.includes("Mở ca hiện tại")) {
-      await page.getByRole("button", { name: /Mở ca hiện tại|Mở ca/ }).click();
-      await ready();
+    const path = new URL(page.url()).pathname;
+    if (path !== "/sales/bookings" && path !== "/") {
+      if (!path.startsWith("/sales")) throw new Error(`Home lễ tân không phải đặt phòng · ${page.url()}`);
     }
-    await must(shot, ["Ca đang làm", "Đầu ca"]);
-    await mustNot(shot, ["Doanh thu đêm"]);
+    await go("/sales/bookings");
+    await must(shot, ["Đặt phòng", "Tìm booking", "Đang mở / đã trả"]);
+    await mustNot(shot, ["Ca đang làm", "Đầu ca", "Mở ca hiện tại", "Hôm nay", "Bảng việc"]);
   });
 
-  await check("E2E-R2", "Tick 1 mục checklist đầu ca", async (shot) => {
-    await go("/shifts");
-    const open = page.locator("section").filter({ hasText: "Đầu ca" }).first();
-    await open.waitFor({ timeout: 15000 });
-    await open.locator("button.hit-check").first().click();
-    await ready();
-    await must(shot, ["Đầu ca", "Đang mở"]);
-  });
-
-  await check("E2E-R3", "Bán P.101 — giữ chỗ, cọc, chưa nhận", async (shot) => {
+  await check("E2E-R3", "Bán phòng — giữ chỗ, cọc, chưa nhận", async (shot) => {
     await go("/sales/new");
-    const box101 = page.locator("label").filter({ hasText: `P.${ROOM}` }).locator('input[name="roomId"]');
-    if (await box101.count()) {
-      if (!(await box101.isChecked())) await box101.check();
-    }
-    const extras = page.locator('input[name="roomId"][type="checkbox"]');
-    const n = await extras.count();
-    for (let i = 0; i < n; i += 1) {
-      const box = extras.nth(i);
-      const val = await box.getAttribute("value");
-      if (val !== `r-${ROOM}` && (await box.isChecked())) await box.uncheck();
-    }
+    bookedRoom = await pickOpenRoom();
     await page.locator('input[name="guestName"]').fill(GUEST);
     await page.locator('input[name="guestPhone"]').fill("0900000101");
     await page.locator('input[name="deposit"]').fill("200000");
     const now = page.locator('input[name="checkinNow"]');
     if (await now.count()) await now.uncheck();
-    await saveBooking();
-    await must(shot, [GUEST, `P.${ROOM}`, "Đã đặt cọc", "Còn phải thu", "Đã giữ"]);
+    await saveBooking(GUEST);
+    guestBookingPath = new URL(page.url()).pathname;
+    await must(shot, [GUEST, `P.${bookedRoom}`, "Đã đặt cọc", "Còn phải thu", "Đã giữ"]);
+    await mustNot(shot, ["Giao việc HK", "Yêu cầu HK kiểm phòng standby"]);
   });
 
   await check("E2E-R4", "Sơ đồ ngày hiện booking E2E", async (shot) => {
     await go("/sales");
-    await must(shot, [GUEST, `P.${ROOM}`]);
-    await mustNot(shot, ["Doanh thu khung"]);
+    await must(shot, [GUEST, `P.${bookedRoom}`, "Sơ đồ phòng"]);
+    await mustNot(shot, ["Doanh thu khung", "Phòng bẩn"]);
   });
 
   await check("E2E-S1", "Tìm booking theo tên — tab mặc định gồm đã giữ", async (shot) => {
@@ -257,120 +273,97 @@ try {
     if (pageLinks > 80) throw new Error(`Trang 2 render ${pageLinks} booking link`);
   });
 
-  await check("E2E-R5", "Gửi HK kiểm phòng standby — chưa cho nhận", async (shot) => {
-    await openGuestHandoff();
-    await page.getByRole("button", { name: "Yêu cầu HK kiểm phòng standby" }).click();
-    await page.getByText(STANDBY).waitFor({ timeout: 30000 });
-    await ready();
-    await must(shot, [STANDBY, GUEST, "Chờ HK hoàn thành kiểm standby rồi mới nhận phòng"]);
-  });
-
-  await check("E2E-H1", "HK login — không vào bán phòng", async (shot) => {
-    await asHk();
-    await go("/sales");
-    await ready();
-    if (page.url().includes("/sales")) throw new Error("HK vẫn vào được /sales");
-    await must(shot, ["Thêm"]);
-  });
-
-  await check("E2E-H2", "HK hoàn tất standby P.101", async (shot) => {
-    await completeOpenTask(STANDBY);
-    await must(shot, [STANDBY, GUEST, "Hoàn tất"]);
-  });
-
-  await check("E2E-R6", "Lễ tân nhận phòng sau khi HK standby xong", async (shot) => {
-    await asReception();
-    await openGuestHandoff();
-    await page.getByRole("button", { name: "Nhận phòng" }).click();
+  await check("E2E-R6", "Lễ tân nhận phòng thẳng — không cổng HK", async (shot) => {
+    await openGuestBooking();
+    await mustNot(shot, ["Yêu cầu HK kiểm phòng standby", "Chờ HK hoàn thành kiểm standby"]);
+    const checkin = page.getByRole("button", { name: "Check in" });
+    if (!(await checkin.count())) throw new Error("Không có nút Check in trên booking");
+    await Promise.all([
+      page.waitForLoadState("networkidle", { timeout: 30000 }).catch(() => {}),
+      checkin.first().click(),
+    ]);
     await page.getByText("Đang ở", { exact: false }).first().waitFor({ timeout: 30000 });
     await ready();
-    await must(shot, [GUEST, "Đang ở", "Yêu cầu HK dọn phòng khách ở"]);
+    await must(shot, [GUEST, "Đang ở"]);
+    await mustNot(shot, ["Yêu cầu HK dọn phòng khách ở", "Giao việc HK"]);
   });
 
-  await check("E2E-R8", "Lễ tân gửi HK dọn phòng khách ở", async (shot) => {
-    await openGuestHandoff();
-    await page.getByRole("button", { name: "Yêu cầu HK dọn phòng khách ở" }).click();
-    await page.getByText(STAYOVER).waitFor({ timeout: 30000 });
-    await ready();
-    await must(shot, [STAYOVER, GUEST, "Dọn khi khách đang ở"]);
+  await check("E2E-K1", "Bếp ăn sáng vẫn đọc được booking", async (shot) => {
+    await go("/kitchen");
+    await must(shot, ["Ăn sáng", "Hôm nay"]);
+    await go("/kitchen/forecast");
+    await must(shot, ["Người lớn"]);
   });
 
-  await check("E2E-H3", "HK thấy việc dọn khách ở", async (shot) => {
-    await asHk();
-    await go("/tasks");
-    await must(shot, [STAYOVER, "Dọn phòng khách ở"]);
+  await check("E2E-R14a", "Chưa thu đủ thì chưa checkout được", async (shot) => {
+    await openGuestBooking();
+    const body = await pageText();
+    if (body.includes("Đã trả")) throw new Error("Booking đã trả trước khi test cổng thu");
+    const checkout = page.getByRole("button", { name: "Check out" });
+    if (!(await checkout.count())) throw new Error("Không có nút Check out sau khi nhận");
+    if (body.includes("Đã thu đủ") || !body.includes("Còn phải thu")) {
+      await must(shot, [GUEST, "Đang ở", "Check out"]);
+      return;
+    }
+    await checkout.first().click();
+    await page.getByText("Chưa thu đủ tiền").waitFor({ timeout: 10000 });
+    await must(shot, ["Chưa thu đủ tiền", "Thu đủ ở phần Thanh toán"]);
+    const close = page.getByRole("button", { name: "Đóng để thu tiền" });
+    if (await close.count()) await close.click();
   });
 
-  await check("E2E-H4", "HK hoàn tất dọn phòng khách ở", async (shot) => {
-    await completeOpenTask(STAYOVER);
-    await must(shot, [STAYOVER, "Hoàn tất"]);
-  });
-
-  await check("E2E-R13", "Lễ tân gửi HK kiểm phòng trước trả", async (shot) => {
-    await asReception();
-    await openGuestHandoff();
-    await page.getByRole("button", { name: "Yêu cầu HK kiểm phòng trả" }).click();
-    await page.getByText(INSPECT).waitFor({ timeout: 30000 });
-    await ready();
-    await must(shot, [INSPECT, GUEST, "Chờ HK kiểm phòng xong rồi mới hoàn tất trả phòng"]);
-  });
-
-  await check("E2E-H7", "HK hoàn tất kiểm phòng trả", async (shot) => {
-    await asHk();
-    await completeOpenTask(INSPECT);
-    await must(shot, [INSPECT, "Hoàn tất"]);
-  });
-
-  await check("E2E-R14", "Lễ tân hoàn tất trả phòng", async (shot) => {
-    await asReception();
-    await openGuestHandoff();
-    await page.getByRole("button", { name: "Hoàn tất trả phòng" }).click();
+  await check("E2E-R14", "Thu đủ rồi lễ tân trả phòng thẳng", async (shot) => {
+    await openGuestBooking();
+    if ((await pageText()).includes("Đã trả")) {
+      await must(shot, [GUEST, "Đã trả"]);
+      return;
+    }
+    await collectDue();
+    await openGuestBooking();
+    const checkout = page.getByRole("button", { name: "Check out" });
+    if (!(await checkout.count())) throw new Error("Không có nút Check out sau khi thu đủ");
+    await Promise.all([
+      page.waitForLoadState("networkidle", { timeout: 30000 }).catch(() => {}),
+      checkout.first().click(),
+    ]);
     await page.getByText("Đã trả", { exact: false }).first().waitFor({ timeout: 30000 });
     await ready();
     await must(shot, [GUEST, "Đã trả"]);
+    await mustNot(shot, ["Yêu cầu HK kiểm phòng trả", "Dọn phòng trả"]);
   });
 
   await check("E2E-S2", "Tab mặc định + tìm kiếm hiện booking đã trả", async (shot) => {
+    await openGuestBooking();
+    await must(shot, [GUEST, "Đã trả"]);
     await go(`/sales/bookings?q=${encodeURIComponent(GUEST)}`);
     await must(shot, [GUEST, "Đã trả", "Đang mở / đã trả"]);
   });
 
-  await check("E2E-H8", "HK thấy việc dọn trả tự tạo", async (shot) => {
-    await asHk();
-    await go("/tasks");
-    await must(shot, [CHECKOUT_CLEAN, GUEST]);
+  await check("E2E-H1", "HK bị khóa login — module vận hành tạm dừng", async (shot) => {
+    await logout();
+    await go("/login");
+    await page.locator('input[name="username"]').fill(hkUser);
+    await page.locator('input[name="password"]').fill(password);
+    await page.getByRole("button", { name: "Đăng nhập" }).click();
+    await page.waitForURL(/\/login/, { timeout: 20000 });
+    await ready();
+    if (!new URL(page.url()).pathname.startsWith("/login")) throw new Error("HK vẫn vào được app");
+    await must(shot, ["Module vận hành tạm dừng"]);
   });
 
-  await check("E2E-R9", "Filter Phòng bẩn có P.101 sau trả", async (shot) => {
+  await check("E2E-R16", "URL điều phối cũ redirect về đặt phòng", async (shot) => {
     await asReception();
-    await go("/rooms?focus=dirty");
-    await must(shot, ["Phòng bẩn", `P.${ROOM}`]);
-  });
-
-  await check("E2E-H5", "HK chuyển status phòng nếu được", async (shot) => {
-    await asHk();
-    await go(`/rooms/r-${ROOM}`);
-    const next = page.getByRole("button", { name: /Chuyển →/ });
-    if (await next.count()) {
-      await next.click();
-      await ready();
+    for (const path of REMOVED_OPS) {
+      await go(path);
+      const current = new URL(page.url()).pathname;
+      if (current === path || current.startsWith(`${path}/`)) {
+        throw new Error(`URL cũ vẫn mở: ${page.url()}`);
+      }
     }
-    await must(shot, [`P.${ROOM}`]);
-  });
-
-  await check("E2E-H6", "Phòng bẩn không còn khách E2E sau dọn trả", async (shot) => {
-    await completeOpenTask(CHECKOUT_CLEAN).catch(() => {});
-    await go("/rooms?focus=dirty");
-    const text = await must(shot, ["Phòng bẩn"]);
-    if (text.includes(GUEST)) throw new Error("Filter bẩn vẫn còn khách E2E sau khi việc xong");
-  });
-
-  await check("E2E-H9", "HK không vào chi phí", async (shot) => {
-    await assertNoExpenses(shot);
+    await must(shot, ["Đặt phòng"]);
   });
 
   await check("E2E-R12", "Lễ tân không vào nhật ký", async (shot) => {
-    await asReception();
     await go("/audit");
     await ready();
     const text = await pageText();
@@ -385,16 +378,6 @@ try {
     const pathname = new URL(page.url()).pathname;
     if (pathname === "/reports/sales") throw new Error("Lễ tân vẫn vào được /reports/sales");
     await mustNot(shot, ["Báo cáo doanh thu", "Doanh thu booking", "Doanh thu ghi nhận"]);
-  });
-
-  await check("E2E-R11", "Bàn giao còn trang gom việc", async (shot) => {
-    await go("/handover");
-    await must(shot, ["Bàn giao"]);
-  });
-
-  await check("E2E-R10", "Cuối ca hiện trên ca đang mở", async (shot) => {
-    await go("/shifts");
-    await must(shot, ["Cuối ca", "Đang mở"]);
   });
 
   await check("E2E-O1", "Booking OTA — công nợ, không cọc, không thu đủ", async (shot) => {
@@ -412,8 +395,8 @@ try {
       if (visible) throw new Error("Form OTA vẫn hỏi đặt cọc");
     }
     await must(shot, ["Công nợ OTA", "Agoda", "Xuất hóa đơn"]);
-    await mustNot(shot, ["Đặt cọc", "Thu đủ", "Chưa cọc", "Từ ezCloud"]);
-    await saveBooking();
+    await mustNot(shot, ["Đặt cọc", "Thu đủ", "Chưa cọc"]);
+    await saveBooking("E2E OTA");
     await must(shot, ["E2E OTA", `P.${room}`, "Công nợ OTA", "Agoda", "Đã giữ", "Yêu cầu xuất hóa đơn"]);
     await mustNot(shot, ["Đặt cọc", "Thu đủ", "Chưa cọc", "Còn phải thu"]);
   });
@@ -433,7 +416,7 @@ try {
     const now = page.locator('input[name="checkinNow"]');
     if (await now.count()) await now.uncheck();
     await must(shot, ["Xe đón sân bay", "150.000₫"]);
-    await saveBooking();
+    await saveBooking("E2E Phu Thu");
     await must(shot, ["E2E Phu Thu", `P.${room}`, "Xe đón sân bay", "150.000₫", "Đã giữ", "Yêu cầu xuất hóa đơn"]);
   });
 
@@ -449,7 +432,7 @@ try {
     if (await now.count()) await now.uncheck();
     await must(shot, ["Thanh toán tại KS", "Công nợ OTA", "0₫", "Phải thu khi check-in"]);
     await mustNot(shot, ["Đặt cọc", "Chưa đặt cọc"]);
-    await saveBooking();
+    await saveBooking("E2E OTA Tai KS");
     await must(shot, [
       "E2E OTA Tai KS",
       `P.${room}`,
@@ -577,6 +560,16 @@ try {
   await check("E2E-C7", "Chủ sở hữu không vào chi phí", async (shot) => {
     await assertNoExpenses(shot);
   });
+
+  await check("E2E-R17", "Quản lý hủy booking E2E còn giữ chỗ để trả phòng", async (shot) => {
+    await logout();
+    await login("quanly");
+    for (const name of ["E2E OTA Tai KS", "E2E Phu Thu", "E2E OTA"]) {
+      await cancelOpenBooking(name);
+    }
+    await go(`/sales/bookings?q=${encodeURIComponent("E2E OTA")}`);
+    await must(shot, ["Đặt phòng"]);
+  });
 } finally {
   await browser.close();
 }
@@ -590,7 +583,7 @@ const manifest = {
   commit,
   env: base,
   guest: GUEST,
-  room: ROOM,
+  room: bookedRoom,
   pass,
   fail,
   total: results.length,

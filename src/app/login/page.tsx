@@ -29,6 +29,8 @@ export default async function LoginPage({
           </label>
           {error === "ip" ? (
             <p className="text-sm font-medium text-[#c23b3b]">Tài khoản lễ tân chỉ đăng nhập được từ máy quầy.</p>
+          ) : error === "paused" ? (
+            <p className="text-sm font-medium text-[#c23b3b]">Module vận hành tạm dừng.</p>
           ) : error ? (
             <p className="text-sm font-medium text-[#c23b3b]">Sai tài khoản hoặc mật khẩu.</p>
           ) : null}
@@ -36,12 +38,6 @@ export default async function LoginPage({
           <Btn type="submit" className="w-full">
             Đăng nhập
           </Btn>
-          <Link
-            href="/kiem-tra-phong"
-            className="inline-flex min-h-12 w-full items-center justify-center rounded-xl border border-line bg-white px-4 text-sm font-semibold text-burgundy"
-          >
-            Kiểm tra phòng nhanh
-          </Link>
           <Link href="/forgot-password" className="block text-center text-sm font-semibold text-burgundy">
             Quên mật khẩu?
           </Link>

@@ -4,7 +4,7 @@ import { loadUserSession, signSession } from "@/lib/auth";
 import { SESSION_COOKIE, sessionMaxAgeSeconds } from "@/lib/session-token";
 import { getDb } from "@/db";
 import { users } from "@/db/schema";
-import { homePath } from "@/lib/nav";
+import { homePath, isPausedOpsRole } from "@/lib/nav";
 import { clientIp, receptionIpBlocked } from "@/lib/reception-ip";
 import { currentReceptionIpPolicy, recordLogin } from "@/lib/repos/access";
 import { hashPassword, passwordNeedsRehash, verifyPassword } from "@/lib/password";
@@ -27,6 +27,10 @@ export async function POST(request: Request) {
   }
   const session = await loadUserSession(row.id);
   if (!session) return NextResponse.redirect(new URL("/login?error=1", request.url), 303);
+  if (isPausedOpsRole(session.role)) {
+    await recordLogin({ userId: session.id, username, result: "denied", ip, userAgent });
+    return NextResponse.redirect(new URL("/login?error=paused", request.url), 303);
+  }
   const policy = await currentReceptionIpPolicy();
   if (receptionIpBlocked(session.role, request.headers, policy)) {
     await recordLogin({ userId: session.id, username, result: "ip", ip, userAgent });

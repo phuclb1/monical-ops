@@ -119,20 +119,14 @@ try {
     await must(shot, ["Sai tài khoản hoặc mật khẩu"]);
   });
 
-  skip("TC-03", "Lễ tân đăng nhập — Today ca đang mở", "prd chỉ có quanly, không có tài khoản lễ tân");
+  skip("TC-03", "Lễ tân đăng nhập — Đặt phòng", "prd chỉ có quanly, không có tài khoản lễ tân");
 
-  await check("TC-04", "Quản lý Today — không bắt mở ca", async (shot) => {
+  await check("TC-04", "Quản lý Dashboard booking — không còn Today", async (shot) => {
     await login("quanly");
     signedIn = true;
+    await must(shot, ["Dashboard", "Đặt phòng", "Sơ đồ"]);
     await go("/today");
-    const text = await page.locator("body").innerText();
-    await page.screenshot({ path: shot, fullPage: true });
-    if (text.includes("Mở ca hiện tại") && !text.includes("Ca đang làm") && !text.includes("Ca lễ tân chưa mở")) {
-      throw new Error("Quản lý vẫn bị màn bắt mở ca");
-    }
-    if (!text.includes("Ca đang làm") && !text.includes("Ca lễ tân chưa mở") && !text.includes("Hôm nay")) {
-      throw new Error("Today quản lý không ra trạng thái ca");
-    }
+    if (new URL(page.url()).pathname === "/today") throw new Error("Quản lý vẫn vào được /today");
   });
 
   skip("TC-05", "HK không vào trang nhân viên", "prd không có user HK");
@@ -173,25 +167,10 @@ try {
     await check(id, title, fn);
   }
 
-  await checkAuthed("TC-10p", "Lễ tân — các tab khách (prd)", async (shot) => {
-    await go("/reception?tab=arriving");
-    await must(shot, ["Lễ tân", "Khách đến"]);
-  });
-
-  await checkAuthed("TC-20p", "Bảng việc trống / cột Mới", async (shot) => {
-    await go("/tasks");
-    await must(shot, ["Bảng việc", "Tạo việc"]);
-  });
-
-  await checkAuthed("TC-22", "Tạo việc — loại lễ tân (quản lý cũng tạo được)", async (shot) => {
-    await go("/tasks/new");
-    await must(shot, ["Thay khăn", "Dọn phòng khách ở"]);
-  });
-
-  await checkAuthed("TC-23", "Tạo việc — loại quản lý", async (shot) => {
-    await go("/tasks/new");
-    await must(shot, ["Theo dõi việc trễ"]);
-  });
+  skip("TC-10p", "Lễ tân — các tab khách (prd)", "retired: /reception đã gỡ");
+  skip("TC-20p", "Bảng việc trống / cột Mới", "retired: /tasks đã gỡ");
+  skip("TC-22", "Tạo việc — loại lễ tân", "retired: /tasks đã gỡ");
+  skip("TC-23", "Tạo việc — loại quản lý", "retired: /tasks đã gỡ");
 
   await checkAuthed("TC-30p", "Bếp / báo cáo ăn sáng", async (shot) => {
     await go("/kitchen");
@@ -200,9 +179,9 @@ try {
     await must(shot, ["Người lớn", "Trẻ em"]);
   });
 
-  await checkAuthed("TC-40", "Danh sách phòng", async (shot) => {
-    await go("/rooms");
-    await must(shot, ["305", "102", "Sẽ đến"]);
+  await checkAuthed("TC-40", "Sơ đồ phòng", async (shot) => {
+    await go("/sales");
+    await must(shot, ["Sơ đồ phòng", "Sẽ đến", "Đặt phòng"]);
   });
 
   await checkAuthed("TC-93", "Sơ đồ bán phòng", async (shot) => {
@@ -224,7 +203,7 @@ try {
 
   await checkAuthed("TC-102", "Quick filter bán phòng", async (shot) => {
     await go("/sales");
-    await must(shot, ["Sẽ đến", "Check-in hôm nay", "Đang ở", "Trả hôm nay", "Phòng bẩn", "Mọi phòng"]);
+    await must(shot, ["Sẽ đến", "Check-in hôm nay", "Đang ở", "Trả hôm nay", "Mọi phòng"]);
   });
 
   await checkAuthed("TC-115", "Lọc nguồn Trực tiếp / OTA", async (shot) => {
@@ -301,10 +280,7 @@ try {
     }
   });
 
-  await checkAuthed("TC-50", "Bàn giao", async (shot) => {
-    await go("/handover");
-    await must(shot, ["Bàn giao"]);
-  });
+  skip("TC-50", "Bàn giao", "retired: /handover đã gỡ");
 
   await checkAuthed("TC-60", "Staff prd — chỉ quản lý", async (shot) => {
     await go("/staff");
@@ -323,70 +299,10 @@ try {
     await must(shot, ["Nhật ký thao tác", "Người làm"]);
   });
 
-  await checkAuthed("TC-61", "Lịch lễ tân — xếp 1 lần", async (shot) => {
-    await go("/roster");
-    const text = await pageText();
-    await page.screenshot({ path: shot, fullPage: true });
-    const standing = text.includes("Áp dụng từ hôm nay") || text.includes("Lịch đang áp dụng") || text.includes("lịch tuần");
-    if (!standing) throw new Error("Không nhận ra trang lịch lễ tân");
-  });
-
-  if (signedIn) {
-    await go("/roster");
-    const weekFilled = await page.evaluate(() => {
-      const picks = [...document.querySelectorAll("select[name^='w-']")].map((el) => el.value);
-      return picks.length >= 21 && picks.every(Boolean);
-    });
-    if (!weekFilled) {
-      skip("TC-61s", "Lưu lịch tuần (batch D1)", "lưới tuần chưa đủ 21 ca — không ghi lịch thiếu");
-    } else {
-      await check("TC-61s", "Lưu lịch tuần (batch D1)", async (shot) => {
-        await Promise.all([
-          page.waitForURL(/[?&]ok=week|[?&]error=/, { timeout: 25000 }),
-          page.getByRole("button", { name: "Áp dụng từ hôm nay" }).click(),
-        ]);
-        await ready();
-        const text = await pageText();
-        await page.screenshot({ path: shot, fullPage: true });
-        if (text.includes("Failed query") || page.url().includes("error=")) {
-          throw new Error(`Lưu lịch fail · ${page.url()}`);
-        }
-        if (!text.includes("Đã áp dụng lịch") && !page.url().includes("ok=week")) {
-          throw new Error("Không thấy xác nhận lưu lịch");
-        }
-      });
-    }
-  } else {
-    skip("TC-61s", "Lưu lịch tuần (batch D1)", "chưa đăng nhập được (POST /api/auth/login 500)");
-  }
-
-  await checkAuthed("TC-70", "Ca / checklist (quản lý)", async (shot) => {
-    await go("/shifts");
-    const text = await pageText();
-    await page.screenshot({ path: shot, fullPage: true });
-    const ok =
-      text.includes("Đầu ca") ||
-      text.includes("Cuối ca") ||
-      text.includes("Mở ca hộ") ||
-      text.includes("Ca lễ tân chưa mở") ||
-      text.includes("Đang mở") ||
-      text.includes("Mở ca");
-    if (!ok) throw new Error("Trang ca không nhận ra checklist đầu/cuối ca");
-  });
-
-  await checkAuthed("TC-83", "Prompt bật thông báo điện thoại", async (shot) => {
-    await go("/today");
-    const text = await pageText();
-    await page.screenshot({ path: shot, fullPage: true });
-    if (
-      !text.includes("Thông báo điện thoại") &&
-      !text.includes("Thông báo đẩy") &&
-      !text.includes("Thêm vào Màn hình chính") &&
-      !text.includes("Bật")
-    ) {
-      throw new Error("Không thấy UI push");
-    }
-  });
+  skip("TC-61", "Lịch lễ tân — xếp 1 lần", "retired: /roster đã gỡ");
+  skip("TC-61s", "Lưu lịch tuần (batch D1)", "retired: /roster đã gỡ");
+  skip("TC-70", "Ca / checklist (quản lý)", "retired: /shifts đã gỡ");
+  skip("TC-83", "Prompt bật thông báo trên Today", "retired: /today đã gỡ");
 
   await check("TC-120", "Chủ sở hữu vào doanh thu tháng/quý/năm", async (shot) => {
     await logout();

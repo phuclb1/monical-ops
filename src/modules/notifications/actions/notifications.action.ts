@@ -8,7 +8,7 @@ import { notificationsRoutes } from "../notifications.route";
 
 function refresh() {
   revalidatePath(notificationsRoutes.list);
-  revalidatePath("/today");
+  revalidatePath("/");
 }
 
 export async function readNotifAction(formData: FormData) {

@@ -22,7 +22,7 @@ mkdirSync(outDir, { recursive: true });
 
 const ROUTES = [
   { id: "login", path: "/login", auth: false },
-  { id: "today", path: "/today", auth: true },
+  { id: "home", path: "/", auth: true },
   { id: "sales", path: "/sales", auth: true },
   { id: "sales-15", path: "/sales?view=15", auth: true },
   { id: "sales-month", path: "/sales?view=month", auth: true },
@@ -31,9 +31,7 @@ const ROUTES = [
   { id: "bookings-page", path: "/sales/bookings?page=2", auth: true, maxLinks: 80, maxEncodedKb: 350 },
   { id: "bookings-search", path: "/sales/bookings?q=a", auth: true, serverCache: true, maxLinks: 80, maxEncodedKb: 350 },
   { id: "kitchen", path: "/kitchen", auth: true },
-  { id: "rooms", path: "/rooms", auth: true },
-  { id: "tasks", path: "/tasks", auth: true },
-  { id: "reception", path: "/reception", auth: true },
+  { id: "rooms-manage", path: "/rooms/manage", auth: true },
   { id: "reports", path: "/reports/sales", auth: true },
   { id: "cash", path: "/reports/cash", auth: true, serverCache: true, maxRows: 40, maxEncodedKb: 500 },
   { id: "cash-year", path: "/reports/cash?grain=year", auth: true, serverCache: true, maxRows: 40, maxEncodedKb: 700 },

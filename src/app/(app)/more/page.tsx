@@ -6,12 +6,6 @@ import { getSession } from "@/lib/auth";
 import { ROLE_LABEL } from "@/lib/constants";
 import { can } from "@/lib/permissions";
 
-const MANAGER_OPS = [
-  { href: "/today", label: "Hôm nay — ca / nhận trả" },
-  { href: "/rooms", label: "Phòng — HK / OOO" },
-  { href: "/handover", label: "Bàn giao ca" },
-];
-
 const SECTIONS = [
   {
     title: "Quản lý",
@@ -32,12 +26,8 @@ const SECTIONS = [
   {
     title: "Điều hành",
     links: [
-      { href: "/reception", label: "Lễ tân — khách & đăng ký lưu trú", show: (r: Parameters<typeof can>[0]) => can(r, "viewReception") || r === "hk" },
       { href: "/sales/extras", label: "Dịch vụ kèm — phụ thu / giặt sấy / đệm", show: (r: Parameters<typeof can>[0]) => can(r, "manageRates") },
       { href: "/kitchen", label: "Bếp — báo cáo ăn sáng / dự báo", show: (r: Parameters<typeof can>[0]) => can(r, "viewKitchen") },
-      { href: "/shifts", label: "Ca làm việc & checklist", show: () => true },
-      { href: "/forms", label: "Biểu mẫu điện tử", show: () => true },
-      { href: "/incidents", label: "Sự cố", show: () => true },
       { href: "/audit", label: "Nhật ký thao tác — ai làm gì, thêm / sửa", show: (r: Parameters<typeof can>[0]) => can(r, "viewAudit") },
       { href: "/notifications", label: "Thông báo + push điện thoại", show: () => true },
     ],
@@ -47,8 +37,8 @@ const SECTIONS = [
     links: [
       {
         href: "/settings",
-        label: "Cài đặt — cấu hình, lịch lễ tân, nhân viên",
-        show: (r: Parameters<typeof can>[0]) => can(r, "manageSettings") || can(r, "manageStaff") || can(r, "manageRoster"),
+        label: "Cài đặt — cấu hình, Zalo, nhân viên",
+        show: (r: Parameters<typeof can>[0]) => can(r, "manageSettings") || can(r, "manageStaff"),
       },
     ],
   },
@@ -67,15 +57,6 @@ export default async function MorePage() {
       <Link href="/account/password" className="card flex min-h-16 items-center p-4 font-semibold">
         Đổi mật khẩu
       </Link>
-      {user.role === "manager" ? (
-        <div className="list-cards">
-          {MANAGER_OPS.map((l) => (
-            <Link key={l.href} href={l.href} className="card mb-2 flex min-h-16 items-center p-4 font-semibold md:mb-0">
-              {l.label}
-            </Link>
-          ))}
-        </div>
-      ) : null}
       {SECTIONS.map((section) => {
         const links = section.links.filter((l) => l.show(user.role));
         if (!links.length) return null;

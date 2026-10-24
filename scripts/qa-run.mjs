@@ -18,13 +18,9 @@ const runId = process.env.QA_RUN_ID || `R-${new Date().toISOString().slice(0, 10
 const outDir = join(root, "qa", "evidence", runId);
 mkdirSync(outDir, { recursive: true });
 
-function currentShiftLabel() {
-  const hour = Number(
-    new Intl.DateTimeFormat("en-GB", { timeZone: "Asia/Ho_Chi_Minh", hour: "2-digit", hour12: false }).format(new Date()),
-  );
-  if (hour >= 6 && hour < 14) return "Ca sáng";
-  if (hour >= 14 && hour < 22) return "Ca chiều";
-  return "Ca đêm";
+function skip(id, title, note) {
+  results.push({ id, title, result: "skip", evidence: "", note });
+  console.log(`SKIP ${id}  ${title}  — ${note}`);
 }
 
 const browser = await chromium.launch({ channel: "chrome", headless: true });
@@ -123,77 +119,30 @@ try {
     await must(shot, ["Sai tài khoản hoặc mật khẩu"]);
   });
 
-  await check("TC-03", "Lễ tân đăng nhập — Today ca đang mở", async (shot) => {
+  await check("TC-03", "Lễ tân đăng nhập — về Đặt phòng", async (shot) => {
     await login("tuyen");
-    await must(shot, ["Ca đang làm", currentShiftLabel(), "Đầu ca"]);
+    await go("/sales/bookings");
+    await must(shot, ["Đặt phòng", "Tìm booking", "Đang mở / đã trả"]);
+    const text = await pageText();
+    if (hasText(text, "Ca đang làm") || hasText(text, "Mở ca hiện tại")) {
+      throw new Error("Lễ tân vẫn thấy ca / Today");
+    }
   });
 
-  await check("TC-10", "Khách đang check-in (đến)", async (shot) => {
-    await go("/reception?tab=arriving");
-    await must(shot, ["Nguyễn Thu Hà", "Khách đến"]);
-  });
+  skip("TC-10", "Tab khách đến — Nguyễn Thu Hà P.105", "retired: /reception đã gỡ");
+  skip("TC-11", "Tab đang ở — Khoa + Hạnh", "retired: /reception đã gỡ");
+  skip("TC-12", "Tab khách đi — Phạm Đức Anh P.102", "retired: /reception đã gỡ");
+  skip("TC-13", "Thẻ check-in P.105: giao HK standby", "retired: cổng HK đã gỡ");
 
-  await check("TC-11", "Khách đang ở", async (shot) => {
-    await go("/reception?tab=inhouse");
-    await must(shot, ["Trần Minh Khoa", "Lê Thị Hạnh"]);
-  });
-
-  await check("TC-12", "Khách checkout", async (shot) => {
-    await go("/reception?tab=departing");
-    await must(shot, ["Phạm Đức Anh"]);
-  });
-
-  await check("TC-13", "Thẻ khách check-in P.105 — giao HK standby", async (shot) => {
-    await go("/reception/s-201");
-    await must(shot, ["Nguyễn Thu Hà", "Đã nhập booking", "Giao việc HK", "Yêu cầu HK kiểm phòng standby"]);
-  });
-
-  await check("TC-14", "Khách gửi ô tô + timer đăng ký", async (shot) => {
-    await go("/reception/s-305");
-    await must(shot, ["Trần Minh Khoa", "51H-223.18", "Hầm B1-12"]);
-  });
-
-  await check("TC-15", "Khách đi — thiếu hóa đơn + dọn phòng trả", async (shot) => {
-    await go("/reception/s-102");
-    await must(shot, ["Phạm Đức Anh", "Checkout 12:00", "Hóa đơn"]);
-  });
-
-  await check("TC-90", "PMS khách đến — booking xong, chưa check-in", async (shot) => {
-    await go("/reception/s-201");
-    await must(shot, ["Đối chiếu ezCloudhotel PMS", "EZ-88502", "Đã nhập booking — đã xác nhận", "Xác nhận Đã check-in PMS"]);
-  });
-
-  await check("TC-16", "Bấm xác nhận check-in PMS → bắt đầu 30 phút", async (shot) => {
-    await go("/reception/s-201");
-    await page.getByRole("button", { name: /Xác nhận Đã check-in PMS/ }).click();
-    await ready();
-    await must(shot, ["Đã check-in PMS (bắt đầu 30 phút) — đã xác nhận"]);
-  });
-
-  await check("TC-91", "PMS khách đang ở — đã check-in PMS", async (shot) => {
-    await go("/reception/s-305");
-    await must(shot, ["Đối chiếu ezCloudhotel PMS", "EZ-88421", "Đã check-in PMS (bắt đầu 30 phút) — đã xác nhận"]);
-  });
-
-  await check("TC-92", "PMS khách đi — chưa checkout / hóa đơn", async (shot) => {
-    await go("/reception/s-102");
-    await must(shot, ["EZ-88201", "Xác nhận Đã check-out PMS", "Xác nhận Đã xuất hóa đơn"]);
-  });
-
-  await check("TC-20", "Bảng việc: thay khăn / dọn phòng / checkout", async (shot) => {
-    await go("/tasks");
-    await must(shot, ["Thay 2 khăn tắm P.305", "Dọn phòng khách ở P.202", "Dọn phòng trả P.102"]);
-  });
-
-  await check("TC-21", "Quản lý yêu cầu thêm HK (lễ tân thấy việc)", async (shot) => {
-    await go("/tasks");
-    await must(shot, ["Cần thêm HK ca này"]);
-  });
-
-  await check("TC-22", "Tạo việc — loại lễ tân", async (shot) => {
-    await go("/tasks/new");
-    await must(shot, ["Thay khăn", "Dọn phòng khách ở"]);
-  });
+  skip("TC-14", "Khách gửi ô tô + timer đăng ký", "retired: /reception đã gỡ");
+  skip("TC-15", "Khách đi — thiếu hóa đơn + dọn phòng trả", "retired: /reception đã gỡ");
+  skip("TC-90", "PMS khách đến", "retired: /reception đã gỡ");
+  skip("TC-16", "Xác nhận check-in PMS", "retired: /reception đã gỡ");
+  skip("TC-91", "PMS khách đang ở", "retired: /reception đã gỡ");
+  skip("TC-92", "PMS khách đi", "retired: /reception đã gỡ");
+  skip("TC-20", "Bảng việc: thay khăn / dọn phòng / checkout", "retired: /tasks đã gỡ");
+  skip("TC-21", "Việc «cần thêm HK» hiện với lễ tân", "retired: /tasks đã gỡ");
+  skip("TC-22", "Tạo việc — loại lễ tân", "retired: /tasks đã gỡ");
 
   await check("TC-30", "Báo cáo ăn sáng từ booking", async (shot) => {
     await go("/kitchen");
@@ -202,14 +151,16 @@ try {
     await must(shot, ["dị ứng hải sản", "Người lớn"]);
   });
 
-  await check("TC-40", "Danh sách phòng", async (shot) => {
-    await go("/rooms");
-    await must(shot, ["305", "102", "Sẽ đến", "Phòng bẩn"]);
+  await check("TC-40", "Sơ đồ phòng còn số phòng seed", async (shot) => {
+    await go("/sales");
+    await must(shot, ["Sơ đồ phòng", "305", "102", "Sẽ đến"]);
   });
 
   await check("TC-93", "Sơ đồ bán phòng lễ tân", async (shot) => {
     await go("/sales");
-    await must(shot, ["Sơ đồ phòng", "Trống", "Đang ở", "Sẽ đến", "Phòng bẩn", "Đặt phòng"]);
+    await must(shot, ["Sơ đồ phòng", "Trống", "Đang ở", "Sẽ đến", "Đặt phòng"]);
+    const text = await pageText();
+    if (hasText(text, "Phòng bẩn")) throw new Error("Sơ đồ vẫn còn filter Phòng bẩn");
   });
 
   await check("TC-100", "Lọc nguồn Trực tiếp / OTA", async (shot) => {
@@ -219,7 +170,9 @@ try {
 
   await check("TC-102", "Quick filter bán phòng", async (shot) => {
     await go("/sales");
-    await must(shot, ["Sẽ đến", "Check-in hôm nay", "Đang ở", "Trả hôm nay", "Phòng bẩn", "Mọi phòng"]);
+    await must(shot, ["Sẽ đến", "Check-in hôm nay", "Đang ở", "Trả hôm nay", "Mọi phòng"]);
+    const text = await pageText();
+    if (hasText(text, "Phòng bẩn")) throw new Error("Quick filter vẫn còn Phòng bẩn");
   });
 
   await check("TC-103", "Lọc Sẽ đến — Mai Thanh Hà", async (shot) => {
@@ -370,9 +323,9 @@ try {
     await must(shot, ["Giá / đêm", "Chiết khấu", "Mã PMS", "Ô tô", "Xe máy"]);
   });
 
-  await check("TC-99", "Form bán: nền tảng Booking / Agoda / Ops", async (shot) => {
+  await check("TC-99", "Form bán: nền tảng Booking / Agoda / ezCloud", async (shot) => {
     await go("/sales/new");
-    await must(shot, ["Nền tảng", "Booking.com", "Agoda", "Từ ezCloud"]);
+    await must(shot, ["Nền tảng", "Booking.com", "Agoda", "ezCloud"]);
   });
 
   await check("TC-109", "Form bán nhiều phòng + cọc / còn thu", async (shot) => {
@@ -403,15 +356,8 @@ try {
     }
   });
 
-  await check("TC-50", "Bàn giao gom việc / xe", async (shot) => {
-    await go("/handover");
-    await must(shot, ["Bàn giao"]);
-  });
-
-  await check("TC-70", "Checklist ca lễ tân", async (shot) => {
-    await go("/shifts");
-    await must(shot, [currentShiftLabel(), "Đang mở", "Đầu ca", "Cuối ca"]);
-  });
+  skip("TC-50", "Bàn giao gom việc / xe", "retired: /handover đã gỡ");
+  skip("TC-70", "Checklist ca lễ tân", "retired: /shifts đã gỡ");
 
   await check("TC-64b", "Lễ tân không vào nhật ký", async (shot) => {
     await go("/audit");
@@ -423,34 +369,26 @@ try {
     }
   });
 
-  await check("TC-72", "Today — việc HK theo phòng", async (shot) => {
-    await go("/today");
-    await must(shot, ["Nhận / trả / HK hôm nay", "Dọn phòng khách ở P.202", "Dọn phòng trả P.102"]);
-  });
+  skip("TC-72", "Today — việc HK theo phòng", "retired: /today đã gỡ");
+  skip("TC-73", "Bảng việc — dọn khách ở / dọn trả seed", "retired: /tasks đã gỡ");
+  skip("TC-74", "Chỗ bán P.401 — gửi HK dọn / kiểm trả", "retired: cổng HK đã gỡ");
+  skip("TC-75", "Thẻ khách P.105 — gửi HK dọn / kiểm trả", "retired: /reception đã gỡ");
+  skip("TC-76", "Chỗ bán P.506 chờ HK standby", "retired: cổng HK đã gỡ");
+  skip("TC-143", "Booking An Phú link giao việc HK", "retired: cổng HK đã gỡ");
 
-  await check("TC-73", "Bảng việc — dọn khách ở / dọn trả seed", async (shot) => {
-    await go("/tasks");
-    await must(shot, ["Dọn phòng khách ở P.202", "Dọn phòng trả P.102", "Thay 2 khăn tắm P.305"]);
-  });
-
-  await check("TC-74", "Chỗ bán P.401 inhouse — gửi HK dọn / kiểm trả", async (shot) => {
-    await go("/sales/sale-401");
-    await must(shot, ["Đặng Minh Tuấn", "Giao việc HK", "Yêu cầu HK dọn phòng khách ở", "Yêu cầu HK kiểm phòng trả"]);
-  });
-
-  await check("TC-75", "Thẻ khách P.105 sau PMS — gửi HK dọn / kiểm trả", async (shot) => {
-    await go("/reception/s-201");
-    await must(shot, ["Nguyễn Thu Hà", "Giao việc HK", "Yêu cầu HK dọn phòng khách ở", "Yêu cầu HK kiểm phòng trả"]);
-  });
-
-  await check("TC-76", "Chỗ bán P.506 chờ HK standby rồi mới nhận", async (shot) => {
-    await go("/sales/sale-506");
-    await must(shot, ["Công ty An Phú", "Giao việc HK", "Yêu cầu HK kiểm phòng standby", "Chờ HK hoàn thành kiểm standby rồi mới nhận phòng"]);
-  });
-
-  await check("TC-143", "Booking An Phú link giao việc HK từng chỗ", async (shot) => {
+  await check("TC-74b", "Booking seed — nhận/trả thẳng, không HK", async (shot) => {
     await go("/sales/bookings/sale-506");
-    await must(shot, ["Công ty An Phú", "Gửi HK kiểm phòng trên từng chỗ bán", "P.506 · Giao việc HK"]);
+    await must(shot, ["Công ty An Phú", "Check in"]);
+    let text = await pageText();
+    if (hasText(text, "Giao việc HK") || hasText(text, "Yêu cầu HK")) {
+      throw new Error("Booking An Phú vẫn còn cổng việc HK");
+    }
+    await go("/sales/bookings/sale-401");
+    await must(shot, ["Đặng Minh Tuấn", "Check out"]);
+    text = await pageText();
+    if (hasText(text, "Giao việc HK") || hasText(text, "Yêu cầu HK")) {
+      throw new Error("Booking Đặng vẫn còn cổng việc HK");
+    }
   });
 
   await check("TC-130", "Lễ tân chỉ thấy booking mình tạo", async (shot) => {
@@ -464,39 +402,26 @@ try {
 
   await logout();
 
-  await check("TC-04", "Quản lý Today — không bắt mở ca", async (shot) => {
+  await check("TC-04", "Quản lý vào Dashboard booking — không còn Today / Việc", async (shot) => {
     await login("quanly");
-    await must(shot, ["Doanh thu", "Đặt phòng", "Bếp", "Việc", "Thêm"]);
+    await must(shot, ["Dashboard", "Đặt phòng", "Sơ đồ", "Báo cáo"]);
+    const text = await pageText();
+    if (hasText(text, "Việc") && hasText(text, "Hôm nay")) {
+      throw new Error("Dashboard quản lý vẫn còn nav điều phối");
+    }
     await go("/today");
-    const text = await page.locator("body").innerText();
-    if (text.includes("Mở ca hiện tại") && !text.includes("Ca đang làm")) {
-      throw new Error("Quản lý vẫn bị màn bắt mở ca");
-    }
-    await page.screenshot({ path: shot, fullPage: true });
-    if (!text.includes("Ca đang làm") && !text.includes("Ca lễ tân chưa mở")) {
-      throw new Error("Today quản lý không ra trạng thái ca");
-    }
+    if (new URL(page.url()).pathname === "/today") throw new Error("Quản lý vẫn vào được /today");
   });
 
-  await check("TC-21b", "Quản lý thấy việc thêm HK do mình tạo", async (shot) => {
-    await go("/tasks");
-    await must(shot, ["Cần thêm HK ca này", "hỗ trợ dồn dọn tầng 2"]);
-  });
-
-  await check("TC-23", "Tạo việc — loại quản lý", async (shot) => {
-    await go("/tasks/new");
-    await must(shot, ["Theo dõi việc trễ"]);
-  });
+  skip("TC-21b", "Quản lý thấy việc thêm HK", "retired: /tasks đã gỡ");
+  skip("TC-23", "Tạo việc — loại quản lý", "retired: /tasks đã gỡ");
 
   await check("TC-60", "Staff: 3 lễ tân + 1 HK", async (shot) => {
     await go("/staff");
     await must(shot, ["Ngân Lễ tân", "Thu Lễ tân", "Tuyến Lễ tân", "Uyên HK"]);
   });
 
-  await check("TC-61", "Lịch lễ tân tuần", async (shot) => {
-    await go("/roster");
-    await must(shot, ["Ngân", "Thu", "Tuyến"]);
-  });
+  skip("TC-61", "Lịch lễ tân tuần", "retired: /roster đã gỡ");
 
   await check("TC-41", "Quản lý hạng phòng", async (shot) => {
     await go("/rooms/manage");
@@ -571,48 +496,31 @@ try {
     await must(shot, ["Doanh thu"]);
   });
 
-  await check("TC-05", "HK không vào trang nhân viên", async (shot) => {
+  await check("TC-05", "HK bị khóa login", async (shot) => {
     await logout();
-    await login("uyen");
-    await go("/staff");
+    await go("/login");
+    await page.locator('input[name="username"]').fill("uyen");
+    await page.locator('input[name="password"]').fill("123456");
+    await page.getByRole("button", { name: "Đăng nhập" }).click();
+    await page.waitForURL(/\/login/, { timeout: 20000 });
     await ready();
-    if (page.url().includes("/staff")) throw new Error("HK vẫn vào được /staff");
-    await must(shot, ["Thêm"]);
+    if (!new URL(page.url()).pathname.startsWith("/login")) throw new Error("HK vẫn vào được app");
+    await must(shot, ["Module vận hành tạm dừng"]);
   });
 
-  await check("TC-24", "HK thấy việc khăn / dọn / thêm HK", async (shot) => {
-    await go("/tasks");
-    await must(shot, ["Thay 2 khăn tắm P.305", "Dọn phòng khách ở P.202", "Cần thêm HK ca này"]);
-  });
-
-  await check("TC-25", "HK tạo việc", async (shot) => {
-    await go("/tasks/new");
-    await must(shot, ["Kiểm phòng"]);
-  });
-
-  await check("TC-98", "HK không vào bán phòng", async (shot) => {
-    await go("/sales");
-    await ready();
-    if (page.url().includes("/sales")) throw new Error("HK vẫn vào được /sales");
-    await must(shot, ["Thêm"]);
-    const text = await pageText();
-    if (text.includes("Bán phòng — sơ đồ")) throw new Error("HK thấy menu bán phòng");
-  });
-
-  await check("TC-132", "HK không thấy noti booking", async (shot) => {
-    await go("/notifications");
-    await must(shot, ["Thông báo", "Thay khăn P.305"]);
-    const text = await pageText();
-    if (hasText(text, "Đặt phòng · Đặng Minh Tuấn")) throw new Error("HK thấy noti booking");
-    if (hasText(text, "Sửa booking · Công ty An Phú")) throw new Error("HK thấy noti booking");
-  });
+  skip("TC-24", "HK thấy việc khăn / dọn / thêm HK", "retired: HK khóa login");
+  skip("TC-25", "HK tạo việc", "retired: HK khóa login");
+  skip("TC-98", "HK không vào bán phòng", "retired: HK khóa login — xem TC-05");
+  skip("TC-132", "HK không thấy noti booking", "retired: HK khóa login");
 } finally {
   await browser.close();
 }
 
 const pass = results.filter((r) => r.result === "pass").length;
 const fail = results.filter((r) => r.result === "fail").length;
-const rate = results.length ? Math.round((pass / results.length) * 100) : 0;
+const skipped = results.filter((r) => r.result === "skip").length;
+const ran = pass + fail;
+const rate = ran ? Math.round((pass / ran) * 100) : 0;
 const manifest = {
   runId,
   date: new Date().toISOString(),
@@ -620,10 +528,11 @@ const manifest = {
   env: base,
   pass,
   fail,
+  skip: skipped,
   total: results.length,
   passRate: `${rate}%`,
   results,
 };
 writeFileSync(join(outDir, "manifest.json"), JSON.stringify(manifest, null, 2));
-console.log(`\nRUN ${runId}  commit ${commit}  ${pass}/${results.length} = ${rate}%`);
+console.log(`\nRUN ${runId}  commit ${commit}  ${pass}/${ran} = ${rate}%  skip ${skipped}`);
 console.log(`EVIDENCE ${outDir.replace(`${root}/`, "")}`);

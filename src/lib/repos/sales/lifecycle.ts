@@ -2,7 +2,6 @@ import { eq } from "drizzle-orm";
 import { getDb } from "@/db";
 import * as t from "@/db/schema";
 import { nowISO, todayVN } from "../../datetime";
-import { ensureTodayRoomTasks } from "../../checklist-ops";
 import { can } from "../../permissions";
 import { PAYMENT_METHOD_LABEL } from "../../constants";
 import { addRefundSplit, canSettleOtaDebt, collectedSplit, depositMethodOf, depositRefundSplit, formatVnd, guestCheckoutDue, isActiveSaleStatus, parsePaymentMethod, parseStayRefundReason, refundSplitFromMethod, refundTotal, salePaid, stayRefundable, STAY_REFUND_REASON_LABEL } from "../../sales";
@@ -13,9 +12,7 @@ import { dispatchCheckinPaidZalo } from "../../zalo-notify";
 import { bookingCreatedBy, notifyBookingChange } from "./notify";
 import { syncBookingMoney } from "./money-sync";
 import { getBooking } from "./queries";
-import { applySaleRoomState, syncStayFromSale } from "./stay";
-import { assertSaleHandoff, spawnCheckoutClean } from "../room-handoff";
-import { findStayForSale } from "../stays";
+import { applySaleRoomState } from "./stay";
 import { insertBookingTransaction } from "./transactions";
 
 export async function recordBookingPayment(
@@ -164,23 +161,20 @@ export async function cancelBooking(user: SessionUser, bookingId: string, asNoSh
   return booking.id;
 }
 
-export async function checkinRoomSale(user: SessionUser, id: string, opts?: { skipHandoff?: boolean }) {
+export async function checkinRoomSale(user: SessionUser, id: string) {
   const db = await getDb();
   const before = (await db.select().from(t.roomSales).where(eq(t.roomSales.id, id)).limit(1))[0];
   if (!before) throw new Error("Không tìm thấy chỗ bán");
   if (before.status !== "reserved") throw new Error("Chỉ nhận phòng khi đang giữ chỗ");
   const today = todayVN();
   if (today < before.checkIn) throw new Error("Chưa đến ngày nhận phòng");
-  if (!opts?.skipHandoff) await assertSaleHandoff("checkin", before.roomId);
   const bookingId = before.bookingId || before.id;
   const prior = await getBooking(bookingId);
   const wasPaidInhouse = prior ? bookingCheckinPaidReady(prior) : false;
   const now = nowISO();
   const patch = { status: "inhouse" as const, checkedInAt: now, updatedAt: now, updatedBy: user.id };
   await db.update(t.roomSales).set(patch).where(eq(t.roomSales.id, id));
-  await syncStayFromSale(user.id, { ...before, status: "inhouse" });
   await applySaleRoomState(user.id, { roomId: before.roomId, status: "inhouse" });
-  await ensureTodayRoomTasks(db, { actorId: user.id });
   await audit(user.id, "room_sale", id, "checkin", before, { status: "inhouse", checkedInAt: now });
   await dispatchCheckinPaidZalo(user.id, bookingId, wasPaidInhouse).catch((error) => console.error("zalo booking", error));
 }
@@ -191,7 +185,7 @@ function assertCheckoutCollected(booking: Awaited<ReturnType<typeof getBooking>>
   if (due > 0) throw new Error(`Chưa thu đủ. Còn phải thu ${formatVnd(due)}`);
 }
 
-export async function checkoutRoomSale(user: SessionUser, id: string, opts?: { skipHandoff?: boolean; skipMoneySync?: boolean }) {
+export async function checkoutRoomSale(user: SessionUser, id: string, opts?: { skipMoneySync?: boolean }) {
   const db = await getDb();
   const before = (await db.select().from(t.roomSales).where(eq(t.roomSales.id, id)).limit(1))[0];
   if (!before) throw new Error("Không tìm thấy chỗ bán");
@@ -200,27 +194,12 @@ export async function checkoutRoomSale(user: SessionUser, id: string, opts?: { s
   const today = todayVN();
   const checkOut = today < before.checkOut ? today : before.checkOut;
   if (checkOut < before.checkIn) throw new Error("Ngày trả không hợp lệ");
-  if (!opts?.skipHandoff) await assertSaleHandoff("checkout", before.roomId);
   const now = nowISO();
   await db
     .update(t.roomSales)
     .set({ status: "departed", checkOut, checkedOutAt: now, updatedAt: now, updatedBy: user.id })
     .where(eq(t.roomSales.id, id));
-  await syncStayFromSale(user.id, { ...before, status: "departed", checkOut });
   await applySaleRoomState(user.id, { roomId: before.roomId, status: "departed" });
-  const room = (await db.select().from(t.rooms).where(eq(t.rooms.id, before.roomId)).limit(1))[0];
-  const stay = await findStayForSale({
-    roomId: before.roomId,
-    guestName: before.guestName,
-    pmsCode: before.pmsCode,
-  });
-  await spawnCheckoutClean(user, {
-    roomId: before.roomId,
-    stayId: stay?.id,
-    guestName: before.guestName,
-    roomNumber: room?.number || "",
-  });
-  await ensureTodayRoomTasks(db, { actorId: user.id });
   await audit(user.id, "room_sale", id, "checkout", before, { status: "departed", checkOut, checkedOutAt: now });
   if (!opts?.skipMoneySync) await syncBookingMoney(before.bookingId || before.id);
 }
@@ -270,8 +249,6 @@ export async function cancelRoomSale(user: SessionUser, id: string, asNoShow = f
     .update(t.roomSales)
     .set({ status, ...refund, updatedAt: nowISO(), updatedBy: user.id })
     .where(eq(t.roomSales.id, id));
-  await syncStayFromSale(user.id, { ...before, status });
-  await ensureTodayRoomTasks(db, { actorId: user.id });
   await audit(user.id, "room_sale", id, asNoShow ? "no_show" : "cancel", before, { status, ...refund });
   if (!opts?.skipMoneySync) await syncBookingMoney(before.bookingId || before.id);
   if (opts?.silent) return;

@@ -45,6 +45,7 @@ const ICONS: Record<string, typeof CalendarDays> = {
   "/owner": Wallet,
   "/owner/guests": Users,
   "/kitchen": ChefHat,
+  "/kitchen/forecast": ChefHat,
   "/shifts": TimerReset,
   "/forms": FileText,
   "/incidents": ShieldAlert,

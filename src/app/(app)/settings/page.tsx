@@ -17,12 +17,6 @@ const LINKS = [
     show: (role: Parameters<typeof can>[0]) => can(role, "manageSettings"),
   },
   {
-    href: "/roster",
-    label: "Lịch lễ tân",
-    text: "Xếp ca lễ tân, áp dụng đến khi đổi.",
-    show: (role: Parameters<typeof can>[0]) => can(role, "manageRoster"),
-  },
-  {
     href: "/staff",
     label: "Nhân viên",
     text: "Tài khoản, khóa và đặt lại mật khẩu.",
@@ -40,7 +34,7 @@ export default async function SettingsPage() {
     <main className="space-y-3 px-3 py-4">
       <div>
         <h1 className="text-xl font-bold">Cài đặt</h1>
-        <p className="text-xs text-[#5c6665]">Cấu hình quầy, Open API, Zalo, lịch lễ tân và tài khoản nhân viên.</p>
+        <p className="text-xs text-[#5c6665]">Cấu hình quầy, Open API, Zalo và tài khoản nhân viên.</p>
       </div>
       <div className="list-cards">
         {links.map((item) => (

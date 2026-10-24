@@ -1,15 +1,13 @@
 import { TabChip } from "@/components/ui";
 
-export type ReportTab = "sales" | "cash" | "ledger" | "rooms" | "work";
+export type ReportTab = "sales" | "cash" | "ledger" | "rooms";
 
 export function ReportTabs({
   active,
   showSales,
-  showWork,
 }: {
   active: ReportTab;
   showSales: boolean;
-  showWork: boolean;
 }) {
   return (
     <nav className="tab-scroller -mx-3 px-3 pb-1" aria-label="Loại báo cáo">
@@ -17,7 +15,6 @@ export function ReportTabs({
       {showSales ? <TabChip href="/reports/cash" active={active === "cash"}>Dòng tiền</TabChip> : null}
       {showSales ? <TabChip href="/reports/ledger" active={active === "ledger"}>Sổ cái</TabChip> : null}
       {showSales ? <TabChip href="/reports/rooms" active={active === "rooms"}>Hiệu suất phòng</TabChip> : null}
-      {showWork ? <TabChip href="/reports/work" active={active === "work"}>Công việc chung</TabChip> : null}
     </nav>
   );
 }

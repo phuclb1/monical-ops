@@ -262,10 +262,10 @@ export default async function BookingDetailPage({
             ) : null}
             {manage && (readyIn.length || staying.length) ? (
               <div className="mt-3 space-y-2 border-t border-line pt-3">
-                <p className="text-xs text-[#5c6665]">Check in và check out nằm trên từng phòng. HK kiểm phòng là việc riêng.</p>
+                <p className="text-xs text-[#5c6665]">Check in và check out nằm trên từng phòng.</p>
                 {[...readyIn, ...staying].map((row) => (
                   <Link key={row.id} href={`/sales/${row.id}`} className="cta-link w-full">
-                    P.{row.room?.number || "—"} · Giao việc HK
+                    P.{row.room?.number || "—"} · Nhận / trả phòng
                   </Link>
                 ))}
               </div>

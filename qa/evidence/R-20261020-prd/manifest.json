@@ -1,0 +1,524 @@
+{
+  "runId": "R-20261020-prd",
+  "date": "2026-10-20T07:29:55.905Z",
+  "commit": "e4876b8",
+  "env": "https://platform.monicalhoteldalat.com",
+  "pass": 5,
+  "fail": 2,
+  "skip": 66,
+  "total": 73,
+  "passRate": "71%",
+  "results": [
+    {
+      "id": "TC-01",
+      "title": "Màn đăng nhập",
+      "result": "pass",
+      "evidence": "qa/evidence/R-20261020-prd/TC-01.png",
+      "note": ""
+    },
+    {
+      "id": "TC-02",
+      "title": "Login sai mật khẩu",
+      "result": "pass",
+      "evidence": "qa/evidence/R-20261020-prd/TC-02.png",
+      "note": ""
+    },
+    {
+      "id": "TC-03",
+      "title": "Lễ tân đăng nhập — Today ca đang mở",
+      "result": "skip",
+      "evidence": "",
+      "note": "prd chỉ có quanly, không có tài khoản lễ tân"
+    },
+    {
+      "id": "TC-04",
+      "title": "Quản lý Today — không bắt mở ca",
+      "result": "fail",
+      "evidence": "qa/evidence/R-20261020-prd/TC-04.png",
+      "note": "page.waitForURL: Timeout 25000ms exceeded.\n=========================== logs ===========================\nwaiting for navigation until \"load\"\n  navigated to \"https://platform.monicalhoteldalat.com/login?error=1\"\n  navigated to \"https://platform.monicalhoteldalat.com/login?error=1\"\n"
+    },
+    {
+      "id": "TC-05",
+      "title": "HK không vào trang nhân viên",
+      "result": "skip",
+      "evidence": "",
+      "note": "prd không có user HK"
+    },
+    {
+      "id": "TC-10",
+      "title": "Tab khách đến — Nguyễn Thu Hà P.105",
+      "result": "skip",
+      "evidence": "",
+      "note": "prd không seed kịch bản khách"
+    },
+    {
+      "id": "TC-11",
+      "title": "Tab đang ở — Khoa + Hạnh",
+      "result": "skip",
+      "evidence": "",
+      "note": "prd không seed kịch bản khách"
+    },
+    {
+      "id": "TC-12",
+      "title": "Tab khách đi — Phạm Đức Anh P.102",
+      "result": "skip",
+      "evidence": "",
+      "note": "prd không seed kịch bản khách"
+    },
+    {
+      "id": "TC-13",
+      "title": "Thẻ khách check-in P.105",
+      "result": "skip",
+      "evidence": "",
+      "note": "prd không seed kịch bản khách"
+    },
+    {
+      "id": "TC-14",
+      "title": "Khách gửi ô tô + timer đăng ký",
+      "result": "skip",
+      "evidence": "",
+      "note": "prd không seed kịch bản khách"
+    },
+    {
+      "id": "TC-15",
+      "title": "Khách đi — thiếu hóa đơn + dọn phòng trả",
+      "result": "skip",
+      "evidence": "",
+      "note": "prd không seed kịch bản khách"
+    },
+    {
+      "id": "TC-16",
+      "title": "Bấm xác nhận check-in PMS",
+      "result": "skip",
+      "evidence": "",
+      "note": "prd không seed kịch bản khách"
+    },
+    {
+      "id": "TC-90",
+      "title": "PMS khách đến — booking xong, chưa check-in",
+      "result": "skip",
+      "evidence": "",
+      "note": "prd không seed kịch bản khách"
+    },
+    {
+      "id": "TC-91",
+      "title": "PMS khách đang ở — đã check-in PMS",
+      "result": "skip",
+      "evidence": "",
+      "note": "prd không seed kịch bản khách"
+    },
+    {
+      "id": "TC-92",
+      "title": "PMS khách đi — chưa checkout / hóa đơn",
+      "result": "skip",
+      "evidence": "",
+      "note": "prd không seed kịch bản khách"
+    },
+    {
+      "id": "TC-72",
+      "title": "Today — việc HK theo phòng",
+      "result": "skip",
+      "evidence": "",
+      "note": "prd không seed khách đến/đi hôm nay"
+    },
+    {
+      "id": "TC-73",
+      "title": "Bảng việc — dọn khách ở / dọn trả seed",
+      "result": "skip",
+      "evidence": "",
+      "note": "prd không seed việc demo"
+    },
+    {
+      "id": "TC-74",
+      "title": "Chỗ bán P.401 inhouse — gửi HK dọn / kiểm trả",
+      "result": "skip",
+      "evidence": "",
+      "note": "prd không seed chỗ bán demo"
+    },
+    {
+      "id": "TC-75",
+      "title": "Thẻ khách P.105 giao HK standby trước nhận",
+      "result": "skip",
+      "evidence": "",
+      "note": "prd không seed kịch bản khách"
+    },
+    {
+      "id": "TC-76",
+      "title": "Chỗ bán P.506 chờ HK standby rồi mới nhận",
+      "result": "skip",
+      "evidence": "",
+      "note": "prd không seed chỗ bán demo"
+    },
+    {
+      "id": "TC-140",
+      "title": "Tìm booking theo tên không dấu",
+      "result": "skip",
+      "evidence": "",
+      "note": "prd không seed chỗ bán demo"
+    },
+    {
+      "id": "TC-141",
+      "title": "Tìm booking departed theo SĐT",
+      "result": "skip",
+      "evidence": "",
+      "note": "prd không seed chỗ bán demo"
+    },
+    {
+      "id": "TC-142",
+      "title": "Tìm booking không khớp",
+      "result": "skip",
+      "evidence": "",
+      "note": "prd không seed chỗ bán demo"
+    },
+    {
+      "id": "TC-143",
+      "title": "Booking An Phú link giao việc HK từng chỗ",
+      "result": "skip",
+      "evidence": "",
+      "note": "prd không seed chỗ bán demo"
+    },
+    {
+      "id": "TC-130",
+      "title": "Lễ tân chỉ thấy booking mình tạo",
+      "result": "skip",
+      "evidence": "",
+      "note": "prd không có tài khoản lễ tân / seed noti"
+    },
+    {
+      "id": "TC-20",
+      "title": "Bảng việc: thay khăn / dọn phòng / checkout",
+      "result": "skip",
+      "evidence": "",
+      "note": "prd không seed việc demo"
+    },
+    {
+      "id": "TC-21",
+      "title": "Việc «cần thêm HK» hiện với lễ tân",
+      "result": "skip",
+      "evidence": "",
+      "note": "prd không có lễ tân / việc demo"
+    },
+    {
+      "id": "TC-21b",
+      "title": "Quản lý thấy việc thêm HK",
+      "result": "skip",
+      "evidence": "",
+      "note": "prd không seed việc demo"
+    },
+    {
+      "id": "TC-24",
+      "title": "HK thấy khăn / dọn / thêm HK",
+      "result": "skip",
+      "evidence": "",
+      "note": "prd không có user HK"
+    },
+    {
+      "id": "TC-25",
+      "title": "HK tạo việc",
+      "result": "skip",
+      "evidence": "",
+      "note": "prd không có user HK"
+    },
+    {
+      "id": "TC-98",
+      "title": "HK không vào bán phòng",
+      "result": "skip",
+      "evidence": "",
+      "note": "prd không có user HK"
+    },
+    {
+      "id": "TC-132",
+      "title": "HK không thấy noti booking",
+      "result": "skip",
+      "evidence": "",
+      "note": "prd không có user HK"
+    },
+    {
+      "id": "TC-30",
+      "title": "Báo ăn sáng ngày mai (số + dị ứng P.105)",
+      "result": "skip",
+      "evidence": "",
+      "note": "prd không seed số ăn sáng demo"
+    },
+    {
+      "id": "TC-10p",
+      "title": "Lễ tân — các tab khách (prd)",
+      "result": "skip",
+      "evidence": "",
+      "note": "chưa đăng nhập được (POST /api/auth/login 500)"
+    },
+    {
+      "id": "TC-20p",
+      "title": "Bảng việc trống / cột Mới",
+      "result": "skip",
+      "evidence": "",
+      "note": "chưa đăng nhập được (POST /api/auth/login 500)"
+    },
+    {
+      "id": "TC-22",
+      "title": "Tạo việc — loại lễ tân (quản lý cũng tạo được)",
+      "result": "skip",
+      "evidence": "",
+      "note": "chưa đăng nhập được (POST /api/auth/login 500)"
+    },
+    {
+      "id": "TC-23",
+      "title": "Tạo việc — loại quản lý",
+      "result": "skip",
+      "evidence": "",
+      "note": "chưa đăng nhập được (POST /api/auth/login 500)"
+    },
+    {
+      "id": "TC-30p",
+      "title": "Bếp / báo cáo ăn sáng",
+      "result": "skip",
+      "evidence": "",
+      "note": "chưa đăng nhập được (POST /api/auth/login 500)"
+    },
+    {
+      "id": "TC-40",
+      "title": "Danh sách phòng",
+      "result": "skip",
+      "evidence": "",
+      "note": "chưa đăng nhập được (POST /api/auth/login 500)"
+    },
+    {
+      "id": "TC-93",
+      "title": "Sơ đồ bán phòng",
+      "result": "skip",
+      "evidence": "",
+      "note": "chưa đăng nhập được (POST /api/auth/login 500)"
+    },
+    {
+      "id": "TC-94",
+      "title": "Chỗ bán seed P.401 / P.506",
+      "result": "skip",
+      "evidence": "",
+      "note": "prd không seed chỗ bán demo"
+    },
+    {
+      "id": "TC-103",
+      "title": "Lọc Sẽ đến — Mai Thanh Hà",
+      "result": "skip",
+      "evidence": "",
+      "note": "prd không seed chỗ bán demo"
+    },
+    {
+      "id": "TC-104",
+      "title": "Lọc Đang ở — Đặng Minh Tuấn",
+      "result": "skip",
+      "evidence": "",
+      "note": "prd không seed chỗ bán demo"
+    },
+    {
+      "id": "TC-107",
+      "title": "Booking An Phú — chiết khấu / cọc",
+      "result": "skip",
+      "evidence": "",
+      "note": "prd không seed chỗ bán demo"
+    },
+    {
+      "id": "TC-108",
+      "title": "Booking Đặng — đã cọc",
+      "result": "skip",
+      "evidence": "",
+      "note": "prd không seed chỗ bán demo"
+    },
+    {
+      "id": "TC-110",
+      "title": "Sửa booking thông tin khách + nhật ký",
+      "result": "skip",
+      "evidence": "",
+      "note": "prd không seed chỗ bán demo"
+    },
+    {
+      "id": "TC-111",
+      "title": "Nút hủy booking",
+      "result": "skip",
+      "evidence": "",
+      "note": "prd không seed chỗ bán demo"
+    },
+    {
+      "id": "TC-114",
+      "title": "Booking 2 phòng Đoàn Minh Châu",
+      "result": "skip",
+      "evidence": "",
+      "note": "prd không seed chỗ bán demo"
+    },
+    {
+      "id": "TC-118",
+      "title": "In phiếu xác nhận booking",
+      "result": "skip",
+      "evidence": "",
+      "note": "prd không seed chỗ bán demo"
+    },
+    {
+      "id": "TC-116",
+      "title": "Giữ chỗ 14 ngày — Mai Thanh Hà",
+      "result": "skip",
+      "evidence": "",
+      "note": "prd không seed chỗ bán demo"
+    },
+    {
+      "id": "TC-117",
+      "title": "Lọc Check-in hôm nay — An Phú",
+      "result": "skip",
+      "evidence": "",
+      "note": "prd không seed chỗ bán demo"
+    },
+    {
+      "id": "TC-102",
+      "title": "Quick filter bán phòng",
+      "result": "skip",
+      "evidence": "",
+      "note": "chưa đăng nhập được (POST /api/auth/login 500)"
+    },
+    {
+      "id": "TC-115",
+      "title": "Lọc nguồn Trực tiếp / OTA",
+      "result": "skip",
+      "evidence": "",
+      "note": "chưa đăng nhập được (POST /api/auth/login 500)"
+    },
+    {
+      "id": "TC-105",
+      "title": "Gantt 7 / 15 ngày",
+      "result": "skip",
+      "evidence": "",
+      "note": "chưa đăng nhập được (POST /api/auth/login 500)"
+    },
+    {
+      "id": "TC-106",
+      "title": "Gantt tháng",
+      "result": "skip",
+      "evidence": "",
+      "note": "chưa đăng nhập được (POST /api/auth/login 500)"
+    },
+    {
+      "id": "TC-101",
+      "title": "Danh sách đặt phòng",
+      "result": "skip",
+      "evidence": "",
+      "note": "chưa đăng nhập được (POST /api/auth/login 500)"
+    },
+    {
+      "id": "TC-119",
+      "title": "Báo cáo doanh thu bán phòng",
+      "result": "skip",
+      "evidence": "",
+      "note": "chưa đăng nhập được (POST /api/auth/login 500)"
+    },
+    {
+      "id": "TC-131",
+      "title": "Quản lý vào thông báo booking",
+      "result": "skip",
+      "evidence": "",
+      "note": "chưa đăng nhập được (POST /api/auth/login 500)"
+    },
+    {
+      "id": "TC-95",
+      "title": "Form bán phòng: giá, chiết khấu, mã PMS",
+      "result": "skip",
+      "evidence": "",
+      "note": "chưa đăng nhập được (POST /api/auth/login 500)"
+    },
+    {
+      "id": "TC-109",
+      "title": "Form bán nhiều phòng + cọc / còn thu",
+      "result": "skip",
+      "evidence": "",
+      "note": "chưa đăng nhập được (POST /api/auth/login 500)"
+    },
+    {
+      "id": "TC-96",
+      "title": "Giá thường / lễ tết / sức chứa trên hạng phòng",
+      "result": "skip",
+      "evidence": "",
+      "note": "chưa đăng nhập được (POST /api/auth/login 500)"
+    },
+    {
+      "id": "TC-41",
+      "title": "Quản lý hạng phòng",
+      "result": "skip",
+      "evidence": "",
+      "note": "chưa đăng nhập được (POST /api/auth/login 500)"
+    },
+    {
+      "id": "TC-50",
+      "title": "Bàn giao",
+      "result": "skip",
+      "evidence": "",
+      "note": "chưa đăng nhập được (POST /api/auth/login 500)"
+    },
+    {
+      "id": "TC-60",
+      "title": "Staff prd — chỉ quản lý",
+      "result": "skip",
+      "evidence": "",
+      "note": "chưa đăng nhập được (POST /api/auth/login 500)"
+    },
+    {
+      "id": "TC-64",
+      "title": "Nhật ký thao tác quản lý",
+      "result": "skip",
+      "evidence": "",
+      "note": "chưa đăng nhập được (POST /api/auth/login 500)"
+    },
+    {
+      "id": "TC-61",
+      "title": "Lịch lễ tân — xếp 1 lần",
+      "result": "skip",
+      "evidence": "",
+      "note": "chưa đăng nhập được (POST /api/auth/login 500)"
+    },
+    {
+      "id": "TC-61s",
+      "title": "Lưu lịch tuần (batch D1)",
+      "result": "skip",
+      "evidence": "",
+      "note": "chưa đăng nhập được (POST /api/auth/login 500)"
+    },
+    {
+      "id": "TC-70",
+      "title": "Ca / checklist (quản lý)",
+      "result": "skip",
+      "evidence": "",
+      "note": "chưa đăng nhập được (POST /api/auth/login 500)"
+    },
+    {
+      "id": "TC-83",
+      "title": "Prompt bật thông báo điện thoại",
+      "result": "skip",
+      "evidence": "",
+      "note": "chưa đăng nhập được (POST /api/auth/login 500)"
+    },
+    {
+      "id": "TC-120",
+      "title": "Chủ sở hữu vào doanh thu tháng/quý/năm",
+      "result": "fail",
+      "evidence": "qa/evidence/R-20261020-prd/TC-120.png",
+      "note": "Thiếu: Doanh thu ghi nhận · URL https://platform.monicalhoteldalat.com/owner"
+    },
+    {
+      "id": "TC-121",
+      "title": "Chủ sở hữu xem thông tin khách theo kỳ",
+      "result": "pass",
+      "evidence": "qa/evidence/R-20261020-prd/TC-121.png",
+      "note": ""
+    },
+    {
+      "id": "TC-122",
+      "title": "Chủ sở hữu không vào vận hành Today",
+      "result": "pass",
+      "evidence": "qa/evidence/R-20261020-prd/TC-122.png",
+      "note": ""
+    },
+    {
+      "id": "TC-06",
+      "title": "Đăng xuất về login",
+      "result": "pass",
+      "evidence": "qa/evidence/R-20261020-prd/TC-06.png",
+      "note": ""
+    }
+  ]
+}

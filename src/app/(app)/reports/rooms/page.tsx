@@ -90,7 +90,7 @@ export default async function RoomPerformancePage({
         <p className="text-xs text-[#5c6665]">Hiệu suất tính theo đêm phòng trong kỳ đã chọn.</p>
       </div>
 
-      <ReportTabs active="rooms" showSales showWork={can(user.role, "viewReports")} />
+      <ReportTabs active="rooms" showSales />
 
       <OwnerPeriodBar basePath="/reports/rooms" grain={grain} window={window} />
 

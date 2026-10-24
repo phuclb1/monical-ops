@@ -89,7 +89,7 @@ test("middleware không đọc database nên phiên lễ tân vẫn đi qua prox
   try {
     const token = await signSession(reception);
     const response = await proxy(
-      new NextRequest("https://example.com/today", {
+      new NextRequest("https://example.com/sales/bookings", {
         headers: { cookie: `ops_session=${token}`, "cf-connecting-ip": "198.51.100.4" },
       }),
     );
@@ -106,7 +106,7 @@ test("lễ tân đúng IP và quản lý sai IP vẫn đi tiếp", async () => {
   try {
     const token = await signSession(reception);
     const allowed = await proxy(
-      new NextRequest("https://example.com/today", {
+      new NextRequest("https://example.com/sales/bookings", {
         headers: { cookie: `ops_session=${token}`, "cf-connecting-ip": "203.0.113.10" },
       }),
     );
@@ -114,7 +114,7 @@ test("lễ tân đúng IP và quản lý sai IP vẫn đi tiếp", async () => {
     assert.equal(allowed.headers.get("location"), null);
 
     const manager = await proxy(
-      new NextRequest("https://example.com/today", {
+      new NextRequest("https://example.com/", {
         headers: {
           cookie: `ops_session=${await signSession({ ...reception, id: "u-manager", role: "manager", departmentCode: "management" })}`,
           "cf-connecting-ip": "198.51.100.4",

@@ -27,7 +27,7 @@ export default async function NotificationsPage() {
         </div>
         {rows.length ? (
           <form action={readAllNotifAction}>
-            <button className="text-sm font-semibold text-teal">Đọc hết · {rows.length}</button>
+            <button className="text-sm font-semibold text-teal">Xóa hết · {rows.length}</button>
           </form>
         ) : null}
       </div>

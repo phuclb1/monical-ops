@@ -20,7 +20,7 @@ export default async function ManageRoomsPage({
 }) {
   const user = await getSession();
   if (!user) redirect("/login");
-  if (!can(user.role, "manageRooms")) redirect("/rooms");
+  if (!can(user.role, "manageRooms")) redirect("/sales");
   const { error, ok } = await searchParams;
   const [types, rooms] = await Promise.all([listRoomTypes(), listRooms()]);
   const sorted = [...rooms].sort((a, b) => a.number.localeCompare(b.number));

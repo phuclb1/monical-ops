@@ -21,12 +21,8 @@ function fail(path: string, e: unknown): never {
 function refreshStaffSurfaces(id?: string) {
   revalidatePath("/staff");
   if (id) revalidatePath(`/staff/${id}`);
-  revalidatePath("/roster");
-  revalidatePath("/today");
   revalidatePath("/more");
-  revalidatePath("/tasks");
-  revalidatePath("/tasks/new");
-  revalidatePath("/reception");
+  revalidatePath("/settings");
 }
 
 export async function createStaffAction(formData: FormData) {

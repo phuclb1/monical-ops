@@ -201,7 +201,7 @@ export async function updateRoom(user: SessionUser, id: string, patch: Partial<{
       role: "reception",
       title: `P.${before.number} đã INS`,
       body: `${user.fullName} chuyển phòng sang sẵn sàng nhận khách`,
-      link: `/rooms/${id}`,
+      link: "/sales",
     });
   }
   if (patch.opsStatus === "ooo") {
@@ -209,7 +209,7 @@ export async function updateRoom(user: SessionUser, id: string, patch: Partial<{
       role: "manager",
       title: `P.${before.number} báo OOO`,
       body: patch.oooReason || "Cần duyệt ngừng bán phòng",
-      link: `/rooms/${id}`,
+      link: "/sales",
     });
   }
   await audit(user.id, "room", id, "update", before, patch);

@@ -99,18 +99,8 @@ function tabFilter(tab: BookingDeskTab): SQL {
   return sql`1 = 1`;
 }
 
-function bookingHeads(today: string) {
+function bookingHeadSelect(today: string) {
   return sql`
-WITH lines AS (
-  SELECT
-    CASE WHEN booking_id IS NOT NULL AND trim(booking_id) != '' THEN booking_id ELSE id END AS bid,
-    status,
-    check_in,
-    check_out,
-    created_at
-  FROM room_sales
-),
-heads AS (
   SELECT
     bid,
     MIN(created_at) AS created_at,
@@ -125,15 +115,29 @@ heads AS (
     SUM(CASE WHEN check_out = ${today} AND status IN ('reserved', 'inhouse', 'departed') THEN 1 ELSE 0 END) > 0 AS checkout_today
   FROM lines
   WHERE bid NOT LIKE 'seq-hold-%'
-  GROUP BY bid
+  GROUP BY bid`;
+}
+
+function bookingHeads(today: string) {
+  return sql`
+WITH lines AS (
+  SELECT
+    CASE WHEN booking_id IS NOT NULL AND trim(booking_id) != '' THEN booking_id ELSE id END AS bid,
+    status,
+    check_in,
+    check_out,
+    created_at
+  FROM room_sales
+),
+heads AS (
+  ${bookingHeadSelect(today)}
 )`;
 }
 
-export function bookingDeskCountQuery(today: string, view: BookingListView, tab: BookingDeskTab) {
+function deskCountSelect(view: BookingListView, tab: BookingDeskTab) {
   const viewed = viewFilter(view);
   const selected = tabFilter(tab);
   return sql`
-${bookingHeads(today)}
 SELECT
   COALESCE(SUM(CASE WHEN ${viewed} AND status IN ('reserved', 'inhouse', 'departed') THEN 1 ELSE 0 END), 0) AS open_count,
   COALESCE(SUM(CASE WHEN ${viewed} AND status = 'reserved' THEN 1 ELSE 0 END), 0) AS reserved_count,
@@ -145,6 +149,12 @@ SELECT
   COALESCE(SUM(CASE WHEN ${selected} AND checkout_today THEN 1 ELSE 0 END), 0) AS view_checkout,
   COALESCE(SUM(CASE WHEN ${viewed} AND ${selected} THEN 1 ELSE 0 END), 0) AS list_count
 FROM heads`;
+}
+
+export function bookingDeskCountQuery(today: string, view: BookingListView, tab: BookingDeskTab) {
+  return sql`
+${bookingHeads(today)}
+${deskCountSelect(view, tab)}`;
 }
 
 export function bookingDeskPageQuery(today: string, view: BookingListView, tab: BookingDeskTab, limit: number, offset: number) {
@@ -209,18 +219,7 @@ function bookingSearchTokenClause(token: string) {
 
 const SEARCH_COLS = sql`bid, id, guest_phone, pms_code, source, origin, status, check_in, check_out, room_number`;
 
-export function bookingSearchIdsQuery(query: string) {
-  const tokens = searchTokens(query);
-  if (!tokens.length) return null;
-  const match = tokens.map(bookingSearchTokenClause).reduce((left, right) => sql`(${left}) AND (${right})`);
-  const steps = sqlFoldSteps(sql`hay`);
-  const layers = steps.map((expr, index) => {
-    const from = index === 0 ? sql`src` : sql.raw(`f${index - 1}`);
-    return sql`${sql.raw(`f${index}`)} AS (SELECT ${SEARCH_COLS}, ${expr} AS hay FROM ${from})`;
-  });
-  const last = sql.raw(`f${Math.max(steps.length - 1, 0)}`);
-  return sql`
-WITH src AS (
+const SEARCH_SRC = sql`
   SELECT
     CASE WHEN s.booking_id IS NOT NULL AND trim(s.booking_id) != '' THEN s.booking_id ELSE s.id END AS bid,
     s.id,
@@ -251,13 +250,92 @@ WITH src AS (
   LEFT JOIN rooms r ON r.id = s.room_id
   LEFT JOIN sale_extras e ON e.booking_id = CASE WHEN s.booking_id IS NOT NULL AND trim(s.booking_id) != '' THEN s.booking_id ELSE s.id END
   WHERE (CASE WHEN s.booking_id IS NOT NULL AND trim(s.booking_id) != '' THEN s.booking_id ELSE s.id END) NOT LIKE 'seq-hold-%'
+`;
+
+function bookingSearchParts(query: string) {
+  const tokens = searchTokens(query);
+  if (!tokens.length) return null;
+  const match = tokens.map(bookingSearchTokenClause).reduce((left, right) => sql`(${left}) AND (${right})`);
+  const steps = sqlFoldSteps(sql`hay`);
+  const layers = steps.map((expr, index) => {
+    const from = index === 0 ? sql`src` : sql.raw(`f${index - 1}`);
+    return sql`${sql.raw(`f${index}`)} AS (SELECT ${SEARCH_COLS}, ${expr} AS hay FROM ${from})`;
+  });
+  const last = sql.raw(`f${Math.max(steps.length - 1, 0)}`);
+  return { match, last, layers };
+}
+
+function bookingSearchMatchedCte(query: string) {
+  const parts = bookingSearchParts(query);
+  if (!parts) return null;
+  return sql`
+WITH src AS (
+${SEARCH_SRC}
 ),
-${sql.join(layers, sql`,
-`)}
-SELECT DISTINCT bid
-FROM ${last}
-WHERE ${match}
-LIMIT ${BOOKING_SEARCH_CANDIDATE_LIMIT}`;
+${sql.join(parts.layers, sql`,
+`)},
+matched AS (
+  SELECT DISTINCT bid
+  FROM ${parts.last}
+  WHERE ${parts.match}
+  LIMIT ${BOOKING_SEARCH_CANDIDATE_LIMIT}
+)`;
+}
+
+function bookingSearchHeads(query: string, today: string) {
+  const matched = bookingSearchMatchedCte(query);
+  if (!matched) return null;
+  return sql`
+${matched},
+lines AS (
+  SELECT
+    CASE WHEN booking_id IS NOT NULL AND trim(booking_id) != '' THEN booking_id ELSE id END AS bid,
+    status,
+    check_in,
+    check_out,
+    created_at
+  FROM room_sales
+  WHERE (CASE WHEN booking_id IS NOT NULL AND trim(booking_id) != '' THEN booking_id ELSE id END) IN (SELECT bid FROM matched)
+),
+heads AS (
+  ${bookingHeadSelect(today)}
+)`;
+}
+
+export function bookingSearchIdsQuery(query: string) {
+  const matched = bookingSearchMatchedCte(query);
+  if (!matched) return null;
+  return sql`
+${matched}
+SELECT bid
+FROM matched`;
+}
+
+export function bookingSearchCountQuery(query: string, today: string, view: BookingListView, tab: BookingDeskTab) {
+  const heads = bookingSearchHeads(query, today);
+  if (!heads) return null;
+  return sql`
+${heads}
+${deskCountSelect(view, tab)}`;
+}
+
+export function bookingSearchPageQuery(
+  query: string,
+  today: string,
+  view: BookingListView,
+  tab: BookingDeskTab,
+  limit: number,
+  offset: number,
+) {
+  const heads = bookingSearchHeads(query, today);
+  if (!heads) return null;
+  return sql`
+${heads}
+SELECT bid
+FROM heads
+WHERE ${viewFilter(view)} AND ${tabFilter(tab)}
+ORDER BY created_at DESC, bid DESC
+LIMIT ${limit} OFFSET ${offset}`;
 }
 
 export function cashPeriodIdsQuery(from: string, to: string) {

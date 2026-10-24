@@ -58,8 +58,6 @@ export function refresh() {
   revalidatePath("/sales/bookings", "layout");
   revalidatePath("/sales/rates");
   revalidatePath("/sales/extras");
-  revalidatePath("/rooms");
-  revalidatePath("/today");
   revalidatePath("/more");
   revalidatePath("/reports");
   revalidatePath("/reports/sales");

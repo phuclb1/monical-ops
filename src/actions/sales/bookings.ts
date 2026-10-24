@@ -61,7 +61,7 @@ export async function checkinBookingRoomAction(formData: FormData) {
   try {
     const sale = await repo.getRoomSale(id);
     if (!sale || sale.bookingKey !== bookingId) throw new Error("Phòng không thuộc booking này");
-    await repo.checkinRoomSale(user, id, { skipHandoff: true });
+    await repo.checkinRoomSale(user, id);
   } catch (e) {
     fail(back, e);
   }
@@ -79,7 +79,7 @@ export async function checkoutBookingRoomAction(formData: FormData) {
   try {
     const sale = await repo.getRoomSale(id);
     if (!sale || sale.bookingKey !== bookingId) throw new Error("Phòng không thuộc booking này");
-    await repo.checkoutRoomSale(user, id, { skipHandoff: true });
+    await repo.checkoutRoomSale(user, id);
   } catch (e) {
     fail(back, e);
   }

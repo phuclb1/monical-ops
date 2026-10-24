@@ -28,8 +28,8 @@ export default async function StaffPage({
           <h1 className="text-xl font-bold">Nhân viên</h1>
           <p className="text-xs text-[#5c6665]">Chỉ quản lý tạo, sửa, khóa và đặt lại mật khẩu. Không xóa vĩnh viễn.</p>
         </div>
-        <Link href="/roster" className="text-sm font-semibold text-teal">
-          Lịch lễ tân
+        <Link href="/settings" className="text-sm font-semibold text-teal">
+          Cài đặt
         </Link>
       </div>
       <SettingsNav role={user.role} current="/staff" />

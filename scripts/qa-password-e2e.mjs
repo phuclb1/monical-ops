@@ -161,7 +161,7 @@ try {
       timeout: 30_000,
     });
     await must(managerPage, shot, ["Đã đặt lại mật khẩu"]);
-    await go(userPage, "/today");
+    await go(userPage, "/sales/bookings");
     await userPage.waitForURL(/\/login/, { timeout: 30_000 });
     await must(userPage, shot, ["Đăng nhập"]);
   });

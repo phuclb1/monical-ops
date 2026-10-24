@@ -51,16 +51,14 @@ export const countUnreadNotifications = cache(async (user: SessionUser) => {
 
 export async function markNotifRead(user: SessionUser, id: string) {
   const db = await getDb();
-  await db
-    .update(t.notifications)
-    .set({ read: true })
-    .where(and(eq(t.notifications.id, id), visibleNotifications(user)));
+  const where = and(eq(t.notifications.id, id), visibleNotifications(user));
+  await db.update(t.notifications).set({ read: true }).where(where);
+  await db.delete(t.notifications).where(where);
 }
 
 export async function markAllNotifRead(user: SessionUser) {
   const db = await getDb();
-  await db
-    .update(t.notifications)
-    .set({ read: true })
-    .where(and(visibleNotifications(user), eq(t.notifications.read, false)));
+  const visible = visibleNotifications(user);
+  await db.update(t.notifications).set({ read: true }).where(and(visible, eq(t.notifications.read, false)));
+  await db.delete(t.notifications).where(visible);
 }

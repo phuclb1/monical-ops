@@ -2,7 +2,6 @@ import { eq } from "drizzle-orm";
 import { getDb } from "@/db";
 import * as t from "@/db/schema";
 import { nowISO, todayVN } from "../../datetime";
-import { ensureTodayRoomTasks } from "../../checklist-ops";
 import { bookingKey, catalogRate, isActiveSaleStatus, isOtaSource, rateForRoomMove, roomMoveKind } from "../../sales";
 import type { SessionUser } from "../../types";
 import { audit } from "../audit";
@@ -10,7 +9,6 @@ import { assertSaleWindow } from "./helpers";
 import { dispatchBookingWebhook } from "@/lib/booking-webhook";
 import { bookingCreatedBy, notifyBookingChange } from "./notify";
 import { syncBookingMoney } from "./money-sync";
-import { syncStayFromSale } from "./stay";
 
 export async function moveGanttSale(
   user: SessionUser,
@@ -51,9 +49,7 @@ export async function moveGanttSale(
     updatedBy: user.id,
   };
   await db.update(t.roomSales).set(patch).where(eq(t.roomSales.id, before.id));
-  await syncStayFromSale(user.id, { ...before, ...patch }, before.roomId);
   await syncBookingMoney(bookingKey(before));
-  await ensureTodayRoomTasks(db, { actorId: user.id });
   await audit(user.id, "room_sale", before.id, "update", before, patch);
   const bookingId = bookingKey(before);
   await notifyBookingChange({

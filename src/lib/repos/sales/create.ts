@@ -3,7 +3,6 @@ import { nextOpsBookingCode } from "@/db/ops-codes";
 import { getDb } from "@/db";
 import * as t from "@/db/schema";
 import { nid, nowISO, todayVN } from "../../datetime";
-import { ensureTodayRoomTasks } from "../../checklist-ops";
 import { bookingQuote, catalogRate, clampBreakfastPax, collectedSplit, isActiveSaleStatus, isOtaDebt, isOtaSource, isSaleSource, nightsBetween, normalizeCommission, parsePaymentMethod, ratesFromBookingTotal, roomStayPax } from "../../sales";
 import { defaultAdultsForRoomType } from "../../rooms-catalog";
 import type { SaleStatus, SessionUser } from "../../types";
@@ -15,7 +14,7 @@ import { extraAmount } from "../../extras";
 import { insertSaleExtras, resolveSaleExtras } from "./extras";
 import { syncBookingMoney } from "./money-sync";
 import { insertBookingTransaction } from "./transactions";
-import { applySaleRoomState, syncStayFromSale } from "./stay";
+import { applySaleRoomState } from "./stay";
 import { dispatchBookingWebhook } from "@/lib/booking-webhook";
 import { dispatchBookingZalo, dispatchCheckinPaidZalo } from "@/lib/zalo-notify";
 
@@ -133,7 +132,6 @@ export async function createRoomSale(user: SessionUser, data: SaleInput) {
       updatedBy: user.id,
     };
     await db.insert(t.roomSales).values(record);
-    await syncStayFromSale(user.id, record);
     if (status === "inhouse") await applySaleRoomState(user.id, record);
     await audit(user.id, "room_sale", id, "create", null, record);
     ids.push(id);
@@ -162,7 +160,6 @@ export async function createRoomSale(user: SessionUser, data: SaleInput) {
     }
   }
   await syncBookingMoney(bookingId);
-  await ensureTodayRoomTasks(db, { actorId: user.id });
   const roomLabel = rooms.length === 1 ? `P.${rooms[0].room.number}` : `${rooms.length} phòng`;
   const spanIn = rooms.reduce((min, row) => (row.checkIn < min ? row.checkIn : min), rooms[0].checkIn);
   const spanOut = rooms.reduce((max, row) => (row.checkOut > max ? row.checkOut : max), rooms[0].checkOut);

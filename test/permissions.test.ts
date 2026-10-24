@@ -31,9 +31,7 @@ test("kế toán chỉ có quyền vào view kế toán, sơ đồ phòng, đặ
   assert.equal(can("reception", "viewBookings"), false);
   assert.equal(can("accounting", "manageSales"), false);
   assert.equal(can("accounting", "viewPayments"), true);
-  assert.equal(can("accounting", "viewToday"), false);
-  assert.equal(can("accounting", "viewTasks"), false);
-  assert.equal(can("accounting", "viewHandover"), false);
+  assert.equal(can("accounting", "viewKitchen"), false);
   assert.equal(can("accounting", "viewReports"), false);
   assert.equal(can("accounting", "viewSalesRevenue"), false);
   assert.equal(can("accounting", "viewGuestPii"), false);

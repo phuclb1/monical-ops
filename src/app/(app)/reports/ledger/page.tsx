@@ -4,11 +4,11 @@ import { redirect } from "next/navigation";
 import { Btn, Card, Chip, Empty, Field, ListPager, Stat, TabChip } from "@/components/ui";
 import { ReportTabs } from "@/components/report-tabs";
 import { getSession } from "@/lib/auth";
-import { listPageSize, pageBounds, parsePage } from "@/lib/booking-desk";
+import { listPageSize, parsePage } from "@/lib/booking-desk";
 import { PAYMENT_METHOD_LABEL } from "@/lib/constants";
 import { formatDateTime, formatPeriodLabel } from "@/lib/datetime";
 import { can } from "@/lib/permissions";
-import { listLedger } from "@/lib/repos";
+import { listLedgerPage } from "@/lib/repos";
 import { BOOKING_TX_KIND_LABEL, BOOKING_TX_KINDS, formatVnd, isBookingTxKind, isPaymentMethod } from "@/lib/sales";
 import { parsePeriodQuery, type ReportGrain } from "@/lib/sales-report";
 import type { PaymentMethod } from "@/lib/types";
@@ -66,22 +66,23 @@ export default async function LedgerPage({
   const method = isPaymentMethod(String(rawMethod || "")) ? (rawMethod as PaymentMethod) : "";
   const filtered = Boolean(q || kind || method);
   const year = window.from.slice(0, 4);
-  const all = await listLedger(window.from, window.to);
-  const rows = all.filter((row) => {
-    if (kind && row.kind !== kind) return false;
-    if (method && row.method !== method) return false;
-    if (!q) return true;
-    const hay = `${row.guestName} ${row.bookingCode} ${row.bookingId} ${row.note} ${row.rooms}`.toLowerCase();
-    return hay.includes(q.toLowerCase());
-  });
-  const inflow = rows.filter((row) => row.kind !== "refund").reduce((sum, row) => sum + row.amount, 0);
-  const refund = rows.filter((row) => row.kind === "refund").reduce((sum, row) => sum + row.amount, 0);
-  const cash = rows.filter((row) => row.method === "cash").reduce((sum, row) => sum + row.signedAmount, 0);
-  const transfer = rows.filter((row) => row.method === "personal").reduce((sum, row) => sum + row.signedAmount, 0);
-  const company = rows.filter((row) => row.method === "company").reduce((sum, row) => sum + row.signedAmount, 0);
   const pageSize = listPageSize((await headers()).get("user-agent"));
-  const bounds = pageBounds(rows.length, parsePage(rawPage), pageSize);
-  const pageRows = rows.slice(bounds.start, bounds.start + bounds.take);
+  const ledger = await listLedgerPage({
+    from: window.from,
+    toExclusive: window.to,
+    q,
+    kind,
+    method,
+    page: parsePage(rawPage),
+    pageSize,
+  });
+  const { rows, totals, bounds } = ledger;
+  const pageRows = rows;
+  const inflow = totals.inflow;
+  const refund = totals.refund;
+  const cash = totals.cash;
+  const transfer = totals.transfer;
+  const company = totals.company;
   const monthChips = Array.from({ length: 12 }, (_, i) => {
     const month = String(i + 1).padStart(2, "0");
     return { date: `${year}-${month}-01`, label: String(i + 1) };
@@ -97,7 +98,7 @@ export default async function LedgerPage({
         </p>
       </div>
 
-      <ReportTabs active="ledger" showSales showWork={can(user.role, "viewReports")} />
+      <ReportTabs active="ledger" showSales />
 
       <div className="tab-scroller -mx-3 px-3 pb-1">
         {GRAINS.map((item) => (
@@ -188,7 +189,7 @@ export default async function LedgerPage({
 
       <Card className="!p-0">
         <div className="px-4 pt-4">
-          <h2 className="mb-2 font-bold">Giao dịch ({rows.length})</h2>
+          <h2 className="mb-2 font-bold">Giao dịch ({bounds.total})</h2>
         </div>
         {pageRows.length ? (
           <div className="cash-flow-scroll">
@@ -240,7 +241,7 @@ export default async function LedgerPage({
               <tfoot>
                 <tr>
                   <td>Tổng kỳ</td>
-                  <td className="is-name">{rows.length} dòng</td>
+                  <td className="is-name">{bounds.total} dòng</td>
                   <td />
                   <td className="is-room" />
                   <td />

@@ -5,8 +5,6 @@ import { can } from "@/lib/permissions";
 export default async function ReportsPage() {
   const user = await getSession();
   if (!user) redirect("/login");
-  const sales = can(user.role, "viewSalesRevenue");
-  const work = can(user.role, "viewReports");
-  if (!sales && !work) redirect("/more");
-  redirect(sales ? "/reports/sales" : "/reports/work");
+  if (!can(user.role, "viewReports") && !can(user.role, "viewSalesRevenue")) redirect("/more");
+  redirect("/reports/sales");
 }

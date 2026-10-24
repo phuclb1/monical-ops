@@ -64,7 +64,7 @@ test("booking audit values use user-friendly labels, dates and discount units", 
 test("audit target, href, actor, tone", () => {
   assert.equal(auditTarget("room", { number: "105" }, null), "P.105");
   assert.equal(auditTarget("user", null, { fullName: "Lan" }), "Lan");
-  assert.equal(auditHref("task", "t1", null, null), "/tasks/t1");
+  assert.equal(auditHref("task", "t1", null, null), null);
   assert.equal(auditHref("room_sale", "s1", null, { bookingId: "bk1" }), "/sales/bookings/bk1");
   assert.equal(auditHref("breakfast", "x", null, null), "/kitchen");
   assert.equal(auditActorName(INGEST_ACTOR_ID, "ignored"), "Agent PMS");

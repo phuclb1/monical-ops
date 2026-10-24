@@ -1,18 +1,16 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
-import { addRoomsToBookingAction } from "@/actions/sales";
+import { addRoomsToBookingAction, checkinSaleAction, checkoutSaleAction } from "@/actions/sales";
 import { AddBookingRoomsForm } from "@/components/sale-form";
 import { BookingCancelActions } from "@/components/booking-cancel";
 import { BookingRefundPanel } from "@/components/booking-refund";
-import { RoomHandoffPanel } from "@/components/room-handoff";
-import { Card, Chip } from "@/components/ui";
+import { Btn, Card, Chip } from "@/components/ui";
 import { getSession } from "@/lib/auth";
 import { PAYMENT_METHOD_LABEL, SALE_ORIGIN_LABEL, SALE_SOURCE_LABEL, SALE_STATUS_LABEL } from "@/lib/constants";
 import { formatDateLong, formatDateTime, todayVN } from "@/lib/datetime";
 import { can } from "@/lib/permissions";
-import { getRoomSale, getRoomDayChecklists, getBooking, listRooms, listRoomHandoff } from "@/lib/repos";
-import { canCheckinAfterStandby, canCheckoutAfterInspect } from "@/lib/room-handoff";
-import { bookingDue, bookingPayMethods, bookingQuote, collectedSplit, depositRefundAllowed, discountLabel, formatVnd, isActiveSaleStatus, isOpsBookingCode, isOtaDebt, isOtaSource, paidNote, primaryPaymentMethod, refundParts, refundReasonLabel, refundTotal, stayRefundOverpay, stayRefundable } from "@/lib/sales";
+import { getRoomSale, getBooking, listRooms } from "@/lib/repos";
+import { bookingDue, bookingPayMethods, bookingQuote, collectedSplit, depositRefundAllowed, discountLabel, formatVnd, guestCheckoutDue, isActiveSaleStatus, isOpsBookingCode, isOtaDebt, isOtaSource, paidNote, primaryPaymentMethod, refundParts, refundReasonLabel, refundTotal, stayRefundOverpay, stayRefundable } from "@/lib/sales";
 import type { SaleOrigin, SaleSource, SaleStatus } from "@/lib/types";
 
 const STATUS_TONE: Record<SaleStatus, "ok" | "warn" | "danger" | "gold" | "neutral"> = {
@@ -37,17 +35,11 @@ export default async function SaleDetailPage({
   const { error } = await searchParams;
   const [sale, rooms] = await Promise.all([getRoomSale(id), listRooms()]);
   if (!sale) notFound();
-  const [roomLists, booking, handoff] = await Promise.all([
-    sale.roomId ? getRoomDayChecklists(sale.roomId) : Promise.resolve([]),
-    getBooking(sale.bookingKey),
-    sale.roomId ? listRoomHandoff(sale.roomId) : Promise.resolve([]),
-  ]);
-  const visibleLists = roomLists.filter((list) => {
-    if (list.kind === "checkin") return canCheckinAfterStandby(handoff);
-    if (list.kind === "checkout") return canCheckoutAfterInspect(handoff);
-    return true;
-  });
+  const booking = await getBooking(sale.bookingKey);
   const today = todayVN();
+  const canCheckin = sale.status === "reserved" && today >= sale.checkIn;
+  const checkoutDue = booking ? guestCheckoutDue(booking.due, booking.source, booking.otaPaymentMode) : 0;
+  const canCheckout = sale.status === "inhouse" && checkoutDue <= 0;
   const active = sale.status === "reserved" || sale.status === "inhouse";
   const otherActive = sale.peers.some((row) => isActiveSaleStatus(row.status));
   const hold = otherActive ? 0 : collectedSplit(sale.deposit || 0, sale.checkinPaid).hold;
@@ -199,29 +191,26 @@ export default async function SaleDetailPage({
         </Card>
       ) : null}
 
-      {visibleLists.length ? (
+      {canCheckin || sale.status === "inhouse" ? (
         <Card className="space-y-2">
-          <h2 className="font-bold">Checklist lễ tân</h2>
-          <p className="text-xs text-[#5c6665]">Mở sau khi HK hoàn thành kiểm phòng. Tick đăng ký / chìa / PMS.</p>
-          {visibleLists.map((list) => (
-            <Link key={list.id} href={list.taskId ? `/tasks/${list.taskId}` : "/tasks"} className="block min-h-11 text-sm font-semibold text-teal">
-              {list.title}
-              {list.taskId ? " — mở việc" : ""}
-            </Link>
-          ))}
+          <h2 className="font-bold">Nhận / trả phòng</h2>
+          {canCheckin ? (
+            <form action={checkinSaleAction}>
+              <input type="hidden" name="id" value={sale.id} />
+              <Btn type="submit" className="w-full">Nhận phòng</Btn>
+            </form>
+          ) : null}
+          {sale.status === "inhouse" ? (
+            canCheckout ? (
+              <form action={checkoutSaleAction}>
+                <input type="hidden" name="id" value={sale.id} />
+                <Btn type="submit" className="w-full" variant="gold">Trả phòng</Btn>
+              </form>
+            ) : (
+              <p className="text-sm text-[#c47b12]">Chưa thu đủ, chưa trả phòng được.</p>
+            )
+          ) : null}
         </Card>
-      ) : null}
-
-      {sale.roomId && (sale.status === "reserved" || sale.status === "inhouse") ? (
-        <RoomHandoffPanel
-          roomId={sale.roomId}
-          saleId={sale.id}
-          saleStatus={sale.status}
-          checkIn={sale.checkIn}
-          today={today}
-          tasks={handoff}
-          error={error}
-        />
       ) : null}
 
       {active && can(user.role, "cancelBooking") ? (

@@ -4,12 +4,12 @@ File này là sổ QA. Mỗi lần test: ghi **commit**, **pass/fail**, và **sc
 
 ## Cách chạy một vòng test
 
-**Local** (kịch bản đầy đủ: 3 lễ tân + 1 HK):
+**Local** (booking + bếp + kế toán; không còn HK / ca / việc):
 
 1. Data: `npm run db:reseed-local`
 2. App: `http://localhost:3002`
 3. `npm run qa:run`
-4. E2E ca lễ tân + HK (ghi dữ liệu, khác smoke): `npm run qa:e2e`
+4. E2E booking lifecycle (giữ chỗ → nhận → thu → trả, OTA, phụ thu): `npm run qa:e2e`
 
 **PRD** (chỉ `quanly`, không seed khách/việc demo — case kịch bản local bị skip):
 
@@ -25,7 +25,9 @@ git rev-parse --short HEAD
 
 Evidence (ảnh) nằm tại `qa/evidence/<run-id>/TC-xx.png` — **đã gitignore**, không commit. `manifest.json` vẫn có thể commit nếu muốn giữ số pass.
 
-Tài khoản local (mật khẩu `123456`): `tuyen` lễ tân tối · `ngan` sáng · `thu` chiều · `uyen` HK · `quanly` quản lý · `chusohuu` chủ sở hữu.
+Tài khoản local (mật khẩu `123456`): `tuyen` lễ tân tối · `ngan` sáng · `thu` chiều · `quanly` quản lý · `chusohuu` chủ sở hữu. `uyen` HK / utility **bị khóa login** («Module vận hành tạm dừng»).
+
+Điều phối việc đã gỡ khỏi app (Today / Việc / Bàn giao / Ca / Lễ tân / roster / phòng HK). Catalog TC-10–16, 20–26, 50, 61, 70–76, 90–92, 143 **retired**. Booking (TC-93+) và bếp (TC-30) vẫn chạy.
 
 Tài khoản PRD: chỉ `quanly` / `123456`.
 
@@ -204,7 +206,7 @@ Dùng sau `npm run db:reseed-local`.
 | TC-140 | `/sales/bookings?q=dang+minh` | Đặng Minh Tuấn · không ra An Phú |
 | TC-141 | `/sales/bookings?q=0905555666` | Lê Hoàng Nam · Đã trả |
 | TC-142 | `/sales/bookings?q=xyz-khong-co` | Không có booking khớp |
-| TC-102 | `/sales` | Quick filter Sẽ đến · Check-in hôm nay · Đang ở · Trả hôm nay · Phòng bẩn |
+| TC-102 | `/sales` | Quick filter Sẽ đến · Check-in hôm nay · Đang ở · Trả hôm nay · Mọi phòng · **không** Phòng bẩn |
 | TC-103 | `/sales?focus=booking` | Mai Thanh Hà |
 | TC-104 | `/sales?focus=inhouse` | Đặng Minh Tuấn |
 | TC-105 | `/sales` + `/sales?group=type` | Gantt từ hôm qua · 7 ngày · Theo tầng / Theo hạng phòng · Đêm trống · booking Đặng / An Phú |
@@ -230,59 +232,50 @@ Dùng sau `npm run db:reseed-local`.
 | TC-20 | `/tasks` | Thay khăn P.305 · Dọn phòng khách ở P.202 · Dọn phòng trả P.102 |
 | TC-21 | `/tasks` | Việc quản lý: *Cần thêm HK ca này — tầng 2 và 3* |
 | TC-30 | `/kitchen` + `/kitchen/forecast` | Báo cáo suất theo booking · Hôm nay / Ngày mai / 7 ngày · dự báo dị ứng hải sản |
-| TC-03 | login `tuyen` `/today` | Ca đang làm · Đầu ca / cuối ca |
-| TC-04 | login `quanly` → doanh thu · tab Đặt phòng / Bếp / Việc · `/today` | Có ca đang chạy **hoặc** «Ca lễ tân chưa mở» — **không** nút bắt buộc «Mở ca hiện tại» |
+| TC-03 | login `tuyen` `/sales/bookings` | Đặt phòng · Tìm booking · không Ca đang làm |
+| TC-04 | login `quanly` `/` | Dashboard · Đặt phòng · Sơ đồ · `/today` redirect home |
 | TC-70 | `/shifts` | Đầu ca · Cuối ca · ca hiện tại Đang mở. Không checklist HK/bếp |
 | TC-72 | `/today` | Nhận / trả / HK hôm nay · Dọn phòng khách ở P.202 · Dọn phòng trả P.102 |
 | TC-73 | `/tasks` | Dọn phòng khách ở P.202 · Dọn phòng trả P.102 · Thay khăn P.305 |
-| TC-74 | `/sales/sale-401` | Giao việc HK · Yêu cầu HK dọn phòng khách ở · Yêu cầu HK kiểm phòng trả |
-| TC-75 | `/reception/s-201` sau xác nhận check-in PMS | Giao việc HK · dọn khách ở · kiểm phòng trả |
-| TC-76 | `/sales/sale-506` | Giao việc HK · Yêu cầu HK kiểm phòng standby · chưa nút Nhận phòng |
-| TC-143 | `/sales/bookings/sale-506` | Gửi HK kiểm phòng trên từng chỗ bán · P.506 · Giao việc HK |
+| TC-74b | `/sales/bookings/sale-506` + `/sales/bookings/sale-401` | Check in / Check out thẳng · **không** Giao việc HK |
 | TC-64 | login `quanly` `/audit` | Nhật ký thao tác · người làm · chi tiết thay đổi before → after |
 | TC-64b | login `tuyen` `/audit` | Redirect Thêm, không vào nhật ký |
 
-### E2E — process HK handoff (`npm run qa:e2e`)
+### E2E — booking lifecycle (`npm run qa:e2e`)
 
-Khách `E2E Van A` · P.101. Lễ tân `tuyen` · HK `uyen`.
+Khách `E2E Van A` · phòng trống (ưu tiên P.101). Lễ tân `tuyen` (staging `ngan.lt`). **Không còn HK handoff / ca / việc.** Check-in/out thẳng trên booking; checkout chỉ sau khi thu đủ.
 
 | ID | Làm gì | Kỳ vọng |
 |---|---|---|
-| E2E-R1 | Login lễ tân `/today` | Ca đang làm · Đầu ca |
-| E2E-R2 | `/shifts` tick 1 mục đầu ca | Đầu ca · Đang mở |
-| E2E-R3 | `/sales/new` giữ P.101, cọc, không nhận ngay | Đã giữ · Đã đặt cọc |
-| E2E-R4 | `/sales` | Hiện khách E2E P.101 |
-| E2E-S1 | `/sales/bookings?q=E2E Van A` | Tìm booking · Đã giữ · tab Đang mở / đã trả |
-| E2E-R5 | Booking → Giao việc HK → Yêu cầu HK kiểm phòng standby | Standby P.101 · Chờ HK hoàn thành kiểm standby |
-| E2E-H1 | Login HK `/sales` | Không vào bán phòng |
-| E2E-H2 | HK `/tasks` hoàn tất Standby P.101 | Hoàn tất |
-| E2E-R6 | Lễ tân Giao việc HK → Nhận phòng | Đang ở · nút dọn khách ở |
-| E2E-R8 | Yêu cầu HK dọn phòng khách ở | Dọn phòng khách ở P.101 |
-| E2E-H3–H4 | HK thấy + hoàn tất dọn khách ở | Hoàn tất |
-| E2E-R13 | Yêu cầu HK kiểm phòng trả | Kiểm phòng trả P.101 · chưa nút hoàn tất trả |
-| E2E-H7 | HK hoàn tất kiểm phòng trả | Hoàn tất |
-| E2E-R14 | Hoàn tất trả phòng | Đã trả |
+| E2E-R1 | Login lễ tân | Home `/sales/bookings` · Đặt phòng · Tìm booking · **không** Ca đang làm / Đầu ca / Hôm nay |
+| E2E-R3 | `/sales/new` giữ phòng, cọc, không nhận ngay | Đã giữ · Đã đặt cọc · **không** Giao việc HK |
+| E2E-R4 | `/sales` | Hiện khách E2E · **không** Phòng bẩn |
+| E2E-S1 | `/sales/bookings?q=E2E Van A` | Tìm booking · Giữ chỗ · tab Đang mở / đã trả |
+| E2E-S3 | `/sales/bookings` + `?tab=all&page=2` | Một trang ≤ 80 link · trang 2 không Application error |
+| E2E-R6 | Booking → **Check in** | Đang ở · **không** chờ HK standby / dọn khách ở |
+| E2E-K1 | `/kitchen` + `/kitchen/forecast` | Ăn sáng · Hôm nay · Người lớn (bếp đọc từ booking) |
+| E2E-R14a | Bấm Check out khi còn phải thu | Dialog «Chưa thu đủ tiền» |
+| E2E-R14 | Thu đủ → Check out | Đã trả · **không** kiểm phòng trả / dọn trả HK |
 | E2E-S2 | Tìm booking E2E | Đã trả trên tab Đang mở / đã trả |
-| E2E-H8 | HK `/tasks` | Dọn phòng trả P.101 tự tạo |
-| E2E-R9 | `/rooms?focus=dirty` | P.101 phòng bẩn |
-| E2E-H5–H6 | HK chuyển status + dọn trả | Filter bẩn không còn tên khách E2E |
+| E2E-H1 | Login HK `uyen` / `uyen.hk` | Ở `/login` · Module vận hành tạm dừng |
+| E2E-R16 | `/today` `/tasks` `/handover` `/shifts` `/reception` `/rooms` | Redirect về đặt phòng |
 | E2E-R12 | `/audit` | Lễ tân không vào nhật ký |
-| E2E-H9 | Login HK `/expenses` | Không menu Chi phí, redirect khỏi trang chi phí |
-| E2E-C1 | Login lễ tân `/expenses` | Không menu Chi phí, redirect khỏi trang chi phí |
-| E2E-R11 | `/handover` | Bàn giao |
-| E2E-R10 | `/shifts` | Cuối ca · Đang mở |
-| E2E-O1 | `/sales/new` nguồn Agoda, phòng trống | Công nợ OTA · có lựa chọn Xuất hóa đơn · không còn Từ ezCloud · mặc định không xuất |
-| E2E-X1 | `/sales/new` phòng trống, thêm phụ thu khác, tích Xuất hóa đơn | Xe đón sân bay · 150.000₫ · booking ghi Yêu cầu xuất hóa đơn |
-| E2E-O4 | `/sales/new` nguồn Agoda, chọn Thanh toán tại KS | Công nợ OTA 0₫ · phải thu khi check-in · có luồng Thu đủ |
-| E2E-O2 | login `quanly` `/reports/sales` | Doanh thu OTA · trước hoa hồng · E2E OTA · Công nợ OTA |
-| E2E-C2 | login `quanly` `/more` → Chi phí | Nhập chi phí · hạng mục Bếp / Lễ tân / Khách sạn / Quản lý · Ai chi · hóa đơn · tài khoản công ty / cá nhân · Tháng / Quý / Năm |
-| E2E-C3 | `/expenses` lưu khoản chi, gõ tên người chi mới | Đã lưu khoản chi · Bếp · 250.000₫ · Có hóa đơn · Tài khoản công ty · nhãn người chi vừa gõ |
-| E2E-C3b | Khoản chi sau chọn lại nhãn đó | Không gõ lại tên · chọn nhãn · 80.000₫ · Không hóa đơn · Tài khoản cá nhân |
-| E2E-C4 | `/audit?entity=expense&action=create` | Nhật ký Chi phí · Thêm mới · nội dung khoản chi |
-| E2E-C5 | Xóa khoản chi vừa nhập | Không còn nội dung khoản chi trên trang |
+| E2E-R15 | `/reports/sales` | Lễ tân không vào báo cáo doanh thu |
+| E2E-O1 | `/sales/new` nguồn Agoda, phòng trống | Công nợ OTA · Xuất hóa đơn · không hỏi đặt cọc |
+| E2E-X1 | `/sales/new` phòng trống, thêm phụ thu khác, tích Xuất hóa đơn | Xe đón sân bay · 150.000₫ · Yêu cầu xuất hóa đơn |
+| E2E-O4 | `/sales/new` nguồn Agoda, Thanh toán tại KS | Công nợ OTA 0₫ · phải thu khi check-in · Thu thêm |
+| E2E-C1 | Login lễ tân `/expenses` | Không menu Chi phí, redirect |
+| E2E-O2 | login `quanly` `/reports/sales` | OTA sau hoa hồng · E2E OTA · Công nợ OTA |
+| E2E-CF1 | `/reports/cash` | Dòng tiền một trang · tổng gồm VAT · tổng kỳ |
+| E2E-C2 | login `quanly` `/more` → Chi phí | Nhập chi phí · Bếp / Lễ tân / Khách sạn / Quản lý |
+| E2E-C3 | `/expenses` lưu khoản chi, gõ tên người chi mới | Đã lưu · Bếp · 250.000₫ · Có hóa đơn · Tài khoản công ty |
+| E2E-C3b | Khoản chi sau chọn lại nhãn đó | 80.000₫ · Không hóa đơn · Tài khoản cá nhân |
+| E2E-C4 | `/audit?entity=expense&action=create` | Nhật ký Chi phí · Thêm mới |
+| E2E-C5 | Xóa khoản chi vừa nhập | Không còn nội dung khoản chi |
 | E2E-C6 | `/audit?entity=expense&action=delete` | Nhật ký Chi phí · Xóa |
-| E2E-O3 | login `chusohuu` `/owner` | Doanh thu OTA · chưa trừ hoa hồng · E2E OTA |
+| E2E-O3 | login `chusohuu` `/owner` | OTA sau hoa hồng · E2E OTA |
 | E2E-C7 | login `chusohuu` `/expenses` | Không menu Chi phí, redirect về doanh thu |
+| E2E-R17 | login `quanly` hủy booking E2E còn giữ chỗ | Phòng OTA / phụ thu được trả lại |
 
 ### E2E — phê duyệt sửa booking (`npm run qa:e2e:approval:staging`)
 
@@ -335,6 +328,38 @@ Chạy **local trước** (`npm run db:reseed-local` · `http://localhost:3002` 
 ## Lịch sử run
 
 Thêm block mới **trên cùng** mỗi lần test.
+
+### E2E-20261024-stg4 — 2026-10-24
+
+- Commit: `e4876b8-dirty`
+- Env: staging `https://ops-staging.monicalhoteldalat.com`
+- Pass / Fail: **29 / 0** · **29/29 = 100%**
+- Evidence: `qa/evidence/E2E-20261024-stg4/`
+- Ghi chú: Sau waiter đợi hết skeleton trang booking. O4 OTA tại KS và S2 Đã trả đều pass.
+
+### E2E-20261024-stg — 2026-10-24
+
+- Commit: `e4876b8-dirty`
+- Env: staging `https://ops-staging.monicalhoteldalat.com`
+- Pass / Fail: **28 / 1** · **28/29 = 97%**
+- Evidence: `qa/evidence/E2E-20261024-stg/`
+- Ghi chú: Booking lifecycle pass (giữ chỗ, Check in, thu đủ, Check out, OTA công nợ, phụ thu, bếp, HK paused). Fail E2E-O4: trang chi tiết booking staging còn skeleton lúc assert.
+
+### E2E-20261021-stg — 2026-10-21
+
+- Commit: `e4876b8-dirty`
+- Env: staging `https://ops-staging.monicalhoteldalat.com`
+- Pass / Fail: **28 / 1** · **28/29 = 97%**
+- Evidence: `qa/evidence/E2E-20261021-stg/`
+- Ghi chú: Fail E2E-R14 — bấm Thu đủ chưa kịp ghi đã Check out. Đã tăng waiter.
+
+### E2E-20261021-booking2 — 2026-10-21
+
+- Commit: `e4876b8-dirty`
+- Env: local `http://localhost:3002`
+- Pass / Fail: **29 / 0** · **29/29 = 100%**
+- Evidence: `qa/evidence/E2E-20261021-booking2/`
+- Ghi chú: E2E sau khi gỡ điều phối việc. Booking giữ chỗ → Check in thẳng → cổng thu đủ → Check out. Bếp đọc booking. HK login paused. OTA / phụ thu / báo cáo / chi phí giữ nguyên.
 
 ### APPROVAL-20260929093012-split — 2026-09-29
 

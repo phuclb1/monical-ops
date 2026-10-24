@@ -172,8 +172,74 @@ function withBookingExtras<T extends {
   };
 }
 
+export function leanBookingFromRooms(id: string, rooms: DecoratedSale[], extras: (typeof t.saleExtras.$inferSelect)[] = []) {
+  const view = toBookingView(id, rooms);
+  const stored = Math.max(0, Math.round(view.bookingTotal || 0));
+  if (stored) {
+    return {
+      ...view,
+      extras: [] as ReturnType<typeof decorateExtras>,
+      extrasTotal: 0,
+      refundKeep: bookingRefundKeep(view.roomTotal, stored),
+      total: stored,
+      due: bookingDue(stored, view.deposit, view.refundTotal),
+      transactions: [] as (typeof t.bookingTransactions.$inferSelect)[],
+    };
+  }
+  return {
+    ...withBookingExtras(view, extras),
+    transactions: [] as (typeof t.bookingTransactions.$inferSelect)[],
+  };
+}
+
+export type LeanBooking = ReturnType<typeof leanBookingFromRooms>;
+
 /** D1 allows 100 bound parameters. Each id is bound on both booking_id and id. */
 export const BOOKING_LOOKUP_CHUNK = 40;
+
+async function loadSalesByBookingIds(ids: string[]) {
+  const db = await getDb();
+  const rooms = await listRooms();
+  const sales: (typeof t.roomSales.$inferSelect)[] = [];
+  for (let index = 0; index < ids.length; index += BOOKING_LOOKUP_CHUNK) {
+    const chunk = ids.slice(index, index + BOOKING_LOOKUP_CHUNK);
+    sales.push(...(await db.select().from(t.roomSales).where(or(inArray(t.roomSales.bookingId, chunk), inArray(t.roomSales.id, chunk)))));
+  }
+  return sales.map((sale) => withSaleRoom(sale, rooms));
+}
+
+async function loadExtrasByBookingIds(ids: string[]) {
+  if (!ids.length) return [] as (typeof t.saleExtras.$inferSelect)[];
+  const db = await getDb();
+  const extras: (typeof t.saleExtras.$inferSelect)[] = [];
+  for (let index = 0; index < ids.length; index += BOOKING_LOOKUP_CHUNK) {
+    const chunk = ids.slice(index, index + BOOKING_LOOKUP_CHUNK);
+    extras.push(...(await db.select().from(t.saleExtras).where(inArray(t.saleExtras.bookingId, chunk))));
+  }
+  return extras;
+}
+
+export async function listLeanBookings(ids: string[]) {
+  const unique = [...new Set(ids.map((id) => id.trim()).filter((id) => id && !id.startsWith("seq-hold-")))];
+  if (!unique.length) return [] as LeanBooking[];
+  const sales = await loadSalesByBookingIds(unique);
+  const grouped = groupByBooking(sales).filter(({ id }) => !id.startsWith("seq-hold-"));
+  const fallbackIds = grouped.filter(({ rooms }) => !rooms.some((row) => Math.max(0, Math.round(row.bookingTotal || 0)) > 0)).map(({ id }) => id);
+  const extras = await loadExtrasByBookingIds(fallbackIds);
+  const extraByBooking = new Map<string, (typeof extras)[number][]>();
+  for (const row of extras) {
+    const list = extraByBooking.get(row.bookingId) || [];
+    list.push(row);
+    extraByBooking.set(row.bookingId, list);
+  }
+  const wanted = new Set(unique);
+  return grouped
+    .map(({ id, rooms }) => leanBookingFromRooms(id, rooms, extraByBooking.get(id) || []))
+    .filter((row) => bookingMatchesLookup(row, wanted))
+    .sort((a, b) => b.checkIn.localeCompare(a.checkIn) || a.guestName.localeCompare(b.guestName));
+}
+
+export const listDeskBookings = listLeanBookings;
 
 function assembleBookings(
   sales: DecoratedSale[],
@@ -264,7 +330,7 @@ export const listBookingsByCheckIn = cache(async (from: string, toExclusive: str
   const ids = await bookingIdsWhere(
     and(gte(t.roomSales.checkIn, from), lt(t.roomSales.checkIn, toExclusive), inArray(t.roomSales.status, [...LIVE_SALE_STATUSES])),
   );
-  return bookingsByIds(ids);
+  return listLeanBookings(ids);
 });
 
 export const listBookingsOverlapping = cache(async (from: string, toExclusive: string) => {

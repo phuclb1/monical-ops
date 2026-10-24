@@ -3,7 +3,7 @@
   "short_name": "Monical",
   "description": "Monical Quản lý vận hành",
   "id": "/",
-  "start_url": "/today",
+  "start_url": "/",
   "scope": "/",
   "display": "standalone",
   "background_color": "#5c1a1b",

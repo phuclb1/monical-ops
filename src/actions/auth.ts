@@ -6,7 +6,7 @@ import { eq, sql } from "drizzle-orm";
 import { clearSessionCookie, loadUserSession, requireSession, setSessionCookie } from "@/lib/auth";
 import { getDb } from "@/db";
 import { users } from "@/db/schema";
-import { homePath } from "@/lib/nav";
+import { homePath, isPausedOpsRole } from "@/lib/nav";
 import { clientIp, receptionIpBlocked } from "@/lib/reception-ip";
 import { currentReceptionIpPolicy, recordLogin } from "@/lib/repos/access";
 import { hashPassword, passwordNeedsRehash, passwordValidationError, verifyPassword } from "@/lib/password";
@@ -30,6 +30,10 @@ export async function loginAction(formData: FormData) {
   }
   const session = await loadUserSession(row.id);
   if (!session) redirect("/login?error=1");
+  if (isPausedOpsRole(session.role)) {
+    await recordLogin({ userId: session.id, username, result: "denied", ip, userAgent });
+    redirect("/login?error=paused");
+  }
   const policy = await currentReceptionIpPolicy();
   if (receptionIpBlocked(session.role, headerStore, policy)) {
     await recordLogin({ userId: session.id, username, result: "ip", ip, userAgent });

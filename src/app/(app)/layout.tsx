@@ -4,7 +4,7 @@ import Link from "next/link";
 import { Bell } from "lucide-react";
 import { getSession } from "@/lib/auth";
 import { APP_NAME, ROLE_LABEL } from "@/lib/constants";
-import { ACCOUNTING_NAV, flatSidebar, MANAGER_NAV, OWNER_NAV, PRIMARY_NAV, sidebarNav } from "@/lib/nav";
+import { ACCOUNTING_NAV, flatSidebar, KITCHEN_NAV, MANAGER_NAV, OWNER_NAV, PRIMARY_NAV, sidebarNav } from "@/lib/nav";
 import { BottomNav, SideNav } from "@/components/app-nav";
 import { Logo } from "@/components/logo";
 import { PushPrompt } from "@/components/push-prompt";
@@ -16,10 +16,25 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
   if (!user) redirect("/login");
   const owner = user.role === "owner";
   const accounting = user.role === "accounting";
-  const isolated = owner || accounting;
+  const kitchen = user.role === "kitchen";
+  const isolated = owner || accounting || kitchen;
   const unread = isolated ? 0 : await countUnreadNotifications(user);
-  const sideModel = accounting ? flatSidebar(ACCOUNTING_NAV) : owner ? flatSidebar(OWNER_NAV) : sidebarNav(user.role);
-  const bottomItems = accounting ? ACCOUNTING_NAV : owner ? OWNER_NAV : user.role === "manager" ? MANAGER_NAV : PRIMARY_NAV;
+  const sideModel = accounting
+    ? flatSidebar(ACCOUNTING_NAV)
+    : owner
+      ? flatSidebar(OWNER_NAV)
+      : kitchen
+        ? flatSidebar(KITCHEN_NAV)
+        : sidebarNav(user.role);
+  const bottomItems = accounting
+    ? ACCOUNTING_NAV
+    : owner
+      ? OWNER_NAV
+      : kitchen
+        ? KITCHEN_NAV
+        : user.role === "manager"
+          ? MANAGER_NAV
+          : PRIMARY_NAV;
 
   return (
     <div className="md:flex md:min-h-dvh" data-ops-user={user.id}>
@@ -57,7 +72,13 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
             </div>
           </div>
           <p className="hidden text-sm font-semibold text-[#5c4a46] md:block">
-            {owner ? "Doanh thu & khách · chỉ xem" : accounting ? "Đặt phòng, sơ đồ phòng & hóa đơn · chỉ xem" : APP_NAME}
+            {owner
+              ? "Doanh thu & khách · chỉ xem"
+              : accounting
+                ? "Đặt phòng, sơ đồ phòng & hóa đơn · chỉ xem"
+                : kitchen
+                  ? "Bếp / ăn sáng"
+                  : APP_NAME}
           </p>
           {isolated ? (
             <form action={logoutAction} className="md:hidden">

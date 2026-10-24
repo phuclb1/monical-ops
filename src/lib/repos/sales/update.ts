@@ -2,7 +2,6 @@ import { eq } from "drizzle-orm";
 import { getDb } from "@/db";
 import * as t from "@/db/schema";
 import { nowISO, todayVN } from "../../datetime";
-import { ensureTodayRoomTasks } from "../../checklist-ops";
 import { isActiveSaleStatus, normalizeDiscount } from "../../sales";
 import type { SessionUser } from "../../types";
 import { audit } from "../audit";
@@ -12,7 +11,6 @@ import { bookingCheckinPaidReady } from "@/lib/zalo-templates";
 import { dispatchBookingZalo, dispatchCheckinPaidZalo } from "@/lib/zalo-notify";
 import { syncBookingMoney } from "./money-sync";
 import { getBooking } from "./queries";
-import { syncStayFromSale } from "./stay";
 
 export async function updateRoomSale(user: SessionUser, id: string, data: SaleInput) {
   const db = await getDb();
@@ -58,7 +56,6 @@ export async function updateRoomSale(user: SessionUser, id: string, data: SaleIn
     updatedBy: user.id,
   };
   await db.update(t.roomSales).set(patch).where(eq(t.roomSales.id, id));
-  await syncStayFromSale(user.id, { ...before, ...patch }, before.roomId);
   const shared = {
     guestName: patch.guestName,
     guestPhone: patch.guestPhone,
@@ -75,9 +72,7 @@ export async function updateRoomSale(user: SessionUser, id: string, data: SaleIn
   };
   for (const peer of peers) {
     await db.update(t.roomSales).set(shared).where(eq(t.roomSales.id, peer.id));
-    await syncStayFromSale(user.id, { ...peer, ...shared });
   }
-  await ensureTodayRoomTasks(db, { actorId: user.id });
   await audit(user.id, "room_sale", id, "update", before, patch);
   await notifyBookingChange({
     actor: user,

@@ -24,15 +24,8 @@ async function request(path: string, user: SessionUser) {
   );
 }
 
-test("trang kiểm tra phòng trống là link công khai", async () => {
-  const response = await proxy(new NextRequest("https://example.com/kiem-tra-phong?checkIn=2026-09-25&checkOut=2026-09-26"));
-  assert.equal(response.status, 200);
-  assert.equal(response.headers.get("location"), null);
-  assert.equal(response.headers.get("cache-control"), "public, max-age=0, must-revalidate");
-});
-
 test("kế toán bị chuyển khỏi mọi trang vận hành", async () => {
-  const response = await request("/today", baseUser);
+  const response = await request("/kitchen", baseUser);
   assert.equal(response.status, 307);
   assert.equal(new URL(response.headers.get("location") || "").pathname, "/accounting");
 });

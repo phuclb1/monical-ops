@@ -25,7 +25,7 @@ export default async function OwnerRevenuePage({
 }) {
   const user = await getSession();
   if (!user) redirect("/login");
-  if (!can(user.role, "viewOwner")) redirect("/today");
+  if (!can(user.role, "viewOwner")) redirect("/login");
   const { grain: rawGrain, date: rawDate } = await searchParams;
   const { grain, window } = parsePeriodQuery(rawGrain, rawDate);
   const bookings = await listBookingsByCheckIn(window.from, window.to);

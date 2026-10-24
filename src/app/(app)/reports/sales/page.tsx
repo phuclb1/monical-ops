@@ -1,9 +1,11 @@
 import Link from "next/link";
+import { headers } from "next/headers";
 import { redirect } from "next/navigation";
-import { Card, Chip, Empty, Stat, TabChip } from "@/components/ui";
+import { Card, Chip, Empty, ListPager, Stat, TabChip } from "@/components/ui";
 import { DonutChart, GroupedBarChart, HorizontalBarChart } from "@/components/report-charts";
 import { ReportTabs } from "@/components/report-tabs";
 import { getSession } from "@/lib/auth";
+import { listPageSize, pageBounds, parsePage } from "@/lib/booking-desk";
 import { SALE_SOURCE_LABEL, SALE_STATUS_LABEL } from "@/lib/constants";
 import { formatDateNumeric, formatPeriodLabel } from "@/lib/datetime";
 import { can } from "@/lib/permissions";
@@ -26,23 +28,31 @@ const STATUS_TONE: Record<SaleStatus, "ok" | "warn" | "danger" | "gold" | "neutr
   no_show: "warn",
 };
 
-function hrefFor(grain: ReportGrain, date: string) {
-  return `/reports/sales?grain=${grain}&date=${date}`;
+function hrefFor(grain: ReportGrain, date: string, page?: number, rec?: number) {
+  const params = new URLSearchParams({ grain, date });
+  if ((page || 1) > 1) params.set("page", String(page));
+  if ((rec || 1) > 1) params.set("rec", String(rec));
+  return `/reports/sales?${params}`;
 }
 
 export default async function SalesRevenuePage({
   searchParams,
 }: {
-  searchParams: Promise<{ grain?: string; date?: string }>;
+  searchParams: Promise<{ grain?: string; date?: string; page?: string; rec?: string }>;
 }) {
   const user = await getSession();
   if (!user) redirect("/login");
   if (!can(user.role, "viewSalesRevenue")) redirect("/more");
-  const { grain: rawGrain, date: rawDate } = await searchParams;
+  const { grain: rawGrain, date: rawDate, page: rawPage, rec: rawRec } = await searchParams;
   const { grain, window } = parsePeriodQuery(rawGrain, rawDate);
   const year = window.from.slice(0, 4);
   const bookings = await listBookingsByCheckIn(window.from, window.to);
   const report = roomRevenueReport(bookings, window.from, window.to);
+  const pageSize = listPageSize((await headers()).get("user-agent"));
+  const bookedBounds = pageBounds(report.booked.length, parsePage(rawPage), pageSize);
+  const recognizedBounds = pageBounds(report.recognized.length, parsePage(rawRec), pageSize);
+  const bookedRows = report.booked.slice(bookedBounds.start, bookedBounds.start + bookedBounds.take);
+  const recognizedRows = report.recognized.slice(recognizedBounds.start, recognizedBounds.start + recognizedBounds.take);
   const trend = revenueTrend(bookings, window.from, window.to, grain);
   const revenueBySource = new Map<string, number>();
   for (const booking of report.booked) {
@@ -71,7 +81,7 @@ export default async function SalesRevenuePage({
         </div>
       </div>
 
-      <ReportTabs active="sales" showSales showWork={can(user.role, "viewReports")} />
+      <ReportTabs active="sales" showSales />
 
       <div className="tab-scroller -mx-3 px-3 pb-1">
         {GRAINS.map((item) => (
@@ -182,7 +192,7 @@ export default async function SalesRevenuePage({
         <h2 className="mb-2 font-bold">Booking nhận trong kỳ ({report.booked.length})</h2>
         {report.booked.length ? (
           <div className="space-y-2">
-            {report.booked.map((row) => (
+            {bookedRows.map((row) => (
               <Link key={row.id} href={`/sales/bookings/${row.id}`} className="block rounded-xl bg-sand px-3 py-2">
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0">
@@ -210,13 +220,23 @@ export default async function SalesRevenuePage({
         ) : (
           <Empty title="Không có booking nhận trong kỳ" text="Đổi tháng / quý / năm." />
         )}
+        {bookedBounds.pages > 1 ? (
+          <ListPager
+            page={bookedBounds.page}
+            pages={bookedBounds.pages}
+            from={bookedBounds.from}
+            to={bookedBounds.to}
+            total={bookedBounds.total}
+            hrefFor={(next) => hrefFor(grain, window.from, next, recognizedBounds.page)}
+          />
+        ) : null}
       </Card>
 
       <Card>
         <h2 className="mb-2 font-bold">Đã đến ngày nhận — ghi nhận ({report.recognized.length})</h2>
         {report.recognized.length ? (
           <div className="space-y-2">
-            {report.recognized.map((row) => (
+            {recognizedRows.map((row) => (
               <Link key={row.id} href={`/sales/bookings/${row.id}`} className="block rounded-xl bg-sand px-3 py-2">
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0">
@@ -234,6 +254,16 @@ export default async function SalesRevenuePage({
         ) : (
           <Empty title="Chưa có booking đến ngày nhận" text="Doanh thu tự ghi nhận khi đến ngày check-in và booking không hủy." />
         )}
+        {recognizedBounds.pages > 1 ? (
+          <ListPager
+            page={recognizedBounds.page}
+            pages={recognizedBounds.pages}
+            from={recognizedBounds.from}
+            to={recognizedBounds.to}
+            total={recognizedBounds.total}
+            hrefFor={(next) => hrefFor(grain, window.from, bookedBounds.page, next)}
+          />
+        ) : null}
       </Card>
     </main>
   );

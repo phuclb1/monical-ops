@@ -1,13 +1,20 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-import { homePath, isAccountingAllowedPath, isAccountingPath, isOwnerPath } from "@/lib/nav";
+import {
+  homePath,
+  isAccountingAllowedPath,
+  isAccountingPath,
+  isKitchenAllowedPath,
+  isOwnerPath,
+  isPausedOpsRole,
+  isRemovedOpsPath,
+} from "@/lib/nav";
 import { readSessionToken, SESSION_COOKIE } from "@/lib/session-token";
 
 const PUBLIC = [
   "/login",
   "/forgot-password",
   "/reset-password",
-  "/kiem-tra-phong",
   "/tin-tuc",
   "/sitemap.xml",
   "/robots.txt",
@@ -29,6 +36,13 @@ function withCache(res: NextResponse, value: string) {
   return res;
 }
 
+function redirectTo(request: NextRequest, pathname: string, search = "") {
+  const url = request.nextUrl.clone();
+  url.pathname = pathname;
+  url.search = search;
+  return withCache(NextResponse.redirect(url), "private, no-store");
+}
+
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
   if (
@@ -45,7 +59,6 @@ export async function proxy(request: NextRequest) {
   if (PUBLIC.some((p) => pathname === p || pathname.startsWith(`${p}/`))) {
     const res = NextResponse.next();
     if (pathname === "/sw.js") return withCache(res, "public, max-age=0, must-revalidate");
-    if (pathname === "/kiem-tra-phong") return withCache(res, "public, max-age=0, must-revalidate");
     if (pathname.startsWith("/tin-tuc") || pathname === "/sitemap.xml" || pathname === "/robots.txt") {
       return withCache(res, "public, s-maxage=3600, stale-while-revalidate=86400");
     }
@@ -63,29 +76,26 @@ export async function proxy(request: NextRequest) {
     url.searchParams.set("next", pathname);
     return withCache(NextResponse.redirect(url), "private, no-store");
   }
+  if (isPausedOpsRole(session.role)) {
+    return redirectTo(request, "/login", "?error=paused");
+  }
+  if (isRemovedOpsPath(pathname)) {
+    return redirectTo(request, homePath(session.role));
+  }
   if (session.role === "owner" && !isOwnerPath(pathname) && !pathname.startsWith("/account/")) {
-    const url = request.nextUrl.clone();
-    url.pathname = "/owner";
-    url.search = "";
-    return withCache(NextResponse.redirect(url), "private, no-store");
+    return redirectTo(request, "/owner");
   }
   if (session.role === "accounting" && !isAccountingAllowedPath(pathname)) {
-    const url = request.nextUrl.clone();
-    url.pathname = "/accounting";
-    url.search = "";
-    return withCache(NextResponse.redirect(url), "private, no-store");
+    return redirectTo(request, "/accounting");
+  }
+  if (session.role === "kitchen" && !isKitchenAllowedPath(pathname)) {
+    return redirectTo(request, "/kitchen");
   }
   if (session.role !== "owner" && isOwnerPath(pathname)) {
-    const url = request.nextUrl.clone();
-    url.pathname = homePath(session.role);
-    url.search = "";
-    return withCache(NextResponse.redirect(url), "private, no-store");
+    return redirectTo(request, homePath(session.role));
   }
   if (session.role !== "accounting" && isAccountingPath(pathname)) {
-    const url = request.nextUrl.clone();
-    url.pathname = homePath(session.role);
-    url.search = "";
-    return withCache(NextResponse.redirect(url), "private, no-store");
+    return redirectTo(request, homePath(session.role));
   }
   return withCache(NextResponse.next(), "private, no-store");
 }

@@ -4,7 +4,6 @@ import * as t from "@/db/schema";
 import { nid, nowISO } from "./datetime";
 import { audit } from "./repos";
 import { syncBookingMoney } from "./repos/sales/money-sync";
-import { ensureTodayRoomTasks } from "./checklist-ops";
 import { catalogRate, clampBreakfastPax, clampRoomAdults, isActiveSaleStatus, normalizeDiscount, parseSaleSource, rangesOverlap, applyPaidAmount, roomAdultCap, salePaid } from "./sales";
 import type { SaleOrigin, SaleStatus, StayStatus } from "./types";
 import { SALE_STATUSES, STAY_STATUSES } from "./types";
@@ -95,8 +94,6 @@ export async function ingestPmsBookings(bookings: IngestBooking[]): Promise<Inge
   for (const raw of bookings) {
     results.push(await ingestOne(raw));
   }
-  const db = await getDb();
-  await ensureTodayRoomTasks(db, { actorId: INGEST_ACTOR_ID });
   return results;
 }
 
@@ -123,64 +120,14 @@ async function ingestOne(raw: IngestBooking): Promise<IngestResult> {
   }
 
   const now = nowISO();
-  const pmsCheckin = raw.pmsCheckin ?? ["inhouse", "departing", "departed"].includes(stayStatus);
-  const pmsCheckout = raw.pmsCheckout ?? stayStatus === "departed";
   const { discountKind, discountValue } = normalizeDiscount(raw.discountKind || "none", raw.discountValue || 0);
-
-  let stayResult: IngestResult["stay"] = "skipped";
   const roomType = room
     ? (await db.select().from(t.roomTypes).where(eq(t.roomTypes.name, room.type)).limit(1))[0]
     : null;
   const cap = room ? roomAdultCap(room.type, roomType?.adults) : null;
-  const stayRows = await db.select().from(t.stays).where(eq(t.stays.pmsCode, pmsCode));
-  const stayRow = room
-    ? stayRows.find((row) => row.roomId === room.id) ?? stayRows.find((row) => !row.roomId)
-    : stayRows[0];
-  const stayPayload = {
-    pmsCode,
-    origin: stayRow?.origin === "ops" ? "ops" : origin,
-    source: platform,
-    roomId: room?.id ?? stayRow?.roomId ?? null,
-    guestName,
-    guestPhone: raw.guestPhone?.trim() || stayRow?.guestPhone || null,
-    status: stayStatus,
-    arrivalDate: raw.arrivalDate,
-    departureDate: raw.departureDate,
-    adults: cap ? clampRoomAdults(raw.adults || stayRow?.adults || cap, cap) : Math.max(1, raw.adults || stayRow?.adults || 1),
-    children: Math.max(0, raw.children ?? stayRow?.children ?? 0),
-    breakfast: raw.breakfast ?? stayRow?.breakfast ?? true,
-    pmsBookingOk: true,
-    pmsCheckinOk: pmsCheckin,
-    pmsCheckoutOk: pmsCheckout,
-    invoiceRequested: raw.invoiceRequested ?? stayRow?.invoiceRequested ?? false,
-    invoiceOk: raw.invoiceOk ?? stayRow?.invoiceOk ?? false,
-    notes: raw.notes?.trim() || stayRow?.notes || null,
-    updatedAt: now,
-    updatedBy: INGEST_ACTOR_ID,
-  };
-  if (stayRow) {
-    await db.update(t.stays).set(stayPayload).where(eq(t.stays.id, stayRow.id));
-    await audit(INGEST_ACTOR_ID, "stay", stayRow.id, "ingest", stayRow, stayPayload);
-    stayResult = "updated";
-  } else {
-    const id = `s-${pmsCode.toLowerCase().replace(/[^a-z0-9]+/g, "-")}-${nid().slice(0, 8)}`;
-    await db.insert(t.stays).values({
-      id,
-      ...stayPayload,
-      paymentNote: null,
-      checkinAt: pmsCheckin ? now : null,
-      registrationDueAt: null,
-      registrationDoneAt: null,
-      registrationReason: null,
-      createdAt: now,
-      createdBy: INGEST_ACTOR_ID,
-    });
-    await audit(INGEST_ACTOR_ID, "stay", id, "ingest", null, stayPayload);
-    stayResult = "created";
-  }
 
   if (!room) {
-    return { pmsCode, stay: stayResult, sale: "skipped", error: "Không có số phòng — đã lưu thẻ lễ tân, chưa gán sơ đồ bán" };
+    return { pmsCode, stay: "skipped", sale: "skipped", error: "Không có số phòng — chưa gán sơ đồ bán" };
   }
 
   const saleRows = await db.select().from(t.roomSales).where(eq(t.roomSales.pmsCode, pmsCode));
@@ -195,7 +142,7 @@ async function ingestOne(raw: IngestBooking): Promise<IngestResult> {
   if (clash) {
     return {
       pmsCode,
-      stay: stayResult,
+      stay: "skipped",
       sale: "skipped",
       error: `P.${room.number} đã bán ${clash.checkIn} → ${clash.checkOut} (${clash.guestName})`,
     };
@@ -234,7 +181,7 @@ async function ingestOne(raw: IngestBooking): Promise<IngestResult> {
     await db.update(t.roomSales).set(salePayload).where(eq(t.roomSales.id, saleRow.id));
     await audit(INGEST_ACTOR_ID, "room_sale", saleRow.id, "ingest", saleRow, salePayload);
     await syncBookingMoney(saleRow.bookingId || saleRow.id);
-    return { pmsCode, stay: stayResult, sale: "updated" };
+    return { pmsCode, stay: "skipped", sale: "updated" };
   }
 
   const saleId = nid();
@@ -248,5 +195,5 @@ async function ingestOne(raw: IngestBooking): Promise<IngestResult> {
   });
   await audit(INGEST_ACTOR_ID, "room_sale", saleId, "ingest", null, salePayload);
   await syncBookingMoney(bookingId);
-  return { pmsCode, stay: stayResult, sale: "created" };
+  return { pmsCode, stay: "skipped", sale: "created" };
 }

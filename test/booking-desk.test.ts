@@ -9,7 +9,9 @@ import { BOOKING_LOOKUP_CHUNK } from "../src/lib/repos/sales/queries";
 import {
   bookingDeskCountQuery,
   bookingDeskPageQuery,
+  bookingSearchCountQuery,
   bookingSearchIdsQuery,
+  bookingSearchPageQuery,
   cashPeriodIdsQuery,
   isPhoneUserAgent,
   listPageSize,
@@ -197,4 +199,53 @@ test("booking search SQL finds folded Vietnamese names and compact codes", async
   assert.deepEqual(await ids("20/09/2026"), ["bk-1"]);
   assert.deepEqual(await ids("bk091"), ["bk-1"]);
   assert.deepEqual(await ids("hang 101"), []);
+});
+
+test("booking search SQL pages matched heads without hydrating candidates", async () => {
+  const client = createClient({ url: ":memory:" });
+  const db = drizzle(client);
+  await client.execute("CREATE TABLE rooms (id TEXT PRIMARY KEY, number TEXT, type TEXT)");
+  await client.execute("CREATE TABLE sale_extras (id TEXT PRIMARY KEY, booking_id TEXT NOT NULL, name TEXT NOT NULL)");
+  await client.execute(`
+    CREATE TABLE room_sales (
+      id TEXT PRIMARY KEY,
+      booking_id TEXT,
+      room_id TEXT,
+      guest_name TEXT NOT NULL,
+      guest_phone TEXT,
+      origin TEXT NOT NULL DEFAULT 'ops',
+      source TEXT NOT NULL,
+      status TEXT NOT NULL,
+      check_in TEXT NOT NULL,
+      check_out TEXT NOT NULL,
+      created_at TEXT NOT NULL,
+      pms_code TEXT,
+      notes TEXT
+    )
+  `);
+  await client.execute({ sql: "INSERT INTO rooms (id, number, type) VALUES (?, ?, ?)", args: ["r1", "101", "Deluxe"] });
+  await client.execute({ sql: "INSERT INTO rooms (id, number, type) VALUES (?, ?, ?)", args: ["r2", "102", "Deluxe"] });
+  await client.execute({
+    sql: `INSERT INTO room_sales
+      (id, booking_id, room_id, guest_name, guest_phone, origin, source, status, check_in, check_out, created_at, pms_code, notes)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    args: ["s1", "bk-1", "r1", "Đặng Minh Tuấn", "0901 222 333", "ops", "booking", "reserved", "2026-09-20", "2026-09-22", "2026-09-01T00:00:00", "BK-09-1", "cần hoa"],
+  });
+  await client.execute({
+    sql: `INSERT INTO room_sales
+      (id, booking_id, room_id, guest_name, guest_phone, origin, source, status, check_in, check_out, created_at, pms_code, notes)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    args: ["s2", "bk-2", "r2", "Đặng Văn B", "0901 222 334", "ops", "booking", "inhouse", today, "2026-10-15", "2026-10-01T00:00:00", "BK-10-2", ""],
+  });
+
+  const counts = (await db.all(bookingSearchCountQuery("dang", today, "new", "open")!))[0] as { list_count: number; open_count: number; all_count: number };
+  assert.equal(Number(counts.list_count), 2);
+  assert.equal(Number(counts.open_count), 2);
+  assert.equal(Number(counts.all_count), 2);
+
+  const page = await db.all(bookingSearchPageQuery("dang", today, "new", "open", 1, 0)!);
+  assert.deepEqual(
+    page.map((row) => String((row as { bid: string }).bid)),
+    ["bk-2"],
+  );
 });

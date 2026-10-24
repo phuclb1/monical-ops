@@ -8,7 +8,7 @@ import { listPageSize, pageBounds, parsePage } from "@/lib/booking-desk";
 import { PAYMENT_METHOD_LABEL, SALE_SOURCE_LABEL } from "@/lib/constants";
 import { formatDateNumeric, formatPeriodLabel } from "@/lib/datetime";
 import { can } from "@/lib/permissions";
-import { listCashPeriodBookings } from "@/lib/repos";
+import { listBookingTransactions, listCashPeriodBookings } from "@/lib/repos";
 import { bookingDisplayCode, formatVnd, refundReasonLabel } from "@/lib/sales";
 import {
   CASH_FLOW_KIND_LABEL,
@@ -108,7 +108,20 @@ export default async function CashFlowPage({
   const bookings = await listCashPeriodBookings(window.from, window.to);
   const period = cashFlowReport(bookings, window.from, window.to);
   const report = filterCashFlowReport(period, { q, arrive, depart });
-  const actual = filterActualCashFlow(actualCashFlowReport(bookings, window.from, window.to), { q, arrive, depart });
+  const txs = view === "actual" ? await listBookingTransactions(bookings.map((row) => row.id)) : [];
+  const txByBooking = new Map<string, typeof txs>();
+  for (const tx of txs) {
+    const list = txByBooking.get(tx.bookingId) || [];
+    list.push(tx);
+    txByBooking.set(tx.bookingId, list);
+  }
+  const actualBookings = view === "actual"
+    ? bookings.map((booking) => {
+        const list = txByBooking.get(booking.id) || [];
+        return { ...booking, transactions: list.length ? list : undefined };
+      })
+    : [];
+  const actual = filterActualCashFlow(actualCashFlowReport(actualBookings, window.from, window.to), { q, arrive, depart });
   const pageSize = listPageSize((await headers()).get("user-agent"));
   const summaryBounds = pageBounds(report.rows.length, parsePage(rawPage), pageSize);
   const actualBounds = pageBounds(group === "booking" ? actual.groups.length : actual.rows.length, parsePage(rawPage), pageSize);
@@ -139,7 +152,7 @@ export default async function CashFlowPage({
         </a>
       </div>
 
-      <ReportTabs active="cash" showSales showWork={can(user.role, "viewReports")} />
+      <ReportTabs active="cash" showSales />
 
       <div className="tab-scroller -mx-3 px-3 pb-1">
         {GRAINS.map((item) => (

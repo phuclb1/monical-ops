@@ -19,11 +19,11 @@ export async function breakfastAction(formData: FormData) {
     actualAdults: formData.get("actualAdults") ? Number(formData.get("actualAdults")) : undefined,
     actualChildren: formData.get("actualChildren") ? Number(formData.get("actualChildren")) : undefined,
   });
-  refresh(["/kitchen", "/kitchen/forecast", "/today"]);
+  refresh(["/kitchen", "/kitchen/forecast"]);
 }
 
 export async function confirmBreakfastAction(formData: FormData) {
   const user = await requireSession();
   await repo.confirmBreakfast(user, String(formData.get("date")));
-  refresh(["/kitchen", "/kitchen/forecast", "/today"]);
+  refresh(["/kitchen", "/kitchen/forecast"]);
 }

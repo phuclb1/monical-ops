@@ -6,7 +6,6 @@ import { insertInBatches } from "../batch";
 import type { AppDb } from "../index";
 import * as t from "../schema";
 import { DEPT_SEED, DEMO_ROOM_OPS, LOCAL_STAFF, onDutyReceptionist, staffForSeed } from "./data";
-import { seedDemoOps } from "./demo-ops";
 import { seedDemoSales } from "./demo-sales";
 import { seedDemoStays } from "./demo-stays";
 import { syncReceptionRoster, syncRoomCatalog, syncStaffUsers, syncTaskKinds } from "./sync";
@@ -137,5 +136,4 @@ export async function seedOpsDemo(db: AppDb) {
   const ctx = { now, today, checkinAt, shiftType, dutyId };
   await seedDemoStays(db, ctx);
   await seedDemoSales(db, ctx);
-  await seedDemoOps(db, ctx);
 }

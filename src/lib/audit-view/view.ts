@@ -6,9 +6,17 @@ export function auditHref(entity: string, entityId: string, before: unknown, aft
   const row = asRecord(after) || asRecord(before) || {};
   switch (entity) {
     case "task":
-      return `/tasks/${entityId}`;
     case "stay":
-      return `/reception/${entityId}`;
+    case "shift":
+    case "checklist_item":
+    case "handover":
+    case "form":
+    case "incident":
+    case "roster_week":
+    case "roster_day":
+    case "vehicle":
+    case "guest_request":
+      return null;
     case "room_sale": {
       const bookingId = typeof row.bookingId === "string" && row.bookingId ? row.bookingId : entityId;
       return `/sales/bookings/${bookingId}`;
@@ -17,28 +25,12 @@ export function auditHref(entity: string, entityId: string, before: unknown, aft
     case "sale_extra":
       return typeof row.bookingId === "string" && row.bookingId ? `/sales/bookings/${row.bookingId}` : `/sales/bookings/${entityId}`;
     case "room":
-      return `/rooms/${entityId}`;
     case "room_type":
       return "/rooms/manage";
-    case "shift":
-    case "checklist_item":
-      return typeof row.taskId === "string" && row.taskId ? `/tasks/${row.taskId}` : "/shifts";
     case "user":
       return `/staff/${entityId}`;
-    case "handover":
-      return `/handover/${entityId}`;
     case "breakfast":
       return "/kitchen";
-    case "form":
-      return typeof row.formCode === "string" && row.formCode ? `/forms/${row.formCode}/${entityId}` : "/forms";
-    case "incident":
-      return "/incidents";
-    case "roster_week":
-    case "roster_day":
-      return "/roster";
-    case "vehicle":
-    case "guest_request":
-      return typeof row.stayId === "string" && row.stayId ? `/reception/${row.stayId}` : "/reception";
     default:
       return null;
   }
