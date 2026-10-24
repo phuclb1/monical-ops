@@ -19,6 +19,7 @@ import {
   isOpsBookingCode,
   isOtaDebt,
   otaDebtByDefault,
+  otaMoneySplit,
   guestCheckoutDue,
   occupiesNight,
   parseOpsBookingCode,
@@ -85,6 +86,35 @@ test("OTA / walk-in source aliases and booking codes", () => {
   assert.equal(guestCheckoutDue(750_000, "agoda", "hotel"), 750_000);
   assert.equal(guestCheckoutDue(750_000, "agoda", "debt"), 0);
   assert.equal(guestCheckoutDue(0, "walk_in"), 0);
+  assert.equal(
+    guestCheckoutDue(850_000, "agoda", "debt", { roomTotal: 750_000, extrasTotal: 100_000, deposit: 0 }),
+    100_000,
+  );
+  assert.equal(
+    guestCheckoutDue(750_000, "agoda", "debt", { roomTotal: 750_000, extrasTotal: 100_000, deposit: 100_000 }),
+    0,
+  );
+  const split = otaMoneySplit({
+    source: "agoda",
+    otaPaymentMode: "debt",
+    roomTotal: 1_000_000,
+    extrasTotal: 150_000,
+    guestCollected: 50_000,
+    otaCollected: 0,
+  });
+  assert.equal(split.otaDue, 1_000_000);
+  assert.equal(split.guestDue, 100_000);
+  assert.equal(
+    otaMoneySplit({
+      source: "agoda",
+      otaPaymentMode: "debt",
+      roomTotal: 1_000_000,
+      extrasTotal: 150_000,
+      guestCollected: 150_000,
+      otaCollected: 1_000_000,
+    }).due,
+    0,
+  );
   assert.equal(parseSaleSource("dien thoai"), "phone");
   assert.equal(formatOpsBookingCode(3, 9), "BK-09-3");
   assert.deepEqual(parseOpsBookingCode("BK-09-3"), { month: 9, seq: 3 });

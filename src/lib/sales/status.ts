@@ -77,13 +77,90 @@ export function isOtaDebt(source: string | null | undefined, mode?: string | nul
   return isOtaSource(source) && mode !== "hotel";
 }
 
+export type OtaMoneySplitInput = {
+  source?: string | null;
+  otaPaymentMode?: string | null;
+  roomTotal?: number | null;
+  extrasTotal?: number | null;
+  deposit?: number | null;
+  refunded?: number | null;
+  /** Guest inflows (deposit/checkin/payment) net of refund. When set with otaCollected, preferred over deposit heuristic. */
+  guestCollected?: number | null;
+  /** OTA settle inflows */
+  otaCollected?: number | null;
+};
+
+export type OtaMoneySplit = {
+  otaDebt: boolean;
+  roomTotal: number;
+  extrasTotal: number;
+  collected: number;
+  due: number;
+  /** Room amount still owed by OTA partner */
+  otaDue: number;
+  /** Extras still owed by guest at the hotel (cash / personal / company) */
+  guestDue: number;
+  guestCollected: number;
+  otaCollected: number;
+};
+
+/** OTA công nợ: tiền phòng do OTA trả; phụ thu vẫn thu khách tại KS. */
+export function otaMoneySplit(input: OtaMoneySplitInput): OtaMoneySplit {
+  const roomTotal = Math.max(0, Math.round(input.roomTotal || 0));
+  const extrasTotal = Math.max(0, Math.round(input.extrasTotal || 0));
+  const refunded = Math.max(0, Math.round(input.refunded || 0));
+  const deposit = Math.max(0, Math.round(input.deposit || 0));
+  const hasKindSplit = input.guestCollected != null || input.otaCollected != null;
+  const fromDeposit = Math.max(0, deposit - refunded);
+  const guestCollected = hasKindSplit
+    ? Math.max(0, Math.round(input.guestCollected || 0))
+    : 0;
+  const otaCollected = hasKindSplit
+    ? Math.max(0, Math.round(input.otaCollected || 0))
+    : 0;
+  const collected = hasKindSplit ? guestCollected + otaCollected : fromDeposit;
+  const due = Math.max(0, roomTotal + extrasTotal - collected);
+  const debt = isOtaDebt(input.source, input.otaPaymentMode);
+
+  if (!debt) {
+    return {
+      otaDebt: false,
+      roomTotal,
+      extrasTotal,
+      collected,
+      due,
+      otaDue: 0,
+      guestDue: due,
+      guestCollected: collected,
+      otaCollected: 0,
+    };
+  }
+
+  const guestPaid = hasKindSplit ? guestCollected : Math.min(collected, extrasTotal);
+  const otaPaid = hasKindSplit ? otaCollected : Math.max(0, collected - extrasTotal);
+
+  return {
+    otaDebt: true,
+    roomTotal,
+    extrasTotal,
+    collected,
+    due,
+    otaDue: Math.max(0, roomTotal - otaPaid),
+    guestDue: Math.max(0, extrasTotal - guestPaid),
+    guestCollected: guestPaid,
+    otaCollected: otaPaid,
+  };
+}
+
 export function guestCheckoutDue(
   due: number | null | undefined,
   source?: string | null,
   otaPaymentMode?: string | null,
+  opts?: Omit<OtaMoneySplitInput, "source" | "otaPaymentMode">,
 ) {
-  if (isOtaDebt(source, otaPaymentMode)) return 0;
-  return Math.max(0, Math.round(due || 0));
+  if (!isOtaDebt(source, otaPaymentMode)) return Math.max(0, Math.round(due || 0));
+  if (!opts) return 0;
+  return otaMoneySplit({ source, otaPaymentMode, ...opts }).guestDue;
 }
 
 export function parseSaleSource(raw: string | null | undefined): SaleSource {

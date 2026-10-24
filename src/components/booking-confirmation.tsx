@@ -150,11 +150,18 @@ export function BookingConfirmation({ booking }: { booking: Booking }) {
             })}
             {booking.extras.map((row) => (
               <tr key={row.id}>
-                <td colSpan={otaDebt ? 5 : 7}>{row.name}</td>
-                {otaDebt ? null : <td className="booking-sheet-num">{money(row.amount)}</td>}
+                <td colSpan={otaDebt ? 4 : 7}>{row.name}{otaDebt ? " (thu tại KS)" : ""}</td>
+                <td className="booking-sheet-num">{money(row.amount)}</td>
               </tr>
             ))}
-            {otaDebt ? null : (
+            {otaDebt ? (
+              booking.extrasTotal ? (
+                <tr className="is-total">
+                  <td colSpan={4}>PHỤ THU THU TẠI KS</td>
+                  <td className="booking-sheet-num">{money(booking.extrasTotal)}</td>
+                </tr>
+              ) : null
+            ) : (
               <tr className="is-total">
                 <td colSpan={7}>TỔNG CỘNG</td>
                 <td className="booking-sheet-num">{money(afterDiscount)}</td>
@@ -190,9 +197,15 @@ export function BookingConfirmation({ booking }: { booking: Booking }) {
             <table className="booking-sheet-sum">
               <tbody>
                 <tr className="is-strong">
-                  <th>Thanh toán</th>
+                  <th>Tiền phòng</th>
                   <td>Đã thanh toán qua OTA</td>
                 </tr>
+                {booking.extrasTotal ? (
+                  <tr className="is-strong">
+                    <th>Phụ thu thu tại KS</th>
+                    <td className="booking-sheet-num">{formatVndLetter(booking.extrasTotal)}</td>
+                  </tr>
+                ) : null}
               </tbody>
             </table>
           ) : (

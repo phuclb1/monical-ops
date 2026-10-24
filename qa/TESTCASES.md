@@ -263,9 +263,10 @@ Khách `E2E Van A` · phòng trống (ưu tiên P.101). Lễ tân `tuyen` (stagi
 | E2E-R15 | `/reports/sales` | Lễ tân không vào báo cáo doanh thu |
 | E2E-O1 | `/sales/new` nguồn Agoda, phòng trống | Công nợ OTA · Xuất hóa đơn · không hỏi đặt cọc |
 | E2E-X1 | `/sales/new` phòng trống, thêm phụ thu khác, tích Xuất hóa đơn | Xe đón sân bay · 150.000₫ · Yêu cầu xuất hóa đơn |
-| E2E-O4 | `/sales/new` nguồn Agoda, Thanh toán tại KS | Công nợ OTA 0₫ · phải thu khi check-in · Thu thêm |
+| E2E-O4 | `/sales/new` nguồn Agoda, Thanh toán tại KS | Công nợ OTA 0₫ · phải thu khi check-in · Thu đủ |
 | E2E-C1 | Login lễ tân `/expenses` | Không menu Chi phí, redirect |
 | E2E-O2 | login `quanly` `/reports/sales` | OTA sau hoa hồng · E2E OTA · Công nợ OTA |
+| E2E-O5 | login `quanly`: Agoda công nợ + phụ thu 150.000₫ → Thu đủ phụ thu → `/reports/ledger?q=…` | Công nợ OTA = tiền phòng · Phụ thu còn thu · sau thu: GD Thu thêm · sổ cái có khách + Thu thêm 150.000₫ CK cá nhân · công nợ phòng vẫn còn |
 | E2E-CF1 | `/reports/cash` | Dòng tiền một trang · tổng gồm VAT · tổng kỳ |
 | E2E-C2 | login `quanly` `/more` → Chi phí | Nhập chi phí · Bếp / Lễ tân / Khách sạn / Quản lý |
 | E2E-C3 | `/expenses` lưu khoản chi, gõ tên người chi mới | Đã lưu · Bếp · 250.000₫ · Có hóa đơn · Tài khoản công ty |
@@ -275,7 +276,7 @@ Khách `E2E Van A` · phòng trống (ưu tiên P.101). Lễ tân `tuyen` (stagi
 | E2E-C6 | `/audit?entity=expense&action=delete` | Nhật ký Chi phí · Xóa |
 | E2E-O3 | login `chusohuu` `/owner` | OTA sau hoa hồng · E2E OTA |
 | E2E-C7 | login `chusohuu` `/expenses` | Không menu Chi phí, redirect về doanh thu |
-| E2E-R17 | login `quanly` hủy booking E2E còn giữ chỗ | Phòng OTA / phụ thu được trả lại |
+| E2E-R17 | login `quanly` hủy booking E2E còn giữ chỗ | Phòng OTA / OTA+phụ thu / phụ thu được trả lại |
 
 ### E2E — phê duyệt sửa booking (`npm run qa:e2e:approval:staging`)
 
@@ -322,6 +323,7 @@ Chạy **local trước** (`npm run db:reseed-local` · `http://localhost:3002` 
 | TX-14 | staging | Lặp TX-01, TX-02 trên data clone (không seed) | Booking thật: tổng GD = deposit cache; OTA nợ 0đ không bịa dòng |
 | TX-15 | staging | 1 booking walk-in mới: cọc + 2 lần CK phụ + 1 ảnh | List đúng 3 dòng; due khớp; không đụng booking khác |
 | TX-16 | staging | 1 OTA công nợ đã checkout trên staging: mark nhận | 1 GD OTA; due 0; báo cáo tháng mark có dòng. **Hủy/rollback tay nếu booking thật** |
+| TX-17 | local + staging | Agoda **công nợ** + phụ thu 150.000₫ → Thu đủ phụ thu (tiền mặt/CK) | Booking: Công nợ OTA = tiền phòng; Phụ thu đã thu đủ; 1 GD Thu thêm. `/reports/ledger` tìm tên khách: có Thu thêm 150.000₫. **Không** ghi nhận OTA cho phụ thu |
 
 ---
 

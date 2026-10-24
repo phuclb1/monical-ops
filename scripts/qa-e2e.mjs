@@ -439,7 +439,7 @@ try {
       "Thanh toán tại KS",
       "Công nợ OTA 0₫",
       "Còn khách thanh toán",
-      "Thu thêm — trống = thu đủ",
+      "Số tiền — trống = thu đủ",
     ]);
   });
 
@@ -452,6 +452,43 @@ try {
     await login("quanly");
     await go("/reports/sales");
     await must(shot, ["OTA sau hoa hồng", "phải trả hoa hồng", "phải thu đối tác", "OTA đã thu tại KS", "E2E OTA", "Công nợ OTA"]);
+  });
+
+  await check("E2E-O5", "OTA công nợ + phụ thu — thu phụ thu vào sổ cái", async (shot) => {
+    const guest = "E2E OTA Phu Thu";
+    await go("/sales/new");
+    await page.locator('select[name="source"]').selectOption("agoda");
+    const room = await pickOpenRoom();
+    await page.locator('input[name="otaTotal"]').fill("800000");
+    await page.locator('input[name="guestName"]').fill(guest);
+    await page.locator('input[name="guestPhone"]').fill("0900000407");
+    const service = page.locator("label").filter({ hasText: "Dịch vụ" }).locator("select");
+    await service.selectOption("other");
+    await page.getByPlaceholder("Xe đón, hoa...").fill("Xe đón sân bay");
+    await page.getByPlaceholder("50000").fill("150000");
+    await page.getByRole("button", { name: "Thêm phụ thu" }).click();
+    await page.locator("p").filter({ hasText: "Xe đón sân bay" }).first().waitFor({ timeout: 10000 });
+    const now = page.locator('input[name="checkinNow"]');
+    if (await now.count()) await now.uncheck();
+    await must(shot, ["Công nợ OTA", "800.000₫", "Phụ thu thu tại KS", "150.000₫", "tiền mặt / CK"]);
+    await saveBooking(guest);
+    await must(shot, [
+      guest,
+      `P.${room}`,
+      "Công nợ OTA 800.000₫",
+      "Xe đón sân bay",
+      "Phụ thu còn thu 150.000₫",
+      "Thu phụ thu tại KS",
+    ]);
+    await mustNot(shot, ["Đặt cọc", "Còn phải thu"]);
+    const pay = page.getByRole("button", { name: /^Thu đủ/ });
+    if (!(await pay.count())) throw new Error("Không có nút thu phụ thu trên booking OTA công nợ");
+    await pay.first().click();
+    await page.getByText("Phụ thu đã thu đủ", { exact: false }).first().waitFor({ timeout: 30000 });
+    await ready();
+    await must(shot, [guest, "Phụ thu đã thu đủ", "Thu thêm", "150.000₫", "Công nợ OTA 800.000₫"]);
+    await go(`/reports/ledger?q=${encodeURIComponent(guest)}`);
+    await must(shot, ["Sổ cái", guest, "Thu thêm", "150.000₫", "CK cá nhân"]);
   });
 
   await check("E2E-CF1", "Dòng tiền một trang, tổng cả kỳ vẫn hiện", async (shot) => {
@@ -564,7 +601,7 @@ try {
   await check("E2E-R17", "Quản lý hủy booking E2E còn giữ chỗ để trả phòng", async (shot) => {
     await logout();
     await login("quanly");
-    for (const name of ["E2E OTA Tai KS", "E2E Phu Thu", "E2E OTA"]) {
+    for (const name of ["E2E OTA Tai KS", "E2E OTA Phu Thu", "E2E Phu Thu", "E2E OTA"]) {
       await cancelOpenBooking(name);
     }
     await go(`/sales/bookings?q=${encodeURIComponent("E2E OTA")}`);

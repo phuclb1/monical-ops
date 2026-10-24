@@ -10,7 +10,7 @@ import { formatDateLong, formatDateNumeric, todayVN } from "@/lib/datetime";
 import { maskName } from "@/lib/mask";
 import { can } from "@/lib/permissions";
 import { listBookingDesk } from "@/lib/repos";
-import { bookingLifecycle, formatVnd, isBookingListView, isOpsBookingCode, isOtaDebt, isOtaSource, type BookingListView } from "@/lib/sales";
+import { bookingLifecycle, formatVnd, isBookingListView, isOpsBookingCode, isOtaDebt, isOtaSource, otaMoneySplit, type BookingListView } from "@/lib/sales";
 import type { SaleOrigin, SaleSource } from "@/lib/types";
 
 const VIEWS = [
@@ -43,6 +43,36 @@ function bookingsHref(view: BookingListView, tab: (typeof TABS)[number]["id"], q
 
 function channelLabel(source: string) {
   return isOtaSource(source) ? "OTA" : "Trực tiếp";
+}
+
+function dueLabel(row: {
+  source: string;
+  otaPaymentMode?: string | null;
+  due: number;
+  roomTotal?: number | null;
+  extrasTotal?: number | null;
+  deposit?: number | null;
+  refundTotal?: number | null;
+}) {
+  if (!isOtaDebt(row.source, row.otaPaymentMode)) {
+    return isOtaSource(row.source) ? `Còn khách thanh toán ${formatVnd(row.due)}` : `Còn ${formatVnd(row.due)}`;
+  }
+  const split = otaMoneySplit({
+    source: row.source,
+    otaPaymentMode: row.otaPaymentMode,
+    roomTotal: row.roomTotal,
+    extrasTotal: row.extrasTotal,
+    deposit: row.deposit,
+    refunded: row.refundTotal,
+  });
+  if (split.extrasTotal && (split.otaDue > 0 || split.guestDue > 0)) {
+    const parts = [
+      split.otaDue > 0 ? `Công nợ OTA ${formatVnd(split.otaDue)}` : null,
+      split.guestDue > 0 ? `Phụ thu ${formatVnd(split.guestDue)}` : null,
+    ].filter(Boolean);
+    return parts.join(" · ") || `Công nợ OTA ${formatVnd(0)}`;
+  }
+  return `Công nợ OTA ${formatVnd(split.otaDue || row.due)}`;
 }
 
 function invoiceLabel(row: { invoiceRequested?: boolean | null; rooms?: { invoiceRequested?: boolean | null }[] }) {
@@ -181,13 +211,7 @@ export default async function BookingsPage({
                     <div className="flex flex-col items-end gap-1">
                       <BookingLifeChips life={bookingLifecycle(row)} />
                       <span className="text-xs text-[#5c6665]">Phải thu {formatVnd(row.total)}</span>
-                      <span className="text-xs font-semibold">
-                        {isOtaDebt(row.source, row.otaPaymentMode)
-                          ? `Công nợ OTA ${formatVnd(row.due)}`
-                          : isOtaSource(row.source)
-                            ? `Còn khách thanh toán ${formatVnd(row.due)}`
-                            : `Còn ${formatVnd(row.due)}`}
-                      </span>
+                      <span className="text-xs font-semibold">{dueLabel(row)}</span>
                     </div>
                   </div>
                 </Card>

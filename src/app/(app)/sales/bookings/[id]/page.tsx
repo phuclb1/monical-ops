@@ -20,7 +20,7 @@ import { extraDetail } from "@/lib/extras";
 import { maskName, maskPhone } from "@/lib/mask";
 import { can } from "@/lib/permissions";
 import { getBooking, listBookingChangeRequests, listBookingLogs, listRoomBusyRanges, listRooms, listRoomTypes, listSaleExtraTypes } from "@/lib/repos";
-import { bookingLifecycle, bookingPayMethods, bookingQuote, canSettleOtaDebt, collectedSplit, commissionAmount, depositRefundAllowed, formatVnd, guestCheckoutDue, isActiveSaleStatus, isOpsBookingCode, isOtaDebt, isOtaSource, paidNote, parkingLabel, primaryPaymentMethod, refundParts, refundReasonLabel, refundTotal, stayRefundOverpay, stayRefundable } from "@/lib/sales";
+import { bookingInflowSplit, bookingLifecycle, bookingPayMethods, bookingQuote, canSettleOtaDebt, collectedSplit, commissionAmount, depositRefundAllowed, formatVnd, guestCheckoutDue, isActiveSaleStatus, isOpsBookingCode, isOtaDebt, isOtaSource, otaMoneySplit, paidNote, parkingLabel, primaryPaymentMethod, refundParts, refundReasonLabel, refundTotal, stayRefundOverpay, stayRefundable } from "@/lib/sales";
 import type { SaleOrigin, SaleSource } from "@/lib/types";
 
 export default async function BookingDetailPage({
@@ -61,6 +61,17 @@ export default async function BookingDetailPage({
   const staying = activeRooms.filter((row) => row.status === "inhouse");
   const ota = isOtaSource(booking.source);
   const otaDebt = isOtaDebt(booking.source, booking.otaPaymentMode);
+  const inflow = booking.transactions?.length ? bookingInflowSplit(booking.transactions) : null;
+  const moneySplit = otaMoneySplit({
+    source: booking.source,
+    otaPaymentMode: booking.otaPaymentMode,
+    roomTotal: booking.roomTotal,
+    extrasTotal: booking.extrasTotal,
+    deposit: booking.deposit,
+    refunded: booking.refundTotal ?? inflow?.refunded,
+    guestCollected: inflow?.guestCollected,
+    otaCollected: inflow?.otaCollected,
+  });
   const life = bookingLifecycle(booking);
   const paidSplit = collectedSplit(booking.deposit, booking.checkinPaid);
   const payMethods = bookingPayMethods(booking);
@@ -152,9 +163,10 @@ export default async function BookingDetailPage({
               </p>
             ) : null}
             {otaDebt ? null : <p className="mt-1 text-sm">{ota ? "Phải thu khi check-in" : "Phải thu"} {formatVnd(booking.total)}</p>}
-            {booking.extrasTotal ? (
+            {booking.extrasTotal || otaDebt ? (
               <p className="mt-1 text-sm">
-                Phòng {formatVnd(booking.roomTotal)} · dịch vụ {formatVnd(booking.extrasTotal)}
+                Phòng {formatVnd(booking.roomTotal)}
+                {booking.extrasTotal ? ` · phụ thu ${formatVnd(booking.extrasTotal)}` : ""}
               </p>
             ) : null}
             {booking.extras.map((row) => (
@@ -165,13 +177,25 @@ export default async function BookingDetailPage({
             ))}
             {otaDebt ? (
               <>
-                {booking.deposit ? (
-                  <p className="mt-1 text-sm text-[#1b7a4e]">
-                    Đã thu {formatVnd(booking.deposit)}
-                    {paidNote(booking) ? ` · ${paidNote(booking)}` : ""}
-                  </p>
+                <p className="mt-1 text-sm font-semibold">Công nợ OTA {formatVnd(moneySplit.otaDue)}</p>
+                {booking.extrasTotal ? (
+                  <>
+                    {moneySplit.guestCollected ? (
+                      <p className="mt-1 text-sm text-[#1b7a4e]">
+                        Đã thu phụ thu {formatVnd(moneySplit.guestCollected)}
+                        {paidNote(booking) ? ` · ${paidNote(booking)}` : ""}
+                      </p>
+                    ) : (
+                      <p className="mt-1 text-sm text-[#c47b12]">Phụ thu chưa thu tại KS</p>
+                    )}
+                    <p className="mt-1 text-sm font-semibold">
+                      {moneySplit.guestDue > 0
+                        ? `Phụ thu còn thu ${formatVnd(moneySplit.guestDue)}`
+                        : `Phụ thu đã thu đủ ${formatVnd(booking.extrasTotal)}`}
+                    </p>
+                    <p className="mt-1 text-xs text-[#5c6665]">Phụ thu thu tiền mặt / CK cá nhân / CK công ty — không gộp vào công nợ OTA.</p>
+                  </>
                 ) : null}
-                <p className="mt-1 text-sm font-semibold">Công nợ OTA {formatVnd(booking.due)}</p>
               </>
             ) : ota ? (
               <>
@@ -224,13 +248,13 @@ export default async function BookingDetailPage({
               <p className="mb-2 text-xs font-semibold text-[#5c6665]">Giao dịch</p>
               <BookingTransactionList rows={booking.transactions || []} />
             </div>
-            {manage && firstActive && !otaDebt ? (
+            {manage && firstActive && (!otaDebt || moneySplit.guestDue > 0 || moneySplit.guestCollected > 0) ? (
               <div className="mt-3 border-t border-line pt-3">
-                <p className="mb-2 text-xs font-semibold text-[#5c6665]">Thanh toán</p>
+                <p className="mb-2 text-xs font-semibold text-[#5c6665]">{otaDebt ? "Thu phụ thu tại KS" : "Thanh toán"}</p>
                 <BookingPaymentPanel
                   bookingId={booking.id}
-                  deposit={booking.deposit}
-                  due={booking.due}
+                  deposit={otaDebt ? moneySplit.guestCollected : booking.deposit}
+                  due={otaDebt ? moneySplit.guestDue : booking.due}
                   cashPaid={booking.cashPaid}
                   transferPaid={booking.transferPaid}
                   companyPaid={booking.companyPaid}
@@ -241,7 +265,7 @@ export default async function BookingDetailPage({
               <div className="mt-3 border-t border-line pt-3">
                 <BookingOtaSettlePanel
                   bookingId={booking.id}
-                  amount={canSettleOtaDebt(booking) ? booking.due : 0}
+                  amount={canSettleOtaDebt(booking) ? moneySplit.otaDue : 0}
                   settledAt={booking.transactions?.find((row) => row.kind === "ota")?.paidAt || null}
                 />
               </div>
@@ -295,7 +319,14 @@ export default async function BookingDetailPage({
               today={today}
               bookingId={booking.id}
               readOnly={!manage}
-              checkoutDue={guestCheckoutDue(booking.due, booking.source, booking.otaPaymentMode)}
+              checkoutDue={guestCheckoutDue(booking.due, booking.source, booking.otaPaymentMode, {
+                roomTotal: booking.roomTotal,
+                extrasTotal: booking.extrasTotal,
+                deposit: booking.deposit,
+                refunded: booking.refundTotal,
+                guestCollected: moneySplit.guestCollected,
+                otaCollected: moneySplit.otaCollected,
+              })}
               ota={otaDebt}
               otaHotel={ota && !otaDebt}
               totals={{

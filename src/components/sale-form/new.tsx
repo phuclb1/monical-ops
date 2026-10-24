@@ -439,9 +439,18 @@ export function SaleForm({
             ota
               ? [
                   { label: "Tổng tiền phòng", value: formatVnd(booked.total) },
-                  ...(extraRows.length ? [{ label: "Phụ thu", value: formatVnd(extraRows.reduce((sum, row) => sum + row.amount, 0)) }] : []),
+                  ...(extraRows.length
+                    ? [{ label: otaDebt ? "Phụ thu thu tại KS" : "Phụ thu", value: formatVnd(extraRows.reduce((sum, row) => sum + row.amount, 0)) }]
+                    : []),
                   { label: commissionLabel, value: formatVnd(commissionAmount) },
-                  { label: otaDebt ? "Công nợ OTA" : "Phải thu khi check-in", value: formatVnd(bookingTotal), emphasis: true },
+                  ...(otaDebt
+                    ? [
+                        { label: "Công nợ OTA", value: formatVnd(booked.total), emphasis: !extraRows.length },
+                        ...(extraRows.length
+                          ? [{ label: "Phụ thu (tiền mặt / CK)", value: formatVnd(extraRows.reduce((sum, row) => sum + row.amount, 0)), emphasis: true }]
+                          : []),
+                      ]
+                    : [{ label: "Phải thu khi check-in", value: formatVnd(bookingTotal), emphasis: true }]),
                 ]
               : [
                   { label: quotes.length > 1 ? `Phải thu ${quotes.length} phòng` : "Phải thu", value: formatVnd(bookingTotal) },

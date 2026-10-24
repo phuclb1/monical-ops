@@ -174,20 +174,17 @@ function withBookingExtras<T extends {
 
 export function leanBookingFromRooms(id: string, rooms: DecoratedSale[], extras: (typeof t.saleExtras.$inferSelect)[] = []) {
   const view = toBookingView(id, rooms);
+  const money = computeBookingMoney(rooms, extras);
   const stored = Math.max(0, Math.round(view.bookingTotal || 0));
-  if (stored) {
-    return {
-      ...view,
-      extras: [] as ReturnType<typeof decorateExtras>,
-      extrasTotal: 0,
-      refundKeep: bookingRefundKeep(view.roomTotal, stored),
-      total: stored,
-      due: bookingDue(stored, view.deposit, view.refundTotal),
-      transactions: [] as (typeof t.bookingTransactions.$inferSelect)[],
-    };
-  }
+  const total = stored || money.total;
   return {
-    ...withBookingExtras(view, extras),
+    ...view,
+    extras: decorateExtras(extras, money.nights || view.nights),
+    extrasTotal: money.extrasTotal,
+    roomTotal: money.roomTotal,
+    refundKeep: bookingRefundKeep(money.quoted || money.roomTotal + money.extrasTotal, total),
+    total,
+    due: bookingDue(total, view.deposit, view.refundTotal),
     transactions: [] as (typeof t.bookingTransactions.$inferSelect)[],
   };
 }
@@ -224,8 +221,7 @@ export async function listLeanBookings(ids: string[]) {
   if (!unique.length) return [] as LeanBooking[];
   const sales = await loadSalesByBookingIds(unique);
   const grouped = groupByBooking(sales).filter(({ id }) => !id.startsWith("seq-hold-"));
-  const fallbackIds = grouped.filter(({ rooms }) => !rooms.some((row) => Math.max(0, Math.round(row.bookingTotal || 0)) > 0)).map(({ id }) => id);
-  const extras = await loadExtrasByBookingIds(fallbackIds);
+  const extras = await loadExtrasByBookingIds(grouped.map(({ id }) => id));
   const extraByBooking = new Map<string, (typeof extras)[number][]>();
   for (const row of extras) {
     const list = extraByBooking.get(row.bookingId) || [];

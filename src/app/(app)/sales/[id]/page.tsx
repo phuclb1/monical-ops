@@ -10,7 +10,7 @@ import { PAYMENT_METHOD_LABEL, SALE_ORIGIN_LABEL, SALE_SOURCE_LABEL, SALE_STATUS
 import { formatDateLong, formatDateTime, todayVN } from "@/lib/datetime";
 import { can } from "@/lib/permissions";
 import { getRoomSale, getBooking, listRooms } from "@/lib/repos";
-import { bookingDue, bookingPayMethods, bookingQuote, collectedSplit, depositRefundAllowed, discountLabel, formatVnd, guestCheckoutDue, isActiveSaleStatus, isOpsBookingCode, isOtaDebt, isOtaSource, paidNote, primaryPaymentMethod, refundParts, refundReasonLabel, refundTotal, stayRefundOverpay, stayRefundable } from "@/lib/sales";
+import { bookingDue, bookingInflowSplit, bookingPayMethods, bookingQuote, collectedSplit, depositRefundAllowed, discountLabel, formatVnd, guestCheckoutDue, isActiveSaleStatus, isOpsBookingCode, isOtaDebt, isOtaSource, otaMoneySplit, paidNote, primaryPaymentMethod, refundParts, refundReasonLabel, refundTotal, stayRefundOverpay, stayRefundable } from "@/lib/sales";
 import type { SaleOrigin, SaleSource, SaleStatus } from "@/lib/types";
 
 const STATUS_TONE: Record<SaleStatus, "ok" | "warn" | "danger" | "gold" | "neutral"> = {
@@ -38,8 +38,6 @@ export default async function SaleDetailPage({
   const booking = await getBooking(sale.bookingKey);
   const today = todayVN();
   const canCheckin = sale.status === "reserved" && today >= sale.checkIn;
-  const checkoutDue = booking ? guestCheckoutDue(booking.due, booking.source, booking.otaPaymentMode) : 0;
-  const canCheckout = sale.status === "inhouse" && checkoutDue <= 0;
   const active = sale.status === "reserved" || sale.status === "inhouse";
   const otherActive = sale.peers.some((row) => isActiveSaleStatus(row.status));
   const hold = otherActive ? 0 : collectedSplit(sale.deposit || 0, sale.checkinPaid).hold;
@@ -57,6 +55,30 @@ export default async function SaleDetailPage({
   const extraRooms = sellable.filter((room) => !taken.has(room.id) && room.opsStatus !== "ooo");
   const ota = isOtaSource(sale.source);
   const otaDebt = isOtaDebt(sale.source, sale.otaPaymentMode);
+  const inflow = booking?.transactions?.length ? bookingInflowSplit(booking.transactions) : null;
+  const moneySplit = booking
+    ? otaMoneySplit({
+        source: booking.source,
+        otaPaymentMode: booking.otaPaymentMode,
+        roomTotal: booking.roomTotal,
+        extrasTotal: booking.extrasTotal,
+        deposit: booking.deposit,
+        refunded: booking.refundTotal ?? inflow?.refunded,
+        guestCollected: inflow?.guestCollected,
+        otaCollected: inflow?.otaCollected,
+      })
+    : null;
+  const checkoutDue = booking
+    ? guestCheckoutDue(booking.due, booking.source, booking.otaPaymentMode, {
+        roomTotal: booking.roomTotal,
+        extrasTotal: booking.extrasTotal,
+        deposit: booking.deposit,
+        refunded: booking.refundTotal,
+        guestCollected: moneySplit?.guestCollected,
+        otaCollected: moneySplit?.otaCollected,
+      })
+    : 0;
+  const canCheckout = sale.status === "inhouse" && checkoutDue <= 0;
 
   return (
     <main className="space-y-3 px-3 py-4">
@@ -99,22 +121,34 @@ export default async function SaleDetailPage({
           </p>
         ) : null}
         {otaDebt ? null : <p className="mt-1 text-sm">{ota ? "Phải thu khi check-in" : "Phải thu"} {formatVnd(booking?.total ?? booked.total)}</p>}
-        {booking?.extrasTotal ? (
+        {booking && (booking.extrasTotal || otaDebt) ? (
           <p className="mt-1 text-xs text-[#5c6665]">
-            Phòng {formatVnd(booking.roomTotal)} · dịch vụ {formatVnd(booking.extrasTotal)}
+            Phòng {formatVnd(booking.roomTotal)}
+            {booking.extrasTotal ? ` · phụ thu ${formatVnd(booking.extrasTotal)}` : ""}
           </p>
         ) : null}
         {otaDebt ? (
           <>
-            {sale.deposit ? (
-              <p className="mt-1 text-sm text-[#1b7a4e]">
-                Đã thu {formatVnd(sale.deposit)}
-                {paidNote(sale) ? ` · ${paidNote(sale)}` : ""}
-              </p>
-            ) : null}
             <p className="mt-1 text-sm font-semibold">
-              Công nợ OTA {formatVnd(booking?.due ?? bookingDue(booked.total, sale.deposit || 0, alreadyRefunded))}
+              Công nợ OTA {formatVnd(moneySplit?.otaDue ?? booking?.roomTotal ?? booked.total)}
             </p>
+            {booking?.extrasTotal ? (
+              <>
+                {moneySplit?.guestCollected ? (
+                  <p className="mt-1 text-sm text-[#1b7a4e]">
+                    Đã thu phụ thu {formatVnd(moneySplit.guestCollected)}
+                    {paidNote(sale) ? ` · ${paidNote(sale)}` : ""}
+                  </p>
+                ) : (
+                  <p className="mt-1 text-sm text-[#c47b12]">Phụ thu chưa thu tại KS</p>
+                )}
+                <p className="mt-1 text-sm font-semibold">
+                  {(moneySplit?.guestDue || 0) > 0
+                    ? `Phụ thu còn thu ${formatVnd(moneySplit?.guestDue || 0)}`
+                    : `Phụ thu đã thu đủ ${formatVnd(booking.extrasTotal)}`}
+                </p>
+              </>
+            ) : null}
           </>
         ) : ota ? (
           <>

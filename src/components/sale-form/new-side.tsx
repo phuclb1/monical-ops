@@ -68,6 +68,8 @@ export function SaleFormSide(props: {
     roomIds,
     saveLabel,
   } = props;
+  const extrasTotal = extraRows.reduce((sum, row) => sum + row.amount, 0);
+  const roomTotal = Math.max(0, bookingTotal - extrasTotal);
   return (
       <div className="sale-form-side card p-4">
       {ota ? (
@@ -125,8 +127,17 @@ export function SaleFormSide(props: {
                 </li>
                 <li className="flex justify-between gap-2 font-bold">
                   <span>Công nợ OTA</span>
-                  <span>{formatVnd(otaDebt ? bookingTotal : 0)}</span>
+                  <span>{formatVnd(otaDebt ? roomTotal : 0)}</span>
                 </li>
+                {otaDebt && extrasTotal ? (
+                  <>
+                    <li className="flex justify-between gap-2 font-bold">
+                      <span>Phụ thu thu tại KS</span>
+                      <span>{formatVnd(extrasTotal)}</span>
+                    </li>
+                    <li className="text-xs text-[#5c6665]">Phụ thu: tiền mặt / CK cá nhân / CK công ty trên trang booking — không gộp công nợ OTA.</li>
+                  </>
+                ) : null}
                 {!otaDebt ? (
                   <li className="flex justify-between gap-2 font-bold">
                     <span>Phải thu khi check-in</span>

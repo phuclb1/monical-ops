@@ -22,6 +22,8 @@ export function BookingQuote(props: {
   const { quotes, extraRows, booked, bookingTotal, depositAmount, checkinAmount = 0, depositPayMethod, checkinPayMethod, ota, otaDebt, commissionLabel = "Hoa hồng", commissionAmount = 0, due } = props;
   const depositSuffix = ` · ${PAYMENT_METHOD_LABEL[depositPayMethod]}`;
   const checkinSuffix = ` · ${PAYMENT_METHOD_LABEL[checkinPayMethod]}`;
+  const extrasTotal = extraRows.reduce((sum, row) => sum + row.amount, 0);
+  const roomTotal = Math.max(0, bookingTotal - extrasTotal);
   return (
       <div className="rounded-xl bg-sand px-3 py-2 text-sm">
         <ul className="space-y-1">
@@ -66,8 +68,17 @@ export function BookingQuote(props: {
               </li>
               <li className="flex justify-between gap-2 font-bold">
                 <span>Công nợ OTA</span>
-                <span>{formatVnd(otaDebt ? due : 0)}</span>
+                <span>{formatVnd(otaDebt ? roomTotal : 0)}</span>
               </li>
+              {otaDebt && extrasTotal ? (
+                <>
+                  <li className="flex justify-between gap-2 font-bold">
+                    <span>Phụ thu thu tại KS</span>
+                    <span>{formatVnd(extrasTotal)}</span>
+                  </li>
+                  <li className="text-xs text-[#5c6665]">Phụ thu: tiền mặt / CK cá nhân / CK công ty — không gộp công nợ OTA.</li>
+                </>
+              ) : null}
               {depositAmount ? (
                 <li className="flex justify-between gap-2 text-[#1b7a4e]">
                   <span>Đặt cọc{depositSuffix}</span>

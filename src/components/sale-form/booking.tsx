@@ -310,9 +310,15 @@ export function BookingForm({
   ];
   const confirmMoney = ota
     ? [
-        { label: "Phải thu", value: formatVnd(bookingTotal) },
+        { label: "Tiền phòng", value: formatVnd(booked.total) },
+        ...(extrasTotal ? [{ label: otaDebt ? "Phụ thu thu tại KS" : "Phụ thu", value: formatVnd(extrasTotal) }] : []),
         { label: commissionLabel, value: formatVnd(commissionAmount) },
-        { label: otaDebt ? "Công nợ OTA" : "Còn phải thu", value: formatVnd(due), emphasis: true },
+        ...(otaDebt
+          ? [
+              { label: "Công nợ OTA", value: formatVnd(booked.total), emphasis: !extrasTotal },
+              ...(extrasTotal ? [{ label: "Phụ thu (tiền mặt / CK)", value: formatVnd(extrasTotal), emphasis: true }] : []),
+            ]
+          : [{ label: "Còn phải thu", value: formatVnd(due), emphasis: true }]),
       ]
     : [
         { label: "Phải thu", value: formatVnd(bookingTotal) },

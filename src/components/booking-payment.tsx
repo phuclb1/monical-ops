@@ -41,7 +41,7 @@ export function BookingPaymentPanel({
     <form action={recordBookingPaymentAction} className="space-y-2">
       <input type="hidden" name="bookingId" value={bookingId} />
       <label className="block">
-        <span className="mb-1.5 block text-xs font-semibold text-[#5c6665]">Thu thêm — trống = thu đủ</span>
+        <span className="mb-1.5 block text-xs font-semibold text-[#5c6665]">Số tiền — trống = thu đủ</span>
         <input
           name="amount"
           inputMode="numeric"

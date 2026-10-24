@@ -4,7 +4,7 @@ import * as t from "@/db/schema";
 import { nowISO, todayVN } from "../../datetime";
 import { can } from "../../permissions";
 import { PAYMENT_METHOD_LABEL } from "../../constants";
-import { addRefundSplit, canSettleOtaDebt, collectedSplit, depositMethodOf, depositRefundSplit, formatVnd, guestCheckoutDue, isActiveSaleStatus, parsePaymentMethod, parseStayRefundReason, refundSplitFromMethod, refundTotal, salePaid, stayRefundable, STAY_REFUND_REASON_LABEL } from "../../sales";
+import { addRefundSplit, bookingInflowSplit, canSettleOtaDebt, collectedSplit, depositMethodOf, depositRefundSplit, formatVnd, guestCheckoutDue, isActiveSaleStatus, isOtaDebt, otaMoneySplit, parsePaymentMethod, parseStayRefundReason, refundSplitFromMethod, refundTotal, salePaid, stayRefundable, STAY_REFUND_REASON_LABEL } from "../../sales";
 import type { SaleStatus, SessionUser } from "../../types";
 import { audit } from "../audit";
 import { bookingCheckinPaidReady } from "../../zalo-templates";
@@ -15,6 +15,20 @@ import { getBooking } from "./queries";
 import { applySaleRoomState } from "./stay";
 import { insertBookingTransaction } from "./transactions";
 
+function bookingOtaSplit(booking: NonNullable<Awaited<ReturnType<typeof getBooking>>>) {
+  const inflow = booking.transactions?.length ? bookingInflowSplit(booking.transactions) : null;
+  return otaMoneySplit({
+    source: booking.source,
+    otaPaymentMode: booking.otaPaymentMode,
+    roomTotal: booking.roomTotal,
+    extrasTotal: booking.extrasTotal,
+    deposit: booking.deposit,
+    refunded: booking.refundTotal ?? inflow?.refunded,
+    guestCollected: inflow?.guestCollected,
+    otaCollected: inflow?.otaCollected,
+  });
+}
+
 export async function recordBookingPayment(
   user: SessionUser,
   bookingId: string,
@@ -24,8 +38,11 @@ export async function recordBookingPayment(
   if (!booking) throw new Error("Không tìm thấy booking");
   const active = booking.rooms.filter((row) => isActiveSaleStatus(row.status));
   if (!active.length) throw new Error("Booking đã đóng, không thu thêm");
-  const due = Math.max(0, Math.round(booking.due || 0));
-  if (due <= 0) throw new Error("Booking đã thu đủ");
+  const split = bookingOtaSplit(booking);
+  const due = isOtaDebt(booking.source, booking.otaPaymentMode) ? split.guestDue : Math.max(0, Math.round(booking.due || 0));
+  if (due <= 0) {
+    throw new Error(isOtaDebt(booking.source, booking.otaPaymentMode) ? "Phụ thu đã thu đủ" : "Booking đã thu đủ");
+  }
   const amount = Math.max(0, Math.round(data.amount || 0));
   const added = data.settle || !amount ? due : Math.min(amount, due);
   const method = parsePaymentMethod(data.paymentMethod);
@@ -51,7 +68,8 @@ export async function settleOtaDebt(
   const booking = await getBooking(bookingId);
   if (!booking) throw new Error("Không tìm thấy booking");
   if (!canSettleOtaDebt(booking)) throw new Error("Chỉ ghi nhận OTA sau khi mọi phòng đã checkout và còn công nợ");
-  const amount = Math.max(0, Math.round(booking.due || 0));
+  const amount = bookingOtaSplit(booking).otaDue;
+  if (amount <= 0) throw new Error("Công nợ OTA đã tất toán");
   const tx = await insertBookingTransaction(user, booking.id, {
     kind: "ota",
     amount,
@@ -181,8 +199,11 @@ export async function checkinRoomSale(user: SessionUser, id: string) {
 
 function assertCheckoutCollected(booking: Awaited<ReturnType<typeof getBooking>>) {
   if (!booking) throw new Error("Không tìm thấy booking");
-  const due = guestCheckoutDue(booking.due, booking.source, booking.otaPaymentMode);
-  if (due > 0) throw new Error(`Chưa thu đủ. Còn phải thu ${formatVnd(due)}`);
+  const otaDebt = isOtaDebt(booking.source, booking.otaPaymentMode);
+  const due = otaDebt ? bookingOtaSplit(booking).guestDue : guestCheckoutDue(booking.due, booking.source, booking.otaPaymentMode);
+  if (due > 0) {
+    throw new Error(otaDebt ? `Chưa thu phụ thu. Còn ${formatVnd(due)}` : `Chưa thu đủ. Còn phải thu ${formatVnd(due)}`);
+  }
 }
 
 export async function checkoutRoomSale(user: SessionUser, id: string, opts?: { skipMoneySync?: boolean }) {

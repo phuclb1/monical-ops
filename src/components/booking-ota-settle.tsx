@@ -22,7 +22,7 @@ export function BookingOtaSettlePanel({
     <form action={settleOtaDebtAction} className="space-y-2">
       <input type="hidden" name="bookingId" value={bookingId} />
       <p className="text-xs font-semibold text-[#5c6665]">Nhận tiền OTA</p>
-      <p className="text-sm">Công nợ còn {formatVnd(amount)}. Một lần = nhận đủ.</p>
+      <p className="text-sm">Công nợ tiền phòng còn {formatVnd(amount)}. Một lần = nhận đủ. Phụ thu thu riêng tại KS.</p>
       <BookingTxFields />
       <Btn type="submit" className="w-full">
         Đã nhận tiền OTA {formatVnd(amount)}

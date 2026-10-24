@@ -1,4 +1,5 @@
-import { guestCheckoutDue, isActiveSaleStatus, isOtaDebt, isOtaSource } from "./status";
+import { guestCheckoutDue, isActiveSaleStatus, isOtaDebt, isOtaSource, otaMoneySplit } from "./status";
+import { bookingInflowSplit } from "./transactions";
 
 export const BOOKING_LIFE_STEPS = ["reserved", "checkin", "checkout"] as const;
 export type BookingLifeStep = (typeof BOOKING_LIFE_STEPS)[number];
@@ -33,6 +34,10 @@ export type BookingLifeInput = {
   due?: number | null;
   source?: string | null;
   otaPaymentMode?: string | null;
+  roomTotal?: number | null;
+  extrasTotal?: number | null;
+  refundTotal?: number | null;
+  transactions?: { kind: string; amount: number }[];
 };
 
 export type BookingLifeStepView = {
@@ -62,8 +67,27 @@ export function bookingLifecycle(booking: BookingLifeInput): BookingLifecycle {
   const otaDebt = isOtaDebt(booking.source, booking.otaPaymentMode);
   const otaHotel = isOtaSource(booking.source) && !otaDebt;
   const collected = Math.max(0, Math.round(booking.deposit || 0));
-  const paid = guestCheckoutDue(booking.due, booking.source, booking.otaPaymentMode) <= 0;
-  const deposited = collected > 0;
+  const inflow = booking.transactions?.length ? bookingInflowSplit(booking.transactions) : null;
+  const paid = guestCheckoutDue(booking.due, booking.source, booking.otaPaymentMode, {
+    roomTotal: booking.roomTotal,
+    extrasTotal: booking.extrasTotal,
+    deposit: booking.deposit,
+    refunded: booking.refundTotal ?? inflow?.refunded,
+    guestCollected: inflow?.guestCollected,
+    otaCollected: inflow?.otaCollected,
+  }) <= 0;
+  const deposited = otaDebt
+    ? otaMoneySplit({
+        source: booking.source,
+        otaPaymentMode: booking.otaPaymentMode,
+        roomTotal: booking.roomTotal,
+        extrasTotal: booking.extrasTotal,
+        deposit: booking.deposit,
+        refunded: booking.refundTotal ?? inflow?.refunded,
+        guestCollected: inflow?.guestCollected,
+        otaCollected: inflow?.otaCollected,
+      }).guestCollected > 0
+    : collected > 0;
   const active = isActiveSaleStatus(status);
   const checkedIn = status === "inhouse" || status === "departed";
   const checkedOut = status === "departed";

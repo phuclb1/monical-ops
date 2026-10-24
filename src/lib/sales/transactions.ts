@@ -1,7 +1,7 @@
 import { dateStartISO, paidOnVN } from "../datetime";
 import type { PaymentMethod } from "../types";
 import { bookingPayMethods, collectedSplit, depositMethodOf, isPaymentMethod, parsePaymentMethod, primaryPaymentMethod, salePaid } from "./money";
-import { bookingKey, isActiveSaleStatus, isOtaDebt } from "./status";
+import { bookingKey, isActiveSaleStatus, isOtaDebt, otaMoneySplit } from "./status";
 
 export const BOOKING_TX_KINDS = ["deposit", "checkin", "payment", "ota", "refund"] as const;
 export type BookingTxKind = (typeof BOOKING_TX_KINDS)[number];
@@ -42,6 +42,31 @@ export function isBookingTxKind(value: string | null | undefined): value is Book
 
 export function isInflowTxKind(kind: string) {
   return kind === "deposit" || kind === "checkin" || kind === "payment" || kind === "ota";
+}
+
+export function isGuestInflowTxKind(kind: string) {
+  return kind === "deposit" || kind === "checkin" || kind === "payment";
+}
+
+/** Split inflows so OTA settle does not count as guest phụ thu. */
+export function bookingInflowSplit(txs: { kind: string; amount: number }[]) {
+  let guest = 0;
+  let ota = 0;
+  let refund = 0;
+  for (const tx of txs) {
+    const amount = Math.max(0, Math.round(tx.amount || 0));
+    if (!amount) continue;
+    if (tx.kind === "refund") refund += amount;
+    else if (tx.kind === "ota") ota += amount;
+    else if (isGuestInflowTxKind(tx.kind)) guest += amount;
+  }
+  const guestCollected = Math.max(0, guest - refund);
+  const refundLeft = Math.max(0, refund - guest);
+  return {
+    guestCollected,
+    otaCollected: Math.max(0, ota - refundLeft),
+    refunded: refund,
+  };
 }
 
 export function parsePhotoData(raw: string | null | undefined) {
@@ -104,12 +129,28 @@ export function canSettleOtaDebt(booking: {
   source?: string | null;
   otaPaymentMode?: string | null;
   due?: number | null;
+  roomTotal?: number | null;
+  extrasTotal?: number | null;
+  deposit?: number | null;
+  refundTotal?: number | null;
+  transactions?: { kind: string; amount: number }[];
   rooms: { status: string }[];
 }) {
   if (!isOtaDebt(booking.source, booking.otaPaymentMode)) return false;
-  if (Math.max(0, Math.round(booking.due || 0)) <= 0) return false;
   if (booking.rooms.some((row) => isActiveSaleStatus(row.status))) return false;
-  return booking.rooms.some((row) => row.status === "departed");
+  if (!booking.rooms.some((row) => row.status === "departed")) return false;
+  const inflow = booking.transactions?.length ? bookingInflowSplit(booking.transactions) : null;
+  const split = otaMoneySplit({
+    source: booking.source,
+    otaPaymentMode: booking.otaPaymentMode,
+    roomTotal: booking.roomTotal ?? Math.max(0, Math.round(booking.due || 0)),
+    extrasTotal: booking.extrasTotal ?? 0,
+    deposit: booking.deposit,
+    refunded: booking.refundTotal ?? inflow?.refunded,
+    guestCollected: inflow?.guestCollected,
+    otaCollected: inflow?.otaCollected,
+  });
+  return split.otaDue > 0;
 }
 
 export type BackfillSale = {

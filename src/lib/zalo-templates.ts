@@ -1,5 +1,5 @@
 import { formatDateLong, formatDateNumeric } from "@/lib/datetime";
-import { formatVnd, isOtaDebt } from "@/lib/sales";
+import { formatVnd, isOtaDebt, otaMoneySplit } from "@/lib/sales";
 
 export const ZALO_BOT_NAME = "Trợ Lý Monical";
 
@@ -244,6 +244,10 @@ type DigestBooking = {
   due: number;
   source: string;
   otaPaymentMode?: string | null;
+  roomTotal?: number | null;
+  extrasTotal?: number | null;
+  deposit?: number | null;
+  refundTotal?: number | null;
   rooms: DigestRoom[];
 };
 
@@ -259,7 +263,16 @@ export function receptionDigest(bookings: DigestBooking[], date: string) {
     checkout += leaving.length;
     if (!arriving.length) continue;
     const amount = Math.max(0, Math.round(booking.due || 0));
-    if (!isOtaDebt(booking.source, booking.otaPaymentMode)) due += amount;
+    const split = otaMoneySplit({
+      source: booking.source,
+      otaPaymentMode: booking.otaPaymentMode,
+      roomTotal: booking.roomTotal ?? amount,
+      extrasTotal: booking.extrasTotal,
+      deposit: booking.deposit,
+      refunded: booking.refundTotal,
+    });
+    if (isOtaDebt(booking.source, booking.otaPaymentMode)) due += split.guestDue;
+    else due += amount;
     const rooms = [...arriving]
       .sort((a, b) => (a.room?.number || "").localeCompare(b.room?.number || "", "vi"))
       .map((row) => {
@@ -270,7 +283,12 @@ export function receptionDigest(bookings: DigestBooking[], date: string) {
       .join(", ");
     const code = booking.pmsCode?.trim() || booking.id;
     const money = isOtaDebt(booking.source, booking.otaPaymentMode)
-      ? `công nợ OTA ${formatVnd(amount)}`
+      ? [
+          `công nợ OTA ${formatVnd(split.otaDue)}`,
+          split.guestDue > 0 ? `phụ thu ${formatVnd(split.guestDue)}` : null,
+        ]
+          .filter(Boolean)
+          .join(" · ")
       : amount > 0
         ? `phải thu ${formatVnd(amount)}`
         : "đã thu đủ";

@@ -60,6 +60,16 @@ test("lean booking uses stored bookingTotal and due without extras", () => {
   assert.equal(lean.guestName, "Nguyễn A");
   assert.equal(lean.roomLabel, "P.101");
   assert.equal(lean.extras.length, 0);
+  assert.equal(lean.extrasTotal, 0);
+});
+
+test("lean booking keeps extrasTotal when bookingTotal is stored", () => {
+  const rooms = [sale({ bookingTotal: 1_100_000, rate: 500_000, deposit: 0 })];
+  const extras = [{ id: "e1", bookingId: "b1", typeId: null, kind: "extra", name: "Đệm", qty: 1, unitPrice: 100_000, unit: "once", createdAt: "2026-10-01T00:00:00", createdBy: null }];
+  const lean = leanBookingFromRooms("b1", rooms as never, extras);
+  assert.equal(lean.total, 1_100_000);
+  assert.equal(lean.extrasTotal, 100_000);
+  assert.equal(lean.roomTotal, 1_000_000);
 });
 
 test("lean booking falls back to computeBookingMoney when bookingTotal is 0", () => {

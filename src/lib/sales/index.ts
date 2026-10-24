@@ -73,6 +73,7 @@ export {
   isOtaSource,
   otaDebtByDefault,
   isOtaDebt,
+  otaMoneySplit,
   guestCheckoutDue,
   parseSaleSource,
   formatOpsBookingCode,
@@ -104,14 +105,17 @@ export {
   BOOKING_TX_KINDS,
   BOOKING_TX_KIND_LABEL,
   backfillTxsForBooking,
+  bookingInflowSplit,
   canSettleOtaDebt,
   groupSalesForBackfill,
   isBookingTxKind,
+  isGuestInflowTxKind,
   isInflowTxKind,
   parsePhotoData,
   projectBookingPaid,
 } from "./transactions";
 export type { BackfillSale, BackfillTx, BookingPaidProjection, BookingTxKind } from "./transactions";
+export type { OtaMoneySplit, OtaMoneySplitInput } from "./status";
 export { bookingSearchText, matchesBookingSearch } from "./search";
 export type { BookingSearchRow } from "./search";
 export { BOOKING_LIST_VIEWS, bookingMatchesListView, isBookingListView } from "./list-view";
