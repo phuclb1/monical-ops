@@ -57,11 +57,62 @@ type BookingMoney = {
   otaCommissionValue?: number | null;
 };
 
+/** Hoa hồng quản lý kênh OTA: 5% doanh thu OTA net sau hoa hồng sàn. */
+export const OTA_MGMT_COMMISSION_RATE = 0.05;
+/** Hoa hồng tổng quản lý (AN): 6% tổng doanh thu booking. */
+export const AN_MGMT_COMMISSION_RATE = 0.06;
+
 function feeOf(row: BookingMoney) {
   if (!isOtaSource(row.source)) return 0;
   const kind = row.otaCommissionKind === "amount" ? "amount" : "percent";
   const value = row.otaCommissionValue || (kind === "percent" ? row.otaCommissionPercent || 0 : 0);
   return commissionAmount(row.total, kind, value);
+}
+
+export type BookingRevenuePnl = {
+  total: number;
+  direct: number;
+  ota: number;
+  vat: number;
+  platformCommission: number;
+  otaNet: number;
+  otaMgmtCommission: number;
+  anMgmtCommission: number;
+  hotelNet: number;
+};
+
+export function bookingRevenuePnl<T extends BookingMoney>(rows: T[]): BookingRevenuePnl {
+  let total = 0;
+  let direct = 0;
+  let ota = 0;
+  let vat = 0;
+  let platformCommission = 0;
+  for (const row of rows) {
+    const amount = Math.max(0, Math.round(row.total || 0));
+    total += amount;
+    vat += inclusiveVat(amount).vat;
+    if (isOtaSource(row.source)) {
+      ota += amount;
+      platformCommission += feeOf(row);
+    } else {
+      direct += amount;
+    }
+  }
+  const otaNet = ota - platformCommission;
+  const otaMgmtCommission = Math.round(otaNet * OTA_MGMT_COMMISSION_RATE);
+  const anMgmtCommission = Math.round(total * AN_MGMT_COMMISSION_RATE);
+  const hotelNet = total - vat - platformCommission - otaMgmtCommission - anMgmtCommission;
+  return {
+    total,
+    direct,
+    ota,
+    vat,
+    platformCommission,
+    otaNet,
+    otaMgmtCommission,
+    anMgmtCommission,
+    hotelNet,
+  };
 }
 
 function recognizedBreakdown<T extends BookingMoney>(rows: T[]) {
@@ -597,6 +648,8 @@ export function roomRevenueReport<T extends BookingMoney>(bookings: T[], from: s
     booking: moneyOf(booked),
     recognizedMoney: moneyOf(recognized),
     recognizedSplit: recognizedBreakdown(recognized),
+    pnl: bookingRevenuePnl(booked),
+    recognizedPnl: bookingRevenuePnl(recognized),
   };
 }
 

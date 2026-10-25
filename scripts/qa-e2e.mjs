@@ -451,7 +451,14 @@ try {
     await logout();
     await login("quanly");
     await go("/reports/sales");
-    await must(shot, ["OTA sau hoa hồng", "phải trả hoa hồng", "phải thu đối tác", "OTA đã thu tại KS", "E2E OTA", "Công nợ OTA"]);
+    await must(shot, [
+      "Tổng doanh thu",
+      "Hoa hồng sàn OTA",
+      "OTA net sau hoa hồng",
+      "Ròng về khách sạn",
+      "E2E OTA",
+      "Công nợ OTA",
+    ]);
   });
 
   await check("E2E-O5", "OTA công nợ + phụ thu — thu phụ thu vào sổ cái", async (shot) => {
@@ -591,7 +598,7 @@ try {
     await logout();
     await login("chusohuu");
     await go("/owner");
-    await must(shot, ["OTA sau hoa hồng", "Công nợ đối tác", "phải trả hoa hồng", "E2E OTA"]);
+    await must(shot, ["Tổng doanh thu", "Hoa hồng sàn OTA", "Ròng về khách sạn", "E2E OTA"]);
   });
 
   await check("E2E-C7", "Chủ sở hữu không vào chi phí", async (shot) => {

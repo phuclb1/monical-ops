@@ -191,6 +191,23 @@ test("recognized month splits direct collections and OTA after commission", () =
   assert.equal(report.recognizedSplit.ota.partnerNet, 850);
   assert.equal(report.recognizedSplit.ota.collectedGross, 2_000);
   assert.equal(report.recognizedSplit.ota.collectedCommission, 300);
+
+  // Booking P&L: total 4300 = direct 500 + OTA 3800; platform fee 150+300+0 = 450
+  assert.equal(report.pnl.total, 4_300);
+  assert.equal(report.pnl.direct, 500);
+  assert.equal(report.pnl.ota, 3_800);
+  assert.equal(report.pnl.platformCommission, 450);
+  assert.equal(report.pnl.otaNet, 3_350);
+  assert.equal(report.pnl.otaMgmtCommission, Math.round(3_350 * 0.05));
+  assert.equal(report.pnl.anMgmtCommission, Math.round(4_300 * 0.06));
+  assert.equal(
+    report.pnl.hotelNet,
+    4_300 - report.pnl.vat - 450 - report.pnl.otaMgmtCommission - report.pnl.anMgmtCommission,
+  );
+  assert.equal(
+    report.pnl.vat,
+    Math.round((1_000 * 8) / 108) + Math.round((2_000 * 8) / 108) + Math.round((500 * 8) / 108) + Math.round((800 * 8) / 108),
+  );
 });
 
 test("cash flow splits inclusive VAT and OTA receivable or hotel commission payable", () => {

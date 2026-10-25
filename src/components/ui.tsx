@@ -256,11 +256,38 @@ export function ListPager({
   );
 }
 
-export function Stat({ label, value, tone }: { label: string; value: number | string; tone?: string }) {
+export function Stat({
+  label,
+  value,
+  tone,
+  highlight,
+  wide,
+}: {
+  label: string;
+  value: number | string;
+  tone?: string;
+  highlight?: "ok" | "warn";
+  /** Span full grid width — use for hero totals on mobile. */
+  wide?: boolean;
+}) {
   return (
-    <div className="card flex flex-col gap-1 p-3">
-      <span className="text-[11px] font-semibold uppercase tracking-wide text-[#6b7372]">{label}</span>
-      <span className={clsx("text-2xl font-bold", tone)}>{value}</span>
+    <div
+      className={clsx(
+        "card flex min-w-0 flex-col gap-1 p-3",
+        wide && "col-span-2 md:col-span-3",
+        highlight === "ok" && "border-[#b7e0c8] bg-[#e4f5eb]",
+        highlight === "warn" && "border-[#f0d4a0] bg-[#fff8ee]",
+      )}
+    >
+      <span className="text-[11px] font-semibold leading-snug text-[#6b7372]">{label}</span>
+      <span
+        className={clsx(
+          "text-xl font-bold leading-tight tabular-nums tracking-tight sm:text-2xl",
+          tone || (highlight === "ok" ? "text-[#1b7a4e]" : undefined),
+        )}
+      >
+        {value}
+      </span>
     </div>
   );
 }

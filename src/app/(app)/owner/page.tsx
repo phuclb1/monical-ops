@@ -35,33 +35,36 @@ export default async function OwnerRevenuePage({
     <main className="owner-desk space-y-3 px-3 py-4 md:space-y-4">
       <div>
         <h1 className="text-xl font-bold">Doanh thu</h1>
-        <p className="text-xs text-[#5c6665] md:text-sm">
-          Theo ngày nhận trong kỳ. Đến ngày nhận mà không hủy thì ghi nhận. OTA sau hoa hồng là tiền phòng sau hoa hồng. Công nợ đối tác gồm phải trả hoa hồng và phải thu net chưa về. OTA đã thu tại KS là tiền khách trả tại khách sạn.
+        <p className="text-xs text-[#5c6665] md:hidden">
+          Theo ngày nhận. Ròng về KS = tổng − VAT − các hoa hồng.
+        </p>
+        <p className="hidden text-sm text-[#5c6665] md:block">
+          Theo ngày nhận trong kỳ, booking không hủy / no-show. Tổng doanh thu là khoản thu từ booking. VAT 8% tách từ giá đã gồm thuế. Hoa hồng sàn theo từng booking OTA; hoa hồng quản lý OTA 5% trên OTA net; hoa hồng tổng quản lý (AN) 6% tổng doanh thu. Doanh thu ròng về khách sạn = tổng − VAT − các khoản hoa hồng.
         </p>
       </div>
 
       <OwnerPeriodBar basePath="/owner" grain={grain} window={window} />
 
       <section className="owner-hero card">
-        <p className="text-[11px] font-semibold uppercase tracking-wide text-[#6b7372]">Doanh thu ghi nhận</p>
-        <p className="owner-hero-value">{formatVnd(report.recognizedMoney.total)}</p>
+        <p className="text-[11px] font-semibold text-[#6b7372]">Ròng về khách sạn</p>
+        <p className="owner-hero-value">{formatVnd(report.pnl.hotelNet)}</p>
         <p className="mt-1 text-xs text-[#5c6665]">
-          {report.recognized.length
-            ? `${report.recognized.length} booking đã đến ngày nhận · CK cá nhân ${formatVnd(report.recognizedSplit.pay.transfer)} · CK công ty ${formatVnd(report.recognizedSplit.pay.company)} · tiền mặt ${formatVnd(report.recognizedSplit.pay.cash)} · OTA sau hoa hồng ${formatVnd(report.recognizedSplit.ota.net)}`
-            : "Chưa có booking đến ngày nhận trong kỳ"}
+          {report.booked.length
+            ? `${report.booked.length} booking · tổng ${formatVnd(report.pnl.total)} · HH sàn ${formatVnd(report.pnl.platformCommission)} · HH OTA ${formatVnd(report.pnl.otaMgmtCommission)} · HH AN ${formatVnd(report.pnl.anMgmtCommission)}`
+            : "Chưa có booking nhận trong kỳ"}
         </p>
       </section>
 
       <div className="revenue-stats">
-        <Stat label="Doanh thu tổng booking" value={formatVnd(report.booking.total)} />
-        <Stat label="Doanh thu tổng ghi nhận" value={formatVnd(report.recognizedMoney.total)} />
-        <Stat label="Ghi nhận CK cá nhân" value={formatVnd(report.recognizedSplit.pay.transfer)} />
-        <Stat label="Ghi nhận CK công ty" value={formatVnd(report.recognizedSplit.pay.company)} />
-        <Stat label="Ghi nhận tiền mặt" value={formatVnd(report.recognizedSplit.pay.cash)} />
-        <Stat label="OTA sau hoa hồng" value={formatVnd(report.recognizedSplit.ota.net)} />
-        <Stat label="Phải trả hoa hồng" value={formatVnd(report.recognizedSplit.ota.commission)} tone="text-[#c47b12]" />
-        <Stat label="Phải thu đối tác" value={formatVnd(report.recognizedSplit.ota.partnerNet)} tone="text-[#c47b12]" />
-        <Stat label="OTA đã thu tại KS" value={formatVnd(report.recognizedSplit.ota.collectedGross)} />
+        <Stat label="Tổng doanh thu" value={formatVnd(report.pnl.total)} highlight="ok" wide />
+        <Stat label="Trực tiếp" value={formatVnd(report.pnl.direct)} />
+        <Stat label="OTA" value={formatVnd(report.pnl.ota)} />
+        <Stat label="VAT 8%" value={formatVnd(report.pnl.vat)} />
+        <Stat label="Hoa hồng sàn OTA" value={formatVnd(report.pnl.platformCommission)} tone="text-[#c47b12]" />
+        <Stat label="OTA net sau hoa hồng" value={formatVnd(report.pnl.otaNet)} />
+        <Stat label="HH quản lý OTA 5%" value={formatVnd(report.pnl.otaMgmtCommission)} tone="text-[#c47b12]" />
+        <Stat label="HH tổng quản lý AN 6%" value={formatVnd(report.pnl.anMgmtCommission)} tone="text-[#c47b12]" wide />
+        <Stat label="Ròng về khách sạn" value={formatVnd(report.pnl.hotelNet)} highlight="ok" wide />
       </div>
 
       <Card>

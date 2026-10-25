@@ -75,8 +75,11 @@ export default async function SalesRevenuePage({
       <div className="flex items-start justify-between gap-3">
         <div>
           <h1 className="text-xl font-bold">Báo cáo doanh thu</h1>
-          <p className="text-xs text-[#5c6665] md:text-sm">
-            Theo ngày nhận trong kỳ. Booking chưa đến ngày nhận chỉ tính vào doanh thu booking. Đến ngày nhận mà không hủy thì ghi nhận. CK cá nhân, CK công ty và tiền mặt là tiền đã thu của booking trực tiếp. OTA sau hoa hồng là tiền phòng sau hoa hồng. Công nợ đối tác tách thành phải trả hoa hồng và phải thu đối tác (net chưa về). OTA đã thu tại KS là tiền khách trả tại khách sạn.
+          <p className="text-xs text-[#5c6665] md:hidden">
+            Theo ngày nhận. Ròng về KS = tổng − VAT − hoa hồng sàn − HH QL OTA 5% − HH AN 6%.
+          </p>
+          <p className="hidden text-sm text-[#5c6665] md:block">
+            Theo ngày nhận trong kỳ, booking không hủy / no-show. Tổng doanh thu là khoản thu từ booking (doanh thu thuần). Giá đã gồm VAT 8%. Hoa hồng sàn OTA cộng theo từng booking. Doanh thu OTA net = OTA − hoa hồng sàn; hoa hồng quản lý OTA = 5% khoản đó; hoa hồng tổng quản lý (AN) = 6% tổng doanh thu. Doanh thu ròng về khách sạn = tổng − VAT − hoa hồng sàn − HH quản lý OTA − HH AN.
           </p>
         </div>
       </div>
@@ -124,15 +127,15 @@ export default async function SalesRevenuePage({
       ) : null}
 
       <div className="revenue-stats">
-        <Stat label="Doanh thu tổng booking" value={formatVnd(report.booking.total)} />
-        <Stat label="Doanh thu tổng ghi nhận" value={formatVnd(report.recognizedMoney.total)} />
-        <Stat label="Ghi nhận CK cá nhân" value={formatVnd(report.recognizedSplit.pay.transfer)} />
-        <Stat label="Ghi nhận CK công ty" value={formatVnd(report.recognizedSplit.pay.company)} />
-        <Stat label="Ghi nhận tiền mặt" value={formatVnd(report.recognizedSplit.pay.cash)} />
-        <Stat label="OTA sau hoa hồng" value={formatVnd(report.recognizedSplit.ota.net)} />
-        <Stat label="Phải trả hoa hồng" value={formatVnd(report.recognizedSplit.ota.commission)} tone="text-[#c47b12]" />
-        <Stat label="Phải thu đối tác" value={formatVnd(report.recognizedSplit.ota.partnerNet)} tone="text-[#c47b12]" />
-        <Stat label="OTA đã thu tại KS" value={formatVnd(report.recognizedSplit.ota.collectedGross)} />
+        <Stat label="Tổng doanh thu" value={formatVnd(report.pnl.total)} highlight="ok" wide />
+        <Stat label="Trực tiếp" value={formatVnd(report.pnl.direct)} />
+        <Stat label="OTA" value={formatVnd(report.pnl.ota)} />
+        <Stat label="VAT 8%" value={formatVnd(report.pnl.vat)} />
+        <Stat label="Hoa hồng sàn OTA" value={formatVnd(report.pnl.platformCommission)} tone="text-[#c47b12]" />
+        <Stat label="OTA net sau hoa hồng" value={formatVnd(report.pnl.otaNet)} />
+        <Stat label="HH quản lý OTA 5%" value={formatVnd(report.pnl.otaMgmtCommission)} tone="text-[#c47b12]" />
+        <Stat label="HH tổng quản lý AN 6%" value={formatVnd(report.pnl.anMgmtCommission)} tone="text-[#c47b12]" wide />
+        <Stat label="Ròng về khách sạn" value={formatVnd(report.pnl.hotelNet)} highlight="ok" wide />
       </div>
 
       <section className="report-charts-grid" aria-label="Biểu đồ doanh thu">
@@ -149,16 +152,13 @@ export default async function SalesRevenuePage({
           formatValue={formatVnd}
         />
         <DonutChart
-          title="Tiền đã ghi nhận"
-          subtitle="Trực tiếp đã thu, OTA khách trả tại KS, và phải thu đối tác chưa về."
+          title="Cơ cấu doanh thu"
+          subtitle="Trực tiếp và OTA trong tổng doanh thu booking kỳ này."
           items={[
-            { label: "CK cá nhân", value: report.recognizedSplit.pay.transfer },
-            { label: "CK công ty", value: report.recognizedSplit.pay.company },
-            { label: "Tiền mặt", value: report.recognizedSplit.pay.cash },
-            { label: "OTA đã thu", value: report.recognizedSplit.ota.collectedGross },
-            { label: "Phải thu đối tác", value: report.recognizedSplit.ota.partnerNet },
+            { label: "Trực tiếp", value: report.pnl.direct },
+            { label: "OTA", value: report.pnl.ota },
           ]}
-          centerLabel="đã ghi nhận"
+          centerLabel="tổng DT"
           formatValue={formatVnd}
         />
         <HorizontalBarChart
@@ -168,24 +168,22 @@ export default async function SalesRevenuePage({
           formatValue={formatVnd}
         />
         <HorizontalBarChart
-          title="Cơ cấu ghi nhận"
-          subtitle="Tiền trực tiếp đã thu, OTA đã thu tại KS, phải thu đối tác và phải trả hoa hồng."
+          title="Phân bổ sau hoa hồng"
+          subtitle="Hoa hồng sàn, quản lý OTA 5%, tổng quản lý AN 6%, và phần ròng về khách sạn."
           items={[
-            { label: "CK cá nhân", value: report.recognizedSplit.pay.transfer },
-            { label: "CK công ty", value: report.recognizedSplit.pay.company },
-            { label: "Tiền mặt", value: report.recognizedSplit.pay.cash },
-            { label: "OTA đã thu", value: report.recognizedSplit.ota.collectedGross },
-            { label: "Phải thu đối tác", value: report.recognizedSplit.ota.partnerNet },
-            { label: "Phải trả hoa hồng", value: report.recognizedSplit.ota.commission },
+            { label: "Hoa hồng sàn OTA", value: report.pnl.platformCommission },
+            { label: "HH quản lý OTA", value: report.pnl.otaMgmtCommission },
+            { label: "HH tổng quản lý AN", value: report.pnl.anMgmtCommission },
+            { label: "Ròng về KS", value: report.pnl.hotelNet },
           ]}
           formatValue={formatVnd}
         />
       </section>
 
       <p className="text-xs text-[#5c6665]">
-        {report.recognized.length
-          ? `Ghi nhận ${report.recognized.length} booking đã đến ngày nhận. Công nợ đối tác tách hai khoản: phải trả hoa hồng ${formatVnd(report.recognizedSplit.ota.commission)}, phải thu đối tác ${formatVnd(report.recognizedSplit.ota.partnerNet)} (net OTA chưa về, sau hoa hồng). OTA đã thu tại KS ${formatVnd(report.recognizedSplit.ota.collectedGross)} đã vào tiền khách sạn; hoa hồng phần này ${formatVnd(report.recognizedSplit.ota.collectedCommission)} nằm trong phải trả hoa hồng.`
-          : "Chưa có booking đến ngày nhận trong kỳ. Doanh thu tự ghi nhận khi đến ngày check-in và booking không hủy."}
+        {report.booked.length
+          ? `${report.booked.length} booking · đã đến ngày nhận ${report.recognized.length} (${formatVnd(report.recognizedPnl.total)}).`
+          : "Chưa có booking nhận trong kỳ."}
       </p>
 
       <Card>
