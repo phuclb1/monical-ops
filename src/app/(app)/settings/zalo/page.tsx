@@ -2,7 +2,8 @@ import { redirect } from "next/navigation";
 import { disconnectZaloAction, saveZaloEnabledAction, saveZaloPhoneAction } from "@/actions/zalo";
 import { SettingsNav } from "@/components/settings-nav";
 import { ZaloConnectButton, ZaloGroupManager, ZaloMessageManager, ZaloTestSend } from "@/components/zalo-settings";
-import { Btn, Card, Chip, Field, TabChip } from "@/components/ui";
+import { PendingSubmit } from "@/components/pending-submit";
+import { Card, Chip, Field, TabChip } from "@/components/ui";
 import { getSession } from "@/lib/auth";
 import { formatDateTime } from "@/lib/datetime";
 import { can } from "@/lib/permissions";
@@ -75,7 +76,7 @@ export default async function ZaloSettingsPage({
             {queue.pending ? ` Đang chờ gửi: ${queue.pending}.` : ""}
             {queue.failed ? ` Lỗi: ${queue.failed}.` : ""}
           </p>
-          <Btn type="submit">Lưu</Btn>
+          <PendingSubmit pendingLabel="Đang lưu...">Lưu</PendingSubmit>
         </form>
       </Card>
 
@@ -86,7 +87,7 @@ export default async function ZaloSettingsPage({
             <input name="phone" defaultValue={zalo.phone} placeholder="0901234567" autoComplete="off" inputMode="tel" />
           </Field>
           <p className="text-xs leading-5 text-[#5c6665]">Đổi số sẽ xóa phiên đang lưu. Quét mã bằng Zalo của đúng số này.</p>
-          <Btn type="submit">Lưu số</Btn>
+          <PendingSubmit pendingLabel="Đang lưu...">Lưu số</PendingSubmit>
         </form>
       </Card>
 
@@ -107,9 +108,9 @@ export default async function ZaloSettingsPage({
         {zalo.phone ? <ZaloConnectButton /> : <p className="text-sm">Lưu số Zalo trước khi kết nối.</p>}
         {zalo.connected ? (
           <form action={disconnectZaloAction} className="mt-3">
-            <Btn type="submit" variant="ghost">
+            <PendingSubmit variant="ghost" pendingLabel="Đang xóa...">
               Xóa phiên đã lưu
-            </Btn>
+            </PendingSubmit>
           </form>
         ) : null}
       </Card>

@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { checkoutBookingRoomAction } from "@/actions/sales";
+import { PendingSubmit } from "@/components/pending-submit";
 import { Btn } from "@/components/ui";
 import { formatVnd } from "@/lib/sales";
 
@@ -32,9 +33,9 @@ export function BookingCheckoutButton({
       <form action={checkoutBookingRoomAction}>
         <input type="hidden" name="bookingId" value={bookingId} />
         <input type="hidden" name="id" value={saleId} />
-        <Btn type="submit" variant="gold">
+        <PendingSubmit variant="gold" pendingLabel="Đang trả phòng...">
           Check out
-        </Btn>
+        </PendingSubmit>
       </form>
     );
   }

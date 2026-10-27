@@ -12,6 +12,7 @@ import { currentReceptionIpPolicy, recordLogin } from "@/lib/repos/access";
 import { hashPassword, passwordNeedsRehash, passwordValidationError, verifyPassword } from "@/lib/password";
 import { nowISO } from "@/lib/datetime";
 import { audit } from "@/lib/repos";
+import { assertActionPace, takeRateLimit } from "@/lib/rate-limit";
 
 export async function loginAction(formData: FormData) {
   const username = String(formData.get("username") || "").trim().toLowerCase();
@@ -19,6 +20,10 @@ export async function loginAction(formData: FormData) {
   const db = await getDb();
   const headerStore = await headers();
   const ip = clientIp(headerStore);
+  const ipKey = ip || "unknown";
+  const ipLimit = takeRateLimit(`login:ip:${ipKey}`, 40, 15 * 60_000);
+  const userLimit = takeRateLimit(`login:user:${ipKey}:${username}`, 20, 15 * 60_000);
+  if (!ipLimit.ok || !userLimit.ok) redirect("/login?error=rate");
   const userAgent = headerStore.get("user-agent");
   const row = (await db.select().from(users).where(eq(users.username, username)).limit(1))[0];
   if (!row || !row.active || !(await verifyPassword(password, row.passwordHash))) {
@@ -66,6 +71,11 @@ export async function changePasswordAction(formData: FormData) {
   const user = (await db.select().from(users).where(eq(users.id, session.id)).limit(1))[0];
   if (!user || !(await verifyPassword(currentPassword, user.passwordHash))) {
     fail("Mật khẩu hiện tại không đúng");
+  }
+  try {
+    assertActionPace(session.id, "change-password");
+  } catch (error) {
+    fail((error as Error).message);
   }
 
   await db

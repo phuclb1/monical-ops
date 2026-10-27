@@ -142,12 +142,16 @@ export function PushPrompt({ variant = "banner" }: { variant?: "banner" | "panel
             <p className="mt-0.5 text-sm leading-5 text-[#5c6665]">{copy}</p>
             {error ? <p className="mt-1 text-xs text-[#c23b3b]">{error}</p> : null}
           </div>
-          {status === "hidden" || status === "need-install" || status === "unsupported" ? null : status === "on" ? (
+          {status === "hidden" || status === "need-install" || status === "unsupported" ? null : status === "busy" ? (
+            <Btn type="button" className="min-h-11 shrink-0 px-4" disabled>
+              Đang xử lý...
+            </Btn>
+          ) : status === "on" ? (
             <Btn type="button" variant="ghost" className="min-h-11 shrink-0 px-3 text-xs" onClick={disable}>
               Tắt
             </Btn>
           ) : (
-            <Btn type="button" className="min-h-11 shrink-0 px-4" onClick={enable} disabled={status === "busy"}>
+            <Btn type="button" className="min-h-11 shrink-0 px-4" onClick={enable}>
               Bật
             </Btn>
           )}
@@ -168,7 +172,7 @@ export function PushPrompt({ variant = "banner" }: { variant?: "banner" | "panel
               <p className="text-xs text-[#5c6665]">{copy}</p>
             </div>
             <Btn type="button" className="min-h-12 shrink-0 px-4" onClick={enable} disabled={status === "busy"}>
-              Bật
+              {status === "busy" ? "Đang xử lý..." : "Bật"}
             </Btn>
           </div>
         )}

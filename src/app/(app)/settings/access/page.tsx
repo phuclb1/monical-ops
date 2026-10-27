@@ -3,7 +3,8 @@ import { redirect } from "next/navigation";
 import { saveAccessSettingsAction, saveOpenApiWebhookAction } from "@/actions/settings";
 import { OpenApiTokenPanel } from "@/components/open-api-settings";
 import { SettingsNav } from "@/components/settings-nav";
-import { Btn, Card, Chip, Empty, Field } from "@/components/ui";
+import { PendingSubmit } from "@/components/pending-submit";
+import { Card, Chip, Empty, Field } from "@/components/ui";
 import { getSession } from "@/lib/auth";
 import { formatAuditWhen } from "@/lib/audit-view";
 import { formatDateTime } from "@/lib/datetime";
@@ -68,7 +69,7 @@ export default async function AccessSettingsPage({
             Bật giới hạn thì phải điền IP public của máy quầy. Tắt thì lễ tân vào được từ mọi mạng.
             {here ? ` IP hiện tại của bạn: ${here}.` : ""}
           </p>
-          <Btn type="submit">Lưu</Btn>
+          <PendingSubmit pendingLabel="Đang lưu...">Lưu</PendingSubmit>
         </form>
       </Card>
 
@@ -114,7 +115,7 @@ export default async function AccessSettingsPage({
             />
           </Field>
           <p className="text-xs text-[#5c6665]">{openApi.hasWebhookSecret ? "Đã có secret ký webhook (hiện khi tạo token)." : "Chưa có secret. Tạo API token để sinh secret."}</p>
-          <Btn type="submit">Lưu webhook</Btn>
+          <PendingSubmit pendingLabel="Đang lưu...">Lưu webhook</PendingSubmit>
         </form>
       </Card>
 

@@ -2,7 +2,8 @@
 
 import { useMemo, useState } from "react";
 import { addBookingExtraAction, removeBookingExtraAction } from "@/actions/sales";
-import { Btn, Field } from "@/components/ui";
+import { PendingNative, PendingSubmit } from "@/components/pending-submit";
+import { Field } from "@/components/ui";
 import { extraAmount, extraQtyLabel } from "@/lib/extras";
 import { formatVnd, parseMoney } from "@/lib/sales";
 
@@ -54,9 +55,9 @@ export function BookingExtrasPanel({
                 <form action={removeBookingExtraAction}>
                   <input type="hidden" name="id" value={row.id} />
                   <input type="hidden" name="bookingId" value={bookingId} />
-                  <button type="submit" className="text-xs font-semibold text-[#c23b3b]">
+                  <PendingNative className="text-xs font-semibold text-[#c23b3b]" pendingLabel="Đang xóa...">
                     Xóa
-                  </button>
+                  </PendingNative>
                 </form>
               </div>
             </li>
@@ -94,9 +95,9 @@ export function BookingExtrasPanel({
           </Field>
         )}
         <p className="text-xs text-[#5c6665]">Tạm tính {formatVnd(preview)}</p>
-        <Btn type="submit" className="w-full" disabled={!canAdd}>
+        <PendingSubmit className="w-full" disabled={!canAdd} pendingLabel="Đang thêm...">
           Thêm dịch vụ
-        </Btn>
+        </PendingSubmit>
       </form>
     </div>
   );

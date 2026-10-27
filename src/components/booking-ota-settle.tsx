@@ -2,7 +2,7 @@
 
 import { settleOtaDebtAction } from "@/actions/sales";
 import { BookingTxFields } from "@/components/booking-tx-fields";
-import { Btn } from "@/components/ui";
+import { PendingSubmit } from "@/components/pending-submit";
 import { formatVnd } from "@/lib/sales";
 
 export function BookingOtaSettlePanel({
@@ -24,9 +24,9 @@ export function BookingOtaSettlePanel({
       <p className="text-xs font-semibold text-[#5c6665]">Nhận tiền OTA</p>
       <p className="text-sm">Công nợ tiền phòng còn {formatVnd(amount)}. Một lần = nhận đủ. Phụ thu thu riêng tại KS.</p>
       <BookingTxFields />
-      <Btn type="submit" className="w-full">
+      <PendingSubmit className="w-full" pendingLabel="Đang ghi nhận...">
         Đã nhận tiền OTA {formatVnd(amount)}
-      </Btn>
+      </PendingSubmit>
     </form>
   );
 }

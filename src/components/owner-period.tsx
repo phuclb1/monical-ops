@@ -1,4 +1,4 @@
-import Link from "next/link";
+import { PendingLink } from "@/components/pending-link";
 import { TabChip } from "@/components/ui";
 import { formatPeriodLabel, type PeriodGrain } from "@/lib/datetime";
 import type { ReportGrain } from "@/lib/sales-report";
@@ -39,13 +39,13 @@ export function OwnerPeriodBar({
       </div>
 
       <div className="flex items-center justify-between gap-2">
-        <Link href={hrefFor(basePath, grain, window.prev)} className="hit-btn">
+        <PendingLink href={hrefFor(basePath, grain, window.prev)} className="hit-btn" pendingLabel="…">
           ‹
-        </Link>
+        </PendingLink>
         <p className="text-center text-base font-bold">{formatPeriodLabel(grain, window.from)}</p>
-        <Link href={hrefFor(basePath, grain, window.next)} className="hit-btn">
+        <PendingLink href={hrefFor(basePath, grain, window.next)} className="hit-btn" pendingLabel="…">
           ›
-        </Link>
+        </PendingLink>
       </div>
 
       {grain === "month" ? (

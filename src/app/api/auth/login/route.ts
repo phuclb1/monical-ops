@@ -9,6 +9,7 @@ import { clientIp, receptionIpBlocked } from "@/lib/reception-ip";
 import { currentReceptionIpPolicy, recordLogin } from "@/lib/repos/access";
 import { hashPassword, passwordNeedsRehash, verifyPassword } from "@/lib/password";
 import { nowISO } from "@/lib/datetime";
+import { takeRateLimit } from "@/lib/rate-limit";
 
 export async function POST(request: Request) {
   const form = await request.formData();
@@ -16,6 +17,12 @@ export async function POST(request: Request) {
   const password = String(form.get("password") || "");
   const db = await getDb();
   const ip = clientIp(request.headers);
+  const ipKey = ip || "unknown";
+  const ipLimit = takeRateLimit(`login:ip:${ipKey}`, 40, 15 * 60_000);
+  const userLimit = takeRateLimit(`login:user:${ipKey}:${username}`, 20, 15 * 60_000);
+  if (!ipLimit.ok || !userLimit.ok) {
+    return NextResponse.redirect(new URL("/login?error=rate", request.url), 303);
+  }
   const userAgent = request.headers.get("user-agent");
   const row = (await db.select().from(users).where(eq(users.username, username)).limit(1))[0];
   if (!row || !row.active || !(await verifyPassword(password, row.passwordHash))) {

@@ -605,6 +605,12 @@ a.tab-chip,
   text-decoration: none;
 }
 
+a:has(> .is-pending) {
+  cursor: progress;
+  opacity: 0.6;
+  pointer-events: none;
+}
+
 .tab-chip.is-on,
 .tab-chip[aria-current="page"] {
   background: var(--teal);
@@ -2511,6 +2517,13 @@ body:has(.booking-print) .pwa-install {
 
 .notif-card.is-read {
   opacity: 0.78;
+}
+
+.notif-card-hit.is-pending,
+.notif-card-hit:disabled {
+  cursor: progress;
+  opacity: 0.6;
+  background: repeating-linear-gradient(-45deg, transparent, transparent 8px, rgba(15, 76, 76, 0.06) 8px, rgba(15, 76, 76, 0.06) 16px);
 }
 
 .notif-card-hit {

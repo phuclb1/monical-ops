@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { readAllNotifAction } from "@/modules/notifications/actions/notifications.action";
 import { NotificationList } from "@/modules/notifications/components/notification-list";
 import { PushPrompt } from "@/modules/notifications/components/push-prompt";
+import { PendingNative } from "@/components/pending-submit";
 import { Empty } from "@/components/ui";
 import { getSession } from "@/lib/auth";
 import { listNotifications } from "@/modules/notifications/models/notifications";
@@ -26,7 +27,9 @@ export default async function NotificationsPage() {
         </div>
         {rows.length ? (
           <form action={readAllNotifAction}>
-            <button className="text-sm font-semibold text-teal">Xóa hết · {rows.length}</button>
+            <PendingNative className="text-sm font-semibold text-teal" pendingLabel="Đang xóa...">
+              Xóa hết · {rows.length}
+            </PendingNative>
           </form>
         ) : null}
       </div>

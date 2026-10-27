@@ -1,4 +1,6 @@
 import { NextResponse } from "next/server";
+import { tooManyRequests } from "@/lib/api-rate-limit";
+import { takeRateLimit } from "@/lib/rate-limit";
 import { getSession } from "@/lib/auth";
 import { deletePushSubscription, savePushSubscription, vapidPublicKey } from "@/lib/push";
 
@@ -11,6 +13,8 @@ export async function GET() {
 export async function POST(request: Request) {
   const user = await getSession();
   if (!user) return NextResponse.json({ error: "auth" }, { status: 401 });
+  const limited = takeRateLimit(`push:${user.id}`, 20, 60_000);
+  if (!limited.ok) return tooManyRequests(limited);
   const body = (await request.json()) as { endpoint?: string; keys?: { p256dh?: string; auth?: string } };
   if (!body.endpoint || !body.keys?.p256dh || !body.keys?.auth) {
     return NextResponse.json({ error: "subscription" }, { status: 400 });
@@ -22,6 +26,8 @@ export async function POST(request: Request) {
 export async function DELETE(request: Request) {
   const user = await getSession();
   if (!user) return NextResponse.json({ error: "auth" }, { status: 401 });
+  const limited = takeRateLimit(`push:${user.id}`, 20, 60_000);
+  if (!limited.ok) return tooManyRequests(limited);
   const body = (await request.json().catch(() => ({}))) as { endpoint?: string };
   await deletePushSubscription(user.id, body.endpoint);
   return NextResponse.json({ ok: true });

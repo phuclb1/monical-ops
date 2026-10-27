@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { resetStaffPasswordAction, toggleStaffAction, updateStaffAction } from "@/actions/staff";
-import { Btn, Card, Chip, Field } from "@/components/ui";
+import { PendingSubmit } from "@/components/pending-submit";
+import { Card, Chip, Field } from "@/components/ui";
 import { getSession } from "@/lib/auth";
 import { DEPT_LABEL, ROLE_DEPT, ROLE_LABEL } from "@/lib/constants";
 import { can } from "@/lib/permissions";
@@ -65,9 +66,9 @@ export default async function StaffDetailPage({
           <p className="text-xs text-[#6b7372]">
             Bộ phận hiện tại: {DEPT_LABEL[person.departmentCode as DepartmentCode]}
           </p>
-          <Btn type="submit" className="w-full">
+          <PendingSubmit className="w-full" pendingLabel="Đang lưu...">
             Lưu hồ sơ
-          </Btn>
+          </PendingSubmit>
         </form>
       </Card>
 
@@ -86,18 +87,18 @@ export default async function StaffDetailPage({
             />
             <span id="reset-password-help" className="mt-1 block text-xs text-[#6b7372]">{PASSWORD_REQUIREMENTS}.</span>
           </Field>
-          <Btn type="submit" variant="ghost" className="w-full">
+          <PendingSubmit variant="ghost" className="w-full" pendingLabel="Đang lưu...">
             Đặt lại mật khẩu
-          </Btn>
+          </PendingSubmit>
         </form>
       </Card>
 
       <form action={toggleStaffAction}>
         <input type="hidden" name="id" value={person.id} />
         <input type="hidden" name="active" value={person.active ? "0" : "1"} />
-        <Btn type="submit" variant={person.active ? "danger" : "primary"} className="w-full" disabled={self}>
+        <PendingSubmit variant={person.active ? "danger" : "primary"} className="w-full" disabled={self} pendingLabel="Đang lưu...">
           {self ? "Không khóa tài khoản đang dùng" : person.active ? "Khóa tài khoản" : "Mở khóa"}
-        </Btn>
+        </PendingSubmit>
       </form>
     </main>
   );

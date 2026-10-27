@@ -2,7 +2,8 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createStaffAction } from "@/actions/staff";
 import { SettingsNav } from "@/components/settings-nav";
-import { Btn, Card, Chip, Field } from "@/components/ui";
+import { PendingSubmit } from "@/components/pending-submit";
+import { Card, Chip, Field } from "@/components/ui";
 import { getSession } from "@/lib/auth";
 import { DEPT_LABEL, ROLE_LABEL } from "@/lib/constants";
 import { can } from "@/lib/permissions";
@@ -71,9 +72,9 @@ export default async function StaffPage({
           <Field label="Số điện thoại">
             <input name="phone" type="tel" placeholder="090..." />
           </Field>
-          <Btn type="submit" className="w-full">
+          <PendingSubmit className="w-full" pendingLabel="Đang tạo...">
             Tạo nhân viên
-          </Btn>
+          </PendingSubmit>
         </form>
       </Card>
 

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { logoutAction } from "@/actions/auth";
+import { PendingNative } from "@/components/pending-submit";
 import { Card } from "@/components/ui";
 import { getSession } from "@/lib/auth";
 import { ROLE_LABEL } from "@/lib/constants";
@@ -81,7 +82,9 @@ export default async function MorePage() {
         </p>
       </Card>
       <form action={logoutAction}>
-        <button className="w-full rounded-xl border border-line bg-white py-3.5 text-base font-semibold">Đăng xuất</button>
+        <PendingNative className="w-full rounded-xl border border-line bg-white py-3.5 text-base font-semibold" pendingLabel="Đang thoát...">
+          Đăng xuất
+        </PendingNative>
       </form>
     </main>
   );

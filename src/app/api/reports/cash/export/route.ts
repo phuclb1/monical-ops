@@ -1,4 +1,6 @@
 import { NextResponse } from "next/server";
+import { tooManyRequests } from "@/lib/api-rate-limit";
+import { takeRateLimit } from "@/lib/rate-limit";
 import { getSession } from "@/lib/auth";
 import { cashFlowXlsx } from "@/lib/cash-flow-xlsx";
 import { can } from "@/lib/permissions";
@@ -9,6 +11,8 @@ export async function GET(request: Request) {
   const user = await getSession();
   if (!user) return NextResponse.redirect(new URL("/login", request.url));
   if (!can(user.role, "viewSalesRevenue")) return NextResponse.json({ error: "Không có quyền" }, { status: 403 });
+  const limited = takeRateLimit(`cash-export:${user.id}`, 6, 60_000);
+  if (!limited.ok) return tooManyRequests(limited, "Đang xuất quá nhanh. Hãy đợi một lát.");
   const params = new URL(request.url).searchParams;
   const { grain, window } = parsePeriodQuery(params.get("grain") || undefined, params.get("date") || undefined);
   const filter = {

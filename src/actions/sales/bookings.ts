@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import * as repo from "@/lib/repos";
 import { collectedSplit, isActiveSaleStatus, parseCommissionKind, parseCommissionValue, parseDiscountKind, parseDiscountValue, parseMoney, parsePaymentMethod, parseStayRefundReason, salePaid } from "@/lib/sales";
+import { assertActionPace } from "@/lib/rate-limit";
 import { actionBack, assertDepositRefund, fail, refresh, requireCancel, requireRefund, requireSales, saleFromForm } from "./shared";
 
 export async function createSaleAction(formData: FormData) {
@@ -13,6 +14,7 @@ export async function createSaleAction(formData: FormData) {
   const back = `/sales/new?date=${encodeURIComponent(date)}&room=${encodeURIComponent(roomIds[0] || "")}`;
   let created: { id: string; bookingId: string };
   try {
+    assertActionPace(user.id, "create-sale");
     created = await repo.createRoomSale(user, saleFromForm(formData));
   } catch (e) {
     if ((e as { digest?: string }).digest?.startsWith("NEXT_REDIRECT")) throw e;
@@ -28,6 +30,7 @@ export async function addRoomsToBookingAction(formData: FormData) {
   const roomIds = formData.getAll("roomId").map(String).filter(Boolean);
   let result: { mode: "applied" | "requested"; bookingId: string };
   try {
+    assertActionPace(user.id, "add-rooms", id);
     result = await repo.submitAddRooms(user, id, roomIds);
   } catch (e) {
     fail(`/sales/${id}`, e);
@@ -42,6 +45,7 @@ export async function updateSaleAction(formData: FormData) {
   const user = await requireSales();
   const id = String(formData.get("id"));
   try {
+    assertActionPace(user.id, "update-sale", id);
     if (user.role !== "manager") {
       throw new Error("Lễ tân sửa ngày và tiền tại trang booking để gửi quản lý duyệt");
     }
@@ -59,6 +63,7 @@ export async function checkinBookingRoomAction(formData: FormData) {
   const id = String(formData.get("id") || "");
   const back = `/sales/bookings/${bookingId}`;
   try {
+    assertActionPace(user.id, "checkin", id);
     const sale = await repo.getRoomSale(id);
     if (!sale || sale.bookingKey !== bookingId) throw new Error("Phòng không thuộc booking này");
     await repo.checkinRoomSale(user, id);
@@ -77,6 +82,7 @@ export async function checkoutBookingRoomAction(formData: FormData) {
   const id = String(formData.get("id") || "");
   const back = `/sales/bookings/${bookingId}`;
   try {
+    assertActionPace(user.id, "checkout", id);
     const sale = await repo.getRoomSale(id);
     if (!sale || sale.bookingKey !== bookingId) throw new Error("Phòng không thuộc booking này");
     await repo.checkoutRoomSale(user, id);
@@ -94,6 +100,7 @@ export async function checkinBookingAction(formData: FormData) {
   const bookingId = String(formData.get("bookingId") || "");
   const back = `/sales/bookings/${bookingId}`;
   try {
+    assertActionPace(user.id, "checkin-booking", bookingId);
     await repo.checkinBooking(user, bookingId);
   } catch (e) {
     fail(back, e);
@@ -108,6 +115,7 @@ export async function checkoutBookingAction(formData: FormData) {
   const bookingId = String(formData.get("bookingId") || "");
   const back = `/sales/bookings/${bookingId}`;
   try {
+    assertActionPace(user.id, "checkout-booking", bookingId);
     await repo.checkoutBooking(user, bookingId);
   } catch (e) {
     fail(back, e);
@@ -122,6 +130,7 @@ export async function checkinSaleAction(formData: FormData) {
   const id = String(formData.get("id"));
   const back = actionBack(formData, `/sales/${id}`);
   try {
+    assertActionPace(user.id, "checkin", id);
     await repo.checkinRoomSale(user, id);
   } catch (e) {
     fail(back, e);
@@ -136,6 +145,7 @@ export async function checkoutSaleAction(formData: FormData) {
   const id = String(formData.get("id"));
   const back = actionBack(formData, `/sales/${id}`);
   try {
+    assertActionPace(user.id, "checkout", id);
     await repo.checkoutRoomSale(user, id);
   } catch (e) {
     fail(back, e);
@@ -151,6 +161,7 @@ export async function cancelSaleAction(formData: FormData) {
   const back = actionBack(formData, `/sales/${id}`);
   const asNoShow = String(formData.get("asNoShow") || "") === "1";
   try {
+    assertActionPace(user.id, "cancel-sale", id);
     const sale = await repo.getRoomSale(id);
     const otherActive = Boolean(sale?.peers.some((row) => isActiveSaleStatus(row.status)));
     const hold = !sale || otherActive ? 0 : collectedSplit(salePaid(sale).deposit, sale.checkinPaid).hold;
@@ -169,6 +180,7 @@ export async function recordBookingPaymentAction(formData: FormData) {
   const bookingId = String(formData.get("bookingId") || "");
   const back = `/sales/bookings/${bookingId}`;
   try {
+    assertActionPace(user.id, "payment", bookingId);
     await repo.recordBookingPayment(user, bookingId, {
       amount: parseMoney(formData.get("amount")),
       settle: String(formData.get("settle") || "") === "1",
@@ -190,6 +202,7 @@ export async function settleOtaDebtAction(formData: FormData) {
   const bookingId = String(formData.get("bookingId") || "");
   const back = `/sales/bookings/${bookingId}`;
   try {
+    assertActionPace(user.id, "ota-settle", bookingId);
     await repo.settleOtaDebt(user, bookingId, {
       paidAt: String(formData.get("paidAt") || ""),
       note: String(formData.get("note") || ""),
@@ -211,6 +224,7 @@ export async function recordBookingRefundAction(formData: FormData) {
     fail(back, new Error("Xác nhận đã hoàn tiền trước khi ghi"));
   }
   try {
+    assertActionPace(user.id, "refund", bookingId);
     await repo.recordBookingRefund(user, bookingId, {
       amount: parseMoney(formData.get("amount")),
       paymentMethod: parsePaymentMethod(formData.get("paymentMethod")),
@@ -245,6 +259,7 @@ export async function updateBookingAction(formData: FormData) {
   }));
   let result: { mode: "applied" | "requested"; bookingId: string };
   try {
+    assertActionPace(user.id, "update-booking", bookingId);
     result = await repo.submitBookingUpdate(user, bookingId, {
       assignments,
       guestName: String(formData.get("guestName") || ""),
@@ -273,6 +288,7 @@ export async function moveGanttSaleAction(formData: FormData) {
   const user = await requireSales();
   const back = actionBack(formData, "/sales");
   try {
+    assertActionPace(user.id, "gantt-move", String(formData.get("saleId") || ""));
     const result = await repo.submitGanttMove(user, {
       saleId: String(formData.get("saleId") || ""),
       roomId: String(formData.get("roomId") || ""),
@@ -297,6 +313,7 @@ export async function cancelBookingAction(formData: FormData) {
   const back = `/sales/bookings/${bookingId}`;
   const asNoShow = String(formData.get("asNoShow") || "") === "1";
   try {
+    assertActionPace(user.id, "cancel-booking", bookingId);
     const booking = await repo.getBooking(bookingId);
     const active = booking?.rooms.filter((row) => isActiveSaleStatus(row.status)) || [];
     const checkIn = active.reduce((min, row) => (row.checkIn < min ? row.checkIn : min), active[0]?.checkIn || booking?.checkIn || "");
@@ -316,6 +333,7 @@ export async function approveBookingChangeAction(formData: FormData) {
   const bookingId = String(formData.get("bookingId") || "");
   const back = `/sales/bookings/${bookingId}`;
   try {
+    assertActionPace(user.id, "approve", String(formData.get("requestId") || ""));
     await repo.approveBookingChange(user, String(formData.get("requestId") || ""));
   } catch (e) {
     fail(back, e);
@@ -330,6 +348,7 @@ export async function rejectBookingChangeAction(formData: FormData) {
   const bookingId = String(formData.get("bookingId") || "");
   const back = `/sales/bookings/${bookingId}`;
   try {
+    assertActionPace(user.id, "reject", String(formData.get("requestId") || ""));
     await repo.rejectBookingChange(
       user,
       String(formData.get("requestId") || ""),

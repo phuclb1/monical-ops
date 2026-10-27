@@ -2,7 +2,8 @@ import Link from "next/link";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { BookingLifeChips } from "@/components/booking-lifecycle";
-import { Btn, Card, Empty, Field, ListPager, TabChip } from "@/components/ui";
+import { QueryForm, QuerySubmit } from "@/components/query-form";
+import { Card, Empty, Field, ListPager, TabChip } from "@/components/ui";
 import { getSession } from "@/lib/auth";
 import { isBookingDeskTab, listPageSize, parsePage } from "@/lib/booking-desk";
 import { SALE_ORIGIN_LABEL, SALE_SOURCE_LABEL } from "@/lib/constants";
@@ -128,7 +129,7 @@ export default async function BookingsPage({
         </div>
       </div>
 
-      <form className="card p-3 md:flex md:items-end md:gap-3 md:p-4">
+      <QueryForm action="/sales/bookings" className="card p-3 md:flex md:items-end md:gap-3 md:p-4">
         <div className="md:min-w-0 md:flex-1">
           <Field label="Tìm booking">
             <input
@@ -144,9 +145,9 @@ export default async function BookingsPage({
         {view !== "new" ? <input type="hidden" name="view" value={view} /> : null}
         {tab !== "open" ? <input type="hidden" name="tab" value={tab} /> : null}
         <div className="mt-2 flex gap-2 md:mt-0">
-          <Btn type="submit" variant="ghost" className="w-full md:w-auto md:px-6">
+          <QuerySubmit pendingLabel="Đang tìm..." className="w-full md:w-auto md:px-6">
             Tìm
-          </Btn>
+          </QuerySubmit>
           {q ? (
             <Link
               href={bookingsHref(view, tab, "")}
@@ -156,7 +157,7 @@ export default async function BookingsPage({
             </Link>
           ) : null}
         </div>
-      </form>
+      </QueryForm>
 
       <div className="tab-scroller -mx-3 px-3 pb-1">
         {VIEWS.map((item) => (

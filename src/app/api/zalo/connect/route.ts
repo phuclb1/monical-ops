@@ -1,4 +1,6 @@
 import { getSession } from "@/lib/auth";
+import { tooManyRequests } from "@/lib/api-rate-limit";
+import { takeRateLimit } from "@/lib/rate-limit";
 import { can } from "@/lib/permissions";
 import { connectZaloAccount } from "@/lib/zalo-client";
 import { loadZaloPublicStatus } from "@/lib/zalo-session";
@@ -12,6 +14,8 @@ export async function POST(request: Request) {
   const user = await getSession();
   if (!user) return Response.json({ error: "Cần đăng nhập." }, { status: 401 });
   if (!can(user.role, "manageSettings")) return Response.json({ error: "Chỉ quản lý kết nối Zalo." }, { status: 403 });
+  const limited = takeRateLimit(`zalo-connect:${user.id}`, 4, 60_000);
+  if (!limited.ok) return tooManyRequests(limited, "Đang kết nối quá nhanh. Hãy đợi một lát.");
   const status = await loadZaloPublicStatus();
   if (!status.phone) return Response.json({ error: "Hãy lưu số Zalo trước khi quét mã." }, { status: 400 });
   if (connecting) return Response.json({ error: "Đang chờ một mã QR khác. Hãy đợi hoặc tải lại trang." }, { status: 409 });

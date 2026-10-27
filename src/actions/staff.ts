@@ -6,6 +6,7 @@ import { loadUserSession, requireSession, setSessionCookie } from "@/lib/auth";
 import { can } from "@/lib/permissions";
 import type { Role } from "@/lib/types";
 import * as repo from "@/lib/repos";
+import { assertActionPace } from "@/lib/rate-limit";
 
 function requireManager() {
   return requireSession().then((user) => {
@@ -28,6 +29,7 @@ function refreshStaffSurfaces(id?: string) {
 export async function createStaffAction(formData: FormData) {
   const user = await requireManager();
   try {
+    assertActionPace(user.id, "staff-create", String(formData.get("username") || ""));
     const id = await repo.createStaff(user, {
       username: String(formData.get("username") || ""),
       email: String(formData.get("email") || ""),
@@ -48,6 +50,7 @@ export async function updateStaffAction(formData: FormData) {
   const user = await requireManager();
   const id = String(formData.get("id"));
   try {
+    assertActionPace(user.id, "staff-update", id);
     await repo.updateStaff(user, id, {
       fullName: String(formData.get("fullName") || ""),
       email: String(formData.get("email") || ""),
@@ -69,6 +72,7 @@ export async function toggleStaffAction(formData: FormData) {
   const user = await requireManager();
   const id = String(formData.get("id"));
   try {
+    assertActionPace(user.id, "staff-toggle", id);
     await repo.setStaffActive(user, id, String(formData.get("active")) === "1");
   } catch (e) {
     fail(`/staff/${id}`, e);
@@ -80,6 +84,7 @@ export async function resetStaffPasswordAction(formData: FormData) {
   const user = await requireManager();
   const id = String(formData.get("id"));
   try {
+    assertActionPace(user.id, "staff-password", id);
     await repo.resetStaffPassword(user, id, String(formData.get("password") || ""));
   } catch (e) {
     fail(`/staff/${id}`, e);

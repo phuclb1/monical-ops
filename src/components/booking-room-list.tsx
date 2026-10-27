@@ -2,7 +2,8 @@ import type { ReactNode } from "react";
 import Link from "next/link";
 import { checkinBookingRoomAction } from "@/actions/sales";
 import { BookingCheckoutButton } from "@/components/booking-checkout";
-import { Btn, Chip } from "@/components/ui";
+import { PendingSubmit } from "@/components/pending-submit";
+import { Chip } from "@/components/ui";
 import { CHECK_IN_TIME, CHECK_OUT_TIME, SALE_STATUS_LABEL } from "@/lib/constants";
 import { formatDateNumeric, formatTime } from "@/lib/datetime";
 import { discountLabel, formatVnd } from "@/lib/sales";
@@ -200,7 +201,7 @@ function RoomStay({
         <form action={checkinBookingRoomAction}>
           <input type="hidden" name="bookingId" value={bookingId} />
           <input type="hidden" name="id" value={row.id} />
-          <Btn type="submit">Check in</Btn>
+          <PendingSubmit pendingLabel="Đang nhận phòng...">Check in</PendingSubmit>
         </form>
       ) : null}
       {canOut ? <BookingCheckoutButton bookingId={bookingId} saleId={row.id} due={checkoutDue} /> : null}

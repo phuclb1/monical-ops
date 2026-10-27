@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { limitRequest } from "@/lib/api-rate-limit";
 import { createRoomSale } from "@/lib/repos/sales/create";
 import {
   getOpenBooking,
@@ -21,6 +22,8 @@ function unavailable() {
 }
 
 export async function GET(request: Request) {
+  const limited = limitRequest(request, "open-api", 90, 60_000);
+  if (limited) return limited;
   if (!(await resolveOpenApiSecret()) && process.env.NODE_ENV === "production") return unavailable();
   if (!(await openApiAuthorized(request))) return unauthorized();
 
@@ -45,6 +48,8 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
+  const limited = limitRequest(request, "open-api", 90, 60_000);
+  if (limited) return limited;
   if (!(await resolveOpenApiSecret()) && process.env.NODE_ENV === "production") return unavailable();
   if (!(await openApiAuthorized(request))) return unauthorized();
 

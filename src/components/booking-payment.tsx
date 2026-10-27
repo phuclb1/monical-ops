@@ -3,7 +3,8 @@
 import { useState } from "react";
 import { recordBookingPaymentAction } from "@/actions/sales";
 import { BookingTxFields } from "@/components/booking-tx-fields";
-import { Btn, PayMethodField } from "@/components/ui";
+import { PendingSubmit } from "@/components/pending-submit";
+import { PayMethodField } from "@/components/ui";
 import { PAYMENT_METHOD_LABEL } from "@/lib/constants";
 import { formatVnd, paidNote, parseMoney } from "@/lib/sales";
 import type { PaymentMethod } from "@/lib/types";
@@ -54,11 +55,11 @@ export function BookingPaymentPanel({
       <BookingTxFields />
       {note ? <p className="text-xs text-[#5c6665]">Đã thu {note}</p> : null}
       {extra && extra < due ? <p className="text-xs text-[#5c6665]">Sau lần này còn {formatVnd(due - extra)}</p> : null}
-      <Btn type="submit" className="w-full">
+      <PendingSubmit className="w-full" pendingLabel="Đang thu...">
         {extra
           ? `Thu ${formatVnd(extra)} · ${PAYMENT_METHOD_LABEL[method]}`
           : `Thu đủ ${formatVnd(due)} · ${PAYMENT_METHOD_LABEL[method]}`}
-      </Btn>
+      </PendingSubmit>
     </form>
   );
 }

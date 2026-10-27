@@ -1,9 +1,12 @@
 import { NextResponse } from "next/server";
+import { limitRequest } from "@/lib/api-rate-limit";
 import { getOpenBooking, openApiAuthorized, resolveOpenApiSecret } from "@/lib/open-api";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(request: Request, context: { params: Promise<{ id: string }> }) {
+  const limited = limitRequest(request, "open-api", 90, 60_000);
+  if (limited) return limited;
   if (!(await resolveOpenApiSecret()) && process.env.NODE_ENV === "production") {
     return NextResponse.json({ ok: false, error: "Chưa tạo token Open API trong Cài đặt" }, { status: 503 });
   }

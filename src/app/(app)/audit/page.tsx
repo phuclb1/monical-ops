@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { QueryForm, QuerySubmit } from "@/components/query-form";
 import { Card, Chip, Empty } from "@/components/ui";
 import { getSession } from "@/lib/auth";
 import {
@@ -61,7 +62,7 @@ export default async function AuditPage({
         <p className="text-xs text-[#5c6665]">Chỉ quản lý. Ai làm gì, lúc nào, thêm mới hay sửa những trường nào.</p>
       </div>
 
-      <form method="get" className="card grid gap-2 p-3 sm:grid-cols-3">
+      <QueryForm action="/audit" className="card grid gap-2 p-3 sm:grid-cols-3">
         <label>
           Đối tượng
           <select name="entity" defaultValue={entity || ""}>
@@ -99,10 +100,10 @@ export default async function AuditPage({
               ))}
           </select>
         </label>
-        <button type="submit" className="rounded-xl bg-teal px-4 text-sm font-semibold text-white sm:col-span-3">
+        <QuerySubmit variant="primary" pendingLabel="Đang lọc..." className="w-full sm:col-span-3">
           Lọc
-        </button>
-      </form>
+        </QuerySubmit>
+      </QueryForm>
 
       {rows.length === 0 ? <Empty title="Chưa có nhật ký" text="Thao tác trên Ops sẽ hiện ở đây." /> : null}
 

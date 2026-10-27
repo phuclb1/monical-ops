@@ -6,6 +6,7 @@ import { requireSession } from "@/lib/auth";
 import { can } from "@/lib/permissions";
 import * as repo from "@/lib/repos";
 import { parseMoney } from "@/lib/sales";
+import { assertActionPace } from "@/lib/rate-limit";
 
 function requireManager() {
   return requireSession().then((user) => {
@@ -38,6 +39,7 @@ function typeFromForm(formData: FormData) {
 export async function createRoomTypeAction(formData: FormData) {
   const user = await requireManager();
   try {
+    assertActionPace(user.id, "room-type-create", String(formData.get("name") || ""));
     await repo.createRoomType(user, typeFromForm(formData));
   } catch (e) {
     if ((e as { digest?: string }).digest?.startsWith("NEXT_REDIRECT")) throw e;
@@ -50,6 +52,7 @@ export async function createRoomTypeAction(formData: FormData) {
 export async function updateRoomTypeAction(formData: FormData) {
   const user = await requireManager();
   try {
+    assertActionPace(user.id, "room-type-update", String(formData.get("id") || ""));
     await repo.updateRoomType(user, String(formData.get("id")), typeFromForm(formData));
   } catch (e) {
     if ((e as { digest?: string }).digest?.startsWith("NEXT_REDIRECT")) throw e;
@@ -62,6 +65,7 @@ export async function updateRoomTypeAction(formData: FormData) {
 export async function deleteRoomTypeAction(formData: FormData) {
   const user = await requireManager();
   try {
+    assertActionPace(user.id, "room-type-delete", String(formData.get("id") || ""));
     await repo.deleteRoomType(user, String(formData.get("id")));
   } catch (e) {
     fail(e);
@@ -72,6 +76,7 @@ export async function deleteRoomTypeAction(formData: FormData) {
 export async function createRoomAction(formData: FormData) {
   const user = await requireManager();
   try {
+    assertActionPace(user.id, "room-create", String(formData.get("number") || ""));
     await repo.createManagedRoom(user, String(formData.get("number") || ""), String(formData.get("type") || ""));
   } catch (e) {
     if ((e as { digest?: string }).digest?.startsWith("NEXT_REDIRECT")) throw e;
@@ -84,6 +89,7 @@ export async function createRoomAction(formData: FormData) {
 export async function setRoomTypeAction(formData: FormData) {
   const user = await requireManager();
   try {
+    assertActionPace(user.id, "room-type-set", String(formData.get("id") || ""));
     await repo.setRoomType(user, String(formData.get("id")), String(formData.get("type") || ""));
   } catch (e) {
     fail(e);
@@ -94,6 +100,7 @@ export async function setRoomTypeAction(formData: FormData) {
 export async function deleteRoomAction(formData: FormData) {
   const user = await requireManager();
   try {
+    assertActionPace(user.id, "room-delete", String(formData.get("id") || ""));
     await repo.deleteManagedRoom(user, String(formData.get("id")));
   } catch (e) {
     fail(e);

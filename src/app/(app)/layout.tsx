@@ -10,6 +10,7 @@ import { Logo } from "@/components/logo";
 import { PushPrompt } from "@/components/push-prompt";
 import { countUnreadNotifications } from "@/lib/repos";
 import { logoutAction } from "@/actions/auth";
+import { PendingNative } from "@/components/pending-submit";
 
 export default async function AppLayout({ children }: { children: ReactNode }) {
   const user = await getSession();
@@ -54,7 +55,9 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
         </div>
         <SideNav model={sideModel} />
         <form action={logoutAction} className="border-t border-line p-3">
-          <button className="w-full rounded-xl border border-line bg-white py-2.5 text-sm font-semibold">Đăng xuất</button>
+          <PendingNative className="w-full rounded-xl border border-line bg-white py-2.5 text-sm font-semibold" pendingLabel="Đang thoát...">
+            Đăng xuất
+          </PendingNative>
         </form>
       </aside>
 
@@ -82,7 +85,9 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
           </p>
           {isolated ? (
             <form action={logoutAction} className="md:hidden">
-              <button className="flex h-12 items-center rounded-full bg-white px-3 text-sm font-semibold">Đăng xuất</button>
+              <PendingNative className="flex h-12 items-center rounded-full bg-white px-3 text-sm font-semibold" pendingLabel="Đang thoát...">
+                Đăng xuất
+              </PendingNative>
             </form>
           ) : (
             <Link href="/notifications" className="relative flex h-12 w-12 items-center justify-center rounded-full bg-white">

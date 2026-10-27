@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { Btn, Card, Chip, Empty, Field, Stat, TabChip } from "@/components/ui";
+import { QueryForm, QuerySubmit } from "@/components/query-form";
+import { Card, Chip, Empty, Field, Stat, TabChip } from "@/components/ui";
 import { getSession } from "@/lib/auth";
 import { SALE_SOURCE_LABEL, SALE_STATUS_LABEL } from "@/lib/constants";
 import { addDaysVN, addMonthsVN, formatDayMonth, formatMonthLong, startOfMonthVN, todayVN } from "@/lib/datetime";
@@ -197,7 +198,7 @@ export default async function SalesPage({
       </div>
 
       <Card className="md:flex md:items-end md:justify-between md:gap-4">
-        <form className="space-y-3 md:flex md:flex-1 md:items-end md:gap-3 md:space-y-0">
+        <QueryForm action="/sales" className="space-y-3 md:flex md:flex-1 md:items-end md:gap-3 md:space-y-0">
           <div className="flex items-end gap-2 md:max-w-sm md:flex-1">
             <Link href={salesHref({ date: prev })} className="hit-btn" aria-label="Khung trước">
               ←
@@ -215,10 +216,10 @@ export default async function SalesPage({
           {focus ? <input type="hidden" name="focus" value={focus} /> : null}
           {view !== "7" ? <input type="hidden" name="view" value={view} /> : null}
           {group !== "floor" ? <input type="hidden" name="group" value={group} /> : null}
-          <Btn type="submit" variant="ghost" className="w-full md:w-auto md:px-6">
+          <QuerySubmit pendingLabel="Đang xem..." className="w-full md:w-auto md:px-6">
             Xem
-          </Btn>
-        </form>
+          </QuerySubmit>
+        </QueryForm>
         <p className="mt-2 text-xs font-semibold text-[#5c6665] md:mt-0 md:pb-3 md:text-sm">{rangeLabel}</p>
       </Card>
 

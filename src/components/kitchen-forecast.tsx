@@ -1,5 +1,6 @@
 import { breakfastAction, confirmBreakfastAction } from "@/actions/ops";
-import { Btn, Card, Chip, Field } from "@/components/ui";
+import { PendingSubmit } from "@/components/pending-submit";
+import { Card, Chip, Field } from "@/components/ui";
 import { can } from "@/lib/permissions";
 import { nextDate, todayVN } from "@/lib/datetime";
 import { getBreakfast } from "@/lib/repos";
@@ -51,9 +52,9 @@ export async function KitchenForecast({ user }: { user: SessionUser }) {
           </div>
           {can(user.role, "editBreakfast") ? (
             <div className="col-span-2">
-              <Btn type="submit" className="w-full">
+              <PendingSubmit className="w-full" pendingLabel="Đang lưu...">
                 Gửi / cập nhật số
-              </Btn>
+              </PendingSubmit>
             </div>
           ) : null}
         </form>
@@ -62,9 +63,9 @@ export async function KitchenForecast({ user }: { user: SessionUser }) {
       {can(user.role, "confirmBreakfast") && row ? (
         <form action={confirmBreakfastAction}>
           <input type="hidden" name="date" value={date} />
-          <Btn type="submit" variant="gold" className="w-full">
+          <PendingSubmit variant="gold" className="w-full" pendingLabel="Đang xác nhận...">
             Bếp đã nhận số
-          </Btn>
+          </PendingSubmit>
         </form>
       ) : null}
 
@@ -85,9 +86,9 @@ export async function KitchenForecast({ user }: { user: SessionUser }) {
             <input name="actualChildren" type="number" defaultValue={row?.actualChildren ?? ""} />
           </Field>
           <div className="col-span-2">
-            <Btn type="submit" variant="ghost" className="w-full">
+            <PendingSubmit variant="ghost" className="w-full" pendingLabel="Đang lưu...">
               Lưu thực tế
-            </Btn>
+            </PendingSubmit>
           </div>
         </form>
       </Card>

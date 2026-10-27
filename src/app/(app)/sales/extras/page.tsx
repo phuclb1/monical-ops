@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { saveExtraRatesAction } from "@/actions/sales";
-import { Btn, Card, Field } from "@/components/ui";
+import { PendingSubmit } from "@/components/pending-submit";
+import { Card, Field } from "@/components/ui";
 import { getSession } from "@/lib/auth";
 import { extraUnitText } from "@/lib/extras";
 import { formatVnd } from "@/lib/sales";
@@ -48,9 +49,9 @@ export default async function ExtraRatesPage({
               </Field>
             </div>
           ))}
-          <Btn type="submit" className="w-full">
+          <PendingSubmit className="w-full" pendingLabel="Đang lưu...">
             Lưu giá dịch vụ
-          </Btn>
+          </PendingSubmit>
         </form>
       </Card>
 

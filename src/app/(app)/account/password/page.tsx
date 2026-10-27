@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { changePasswordAction } from "@/actions/auth";
-import { Btn, Card, Field } from "@/components/ui";
+import { PendingSubmit } from "@/components/pending-submit";
+import { Card, Field } from "@/components/ui";
 import { getSession } from "@/lib/auth";
 import { PASSWORD_MIN_LENGTH, PASSWORD_REQUIREMENTS } from "@/lib/password";
 
@@ -46,7 +47,7 @@ export default async function ChangePasswordPage({
             />
           </Field>
           <p id="password-help" className="text-xs leading-5 text-[#6b7372]">{PASSWORD_REQUIREMENTS}.</p>
-          <Btn type="submit" className="w-full">Đổi mật khẩu</Btn>
+          <PendingSubmit className="w-full" pendingLabel="Đang lưu...">Đổi mật khẩu</PendingSubmit>
         </form>
       </Card>
     </main>

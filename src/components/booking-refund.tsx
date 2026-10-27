@@ -1,10 +1,10 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { useFormStatus } from "react-dom";
+import { PendingSubmit } from "@/components/pending-submit";
 import { recordBookingRefundAction } from "@/actions/sales";
 import { BookingTxFields } from "@/components/booking-tx-fields";
-import { Btn, PayMethodField } from "@/components/ui";
+import { PayMethodField } from "@/components/ui";
 import { PAYMENT_METHOD_LABEL } from "@/lib/constants";
 import { formatVnd, parseMoney, stayNightlyRate, stayRefundQuote, type StayRefundReason } from "@/lib/sales";
 import type { PaymentMethod } from "@/lib/types";
@@ -135,18 +135,10 @@ export function BookingRefundPanel({
         Đã hoàn {formatVnd(payable)} từ {PAYMENT_METHOD_LABEL[method]}
       </label>
 
-      <SubmitBtn disabled={!confirmed || payable <= 0}>
+      <PendingSubmit className="w-full" disabled={!confirmed || payable <= 0} pendingLabel="Đang lưu...">
         {payable > 0 ? `Ghi hoàn ${formatVnd(payable)}` : "Ghi hoàn tiền"}
-      </SubmitBtn>
+      </PendingSubmit>
     </form>
   );
 }
 
-function SubmitBtn({ children, disabled }: { children: string; disabled?: boolean }) {
-  const { pending } = useFormStatus();
-  return (
-    <Btn type="submit" className="w-full" disabled={disabled || pending}>
-      {pending ? "Đang lưu..." : children}
-    </Btn>
-  );
-}

@@ -4,7 +4,8 @@ import { addRoomsToBookingAction, checkinSaleAction, checkoutSaleAction } from "
 import { AddBookingRoomsForm } from "@/components/sale-form";
 import { BookingCancelActions } from "@/components/booking-cancel";
 import { BookingRefundPanel } from "@/components/booking-refund";
-import { Btn, Card, Chip } from "@/components/ui";
+import { PendingSubmit } from "@/components/pending-submit";
+import { Card, Chip } from "@/components/ui";
 import { getSession } from "@/lib/auth";
 import { PAYMENT_METHOD_LABEL, SALE_ORIGIN_LABEL, SALE_SOURCE_LABEL, SALE_STATUS_LABEL } from "@/lib/constants";
 import { formatDateLong, formatDateTime, todayVN } from "@/lib/datetime";
@@ -231,14 +232,14 @@ export default async function SaleDetailPage({
           {canCheckin ? (
             <form action={checkinSaleAction}>
               <input type="hidden" name="id" value={sale.id} />
-              <Btn type="submit" className="w-full">Nhận phòng</Btn>
+              <PendingSubmit className="w-full" pendingLabel="Đang nhận phòng...">Nhận phòng</PendingSubmit>
             </form>
           ) : null}
           {sale.status === "inhouse" ? (
             canCheckout ? (
               <form action={checkoutSaleAction}>
                 <input type="hidden" name="id" value={sale.id} />
-                <Btn type="submit" className="w-full" variant="gold">Trả phòng</Btn>
+                <PendingSubmit className="w-full" variant="gold" pendingLabel="Đang trả phòng...">Trả phòng</PendingSubmit>
               </form>
             ) : (
               <p className="text-sm text-[#c47b12]">Chưa thu đủ, chưa trả phòng được.</p>

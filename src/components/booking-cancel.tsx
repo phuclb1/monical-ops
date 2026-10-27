@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { createPortal, useFormStatus } from "react-dom";
+import { createPortal } from "react-dom";
+import { PendingSubmit } from "@/components/pending-submit";
 import { cancelBookingAction, cancelSaleAction } from "@/actions/sales";
 import { Btn } from "@/components/ui";
 import { formatVnd } from "@/lib/sales";
@@ -126,9 +127,9 @@ export function BookingCancelActions({
                   <Btn type="button" variant="ghost" onClick={() => setMode(null)}>
                     Đóng
                   </Btn>
-                  <SubmitBtn disabled={needRefund && !refunded}>
+                  <PendingSubmit variant="danger" disabled={needRefund && !refunded} pendingLabel="Đang lưu...">
                     {mode === "no_show" ? "Ghi no-show" : cancelLabel}
-                  </SubmitBtn>
+                  </PendingSubmit>
                 </div>
               </form>
             </div>,
@@ -165,20 +166,5 @@ function Trigger({
     >
       {children}
     </button>
-  );
-}
-
-function SubmitBtn({
-  children,
-  disabled,
-}: {
-  children: string;
-  disabled?: boolean;
-}) {
-  const { pending } = useFormStatus();
-  return (
-    <Btn type="submit" variant="danger" disabled={disabled || pending}>
-      {pending ? "Đang lưu..." : children}
-    </Btn>
   );
 }

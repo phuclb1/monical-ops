@@ -1,7 +1,8 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { Btn, Field, PayMethodField } from "@/components/ui";
+import { PendingSubmit } from "@/components/pending-submit";
+import { Field, PayMethodField } from "@/components/ui";
 import { compressImage } from "@/lib/image";
 import { PAYMENT_METHOD_LABEL } from "@/lib/constants";
 import { formatVnd } from "@/lib/sales";
@@ -243,9 +244,9 @@ export function SaleFormSide(props: {
           <span>Nhận phòng luôn (phòng đã đến ngày)</span>
         </label>
       ) : null}
-      <Btn type="submit" className="w-full" disabled={!roomIds.length}>
+      <PendingSubmit className="w-full" disabled={!roomIds.length} pendingLabel="Đang lưu...">
         {saveLabel}
-      </Btn>
+      </PendingSubmit>
       </div>
   );
 }

@@ -8,7 +8,8 @@ import {
   setRoomTypeAction,
   updateRoomTypeAction,
 } from "@/actions/rooms";
-import { Btn, Card, Field } from "@/components/ui";
+import { PendingNative, PendingSubmit } from "@/components/pending-submit";
+import { Card, Field } from "@/components/ui";
 import { getSession } from "@/lib/auth";
 import { can } from "@/lib/permissions";
 import { listRooms, listRoomTypes } from "@/lib/repos";
@@ -64,9 +65,9 @@ export default async function ManageRoomsPage({
               <Field label="Sức chứa tối đa">
                 <input name="adults" type="number" min={1} placeholder="2" />
               </Field>
-              <Btn type="submit" className="w-full">
+              <PendingSubmit className="w-full" pendingLabel="Đang lưu...">
                 Thêm hạng
-              </Btn>
+              </PendingSubmit>
             </form>
           </Card>
           <Card>
@@ -84,9 +85,9 @@ export default async function ManageRoomsPage({
                   ))}
                 </select>
               </Field>
-              <Btn type="submit" className="w-full">
+              <PendingSubmit className="w-full" pendingLabel="Đang lưu...">
                 Thêm phòng
-              </Btn>
+              </PendingSubmit>
             </form>
           </Card>
         </div>
@@ -128,13 +129,13 @@ export default async function ManageRoomsPage({
                   </Field>
                   <div className="flex items-center justify-end gap-2 pb-0.5">
                     <span className="text-xs text-[#5c6665]">{counts[type.name] ?? 0} p</span>
-                    <Btn type="submit" variant="ghost">
+                    <PendingSubmit variant="ghost" pendingLabel="Đang xử lý...">
                       Lưu
-                    </Btn>
+                    </PendingSubmit>
                     {(counts[type.name] ?? 0) === 0 ? (
-                      <button formAction={deleteRoomTypeAction} className="text-xs font-semibold text-[#c23b3b]">
+                      <PendingNative formAction={deleteRoomTypeAction} className="text-xs font-semibold text-[#c23b3b]" pendingLabel="Đang xử lý...">
                         Xóa
-                      </button>
+                      </PendingNative>
                     ) : null}
                   </div>
                 </form>
@@ -156,12 +157,12 @@ export default async function ManageRoomsPage({
                       </option>
                     ))}
                   </select>
-                  <Btn type="submit" variant="ghost">
+                  <PendingSubmit variant="ghost" pendingLabel="Đang xử lý...">
                     Lưu
-                  </Btn>
-                  <button formAction={deleteRoomAction} className="text-xs font-semibold text-[#c23b3b]">
+                  </PendingSubmit>
+                  <PendingNative formAction={deleteRoomAction} className="text-xs font-semibold text-[#c23b3b]" pendingLabel="Đang xử lý...">
                     Xóa
-                  </button>
+                  </PendingNative>
                 </form>
               ))}
             </div>

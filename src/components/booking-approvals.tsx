@@ -4,6 +4,7 @@ import { useState } from "react";
 import { approveBookingChangeAction, rejectBookingChangeAction } from "@/actions/sales";
 import { formatAuditWhen } from "@/lib/audit-view";
 import type { Role } from "@/lib/types";
+import { PendingSubmit } from "@/components/pending-submit";
 import { Btn, Card, Chip, Field } from "@/components/ui";
 
 type ApprovalChange = {
@@ -92,9 +93,9 @@ export function BookingApprovals({
                     <form action={approveBookingChangeAction}>
                       <input type="hidden" name="requestId" value={row.id} />
                       <input type="hidden" name="bookingId" value={row.bookingId} />
-                      <Btn type="submit" className="w-full">
+                      <PendingSubmit className="w-full" pendingLabel="Đang duyệt...">
                         Chấp nhận
-                      </Btn>
+                      </PendingSubmit>
                     </form>
                     <Btn type="button" variant="danger" className="w-full" onClick={() => setRejecting(row)}>
                       Từ chối
@@ -147,9 +148,9 @@ export function BookingApprovals({
               <Btn type="button" variant="ghost" onClick={() => setRejecting(null)}>
                 Quay lại
               </Btn>
-              <Btn type="submit" variant="danger">
+              <PendingSubmit variant="danger" pendingLabel="Đang từ chối...">
                 Xác nhận từ chối
-              </Btn>
+              </PendingSubmit>
             </div>
           </form>
         </div>

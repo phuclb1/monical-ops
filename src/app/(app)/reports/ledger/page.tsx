@@ -1,7 +1,9 @@
 import Link from "next/link";
+import { PendingLink } from "@/components/pending-link";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
-import { Btn, Card, Chip, Empty, Field, ListPager, Stat, TabChip } from "@/components/ui";
+import { QueryForm, QuerySubmit } from "@/components/query-form";
+import { Card, Chip, Empty, Field, ListPager, Stat, TabChip } from "@/components/ui";
 import { ReportTabs } from "@/components/report-tabs";
 import { getSession } from "@/lib/auth";
 import { listPageSize, parsePage } from "@/lib/booking-desk";
@@ -109,13 +111,13 @@ export default async function LedgerPage({
       </div>
 
       <div className="flex items-center justify-between gap-2">
-        <Link href={hrefFor({ ...query, date: window.prev, page: 1 })} className="inline-flex min-h-11 items-center px-2 text-sm font-semibold text-teal">
+        <PendingLink href={hrefFor({ ...query, date: window.prev, page: 1 })} className="inline-flex min-h-11 items-center px-2 text-sm font-semibold text-teal" pendingLabel="…">
           ‹
-        </Link>
+        </PendingLink>
         <p className="text-center font-bold">{formatPeriodLabel(grain, window.from)}</p>
-        <Link href={hrefFor({ ...query, date: window.next, page: 1 })} className="inline-flex min-h-11 items-center px-2 text-sm font-semibold text-teal">
+        <PendingLink href={hrefFor({ ...query, date: window.next, page: 1 })} className="inline-flex min-h-11 items-center px-2 text-sm font-semibold text-teal" pendingLabel="…">
           ›
-        </Link>
+        </PendingLink>
       </div>
 
       {grain === "month" ? (
@@ -160,7 +162,7 @@ export default async function LedgerPage({
         ))}
       </div>
 
-      <form className="card grid gap-3 p-3 md:grid-cols-[minmax(0,1.5fr)_1fr_auto] md:items-end md:p-4">
+      <QueryForm action="/reports/ledger" className="card grid gap-3 p-3 md:grid-cols-[minmax(0,1.5fr)_1fr_auto] md:items-end md:p-4">
         <input type="hidden" name="grain" value={grain} />
         <input type="hidden" name="date" value={window.from} />
         {kind ? <input type="hidden" name="kind" value={kind} /> : null}
@@ -176,16 +178,16 @@ export default async function LedgerPage({
           </select>
         </Field>
         <div className="flex gap-2">
-          <Btn type="submit" variant="ghost" className="w-full md:w-auto md:px-6">
+          <QuerySubmit pendingLabel="Đang lọc..." className="w-full md:w-auto md:px-6">
             Lọc
-          </Btn>
+          </QuerySubmit>
           {filtered ? (
-            <Link href={hrefFor({ grain, date: window.from })} className="inline-flex min-h-12 items-center justify-center rounded-xl px-4 text-sm font-semibold text-teal">
+            <PendingLink href={hrefFor({ grain, date: window.from })} className="inline-flex min-h-12 items-center justify-center rounded-xl px-4 text-sm font-semibold text-teal">
               Xóa
-            </Link>
+            </PendingLink>
           ) : null}
         </div>
-      </form>
+      </QueryForm>
 
       <Card className="!p-0">
         <div className="px-4 pt-4">

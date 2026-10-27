@@ -47,8 +47,9 @@ export function GanttUpgradeDialog(props: {
                 type="button"
                 onClick={() => onConfirm(confirm.sale, confirm.room.id, confirm.checkIn, confirm.checkOut)}
                 disabled={pending}
+                aria-busy={pending || undefined}
               >
-                Đồng ý
+                {pending ? "Đang lưu..." : "Đồng ý"}
               </Btn>
             </div>
           </div>

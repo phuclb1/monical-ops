@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { PendingLink } from "@/components/pending-link";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { Card, Chip, Empty, ListPager, Stat, TabChip } from "@/components/ui";
@@ -95,13 +96,13 @@ export default async function SalesRevenuePage({
       </div>
 
       <div className="flex items-center justify-between gap-2">
-        <Link href={hrefFor(grain, window.prev)} className="inline-flex min-h-11 items-center px-2 text-sm font-semibold text-teal">
+        <PendingLink href={hrefFor(grain, window.prev)} className="inline-flex min-h-11 items-center px-2 text-sm font-semibold text-teal" pendingLabel="…">
           ‹
-        </Link>
+        </PendingLink>
         <p className="text-center font-bold">{formatPeriodLabel(grain, window.from)}</p>
-        <Link href={hrefFor(grain, window.next)} className="inline-flex min-h-11 items-center px-2 text-sm font-semibold text-teal">
+        <PendingLink href={hrefFor(grain, window.next)} className="inline-flex min-h-11 items-center px-2 text-sm font-semibold text-teal" pendingLabel="…">
           ›
-        </Link>
+        </PendingLink>
       </div>
 
       {grain === "month" ? (

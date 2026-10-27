@@ -7,6 +7,7 @@ import { parseExpenseForm } from "@/lib/expenses";
 import { can } from "@/lib/permissions";
 import * as repo from "@/lib/repos";
 import { parseMoney } from "@/lib/sales";
+import { assertActionPace } from "@/lib/rate-limit";
 
 async function requireManager() {
   const user = await requireSession();
@@ -44,6 +45,11 @@ export async function createExpenseAction(formData: FormData) {
   } catch (error) {
     back(spentOn, grain, (error as Error).message);
   }
+  try {
+    assertActionPace(user.id, "expense-create");
+  } catch (error) {
+    back(draft.spentOn, grain, (error as Error).message);
+  }
   await repo.createExpense(user, draft);
   revalidatePath("/expenses");
   const params = new URLSearchParams({ grain: "month", date: draft.spentOn, ok: "1" });
@@ -56,6 +62,7 @@ export async function deleteExpenseAction(formData: FormData) {
   const date = String(formData.get("date") || "");
   const grain = String(formData.get("grain") || "month");
   try {
+    assertActionPace(user.id, "expense-delete", id);
     await repo.deleteExpense(user, id);
   } catch (error) {
     back(date, grain, (error as Error).message);

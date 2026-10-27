@@ -1,3 +1,7 @@
+"use client";
+
+import { useFormStatus } from "react-dom";
+import type { ReactNode } from "react";
 import { Ban, Bell, CalendarPlus, Pencil } from "lucide-react";
 import { openNotifAction, readNotifAction } from "@/modules/notifications/actions/notifications.action";
 import { Chip } from "@/components/ui";
@@ -60,6 +64,15 @@ function NotifBody({ n }: { n: Row }) {
   );
 }
 
+function NotifSubmit({ children }: { children: ReactNode }) {
+  const { pending } = useFormStatus();
+  return (
+    <button type="submit" className={`notif-card-hit${pending ? " is-pending" : ""}`} disabled={pending} aria-busy={pending || undefined}>
+      {children}
+    </button>
+  );
+}
+
 export function NotificationList({ rows }: { rows: Row[] }) {
   return (
     <div className="notif-list">
@@ -70,9 +83,7 @@ export function NotificationList({ rows }: { rows: Row[] }) {
             <form action={n.link ? openNotifAction : readNotifAction}>
               <input type="hidden" name="id" value={n.id} />
               {n.link ? <input type="hidden" name="link" value={n.link} /> : null}
-              <button type="submit" className="notif-card-hit">
-                {inner}
-              </button>
+              <NotifSubmit>{inner}</NotifSubmit>
             </form>
           </article>
         );

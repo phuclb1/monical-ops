@@ -1,6 +1,6 @@
 import clsx from "clsx";
-import Link from "next/link";
 import type { ReactNode } from "react";
+import { PendingLink } from "@/components/pending-link";
 import { PAYMENT_METHOD_LABEL } from "@/lib/constants";
 import { PAYMENT_METHODS, type PaymentMethod } from "@/lib/types";
 
@@ -49,9 +49,9 @@ export function TabChip({
   children: ReactNode;
 }) {
   return (
-    <Link href={href} className={clsx("tab-chip", active && "is-on")} aria-current={active ? "page" : undefined}>
+    <PendingLink href={href} className={clsx("tab-chip", active && "is-on")} current={active}>
       {children}
-    </Link>
+    </PendingLink>
   );
 }
 
@@ -235,9 +235,9 @@ export function ListPager({
       </p>
       <div className="flex items-center gap-1">
         {page > 1 ? (
-          <Link href={hrefFor(page - 1)} className={link}>
+          <PendingLink href={hrefFor(page - 1)} className={link}>
             Trước
-          </Link>
+          </PendingLink>
         ) : (
           <span className={idle}>Trước</span>
         )}
@@ -245,9 +245,9 @@ export function ListPager({
           {page}/{pages}
         </span>
         {page < pages ? (
-          <Link href={hrefFor(page + 1)} className={link}>
+          <PendingLink href={hrefFor(page + 1)} className={link}>
             Sau
-          </Link>
+          </PendingLink>
         ) : (
           <span className={idle}>Sau</span>
         )}

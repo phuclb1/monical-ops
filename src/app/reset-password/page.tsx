@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { Btn, Card, Field } from "@/components/ui";
+import { NativePostForm, PendingSubmit } from "@/components/pending-submit";
+import { Card, Field } from "@/components/ui";
 import { Logo } from "@/components/logo";
 import { PASSWORD_MIN_LENGTH, PASSWORD_REQUIREMENTS } from "@/lib/password";
 
@@ -22,7 +23,7 @@ export default async function ResetPasswordPage({
           {!hasToken ? (
             <p className="mt-3 text-sm text-[#c23b3b]">Liên kết không hợp lệ hoặc đã hết hạn.</p>
           ) : (
-            <form action="/api/auth/reset-password" method="post" className="mt-3 space-y-3">
+            <NativePostForm action="/api/auth/reset-password" className="mt-3 space-y-3">
               <input type="hidden" name="token" value={token} />
               {error ? <p className="text-sm font-medium text-[#c23b3b]">{error}</p> : null}
               <Field label="Mật khẩu mới">
@@ -45,8 +46,8 @@ export default async function ResetPasswordPage({
                 />
               </Field>
               <p id="password-help" className="text-xs leading-5 text-[#6b7372]">{PASSWORD_REQUIREMENTS}.</p>
-              <Btn type="submit" className="w-full">Đặt lại mật khẩu</Btn>
-            </form>
+              <PendingSubmit className="w-full" pendingLabel="Đang lưu...">Đặt lại mật khẩu</PendingSubmit>
+            </NativePostForm>
           )}
         </Card>
         <Link href="/login" className="block text-center text-sm font-semibold text-burgundy">← Quay lại đăng nhập</Link>

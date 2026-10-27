@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Btn } from "@/components/ui";
+import { PendingSubmit } from "@/components/pending-submit";
 import { groupRoomsByType, type Room } from "./shared";
 
 export function AddBookingRoomsForm({
@@ -44,9 +44,9 @@ export function AddBookingRoomsForm({
           </div>
         ))}
       </div>
-      <Btn type="submit" className="w-full" disabled={!roomIds.length}>
+      <PendingSubmit className="w-full" disabled={!roomIds.length} pendingLabel="Đang thêm...">
         {roomIds.length > 1 ? `Thêm ${roomIds.length} phòng` : "Thêm phòng vào booking"}
-      </Btn>
+      </PendingSubmit>
     </form>
   );
 }

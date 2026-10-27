@@ -2,6 +2,7 @@
 
 import { useActionState, useState } from "react";
 import { generateOpenApiTokenAction, revokeOpenApiTokenAction } from "@/actions/settings";
+import { PendingSubmit } from "@/components/pending-submit";
 import { Btn, Field } from "@/components/ui";
 
 type Issued = { token?: string; webhookSecret?: string; error?: string } | null;
@@ -55,9 +56,9 @@ export function OpenApiTokenPanel({ hasToken, hint }: { hasToken: boolean; hint:
           }
         }}
       >
-        <Btn type="submit" className="w-full" disabled={pending}>
-          {pending ? "Đang tạo…" : hasToken || issued?.token ? "Tạo lại token" : "Tạo API token"}
-        </Btn>
+        <PendingSubmit className="w-full" disabled={pending} pendingLabel="Đang tạo...">
+          {hasToken || issued?.token ? "Tạo lại token" : "Tạo API token"}
+        </PendingSubmit>
       </form>
 
       {hasToken || issued?.token ? (
@@ -69,9 +70,9 @@ export function OpenApiTokenPanel({ hasToken, hint }: { hasToken: boolean; hint:
             }
           }}
         >
-          <Btn type="submit" variant="ghost" className="w-full">
+          <PendingSubmit variant="ghost" className="w-full" pendingLabel="Đang xóa...">
             Xóa token
-          </Btn>
+          </PendingSubmit>
         </form>
       ) : null}
     </div>

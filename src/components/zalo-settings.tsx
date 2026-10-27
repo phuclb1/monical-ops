@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { listZaloGroupsAction, saveZaloGroupSlotAction, saveZaloMessageAction, sendZaloMessageTestAction, sendZaloTestAction } from "@/actions/zalo";
+import { PendingSubmit } from "@/components/pending-submit";
 import { Btn, Field } from "@/components/ui";
 import { ZALO_GROUP_SLOTS, type ZaloGroupSlot } from "@/lib/zalo-messages";
 
@@ -133,7 +134,7 @@ export function ZaloGroupManager({
                 ))}
               </select>
             </Field>
-            <Btn type="submit">Lưu {slot.label.toLowerCase()}</Btn>
+            <PendingSubmit pendingLabel="Đang lưu...">Lưu {slot.label.toLowerCase()}</PendingSubmit>
           </form>
         );
       })}
@@ -190,16 +191,16 @@ export function ZaloMessageManager({
           </Field>
           <p className="text-xs text-[#5c6665]">Chỗ điền: {message.fields}</p>
           <div className="flex flex-wrap gap-2">
-            <Btn type="submit">Lưu tin</Btn>
+            <PendingSubmit pendingLabel="Đang lưu...">Lưu tin</PendingSubmit>
           </div>
         </form>
       ))}
       {messages.map((message) => (
         <form key={`${message.id}-test`} action={sendZaloMessageTestAction}>
           <input type="hidden" name="id" value={message.id} />
-          <Btn type="submit" variant="ghost">
+          <PendingSubmit variant="ghost" pendingLabel="Đang gửi...">
             Gửi thử {message.name.toLowerCase()}
-          </Btn>
+          </PendingSubmit>
         </form>
       ))}
     </div>
@@ -257,9 +258,9 @@ export function ZaloTestSend({
         <Field label="Nội dung">
           <textarea name="message" rows={3} defaultValue="Đây là tin thử. Nếu nhóm nhận được dòng này thì đường gửi Zalo đang chạy." />
         </Field>
-        <Btn type="submit" disabled={!connected}>
+        <PendingSubmit disabled={!connected} pendingLabel="Đang gửi...">
           Gửi thử
-        </Btn>
+        </PendingSubmit>
       </form>
       {!connected ? <p className="text-sm text-[#5c6665]">Kết nối Zalo trước khi gửi thử.</p> : null}
     </div>

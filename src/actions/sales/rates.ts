@@ -4,12 +4,14 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import * as repo from "@/lib/repos";
 import { parseMoney } from "@/lib/sales";
+import { assertActionPace } from "@/lib/rate-limit";
 import { fail, refresh, requireRates, requireSales } from "./shared";
 
 export async function saveRoomRatesAction(formData: FormData) {
   const user = await requireRates();
   const ids = formData.getAll("typeId").map(String);
   try {
+    assertActionPace(user.id, "room-rates");
     await repo.setRoomTypeRates(
       user,
       ids.map((id) => ({
@@ -29,6 +31,7 @@ export async function saveExtraRatesAction(formData: FormData) {
   const user = await requireRates();
   const ids = formData.getAll("typeId").map(String);
   try {
+    assertActionPace(user.id, "extra-rates");
     await repo.setSaleExtraTypeRates(
       user,
       ids.map((id) => ({
@@ -50,6 +53,7 @@ export async function addBookingExtraAction(formData: FormData) {
   const back = `/sales/bookings/${bookingId}`;
   let result: { mode: "applied" | "requested"; bookingId: string };
   try {
+    assertActionPace(user.id, "extra-add", bookingId);
     result = await repo.submitAddExtra(user, bookingId, {
       typeId: String(formData.get("typeId") || ""),
       name: String(formData.get("name") || ""),
@@ -71,6 +75,7 @@ export async function removeBookingExtraAction(formData: FormData) {
   const back = `/sales/bookings/${bookingId}`;
   let result: { mode: "applied" | "requested"; bookingId: string };
   try {
+    assertActionPace(user.id, "extra-remove", extraId);
     result = await repo.submitRemoveExtra(user, bookingId, extraId);
   } catch (e) {
     fail(back, e);

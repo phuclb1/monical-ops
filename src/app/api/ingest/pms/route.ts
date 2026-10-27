@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { limitRequest } from "@/lib/api-rate-limit";
 import { ingestAuthorized, ingestPmsBookings, ingestSecret, type IngestBooking } from "@/lib/ingest";
 
 export const dynamic = "force-dynamic";
@@ -8,6 +9,8 @@ function unauthorized() {
 }
 
 export async function GET(request: Request) {
+  const limited = limitRequest(request, "ingest", 30, 60_000);
+  if (limited) return limited;
   if (!ingestSecret() && process.env.NODE_ENV === "production") {
     return NextResponse.json({ ok: false, error: "Chưa cấu hình INGEST_SECRET" }, { status: 503 });
   }
@@ -20,6 +23,8 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
+  const limited = limitRequest(request, "ingest", 30, 60_000);
+  if (limited) return limited;
   if (!ingestSecret() && process.env.NODE_ENV === "production") {
     return NextResponse.json({ ok: false, error: "Chưa cấu hình INGEST_SECRET" }, { status: 503 });
   }

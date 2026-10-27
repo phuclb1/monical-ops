@@ -1,7 +1,10 @@
 import Link from "next/link";
+import { PendingLink } from "@/components/pending-link";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
-import { Btn, Card, Chip, Empty, Field, ListPager, Stat, TabChip } from "@/components/ui";
+import { ExportExcelButton } from "@/components/export-excel-button";
+import { QueryForm, QuerySubmit } from "@/components/query-form";
+import { Card, Chip, Empty, Field, ListPager, Stat, TabChip } from "@/components/ui";
 import { ReportTabs } from "@/components/report-tabs";
 import { getSession } from "@/lib/auth";
 import { listPageSize, pageBounds, parsePage } from "@/lib/booking-desk";
@@ -144,12 +147,7 @@ export default async function CashFlowPage({
             Theo ngày nhận trong kỳ, gồm booking chưa đến ngày nhận. Giá booking đã gồm VAT 8%; VAT tách riêng để khấu trừ sau. Tiền mặt, CK cá nhân và CK công ty là tiền đã thu. Hoàn cọc ghi âm vào đúng tài khoản đã nhận, theo ngày hoàn. OTA công nợ thành phải thu sau hoa hồng; hoa hồng OTA đã trừ ghi riêng. OTA thu tại khách sạn giữ tiền đã thu và ghi hoa hồng vào phải trả.
           </p>
         </div>
-        <a
-          href={exportHref(query)}
-          className="inline-flex min-h-11 shrink-0 items-center rounded-xl bg-teal px-3 text-sm font-semibold text-white"
-        >
-          Xuất Excel
-        </a>
+        <ExportExcelButton href={exportHref(query)} />
       </div>
 
       <ReportTabs active="cash" showSales />
@@ -163,13 +161,13 @@ export default async function CashFlowPage({
       </div>
 
       <div className="flex items-center justify-between gap-2">
-        <Link href={hrefFor({ ...query, date: window.prev, page: 1 })} className="inline-flex min-h-11 items-center px-2 text-sm font-semibold text-teal">
+        <PendingLink href={hrefFor({ ...query, date: window.prev, page: 1 })} className="inline-flex min-h-11 items-center px-2 text-sm font-semibold text-teal" pendingLabel="…">
           ‹
-        </Link>
+        </PendingLink>
         <p className="text-center font-bold">{formatPeriodLabel(grain, window.from)}</p>
-        <Link href={hrefFor({ ...query, date: window.next, page: 1 })} className="inline-flex min-h-11 items-center px-2 text-sm font-semibold text-teal">
+        <PendingLink href={hrefFor({ ...query, date: window.next, page: 1 })} className="inline-flex min-h-11 items-center px-2 text-sm font-semibold text-teal" pendingLabel="…">
           ›
-        </Link>
+        </PendingLink>
       </div>
 
       {grain === "month" ? (
@@ -222,7 +220,7 @@ export default async function CashFlowPage({
         </TabChip>
       </div>
 
-      <form className="card grid gap-3 p-3 md:grid-cols-[minmax(0,1.5fr)_1fr_1fr_auto] md:items-end md:p-4">
+      <QueryForm action="/reports/cash" className="card grid gap-3 p-3 md:grid-cols-[minmax(0,1.5fr)_1fr_1fr_auto] md:items-end md:p-4">
         <input type="hidden" name="grain" value={grain} />
         <input type="hidden" name="date" value={window.from} />
         {view === "actual" ? <input type="hidden" name="view" value="actual" /> : null}
@@ -237,19 +235,19 @@ export default async function CashFlowPage({
           <input name="depart" type="date" defaultValue={depart} />
         </Field>
         <div className="flex gap-2">
-          <Btn type="submit" variant="ghost" className="w-full md:w-auto md:px-6">
+          <QuerySubmit pendingLabel="Đang lọc..." className="w-full md:w-auto md:px-6">
             Lọc
-          </Btn>
+          </QuerySubmit>
           {filtered ? (
-            <Link
+            <PendingLink
               href={hrefFor({ grain, date: window.from, view, group })}
               className="inline-flex min-h-12 items-center justify-center rounded-xl px-4 text-sm font-semibold text-teal"
             >
               Xóa
-            </Link>
+            </PendingLink>
           ) : null}
         </div>
-      </form>
+      </QueryForm>
 
       {view === "summary" ? (
       <Card className="!p-0">

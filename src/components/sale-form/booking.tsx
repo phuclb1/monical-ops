@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useRef, useState, type FormEvent } from "react";
-import { Btn, Field, MoneyMethodField } from "@/components/ui";
+import { PendingSubmit } from "@/components/pending-submit";
+import { Field, MoneyMethodField } from "@/components/ui";
 import { SALE_SOURCE_GROUPS, SALE_SOURCE_LABEL } from "@/lib/constants";
 import { formatDateNumeric } from "@/lib/datetime";
 import { bookingDue, bookingPayMethods, bookingQuote, catalogRate, collectedSplit, formatVnd, isOtaDebt, isOtaSource, nightsBetween, otaDebtByDefault, parseMoney, parseDiscountValue, rangesOverlap, rateForRoomMove, roomAdultCap, roomMoveKind } from "@/lib/sales";
@@ -524,9 +525,9 @@ export function BookingForm({
         commissionAmount={commissionAmount}
         due={due}
       />
-      <Btn type="submit" className="w-full">
+      <PendingSubmit className="w-full" pendingLabel="Đang lưu...">
         {confirmLabel}
-      </Btn>
+      </PendingSubmit>
       {confirming ? (
         <BookingSaveDialog
           guestName={previewGuest.name}

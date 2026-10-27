@@ -2,7 +2,8 @@ import { redirect } from "next/navigation";
 import { createExpenseAction, deleteExpenseAction } from "@/actions/expenses";
 import { ExpensePayerField } from "@/components/expense-payer-field";
 import { OwnerPeriodBar } from "@/components/owner-period";
-import { Btn, Card, Chip, Empty, Field, Stat } from "@/components/ui";
+import { PendingSubmit } from "@/components/pending-submit";
+import { Card, Chip, Empty, Field, Stat } from "@/components/ui";
 import { getSession } from "@/lib/auth";
 import { formatDateNumeric, todayVN } from "@/lib/datetime";
 import {
@@ -113,9 +114,9 @@ export default async function ExpensesPage({
             <Field label="Nội dung">
               <input name="note" maxLength={200} placeholder="Không bắt buộc" />
             </Field>
-            <Btn type="submit" className="w-full">
+            <PendingSubmit className="w-full" pendingLabel="Đang lưu...">
               Lưu khoản chi
-            </Btn>
+            </PendingSubmit>
           </form>
         </Card>
 
@@ -148,9 +149,9 @@ export default async function ExpensesPage({
                       <input type="hidden" name="id" value={row.id} />
                       <input type="hidden" name="grain" value={grain} />
                       <input type="hidden" name="date" value={window.from} />
-                      <Btn type="submit" variant="ghost" className="w-full">
+                      <PendingSubmit variant="ghost" className="w-full" pendingLabel="Đang xóa...">
                         Xóa
-                      </Btn>
+                      </PendingSubmit>
                     </form>
                   </div>
                 );
