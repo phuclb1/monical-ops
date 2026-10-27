@@ -34,6 +34,7 @@
     "qa:e2e:accounting:staging": "OPS_URL=https://ops-staging.monicalhoteldalat.com QA_RUN_ID=ACCOUNTING-$(date -u +%Y%m%d)-stg node scripts/qa-accounting-e2e.mjs",
     "qa:perf": "node scripts/qa-perf.mjs",
     "qa:perf:staging": "OPS_URL=https://ops-staging.monicalhoteldalat.com QA_RUN_ID=PERF-$(date -u +%Y%m%d)-stg node scripts/qa-perf.mjs",
+    "qa:perf:pwa:staging": "OPS_URL=https://ops-staging.monicalhoteldalat.com QA_RUN_ID=PERF-PWA-$(date -u +%Y%m%d)-stg node scripts/qa-perf-pwa.mjs",
     "qa:run:prd": "QA_RUN_ID=R-$(date -u +%Y%m%d)-prd node scripts/qa-run-prd.mjs",
     "qa:tx-dryrun": "npx tsx scripts/qa-booking-tx-dryrun.ts",
     "qa:tx-dryrun:prd": "npx tsx scripts/qa-booking-tx-dryrun.ts",
