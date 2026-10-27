@@ -5,9 +5,9 @@ import { BookingLifeChips } from "@/components/booking-lifecycle";
 import { QueryForm, QuerySubmit } from "@/components/query-form";
 import { Card, Empty, Field, ListPager, TabChip } from "@/components/ui";
 import { getSession } from "@/lib/auth";
-import { isBookingDeskTab, listPageSize, parsePage } from "@/lib/booking-desk";
+import { listPageSize, normalizeBookingDeskTab, normalizeBookingSearchScope, parsePage, type BookingDeskTab, type BookingSearchScope } from "@/lib/booking-desk";
 import { SALE_ORIGIN_LABEL, SALE_SOURCE_LABEL } from "@/lib/constants";
-import { formatDateLong, formatDateNumeric, todayVN } from "@/lib/datetime";
+import { addDaysVN, addMonthsVN, formatDateLong, formatDateNumeric, startOfMonthVN, todayVN } from "@/lib/datetime";
 import { maskName } from "@/lib/mask";
 import { can } from "@/lib/permissions";
 import { listBookingDesk } from "@/lib/repos";
@@ -15,28 +15,32 @@ import { bookingLifecycle, formatVnd, isBookingListView, isOpsBookingCode, isOta
 import type { SaleOrigin, SaleSource } from "@/lib/types";
 
 const VIEWS = [
-  { id: "new", label: "Mới nhất" },
-  { id: "checkin", label: "Check-in hôm nay" },
-  { id: "checkout", label: "Check-out hôm nay" },
+  { id: "new", label: "Tất cả" },
+  { id: "month", label: "In tháng này" },
+  { id: "checkin", label: "In hôm nay" },
+  { id: "stay", label: "Ở hôm nay" },
+  { id: "checkout", label: "Out hôm nay" },
+  { id: "tomorrow", label: "In ngày mai" },
 ] as const;
 
 const TABS = [
-  { id: "open", label: "Đang mở / đã trả" },
+  { id: "active", label: "Đang mở" },
   { id: "reserved", label: "Giữ chỗ" },
-  { id: "inhouse", label: "Đang ở" },
-  { id: "done", label: "Đã đóng" },
+  { id: "inhouse", label: "Đã check-in" },
+] as const;
+
+const FINDS = [
+  { id: "open", label: "Giữ chỗ" },
+  { id: "departed", label: "Đã trả" },
   { id: "all", label: "Tất cả" },
 ] as const;
 
-function isTab(value: string): value is (typeof TABS)[number]["id"] {
-  return isBookingDeskTab(value);
-}
-
-function bookingsHref(view: BookingListView, tab: (typeof TABS)[number]["id"], q: string, page = 1) {
+function bookingsHref(view: BookingListView, tab: BookingDeskTab, q: string, page = 1, find: BookingSearchScope = "open") {
   const params = new URLSearchParams();
   if (view !== "new") params.set("view", view);
-  if (tab !== "open") params.set("tab", tab);
+  if (tab !== "active" && find === "open") params.set("tab", tab);
   if (q) params.set("q", q);
+  if (q && find !== "open") params.set("find", find);
   if (page > 1) params.set("page", String(page));
   const text = params.toString();
   return text ? `/sales/bookings?${text}` : "/sales/bookings";
@@ -81,10 +85,22 @@ function invoiceLabel(row: { invoiceRequested?: boolean | null; rooms?: { invoic
   return on ? "Có" : "Không";
 }
 
+function viewHint(view: BookingListView, today: string) {
+  const tomorrow = addDaysVN(today, 1);
+  const monthStart = startOfMonthVN(today);
+  const monthEnd = addDaysVN(addMonthsVN(monthStart, 1), -1);
+  if (view === "month") return `Nhận phòng từ ${formatDateNumeric(monthStart)} đến ${formatDateNumeric(monthEnd)}.`;
+  if (view === "checkin") return `Nhận phòng ${formatDateLong(today)}. Booking nhiều phòng hiện khi có ít nhất một phòng nhận hôm nay.`;
+  if (view === "stay") return `Đang ở ${formatDateLong(today)}: nhận từ hôm nay trở về trước, trả sau hôm nay.`;
+  if (view === "checkout") return `Trả phòng ${formatDateLong(today)}. Chỉ booking còn giữ chỗ hoặc đang ở, không gồm đã trả.`;
+  if (view === "tomorrow") return `Nhận phòng ${formatDateLong(tomorrow)}.`;
+  return null;
+}
+
 export default async function BookingsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ tab?: string; q?: string; view?: string; page?: string }>;
+  searchParams: Promise<{ tab?: string; q?: string; view?: string; page?: string; find?: string }>;
 }) {
   const user = await getSession();
   if (!user) redirect("/login");
@@ -92,15 +108,16 @@ export default async function BookingsPage({
   if (!manage && !can(user.role, "viewBookings")) redirect("/more");
   const showNames = can(user.role, "viewGuestPii");
   const guestLabel = (name: string) => (showNames ? name : maskName(name, user.role));
-  const { tab: rawTab, q: rawQ, view: rawView, page: rawPage } = await searchParams;
-  const tabValue = rawTab || "";
+  const { tab: rawTab, q: rawQ, view: rawView, page: rawPage, find: rawFind } = await searchParams;
   const viewValue = rawView || "";
-  const tab = isTab(tabValue) ? tabValue : "open";
+  const tab = normalizeBookingDeskTab(rawTab);
   const view = isBookingListView(viewValue) ? viewValue : "new";
   const q = (rawQ || "").trim();
+  const find = q ? normalizeBookingSearchScope(rawFind) : "open";
   const today = todayVN();
+  const hint = viewHint(view, today);
   const pageSize = listPageSize((await headers()).get("user-agent"));
-  const desk = await listBookingDesk({ tab, view, q, page: parsePage(rawPage), pageSize, today });
+  const desk = await listBookingDesk({ tab, view, q, find, page: parsePage(rawPage), pageSize, today });
   const { rows, counts, viewCounts, page, pages, total, from, to } = desk;
 
   return (
@@ -109,7 +126,7 @@ export default async function BookingsPage({
         <div>
           <h1 className="text-xl font-bold">Đặt phòng</h1>
           <p className="text-xs text-[#5c6665] md:text-sm">
-            {manage ? "Mặc định booking mới tạo trước. Có thể xem phòng nhận hoặc trả hôm nay." : "Chỉ xem. Mặc định booking mới tạo trước."}
+            Giữ chỗ và đã check-in, mới tạo trước. Quick pick thu hẹp theo ngày nhận, đang ở, hoặc ngày trả.
           </p>
         </div>
         <div className="flex flex-col items-end gap-1 md:flex-row md:items-center md:gap-3">
@@ -142,15 +159,26 @@ export default async function BookingsPage({
             />
           </Field>
         </div>
+        <div className="mt-2 md:mt-0 md:w-40">
+          <Field label="Tìm trong">
+            <select name="find" defaultValue={find === "open" ? "" : find}>
+              {FINDS.map((item) => (
+                <option key={item.id} value={item.id === "open" ? "" : item.id}>
+                  {item.label}
+                </option>
+              ))}
+            </select>
+          </Field>
+        </div>
         {view !== "new" ? <input type="hidden" name="view" value={view} /> : null}
-        {tab !== "open" ? <input type="hidden" name="tab" value={tab} /> : null}
+        {tab !== "active" && find === "open" ? <input type="hidden" name="tab" value={tab} /> : null}
         <div className="mt-2 flex gap-2 md:mt-0">
           <QuerySubmit pendingLabel="Đang tìm..." className="w-full md:w-auto md:px-6">
             Tìm
           </QuerySubmit>
           {q ? (
             <Link
-              href={bookingsHref(view, tab, "")}
+              href={bookingsHref(view, tab, "", 1, "open")}
               className="inline-flex min-h-12 items-center justify-center rounded-xl px-4 text-sm font-semibold text-teal"
             >
               Xóa
@@ -161,27 +189,24 @@ export default async function BookingsPage({
 
       <div className="tab-scroller -mx-3 px-3 pb-1">
         {VIEWS.map((item) => (
-          <TabChip key={item.id} href={bookingsHref(item.id, tab, q)} active={view === item.id}>
+          <TabChip key={item.id} href={bookingsHref(item.id, tab, q, 1, find)} active={view === item.id}>
             {item.label} · {viewCounts[item.id]}
           </TabChip>
         ))}
       </div>
-      <div className="tab-scroller -mx-3 px-3 pb-1">
-        {TABS.map((item) => (
-          <TabChip key={item.id} href={bookingsHref(view, item.id, q)} active={tab === item.id}>
-            {item.label} · {counts[item.id]}
-          </TabChip>
-        ))}
-      </div>
-      {view === "checkin" ? (
-        <p className="text-xs text-[#5c6665]">Phòng nhận {formatDateLong(today)}. Booking nhiều phòng hiện khi có ít nhất một phòng nhận hôm nay.</p>
+      {find === "open" ? (
+        <div className="tab-scroller -mx-3 px-3 pb-1">
+          {TABS.map((item) => (
+            <TabChip key={item.id} href={bookingsHref(view, item.id, q, 1, find)} active={tab === item.id}>
+              {item.label} · {counts[item.id]}
+            </TabChip>
+          ))}
+        </div>
       ) : null}
-      {view === "checkout" ? (
-        <p className="text-xs text-[#5c6665]">Phòng trả {formatDateLong(today)}. Booking nhiều phòng hiện khi có ít nhất một phòng trả hôm nay.</p>
-      ) : null}
+      {hint ? <p className="text-xs text-[#5c6665]">{hint}</p> : null}
       {q ? (
         <p className="text-xs text-[#5c6665]">
-          {total} kết quả trong tab này · {counts.all} booking khớp “{q}”
+          {total} kết quả trong {FINDS.find((item) => item.id === find)?.label} khớp “{q}”
         </p>
       ) : null}
 
@@ -271,19 +296,29 @@ export default async function BookingsPage({
         <Empty
           title="Không có booking khớp"
           text={
-            view === "checkin"
-              ? "Không có phòng nhận hôm nay trong tab này. Đổi tab hoặc về Mới nhất."
-              : view === "checkout"
-                ? "Không có phòng trả hôm nay trong tab này. Đổi tab hoặc về Mới nhất."
-                : q
-                  ? "Đổi từ khóa hoặc tab. Có thể tìm tên (không dấu), SĐT, phòng, mã, ghi chú, nguồn."
-                  : manage
-                    ? "Bấm Đặt mới để tạo booking."
-                    : "Đổi tab hoặc bộ lọc."
+            view === "month"
+              ? "Không có booking nhận phòng trong tháng này. Đổi quick pick hoặc về Tất cả."
+              : view === "checkin"
+                ? "Không có phòng nhận hôm nay. Đổi quick pick hoặc về Tất cả."
+                : view === "stay"
+                  ? "Không có phòng đang ở hôm nay. Đổi quick pick hoặc về Tất cả."
+                  : view === "checkout"
+                    ? "Không có phòng trả hôm nay còn giữ chỗ hoặc đang ở."
+                    : view === "tomorrow"
+                      ? "Không có phòng nhận ngày mai. Đổi quick pick hoặc về Tất cả."
+                      : q
+                        ? find === "departed"
+                          ? "Không thấy trong booking đã trả. Đổi từ khóa hoặc chọn Tất cả."
+                          : find === "all"
+                            ? "Không thấy trong mọi trạng thái. Đổi từ khóa."
+                            : "Đổi từ khóa hoặc chọn Đã trả / Tất cả. Có thể tìm tên (không dấu), SĐT, phòng, mã, ghi chú, nguồn."
+                        : manage
+                          ? "Bấm Đặt mới để tạo booking."
+                          : "Đổi quick pick hoặc trạng thái."
           }
         />
       )}
-      <ListPager page={page} pages={pages} from={from} to={to} total={total} hrefFor={(next) => bookingsHref(view, tab, q, next)} />
+      <ListPager page={page} pages={pages} from={from} to={to} total={total} hrefFor={(next) => bookingsHref(view, tab, q, next, find)} />
     </main>
   );
 }

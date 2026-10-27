@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 import { APP_NAME } from "@/lib/constants";
 import { rememberOpsUser } from "@/lib/pwa-cache";
+import { clearPwaHomeFallback, fallbackPwaHome, shouldFallbackPwaHome } from "@/lib/pwa-recover";
 import { Btn } from "./ui";
 
 export function PwaBoot() {
@@ -14,12 +15,27 @@ export function PwaBoot() {
   useEffect(() => {
     const userId = document.querySelector("[data-ops-user]")?.getAttribute("data-ops-user");
     rememberOpsUser(userId || null);
+    const timer = window.setTimeout(clearPwaHomeFallback, 8000);
+    return () => window.clearTimeout(timer);
   }, [path]);
 
   useEffect(() => {
     if ("serviceWorker" in navigator) {
       navigator.serviceWorker.register("/sw.js").catch(() => {});
     }
+    const onError = (event: Event) => {
+      const target = event.target;
+      if (target instanceof HTMLScriptElement && target.src.includes("/_next/static/")) {
+        fallbackPwaHome();
+        return;
+      }
+      if (event instanceof ErrorEvent && shouldFallbackPwaHome(event.error || event.message)) fallbackPwaHome();
+    };
+    const onReject = (event: PromiseRejectionEvent) => {
+      if (shouldFallbackPwaHome(event.reason)) fallbackPwaHome();
+    };
+    window.addEventListener("error", onError, true);
+    window.addEventListener("unhandledrejection", onReject);
     const bootBeacon = () => {
       if (document.querySelector("script[data-cf-beacon]")) return;
       const script = document.createElement("script");
@@ -47,6 +63,8 @@ export function PwaBoot() {
     // iOS only applies :active if a touchstart listener exists on document/body.
     document.addEventListener("touchstart", () => {}, { passive: true });
     return () => {
+      window.removeEventListener("error", onError, true);
+      window.removeEventListener("unhandledrejection", onReject);
       window.removeEventListener("beforeinstallprompt", onPrompt);
       window.clearInterval(tick);
     };

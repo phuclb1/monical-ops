@@ -16,6 +16,7 @@ import {
   isPhoneUserAgent,
   listPageSize,
   matchesBookingTab,
+  normalizeBookingDeskTab,
   pageBounds,
   parsePage,
   summarizeBookingDesk,
@@ -57,13 +58,19 @@ test("desk summary keeps tab counts inside the view and view counts inside the t
   const rows = [
     { id: "b-new", status: "reserved", createdAt: "2026-10-12T01:00:00", checkIn: "2026-11-01", checkOut: "2026-11-02", rooms: [{ status: "reserved", checkIn: "2026-11-01", checkOut: "2026-11-02" }] },
     { id: "b-in", status: "inhouse", createdAt: "2026-10-01T01:00:00", checkIn: today, checkOut: "2026-10-15", rooms: [{ status: "inhouse", checkIn: today, checkOut: "2026-10-15" }] },
+    { id: "b-leave", status: "inhouse", createdAt: "2026-10-11T01:00:00", checkIn: "2026-10-10", checkOut: today, rooms: [{ status: "inhouse", checkIn: "2026-10-10", checkOut: today }] },
+    { id: "b-tmr", status: "reserved", createdAt: "2026-10-13T02:00:00", checkIn: "2026-10-14", checkOut: "2026-10-16", rooms: [{ status: "reserved", checkIn: "2026-10-14", checkOut: "2026-10-16" }] },
     { id: "b-out", status: "departed", createdAt: "2026-09-01T01:00:00", checkIn: "2026-10-10", checkOut: today, rooms: [{ status: "departed", checkIn: "2026-10-10", checkOut: today }] },
     { id: "b-cancel", status: "cancelled", createdAt: "2026-08-01T01:00:00", checkIn: today, checkOut: "2026-10-14", rooms: [{ status: "cancelled", checkIn: today, checkOut: "2026-10-14" }] },
   ];
-  const summary = summarizeBookingDesk(rows, "open", "checkin", today);
-  assert.equal(matchesBookingTab("departed", "open"), true);
-  assert.deepEqual(summary.counts, { open: 1, reserved: 0, inhouse: 1, done: 0, all: 1 });
-  assert.deepEqual(summary.viewCounts, { new: 3, checkin: 1, checkout: 1 });
+  const summary = summarizeBookingDesk(rows, "active", "checkin", today);
+  assert.equal(matchesBookingTab("departed", "active"), false);
+  assert.equal(matchesBookingTab("reserved", "active"), true);
+  assert.equal(normalizeBookingDeskTab("open"), "active");
+  assert.equal(normalizeBookingDeskTab("done"), "active");
+  assert.equal(normalizeBookingDeskTab("inhouse"), "inhouse");
+  assert.deepEqual(summary.counts, { active: 1, reserved: 0, inhouse: 1 });
+  assert.deepEqual(summary.viewCounts, { new: 4, month: 3, checkin: 1, stay: 1, checkout: 1, tomorrow: 1 });
   assert.deepEqual(summary.list.map((row) => row.id), ["b-in"]);
 });
 
@@ -92,6 +99,8 @@ test("booking desk SQL pages by rolled-up status and created time", async () => 
     ["s5", "", "cancelled", today, "2026-10-14", "2026-07-01T00:00:00"],
     ["seq-hold-1", "", "reserved", today, "2026-10-14", "2026-10-13T00:00:00"],
     ["s6", "b-out", "departed", "2026-10-10", today, "2026-09-01T00:00:00"],
+    ["s7", "b-tmr", "reserved", "2026-10-14", "2026-10-16", "2026-10-13T01:00:00"],
+    ["s8", "b-leave", "inhouse", "2026-10-10", today, "2026-10-01T00:00:00"],
   ] as const;
   for (const [id, bookingId, status, checkIn, checkOut, createdAt] of lines) {
     await client.execute({
@@ -104,42 +113,54 @@ test("booking desk SQL pages by rolled-up status and created time", async () => 
     args: ["2026-10-05T08:00:00", "s1"],
   });
 
-  const counts = (await db.all(bookingDeskCountQuery(today, "new", "open")))[0] as {
-    open_count: number;
+  const counts = (await db.all(bookingDeskCountQuery(today, "new", "active")))[0] as {
+    active_count: number;
     reserved_count: number;
     inhouse_count: number;
-    done_count: number;
-    all_count: number;
     view_new: number;
+    view_month: number;
     view_checkin: number;
+    view_stay: number;
     view_checkout: number;
+    view_tomorrow: number;
     list_count: number;
   };
-  assert.equal(Number(counts.open_count), 4);
-  assert.equal(Number(counts.reserved_count), 1);
-  assert.equal(Number(counts.inhouse_count), 1);
-  assert.equal(Number(counts.done_count), 3);
-  assert.equal(Number(counts.all_count), 5);
+  assert.equal(Number(counts.active_count), 4);
+  assert.equal(Number(counts.reserved_count), 2);
+  assert.equal(Number(counts.inhouse_count), 2);
   assert.equal(Number(counts.view_new), 4);
+  assert.equal(Number(counts.view_month), 3);
   assert.equal(Number(counts.view_checkin), 1);
+  assert.equal(Number(counts.view_stay), 1);
   assert.equal(Number(counts.view_checkout), 1);
+  assert.equal(Number(counts.view_tomorrow), 1);
   assert.equal(Number(counts.list_count), 4);
 
-  const page = await db.all(bookingDeskPageQuery(today, "new", "open", 2, 0));
+  const page = await db.all(bookingDeskPageQuery(today, "new", "active", 2, 0));
   assert.deepEqual(
     page.map((row) => String((row as { bid: string }).bid)),
-    ["b-new", "b-mix"],
+    ["b-tmr", "b-new"],
   );
-  const checkin = await db.all(bookingDeskPageQuery(today, "checkin", "open", 10, 0));
+  const checkin = await db.all(bookingDeskPageQuery(today, "checkin", "active", 10, 0));
   assert.deepEqual(
     checkin.map((row) => String((row as { bid: string }).bid)),
     ["b-mix"],
+  );
+  const staying = await db.all(bookingDeskPageQuery(today, "stay", "inhouse", 10, 0));
+  assert.deepEqual(
+    staying.map((row) => String((row as { bid: string }).bid)),
+    ["b-mix"],
+  );
+  const leaving = await db.all(bookingDeskPageQuery(today, "checkout", "active", 10, 0));
+  assert.deepEqual(
+    leaving.map((row) => String((row as { bid: string }).bid)),
+    ["b-leave"],
   );
 
   const cash = await db.all(cashPeriodIdsQuery("2026-10-01", "2026-11-01"));
   assert.deepEqual(
     cash.map((row) => String((row as { bid: string }).bid)).sort(),
-    ["b-mix", "b-old", "b-out"].sort(),
+    ["b-leave", "b-mix", "b-old", "b-out", "b-tmr"].sort(),
   );
 });
 
@@ -238,12 +259,29 @@ test("booking search SQL pages matched heads without hydrating candidates", asyn
     args: ["s2", "bk-2", "r2", "Đặng Văn B", "0901 222 334", "ops", "booking", "inhouse", today, "2026-10-15", "2026-10-01T00:00:00", "BK-10-2", ""],
   });
 
-  const counts = (await db.all(bookingSearchCountQuery("dang", today, "new", "open")!))[0] as { list_count: number; open_count: number; all_count: number };
-  assert.equal(Number(counts.list_count), 2);
-  assert.equal(Number(counts.open_count), 2);
-  assert.equal(Number(counts.all_count), 2);
+  await client.execute({
+    sql: `INSERT INTO room_sales
+      (id, booking_id, room_id, guest_name, guest_phone, origin, source, status, check_in, check_out, created_at, pms_code, notes)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    args: ["s3", "bk-old", "r1", "Đặng Đã Trả", "0901 222 335", "ops", "booking", "departed", "2026-09-01", "2026-09-02", "2026-09-02T00:00:00", "BK-09-9", ""],
+  });
 
-  const page = await db.all(bookingSearchPageQuery("dang", today, "new", "open", 1, 0)!);
+  const counts = (await db.all(bookingSearchCountQuery("dang", today, "new", "active")!))[0] as { list_count: number; active_count: number };
+  assert.equal(Number(counts.list_count), 2);
+  assert.equal(Number(counts.active_count), 2);
+
+  const departed = (await db.all(bookingSearchCountQuery("dang", today, "new", "reserved", "departed")!))[0] as { list_count: number };
+  assert.equal(Number(departed.list_count), 1);
+  const departedPage = await db.all(bookingSearchPageQuery("dang", today, "new", "reserved", 10, 0, "departed")!);
+  assert.deepEqual(
+    departedPage.map((row) => String((row as { bid: string }).bid)),
+    ["bk-old"],
+  );
+
+  const all = (await db.all(bookingSearchCountQuery("dang", today, "new", "inhouse", "all")!))[0] as { list_count: number };
+  assert.equal(Number(all.list_count), 3);
+
+  const page = await db.all(bookingSearchPageQuery("dang", today, "new", "active", 1, 0)!);
   assert.deepEqual(
     page.map((row) => String((row as { bid: string }).bid)),
     ["bk-2"],

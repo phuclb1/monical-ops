@@ -1,4 +1,4 @@
-const CACHE = "ops-monical-v7";
+const CACHE = "ops-monical-v8";
 const SHELL = ["/offline.html", "/logo.png", "/icon-192.png", "/icon-512.png", "/manifest.webmanifest"];
 const STATIC_EXT = /\.(?:js|css|woff2?|png|jpe?g|gif|webp|svg|ico)$/;
 const SKIP_HTML = /^\/(login|forgot-password|reset-password)(?:\/|$)/;
@@ -46,6 +46,23 @@ self.addEventListener("activate", (event) => {
   self.clients.claim();
 });
 
+async function navigateOrHome(req) {
+  const url = new URL(req.url);
+  const res = await networkFirstNavigate(req);
+  if (res && (res.ok || res.type === "opaqueredirect")) return res;
+  if (url.pathname !== "/") return Response.redirect("/", 302);
+  return res || caches.match("/offline.html");
+}
+
+self.addEventListener("message", (event) => {
+  const data = event.data;
+  if (!data || data.type !== "ops-recover-home") return;
+  const path = typeof data.path === "string" && data.path.startsWith("/") && !data.path.startsWith("//") ? data.path : "/";
+  event.waitUntil(
+    caches.open(CACHE).then((cache) => Promise.all([cache.delete(path), cache.delete("/")])),
+  );
+});
+
 self.addEventListener("fetch", (event) => {
   const req = event.request;
   if (req.method !== "GET") return;
@@ -68,7 +85,7 @@ self.addEventListener("fetch", (event) => {
       event.respondWith(fetch(req).catch(() => caches.match("/offline.html")));
       return;
     }
-    event.respondWith(networkFirstNavigate(req));
+    event.respondWith(navigateOrHome(req));
     return;
   }
 

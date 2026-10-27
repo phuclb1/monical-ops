@@ -1,5 +1,6 @@
 import { sql, type SQL } from "drizzle-orm";
 import { SALE_ORIGIN_LABEL, SALE_SOURCE_LABEL, SALE_STATUS_LABEL } from "@/lib/constants";
+import { addDaysVN, addMonthsVN, startOfMonthVN } from "@/lib/datetime";
 import { bookingMatchesListView, type BookingListView } from "@/lib/sales";
 import { compactSearchText, foldSearchText, searchTokens, sqlCompact, sqlFoldSteps } from "@/lib/search-text";
 import { SALE_ORIGINS, SALE_SOURCES, SALE_STATUSES } from "@/lib/types";
@@ -9,8 +10,11 @@ export const BOOKING_SEARCH_CANDIDATE_LIMIT = 400;
 export const CASH_FLOW_PAGE_SIZE = 40;
 export const PHONE_PAGE_SIZE = 10;
 
-export const BOOKING_DESK_TABS = ["open", "reserved", "inhouse", "done", "all"] as const;
+export const BOOKING_DESK_TABS = ["active", "reserved", "inhouse"] as const;
 export type BookingDeskTab = (typeof BOOKING_DESK_TABS)[number];
+
+export const BOOKING_SEARCH_SCOPES = ["open", "departed", "all"] as const;
+export type BookingSearchScope = (typeof BOOKING_SEARCH_SCOPES)[number];
 
 type DeskStay = {
   id: string;
@@ -23,6 +27,16 @@ type DeskStay = {
 
 export function isBookingDeskTab(value: string): value is BookingDeskTab {
   return (BOOKING_DESK_TABS as readonly string[]).includes(value);
+}
+
+export function normalizeBookingDeskTab(value: string | undefined): BookingDeskTab {
+  if (value === "reserved" || value === "inhouse") return value;
+  return "active";
+}
+
+export function normalizeBookingSearchScope(value: string | undefined): BookingSearchScope {
+  if (value === "departed" || value === "all") return value;
+  return "open";
 }
 
 export function parsePage(raw: string | undefined) {
@@ -41,11 +55,9 @@ export function listPageSize(ua: string | null | undefined) {
 }
 
 export function matchesBookingTab(status: string, tab: BookingDeskTab) {
-  if (tab === "open") return status === "reserved" || status === "inhouse" || status === "departed";
   if (tab === "reserved") return status === "reserved";
   if (tab === "inhouse") return status === "inhouse";
-  if (tab === "done") return status === "departed" || status === "cancelled" || status === "no_show";
-  return true;
+  return status === "reserved" || status === "inhouse";
 }
 
 export function pageBounds(total: number, page: number, pageSize: number) {
@@ -68,16 +80,19 @@ export function pageBounds(total: number, page: number, pageSize: number) {
 export function summarizeBookingDesk<T extends DeskStay>(rows: T[], tab: BookingDeskTab, view: BookingListView, today: string) {
   const viewed = rows.filter((row) => bookingMatchesListView(row, view, today));
   const counts: Record<BookingDeskTab, number> = {
-    open: viewed.filter((row) => matchesBookingTab(row.status, "open")).length,
+    active: viewed.filter((row) => matchesBookingTab(row.status, "active")).length,
     reserved: viewed.filter((row) => matchesBookingTab(row.status, "reserved")).length,
     inhouse: viewed.filter((row) => matchesBookingTab(row.status, "inhouse")).length,
-    done: viewed.filter((row) => matchesBookingTab(row.status, "done")).length,
-    all: viewed.length,
   };
+  const inTab = (viewName: BookingListView) =>
+    rows.filter((row) => matchesBookingTab(row.status, tab) && bookingMatchesListView(row, viewName, today)).length;
   const viewCounts: Record<BookingListView, number> = {
-    new: rows.filter((row) => matchesBookingTab(row.status, tab)).length,
-    checkin: rows.filter((row) => matchesBookingTab(row.status, tab) && bookingMatchesListView(row, "checkin", today)).length,
-    checkout: rows.filter((row) => matchesBookingTab(row.status, tab) && bookingMatchesListView(row, "checkout", today)).length,
+    new: inTab("new"),
+    month: inTab("month"),
+    checkin: inTab("checkin"),
+    stay: inTab("stay"),
+    checkout: inTab("checkout"),
+    tomorrow: inTab("tomorrow"),
   };
   const list = viewed
     .filter((row) => matchesBookingTab(row.status, tab))
@@ -85,21 +100,33 @@ export function summarizeBookingDesk<T extends DeskStay>(rows: T[], tab: Booking
   return { counts, viewCounts, list };
 }
 
+function deskDates(today: string) {
+  const monthStart = startOfMonthVN(today);
+  return {
+    today,
+    monthStart,
+    monthEnd: addMonthsVN(monthStart, 1),
+    tomorrow: addDaysVN(today, 1),
+  };
+}
+
 function viewFilter(view: BookingListView): SQL {
+  if (view === "month") return sql`checkin_month`;
   if (view === "checkin") return sql`checkin_today`;
+  if (view === "stay") return sql`stay_today`;
   if (view === "checkout") return sql`checkout_today`;
+  if (view === "tomorrow") return sql`checkin_tomorrow`;
   return sql`1 = 1`;
 }
 
 function tabFilter(tab: BookingDeskTab): SQL {
-  if (tab === "open") return sql`status IN ('reserved', 'inhouse', 'departed')`;
   if (tab === "reserved") return sql`status = 'reserved'`;
   if (tab === "inhouse") return sql`status = 'inhouse'`;
-  if (tab === "done") return sql`status IN ('departed', 'cancelled', 'no_show')`;
   return sql`1 = 1`;
 }
 
 function bookingHeadSelect(today: string) {
+  const dates = deskDates(today);
   return sql`
   SELECT
     bid,
@@ -111,8 +138,11 @@ function bookingHeadSelect(today: string) {
       WHEN SUM(CASE WHEN status = 'no_show' THEN 1 ELSE 0 END) > 0 THEN 'no_show'
       ELSE 'cancelled'
     END AS status,
-    SUM(CASE WHEN check_in = ${today} AND status IN ('reserved', 'inhouse', 'departed') THEN 1 ELSE 0 END) > 0 AS checkin_today,
-    SUM(CASE WHEN check_out = ${today} AND status IN ('reserved', 'inhouse', 'departed') THEN 1 ELSE 0 END) > 0 AS checkout_today
+    SUM(CASE WHEN check_in >= ${dates.monthStart} AND check_in < ${dates.monthEnd} AND status IN ('reserved', 'inhouse', 'departed') THEN 1 ELSE 0 END) > 0 AS checkin_month,
+    SUM(CASE WHEN check_in = ${dates.today} AND status IN ('reserved', 'inhouse', 'departed') THEN 1 ELSE 0 END) > 0 AS checkin_today,
+    SUM(CASE WHEN check_in <= ${dates.today} AND check_out > ${dates.today} AND status IN ('reserved', 'inhouse', 'departed') THEN 1 ELSE 0 END) > 0 AS stay_today,
+    SUM(CASE WHEN check_out = ${dates.today} AND status IN ('reserved', 'inhouse', 'departed') THEN 1 ELSE 0 END) > 0 AS checkout_today,
+    SUM(CASE WHEN check_in = ${dates.tomorrow} AND status IN ('reserved', 'inhouse', 'departed') THEN 1 ELSE 0 END) > 0 AS checkin_tomorrow
   FROM lines
   WHERE bid NOT LIKE 'seq-hold-%'
   GROUP BY bid`;
@@ -128,6 +158,7 @@ WITH lines AS (
     check_out,
     created_at
   FROM room_sales
+  WHERE status IN ('reserved', 'inhouse')
 ),
 heads AS (
   ${bookingHeadSelect(today)}
@@ -139,14 +170,15 @@ function deskCountSelect(view: BookingListView, tab: BookingDeskTab) {
   const selected = tabFilter(tab);
   return sql`
 SELECT
-  COALESCE(SUM(CASE WHEN ${viewed} AND status IN ('reserved', 'inhouse', 'departed') THEN 1 ELSE 0 END), 0) AS open_count,
+  COALESCE(SUM(CASE WHEN ${viewed} THEN 1 ELSE 0 END), 0) AS active_count,
   COALESCE(SUM(CASE WHEN ${viewed} AND status = 'reserved' THEN 1 ELSE 0 END), 0) AS reserved_count,
   COALESCE(SUM(CASE WHEN ${viewed} AND status = 'inhouse' THEN 1 ELSE 0 END), 0) AS inhouse_count,
-  COALESCE(SUM(CASE WHEN ${viewed} AND status IN ('departed', 'cancelled', 'no_show') THEN 1 ELSE 0 END), 0) AS done_count,
-  COALESCE(SUM(CASE WHEN ${viewed} THEN 1 ELSE 0 END), 0) AS all_count,
   COALESCE(SUM(CASE WHEN ${selected} THEN 1 ELSE 0 END), 0) AS view_new,
+  COALESCE(SUM(CASE WHEN ${selected} AND checkin_month THEN 1 ELSE 0 END), 0) AS view_month,
   COALESCE(SUM(CASE WHEN ${selected} AND checkin_today THEN 1 ELSE 0 END), 0) AS view_checkin,
+  COALESCE(SUM(CASE WHEN ${selected} AND stay_today THEN 1 ELSE 0 END), 0) AS view_stay,
   COALESCE(SUM(CASE WHEN ${selected} AND checkout_today THEN 1 ELSE 0 END), 0) AS view_checkout,
+  COALESCE(SUM(CASE WHEN ${selected} AND checkin_tomorrow THEN 1 ELSE 0 END), 0) AS view_tomorrow,
   COALESCE(SUM(CASE WHEN ${viewed} AND ${selected} THEN 1 ELSE 0 END), 0) AS list_count
 FROM heads`;
 }
@@ -219,7 +251,20 @@ function bookingSearchTokenClause(token: string) {
 
 const SEARCH_COLS = sql`bid, id, guest_phone, pms_code, source, origin, status, check_in, check_out, room_number`;
 
-const SEARCH_SRC = sql`
+function searchStatusSql(scope: BookingSearchScope): SQL {
+  if (scope === "departed") return sql`s.status = 'departed'`;
+  if (scope === "all") return sql`1 = 1`;
+  return sql`s.status IN ('reserved', 'inhouse')`;
+}
+
+function lineStatusSql(scope: BookingSearchScope): SQL {
+  if (scope === "departed") return sql`status = 'departed'`;
+  if (scope === "all") return sql`1 = 1`;
+  return sql`status IN ('reserved', 'inhouse')`;
+}
+
+function searchSrc(scope: BookingSearchScope) {
+  return sql`
   SELECT
     CASE WHEN s.booking_id IS NOT NULL AND trim(s.booking_id) != '' THEN s.booking_id ELSE s.id END AS bid,
     s.id,
@@ -249,8 +294,10 @@ const SEARCH_SRC = sql`
   FROM room_sales s
   LEFT JOIN rooms r ON r.id = s.room_id
   LEFT JOIN sale_extras e ON e.booking_id = CASE WHEN s.booking_id IS NOT NULL AND trim(s.booking_id) != '' THEN s.booking_id ELSE s.id END
-  WHERE (CASE WHEN s.booking_id IS NOT NULL AND trim(s.booking_id) != '' THEN s.booking_id ELSE s.id END) NOT LIKE 'seq-hold-%'
+  WHERE ${searchStatusSql(scope)}
+    AND (CASE WHEN s.booking_id IS NOT NULL AND trim(s.booking_id) != '' THEN s.booking_id ELSE s.id END) NOT LIKE 'seq-hold-%'
 `;
+}
 
 function bookingSearchParts(query: string) {
   const tokens = searchTokens(query);
@@ -265,12 +312,12 @@ function bookingSearchParts(query: string) {
   return { match, last, layers };
 }
 
-function bookingSearchMatchedCte(query: string) {
+function bookingSearchMatchedCte(query: string, scope: BookingSearchScope) {
   const parts = bookingSearchParts(query);
   if (!parts) return null;
   return sql`
 WITH src AS (
-${SEARCH_SRC}
+${searchSrc(scope)}
 ),
 ${sql.join(parts.layers, sql`,
 `)},
@@ -282,8 +329,8 @@ matched AS (
 )`;
 }
 
-function bookingSearchHeads(query: string, today: string) {
-  const matched = bookingSearchMatchedCte(query);
+function bookingSearchHeads(query: string, today: string, scope: BookingSearchScope) {
+  const matched = bookingSearchMatchedCte(query, scope);
   if (!matched) return null;
   return sql`
 ${matched},
@@ -295,15 +342,16 @@ lines AS (
     check_out,
     created_at
   FROM room_sales
-  WHERE (CASE WHEN booking_id IS NOT NULL AND trim(booking_id) != '' THEN booking_id ELSE id END) IN (SELECT bid FROM matched)
+  WHERE ${lineStatusSql(scope)}
+    AND (CASE WHEN booking_id IS NOT NULL AND trim(booking_id) != '' THEN booking_id ELSE id END) IN (SELECT bid FROM matched)
 ),
 heads AS (
   ${bookingHeadSelect(today)}
 )`;
 }
 
-export function bookingSearchIdsQuery(query: string) {
-  const matched = bookingSearchMatchedCte(query);
+export function bookingSearchIdsQuery(query: string, scope: BookingSearchScope = "open") {
+  const matched = bookingSearchMatchedCte(query, scope);
   if (!matched) return null;
   return sql`
 ${matched}
@@ -311,12 +359,22 @@ SELECT bid
 FROM matched`;
 }
 
-export function bookingSearchCountQuery(query: string, today: string, view: BookingListView, tab: BookingDeskTab) {
-  const heads = bookingSearchHeads(query, today);
+function searchTab(scope: BookingSearchScope, tab: BookingDeskTab): BookingDeskTab {
+  return scope === "open" ? tab : "active";
+}
+
+export function bookingSearchCountQuery(
+  query: string,
+  today: string,
+  view: BookingListView,
+  tab: BookingDeskTab,
+  scope: BookingSearchScope = "open",
+) {
+  const heads = bookingSearchHeads(query, today, scope);
   if (!heads) return null;
   return sql`
 ${heads}
-${deskCountSelect(view, tab)}`;
+${deskCountSelect(view, searchTab(scope, tab))} `;
 }
 
 export function bookingSearchPageQuery(
@@ -326,14 +384,15 @@ export function bookingSearchPageQuery(
   tab: BookingDeskTab,
   limit: number,
   offset: number,
+  scope: BookingSearchScope = "open",
 ) {
-  const heads = bookingSearchHeads(query, today);
+  const heads = bookingSearchHeads(query, today, scope);
   if (!heads) return null;
   return sql`
 ${heads}
 SELECT bid
 FROM heads
-WHERE ${viewFilter(view)} AND ${tabFilter(tab)}
+WHERE ${viewFilter(view)} AND ${tabFilter(searchTab(scope, tab))}
 ORDER BY created_at DESC, bid DESC
 LIMIT ${limit} OFFSET ${offset}`;
 }
