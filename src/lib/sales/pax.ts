@@ -1,4 +1,4 @@
-import { addDaysVN } from "../datetime";
+import { addDaysVN, datesUntil } from "../datetime";
 import { defaultAdultsForRoomType } from "../rooms-catalog";
 import type { SaleStatus } from "../types";
 import { bookingQuote } from "./quote";
@@ -84,9 +84,11 @@ type PaxRoom = {
   breakfast?: boolean | null;
   breakfastAdults?: number | null;
   breakfastChildren?: number | null;
+  checkIn?: string | null;
+  checkOut?: string | null;
 };
 
-export function bookingStayPax(rooms: PaxRoom[]): { adults: number; children: number } {
+function summedStayPax(rooms: PaxRoom[]) {
   return rooms.reduce<{ adults: number; children: number }>(
     (sum, row) => ({
       adults: sum.adults + Math.max(0, Math.round(Number(row.adults) || 0)),
@@ -94,6 +96,31 @@ export function bookingStayPax(rooms: PaxRoom[]): { adults: number; children: nu
     }),
     { adults: 0, children: 0 },
   );
+}
+
+/** Busiest night when each room has dates. Overlapping rooms add up; a split stay does not. */
+export function bookingStayPax(rooms: PaxRoom[]): { adults: number; children: number } {
+  const dated = rooms.filter((row) => row.checkIn && row.checkOut && row.checkOut > row.checkIn);
+  if (!dated.length) return summedStayPax(rooms);
+  const byNight = new Map<string, { adults: number; children: number }>();
+  for (const row of dated) {
+    const adults = Math.max(0, Math.round(Number(row.adults) || 0));
+    const children = Math.max(0, Math.round(Number(row.children) || 0));
+    for (const date of datesUntil(row.checkIn || "", row.checkOut || "")) {
+      const current = byNight.get(date) || { adults: 0, children: 0 };
+      current.adults += adults;
+      current.children += children;
+      byNight.set(date, current);
+    }
+  }
+  if (!byNight.size) return summedStayPax(rooms);
+  let adults = 0;
+  let children = 0;
+  for (const row of byNight.values()) {
+    adults = Math.max(adults, row.adults);
+    children = Math.max(children, row.children);
+  }
+  return { adults, children };
 }
 
 export function bookingBreakfastPax(rooms: PaxRoom[]) {

@@ -1,12 +1,15 @@
 "use client";
 
 import { Field } from "@/components/ui";
-import { formatVnd, isHolidayNight } from "@/lib/sales";
+import { formatDayMonth } from "@/lib/datetime";
+import { formatVnd, isHolidayNight, nightsBetween } from "@/lib/sales";
+import { CountSelect } from "./count-select";
 import { RoomDiscountFields } from "./discount";
 import { emptyDiscount, type DiscountState, type Room, type StayDates } from "./shared";
 
 export function SaleFormRooms(props: {
   allowMultiple?: boolean;
+  hidePicker?: boolean;
   openRooms: Room[];
   query: string;
   setQuery: (value: string) => void;
@@ -37,6 +40,7 @@ export function SaleFormRooms(props: {
 }) {
   const {
     allowMultiple,
+    hidePicker,
     openRooms,
     query,
     setQuery,
@@ -67,7 +71,7 @@ export function SaleFormRooms(props: {
   } = props;
   return (
     <>
-      {allowMultiple ? (
+      {allowMultiple && !hidePicker ? (
         <div>
           <p className="mb-1.5 text-xs font-semibold text-[#5c6665]">
             Phòng trống · {openRooms.length} phòng
@@ -101,7 +105,7 @@ export function SaleFormRooms(props: {
             <p className="mt-1 text-xs text-[#c23b3b]">Chọn ít nhất một phòng</p>
           )}
         </div>
-      ) : (
+      ) : hidePicker ? null : (
         <Field label="Phòng trống">
           <select
             name="roomId"
@@ -154,52 +158,60 @@ export function SaleFormRooms(props: {
                   {room.type}
                   <span className="ml-2 text-xs font-semibold text-[#8a7a72]">P.{room.number}</span>
                 </p>
-                <div className="grid grid-cols-2 gap-2">
-                  <Field label="Nhận">
-                    <input
-                      name={`checkIn-${room.id}`}
-                      type="date"
-                      required
-                      value={stay.checkIn}
-                      onChange={(e) => {
-                        const next = e.target.value;
-                        setStay(room.id, { checkIn: next });
-                        const value = catalogFor(room.id, next);
-                        if (value) setRoomRate(room.id, String(value));
-                      }}
-                    />
-                  </Field>
-                  <Field label="Trả">
-                    <input
-                      name={`checkOut-${room.id}`}
-                      type="date"
-                      required
-                      value={stay.checkOut}
-                      onChange={(e) => setStay(room.id, { checkOut: e.target.value })}
-                    />
-                  </Field>
-                </div>
+                {allowMultiple ? (
+                  <div className="sale-room-dates">
+                    <input type="hidden" name="roomId" value={room.id} />
+                    <input type="hidden" name={`checkIn-${room.id}`} value={stay.checkIn} />
+                    <input type="hidden" name={`checkOut-${room.id}`} value={stay.checkOut} />
+                    <p className="text-sm font-semibold">
+                      {formatDayMonth(stay.checkIn)} → {formatDayMonth(stay.checkOut)}
+                    </p>
+                    <p className="text-xs text-[#5c6665]">{Math.max(0, nightsBetween(stay.checkIn, stay.checkOut))} đêm</p>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-2 gap-2">
+                    <Field label="Nhận">
+                      <input
+                        name={`checkIn-${room.id}`}
+                        type="date"
+                        required
+                        value={stay.checkIn}
+                        onChange={(e) => {
+                          const next = e.target.value;
+                          setStay(room.id, { checkIn: next });
+                          const value = catalogFor(room.id, next);
+                          if (value) setRoomRate(room.id, String(value));
+                        }}
+                      />
+                    </Field>
+                    <Field label="Trả">
+                      <input
+                        name={`checkOut-${room.id}`}
+                        type="date"
+                        required
+                        value={stay.checkOut}
+                        onChange={(e) => setStay(room.id, { checkOut: e.target.value })}
+                      />
+                    </Field>
+                  </div>
+                )}
                 <div className="grid grid-cols-2 gap-2">
                   <Field label="Người lớn">
-                    <input
+                    <CountSelect
                       name={`adults-${room.id}`}
-                      type="number"
+                      value={adults}
                       min={1}
                       max={cap}
-                      value={adults}
-                      onChange={(e) => {
-                        const next = Math.min(cap, Math.max(1, Math.round(Number(e.target.value) || 1)));
-                        setRoomAdults((prev) => ({ ...prev, [room.id]: String(next) }));
-                      }}
+                      onChange={(next) => setRoomAdults((prev) => ({ ...prev, [room.id]: String(next) }))}
                     />
                   </Field>
                   <Field label="Trẻ em">
-                    <input
+                    <CountSelect
                       name={`children-${room.id}`}
-                      type="number"
-                      min={0}
                       value={children}
-                      onChange={(e) => setRoomChildren((prev) => ({ ...prev, [room.id]: e.target.value }))}
+                      min={0}
+                      max={Math.max(8, children)}
+                      onChange={(next) => setRoomChildren((prev) => ({ ...prev, [room.id]: String(next) }))}
                     />
                   </Field>
                 </div>

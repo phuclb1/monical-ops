@@ -318,7 +318,7 @@ try {
 
   await check("TC-95", "Form bán phòng: giá, chiết khấu, mã PMS", async (shot) => {
     await go("/sales/new");
-    await page.locator('input[name="roomId"][type="checkbox"]').first().check();
+    await page.locator(".night-board").getByRole("button", { name: "Cả kỳ", exact: true }).first().click();
     await ready();
     await must(shot, ["Giá / đêm", "Chiết khấu", "Mã PMS", "Ô tô", "Xe máy"]);
   });
@@ -330,13 +330,14 @@ try {
 
   await check("TC-109", "Form bán nhiều phòng + cọc / còn thu", async (shot) => {
     await go("/sales/new");
-    const boxes = page.locator('input[name="roomId"][type="checkbox"]');
-    await boxes.nth(0).check();
-    await boxes.nth(1).check();
+    const stays = page.locator(".night-board").getByRole("button", { name: "Cả kỳ", exact: true });
+    if ((await stays.count()) < 2) throw new Error("Form bán không có hai phòng trống cả kỳ");
+    await stays.nth(0).click();
+    await stays.nth(1).click();
     await ready();
     await must(shot, [
-      "Phòng trống",
-      "Đã chọn 2 phòng",
+      "Phòng trống theo đêm",
+      "Lưu 2 phòng",
       "Chiết khấu",
       "Chưa đặt cọc",
       "Còn phải thu",

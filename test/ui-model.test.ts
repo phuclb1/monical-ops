@@ -1,7 +1,18 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { ganttBarTone, ganttSections, quoteTotal, rangeOpen, saleTitle, type GanttRow } from "../src/components/room-gantt/model";
-import { groupRoomsByType, parseDiscountState, roomAvailabilityTable, roomOpen, roomTypeAvailability } from "../src/components/sale-form/shared";
+import {
+  clipNightPicks,
+  groupRoomsByType,
+  parseDiscountState,
+  peakStayPax,
+  roomAvailabilityTable,
+  roomOpen,
+  roomTypeAvailability,
+  segmentsFromPicks,
+  toggleNightPick,
+  uncoveredNights,
+} from "../src/components/sale-form/shared";
 
 const room = (id: string, number: string, type: string, floor: number): GanttRow["room"] => ({
   id,
@@ -109,6 +120,52 @@ test("sale-form shared: room-type availability shows whole stay and each night",
       ],
     },
   ]);
+});
+
+test("sale-form shared: one booking can split a stay across rooms", () => {
+  const grid = roomAvailabilityTable(
+    [
+      { id: "a", number: "101", type: "Standard" },
+      { id: "b", number: "102", type: "Standard" },
+    ],
+    [{ name: "Standard", sortOrder: 1, baseRate: 1, weekendRate: 1 }],
+    "2026-09-19",
+    "2026-09-21",
+    [{ roomId: "a", checkIn: "2026-09-20", checkOut: "2026-09-21" }],
+  );
+  let picks = toggleNightPick({}, "a", "2026-09-19");
+  picks = toggleNightPick(picks, "b", "2026-09-20");
+  assert.deepEqual(segmentsFromPicks(picks), {
+    segments: [
+      { roomId: "a", checkIn: "2026-09-19", checkOut: "2026-09-20", nights: ["2026-09-19"] },
+      { roomId: "b", checkIn: "2026-09-20", checkOut: "2026-09-21", nights: ["2026-09-20"] },
+    ],
+    gappedRoomIds: [],
+  });
+  assert.deepEqual(uncoveredNights(["2026-09-19", "2026-09-20"], picks), []);
+
+  const gapped = toggleNightPick(toggleNightPick({}, "a", "2026-09-19"), "a", "2026-09-21");
+  assert.deepEqual(segmentsFromPicks(gapped).gappedRoomIds, ["a"]);
+  assert.deepEqual(segmentsFromPicks(gapped).segments, []);
+
+  assert.deepEqual(clipNightPicks({ a: ["2026-09-19", "2026-09-20"], b: ["2026-09-19"] }, grid), {
+    a: ["2026-09-19"],
+    b: ["2026-09-19"],
+  });
+  assert.deepEqual(
+    peakStayPax([
+      { nights: ["2026-09-19"], adults: 2, children: 1 },
+      { nights: ["2026-09-20"], adults: 2, children: 1 },
+    ]),
+    { adults: 2, children: 1 },
+  );
+  assert.deepEqual(
+    peakStayPax([
+      { nights: ["2026-09-19"], adults: 2, children: 0 },
+      { nights: ["2026-09-19"], adults: 2, children: 1 },
+    ]),
+    { adults: 4, children: 1 },
+  );
 });
 
 test("gantt model: sections, title, quote, open range", () => {

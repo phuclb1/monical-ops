@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { Field } from "@/components/ui";
 import { SALE_SOURCE_GROUPS, SALE_SOURCE_LABEL } from "@/lib/constants";
-import { formatDateNumeric } from "@/lib/datetime";
+import { datesUntil, formatDateNumeric, formatDayMonth } from "@/lib/datetime";
 import { extraAmount } from "@/lib/extras";
 import {
   bookingDue,
@@ -26,7 +26,24 @@ import { SaleFormRooms } from "./new-rooms";
 import { SaleFormSide } from "./new-side";
 import { BookingSaveDialog } from "./save-confirm";
 import { RoomTypeAvailability } from "./room-type-availability";
-import { emptyDiscount, groupRoomsByType, roomOpen, type DiscountState, type Room, type RoomType, type StayDates } from "./shared";
+import { NightBoard } from "./night-board";
+import {
+  clipNightPicks,
+  emptyDiscount,
+  groupRoomsByType,
+  peakStayPax,
+  roomAvailabilityTable,
+  roomOpen,
+  segmentsFromPicks,
+  toggleFreeStay,
+  toggleNightPick,
+  uncoveredNights,
+  type DiscountState,
+  type NightPicks,
+  type Room,
+  type RoomType,
+  type StayDates,
+} from "./shared";
 
 export function SaleForm({
   action,
@@ -37,7 +54,6 @@ export function SaleForm({
   defaults,
   submitLabel,
   showCheckinNow,
-  today,
   allowMultiple,
 }: {
   action: (formData: FormData) => void | Promise<void>;
@@ -71,11 +87,12 @@ export function SaleForm({
   };
   submitLabel: string;
   showCheckinNow?: boolean;
-  today?: string;
   allowMultiple?: boolean;
 }) {
   const typeByName = useMemo(() => Object.fromEntries(types.map((type) => [type.name, type])), [types]);
   const [roomIds, setRoomIds] = useState<string[]>([]);
+  const [picked, setPicked] = useState<NightPicks>({});
+  const [rateTouched, setRateTouched] = useState<Record<string, boolean>>({});
   const [query, setQuery] = useState("");
   const [sharedStay, setSharedStay] = useState<StayDates>({ checkIn: defaults.checkIn, checkOut: defaults.checkOut });
   const [dates, setDates] = useState<Record<string, StayDates>>({});
@@ -100,23 +117,68 @@ export function SaleForm({
   const commissionValue = commissionKind === "percent"
     ? Math.min(100, Math.max(0, Math.round(Number(commission) || 0)))
     : parseMoney(commission);
-  const selectedRooms = rooms.filter((room) => roomIds.includes(room.id));
   const [roomAdults, setRoomAdults] = useState<Record<string, string>>({});
   const [roomChildren, setRoomChildren] = useState<Record<string, string>>({});
   const [breakfastAdults, setBreakfastAdults] = useState(String(defaults.breakfastAdults ?? defaults.adults ?? ""));
   const [breakfastChildren, setBreakfastChildren] = useState(String(defaults.breakfastChildren ?? defaults.children ?? 0));
   const [breakfastPaxTouched, setBreakfastPaxTouched] = useState(false);
+  const grid = useMemo(
+    () => (allowMultiple ? roomAvailabilityTable(rooms, types, sharedStay.checkIn, sharedStay.checkOut, busy) : []),
+    [allowMultiple, rooms, types, sharedStay.checkIn, sharedStay.checkOut, busy],
+  );
+  const stayNights = useMemo(
+    () => datesUntil(sharedStay.checkIn, sharedStay.checkOut),
+    [sharedStay.checkIn, sharedStay.checkOut],
+  );
+  const visiblePicks = useMemo(
+    () => (allowMultiple ? clipNightPicks(picked, grid) : {}),
+    [allowMultiple, picked, grid],
+  );
+  const plan = useMemo(() => segmentsFromPicks(visiblePicks), [visiblePicks]);
+  const segments = useMemo(() => (allowMultiple ? plan.segments : []), [allowMultiple, plan]);
+  const segmentDates = useMemo(() => {
+    if (!allowMultiple) return {};
+    return Object.fromEntries(plan.segments.map((segment) => [segment.roomId, { checkIn: segment.checkIn, checkOut: segment.checkOut }]));
+  }, [allowMultiple, plan]);
+  const lineDates = allowMultiple ? segmentDates : dates;
+  const selectedRooms = useMemo(() => {
+    if (!allowMultiple) return rooms.filter((room) => roomIds.includes(room.id));
+    return plan.segments.flatMap((segment) => {
+      const room = rooms.find((item) => item.id === segment.roomId);
+      return room ? [room] : [];
+    });
+  }, [allowMultiple, rooms, roomIds, plan]);
+  const activeRoomIds = selectedRooms.map((room) => room.id);
+  const uncovered = allowMultiple ? uncoveredNights(stayNights, visiblePicks) : [];
+  const gappedLabels = allowMultiple
+    ? plan.gappedRoomIds.flatMap((id) => {
+        const room = rooms.find((item) => item.id === id);
+        return room ? [`P.${room.number}`] : [];
+      })
+    : [];
+  const saveHint = gappedLabels.length
+    ? `${gappedLabels.join(", ")} đang đứt quãng. Mỗi phòng chỉ một chặng liền đêm.`
+    : activeRoomIds.length && uncovered.length
+      ? `Còn đêm chưa gán phòng: ${uncovered.slice(0, 8).map((date) => formatDayMonth(date)).join(", ")}${uncovered.length > 8 ? "…" : ""}.`
+      : "";
+  const canSave = !allowMultiple || (activeRoomIds.length > 0 && !gappedLabels.length && !uncovered.length);
+  const shownRates = Object.fromEntries(selectedRooms.map((room) => {
+    const stay = lineDates[room.id] || sharedStay;
+    if (rateTouched[room.id]) return [room.id, rates[room.id] || ""];
+    const catalog = catalogRate(typeByName[room.type], stay.checkIn);
+    return [room.id, catalog ? String(catalog) : rates[room.id] || ""];
+  }));
   const otaNightCounts = selectedRooms.map((room) => {
-    const stay = dates[room.id] || sharedStay;
+    const stay = lineDates[room.id] || sharedStay;
     return Math.max(0, nightsBetween(stay.checkIn, stay.checkOut));
   });
   const otaRateList = ota ? ratesFromBookingTotal(parseMoney(otaTotal), otaNightCounts) : [];
   const otaRates = Object.fromEntries(selectedRooms.map((room, index) => [room.id, otaRateList[index] || 0]));
   const quoteInputs = selectedRooms.map((room) => {
-    const stay = dates[room.id] || sharedStay;
+    const stay = lineDates[room.id] || sharedStay;
     return {
       room,
-      rate: ota ? otaRates[room.id] || 0 : parseMoney(rates[room.id]),
+      rate: ota ? otaRates[room.id] || 0 : parseMoney(shownRates[room.id]),
       checkIn: stay.checkIn,
       checkOut: stay.checkOut,
       breakfast: breakfast[room.id] !== false,
@@ -126,7 +188,12 @@ export function SaleForm({
   });
   const booked = bookingQuote(quoteInputs);
   const quotes = quoteInputs.map((row, index) => ({ ...row, quote: booked.lines[index] }));
-  const extraNights = selectedRooms.length ? booked.nights : Math.max(0, nightsBetween(sharedStay.checkIn, sharedStay.checkOut));
+  const coveredNights = new Set(segments.flatMap((segment) => segment.nights)).size;
+  const extraNights = allowMultiple
+    ? coveredNights
+    : selectedRooms.length
+      ? booked.nights
+      : Math.max(0, nightsBetween(sharedStay.checkIn, sharedStay.checkOut));
   const extraRows = extras.map((row) => ({ ...row, amount: extraAmount(row, extraNights) }));
   const bookingTotal = booked.total + extraRows.reduce((sum, row) => sum + row.amount, 0);
   const commissionAmount = ota
@@ -149,8 +216,17 @@ export function SaleForm({
   function childrenOf(room: (typeof selectedRooms)[number]) {
     return Math.max(0, Math.round(Number(roomChildren[room.id]) || 0));
   }
-  const stayAdults = selectedRooms.reduce((sum, room) => sum + adultsOf(room), 0);
-  const stayChildren = selectedRooms.reduce((sum, room) => sum + childrenOf(room), 0);
+  const stayPax = allowMultiple
+    ? peakStayPax(segments.map((segment) => {
+        const room = selectedRooms.find((item) => item.id === segment.roomId);
+        return { nights: segment.nights, adults: room ? adultsOf(room) : 0, children: room ? childrenOf(room) : 0 };
+      }))
+    : {
+        adults: selectedRooms.reduce((sum, room) => sum + adultsOf(room), 0),
+        children: selectedRooms.reduce((sum, room) => sum + childrenOf(room), 0),
+      };
+  const stayAdults = stayPax.adults;
+  const stayChildren = stayPax.children;
   const anyBreakfast = selectedRooms.some((room) => breakfast[room.id] !== false);
   const openRooms = useMemo(
     () => rooms.filter((room) => room.opsStatus !== "ooo" && roomOpen(room.id, sharedStay.checkIn, sharedStay.checkOut, busy)),
@@ -171,6 +247,7 @@ export function SaleForm({
     setBreakfastChildren((prev) => String(Math.min(stayChildren, Math.max(0, Number(prev) || 0))));
   }, [anyBreakfast, stayAdults, stayChildren, breakfastPaxTouched]);
   useEffect(() => {
+    if (allowMultiple) return;
     setRoomIds((prev) => prev.filter((id) => roomOpen(id, sharedStay.checkIn, sharedStay.checkOut, busy)));
     setDates((prev) => {
       const ids = Object.keys(prev);
@@ -190,7 +267,7 @@ export function SaleForm({
       }
       return next;
     });
-  }, [sharedStay, busy, rooms, typeByName]);
+  }, [allowMultiple, sharedStay, busy, rooms, typeByName]);
   const filteredRooms = useMemo(() => {
     const q = query.trim().toLowerCase();
     if (!q) return openRooms;
@@ -204,6 +281,7 @@ export function SaleForm({
   }
 
   function setRoomRate(roomId: string, value: string) {
+    setRateTouched((prev) => (prev[roomId] ? prev : { ...prev, [roomId]: true }));
     setRates((prev) => ({ ...prev, [roomId]: value }));
   }
 
@@ -224,6 +302,16 @@ export function SaleForm({
     });
   }
 
+  function toggleNight(roomId: string, date: string) {
+    setPicked((prev) => toggleNightPick(clipNightPicks(prev, grid), roomId, date));
+  }
+
+  function toggleStay(roomId: string) {
+    const row = grid.find((item) => item.roomId === roomId);
+    if (!row) return;
+    setPicked((prev) => toggleFreeStay(clipNightPicks(prev, grid), roomId, row.nights));
+  }
+
   function toggleRoom(id: string) {
     setRoomIds((prev) => {
       const on = prev.includes(id);
@@ -239,7 +327,8 @@ export function SaleForm({
     });
   }
 
-  const saveLabel = allowMultiple && roomIds.length > 1 ? `Lưu ${roomIds.length} phòng` : submitLabel;
+  const splitStay = segments.some((segment) => segment.checkIn !== sharedStay.checkIn || segment.checkOut !== sharedStay.checkOut);
+  const saveLabel = activeRoomIds.length > 1 ? (splitStay ? `Lưu ${activeRoomIds.length} chặng` : `Lưu ${activeRoomIds.length} phòng`) : submitLabel;
   const typedOtaTotal = parseMoney(otaTotal);
   const otaShort = ota && typedOtaTotal > booked.total ? typedOtaTotal - booked.total : 0;
 
@@ -249,7 +338,7 @@ export function SaleForm({
       return;
     }
     event.preventDefault();
-    if (!roomIds.length) return;
+    if (!canSave || !activeRoomIds.length) return;
     const data = new FormData(event.currentTarget);
     setPreviewGuest({ name: String(data.get("guestName") || ""), phone: String(data.get("guestPhone") || "") });
     setConfirming(true);
@@ -363,13 +452,27 @@ export function SaleForm({
         checkIn={sharedStay.checkIn}
         checkOut={sharedStay.checkOut}
       />
+      {allowMultiple ? (
+        <NightBoard
+          grid={grid}
+          types={types}
+          query={query}
+          setQuery={setQuery}
+          picked={visiblePicks}
+          onToggleNight={toggleNight}
+          onToggleStay={toggleStay}
+          segments={segments}
+          saveHint={saveHint}
+        />
+      ) : null}
       <SaleFormRooms
         allowMultiple={allowMultiple}
+        hidePicker={allowMultiple}
         openRooms={openRooms}
         query={query}
         setQuery={setQuery}
         typeGroups={typeGroups}
-        roomIds={roomIds}
+        roomIds={activeRoomIds}
         toggleRoom={toggleRoom}
         selectedRooms={selectedRooms}
         filteredRooms={filteredRooms}
@@ -378,10 +481,10 @@ export function SaleForm({
         setStay={setStay}
         catalogFor={catalogFor}
         setRoomRate={setRoomRate}
-        dates={dates}
+        dates={lineDates}
         breakfast={breakfast}
         setBreakfast={setBreakfast}
-        rates={rates}
+        rates={shownRates}
         ota={ota}
         otaRates={otaRates}
         discounts={discounts}
@@ -421,8 +524,9 @@ export function SaleForm({
         commissionLabel={commissionLabel}
         commissionAmount={commissionAmount}
         showCheckinNow={showCheckinNow}
-        today={today}
-        roomIds={roomIds}
+        roomIds={activeRoomIds}
+        canSave={canSave}
+        saveHint={saveHint}
         saveLabel={saveLabel}
       />
       {confirming ? (

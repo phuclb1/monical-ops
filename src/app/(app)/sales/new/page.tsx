@@ -40,7 +40,7 @@ export default async function NewSalePage({
             </Link>
           </div>
           <h1 className="mt-1 text-xl font-bold">Đặt phòng</h1>
-          <p className="text-xs text-[#5c6665] md:text-sm">Chọn ngày trước, rồi tick phòng trống. Khách chỉ thấy hạng phòng trên phiếu in.</p>
+          <p className="text-xs text-[#5c6665] md:text-sm">Chọn ngày ở, rồi gán phòng theo từng đêm. Một booking có thể ghép nhiều phòng theo chặng.</p>
         </div>
       </div>
       {error ? <p className="text-sm text-[#c23b3b]">{error}</p> : null}
@@ -51,7 +51,6 @@ export default async function NewSalePage({
           types={types}
           extraTypes={extraTypes.filter((row) => row.active)}
           busy={busy}
-          today={today}
           showCheckinNow
           allowMultiple
           submitLabel="Lưu đặt phòng"

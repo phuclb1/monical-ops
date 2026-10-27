@@ -258,11 +258,12 @@ try {
 
   await checkAuthed("TC-109", "Form bán nhiều phòng + cọc / còn thu", async (shot) => {
     await go("/sales/new");
-    const boxes = page.locator('input[name="roomId"][type="checkbox"]');
-    if ((await boxes.count()) < 2) throw new Error("Form bán không có chọn nhiều phòng");
-    await boxes.nth(1).check();
+    const stays = page.locator(".night-board").getByRole("button", { name: "Cả kỳ", exact: true });
+    if ((await stays.count()) < 2) throw new Error("Form bán không có hai phòng trống cả kỳ");
+    await stays.nth(0).click();
+    await stays.nth(1).click();
     await ready();
-    await must(shot, ["Hạng phòng · chọn 1 hoặc nhiều phòng", "Đã chọn 2 phòng", "Chưa đặt cọc", "Còn phải thu", "Ô tô", "Xe máy"]);
+    await must(shot, ["Phòng trống theo đêm", "Lưu 2 phòng", "Chưa đặt cọc", "Còn phải thu", "Ô tô", "Xe máy"]);
   });
 
   await checkAuthed("TC-96", "Giá thường / lễ tết / sức chứa trên hạng phòng", async (shot) => {

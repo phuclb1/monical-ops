@@ -1,0 +1,231 @@
+{
+  "runId": "E2E-20261027-1",
+  "date": "2026-10-27T13:38:42.957Z",
+  "commit": "e57fa90-dirty",
+  "env": "http://localhost:3002",
+  "guest": "E2E Van A",
+  "room": "101",
+  "pass": 31,
+  "fail": 0,
+  "total": 31,
+  "passRate": "100%",
+  "results": [
+    {
+      "id": "E2E-R1",
+      "title": "Lễ tân vào Đặt phòng — không còn Today / ca",
+      "result": "pass",
+      "evidence": "qa/evidence/E2E-20261027-1/E2E-R1.png",
+      "note": ""
+    },
+    {
+      "id": "E2E-R3",
+      "title": "Bán phòng — giữ chỗ, cọc, chưa nhận",
+      "result": "pass",
+      "evidence": "qa/evidence/E2E-20261027-1/E2E-R3.png",
+      "note": ""
+    },
+    {
+      "id": "E2E-R3s",
+      "title": "Một booking ghép hai phòng theo từng đêm",
+      "result": "pass",
+      "evidence": "qa/evidence/E2E-20261027-1/E2E-R3s.png",
+      "note": ""
+    },
+    {
+      "id": "E2E-R4",
+      "title": "Sơ đồ ngày hiện booking E2E",
+      "result": "pass",
+      "evidence": "qa/evidence/E2E-20261027-1/E2E-R4.png",
+      "note": ""
+    },
+    {
+      "id": "E2E-S1",
+      "title": "Tìm booking theo tên — tab mặc định gồm đã giữ",
+      "result": "pass",
+      "evidence": "qa/evidence/E2E-20261027-1/E2E-S1.png",
+      "note": ""
+    },
+    {
+      "id": "E2E-S3",
+      "title": "Danh sách đặt phòng chỉ render một trang",
+      "result": "pass",
+      "evidence": "qa/evidence/E2E-20261027-1/E2E-S3.png",
+      "note": ""
+    },
+    {
+      "id": "E2E-R6",
+      "title": "Lễ tân nhận phòng thẳng — không cổng HK",
+      "result": "pass",
+      "evidence": "qa/evidence/E2E-20261027-1/E2E-R6.png",
+      "note": ""
+    },
+    {
+      "id": "E2E-K1",
+      "title": "Bếp ăn sáng vẫn đọc được booking",
+      "result": "pass",
+      "evidence": "qa/evidence/E2E-20261027-1/E2E-K1.png",
+      "note": ""
+    },
+    {
+      "id": "E2E-R14a",
+      "title": "Chưa thu đủ thì chưa checkout được",
+      "result": "pass",
+      "evidence": "qa/evidence/E2E-20261027-1/E2E-R14a.png",
+      "note": ""
+    },
+    {
+      "id": "E2E-R14",
+      "title": "Thu đủ rồi lễ tân trả phòng thẳng",
+      "result": "pass",
+      "evidence": "qa/evidence/E2E-20261027-1/E2E-R14.png",
+      "note": ""
+    },
+    {
+      "id": "E2E-S2",
+      "title": "Tab mặc định + tìm kiếm hiện booking đã trả",
+      "result": "pass",
+      "evidence": "qa/evidence/E2E-20261027-1/E2E-S2.png",
+      "note": ""
+    },
+    {
+      "id": "E2E-H1",
+      "title": "HK bị khóa login — module vận hành tạm dừng",
+      "result": "pass",
+      "evidence": "qa/evidence/E2E-20261027-1/E2E-H1.png",
+      "note": ""
+    },
+    {
+      "id": "E2E-R16",
+      "title": "URL điều phối cũ redirect về đặt phòng",
+      "result": "pass",
+      "evidence": "qa/evidence/E2E-20261027-1/E2E-R16.png",
+      "note": ""
+    },
+    {
+      "id": "E2E-R12",
+      "title": "Lễ tân không vào nhật ký",
+      "result": "pass",
+      "evidence": "qa/evidence/E2E-20261027-1/E2E-R12.png",
+      "note": ""
+    },
+    {
+      "id": "E2E-R15",
+      "title": "Lễ tân không vào báo cáo doanh thu bằng URL trực tiếp",
+      "result": "pass",
+      "evidence": "qa/evidence/E2E-20261027-1/E2E-R15.png",
+      "note": ""
+    },
+    {
+      "id": "E2E-O1",
+      "title": "Booking OTA — công nợ, không cọc, không thu đủ",
+      "result": "pass",
+      "evidence": "qa/evidence/E2E-20261027-1/E2E-O1.png",
+      "note": ""
+    },
+    {
+      "id": "E2E-X1",
+      "title": "Tạo booking kèm phụ thu",
+      "result": "pass",
+      "evidence": "qa/evidence/E2E-20261027-1/E2E-X1.png",
+      "note": ""
+    },
+    {
+      "id": "E2E-O4",
+      "title": "Booking OTA — khách thanh toán tại khách sạn",
+      "result": "pass",
+      "evidence": "qa/evidence/E2E-20261027-1/E2E-O4.png",
+      "note": ""
+    },
+    {
+      "id": "E2E-C1",
+      "title": "Lễ tân không vào chi phí",
+      "result": "pass",
+      "evidence": "qa/evidence/E2E-20261027-1/E2E-C1.png",
+      "note": ""
+    },
+    {
+      "id": "E2E-O2",
+      "title": "Báo cáo doanh thu OTA sau hoa hồng",
+      "result": "pass",
+      "evidence": "qa/evidence/E2E-20261027-1/E2E-O2.png",
+      "note": ""
+    },
+    {
+      "id": "E2E-O5",
+      "title": "OTA công nợ + phụ thu — thu phụ thu vào sổ cái",
+      "result": "pass",
+      "evidence": "qa/evidence/E2E-20261027-1/E2E-O5.png",
+      "note": ""
+    },
+    {
+      "id": "E2E-CF1",
+      "title": "Dòng tiền một trang, tổng cả kỳ vẫn hiện",
+      "result": "pass",
+      "evidence": "qa/evidence/E2E-20261027-1/E2E-CF1.png",
+      "note": ""
+    },
+    {
+      "id": "E2E-C2",
+      "title": "Quản lý mở trang chi phí từ Thêm",
+      "result": "pass",
+      "evidence": "qa/evidence/E2E-20261027-1/E2E-C2.png",
+      "note": ""
+    },
+    {
+      "id": "E2E-C3",
+      "title": "Quản lý nhập khoản chi bếp, có hóa đơn, tài khoản công ty",
+      "result": "pass",
+      "evidence": "qa/evidence/E2E-20261027-1/E2E-C3.png",
+      "note": ""
+    },
+    {
+      "id": "E2E-C3b",
+      "title": "Khoản chi sau chọn lại nhãn người chi vừa nhập",
+      "result": "pass",
+      "evidence": "qa/evidence/E2E-20261027-1/E2E-C3b.png",
+      "note": ""
+    },
+    {
+      "id": "E2E-C4",
+      "title": "Nhật ký ghi thêm khoản chi",
+      "result": "pass",
+      "evidence": "qa/evidence/E2E-20261027-1/E2E-C4.png",
+      "note": ""
+    },
+    {
+      "id": "E2E-C5",
+      "title": "Quản lý xóa khoản chi vừa nhập",
+      "result": "pass",
+      "evidence": "qa/evidence/E2E-20261027-1/E2E-C5.png",
+      "note": ""
+    },
+    {
+      "id": "E2E-C6",
+      "title": "Nhật ký ghi xóa khoản chi",
+      "result": "pass",
+      "evidence": "qa/evidence/E2E-20261027-1/E2E-C6.png",
+      "note": ""
+    },
+    {
+      "id": "E2E-O3",
+      "title": "Chủ sở hữu thấy doanh thu OTA",
+      "result": "pass",
+      "evidence": "qa/evidence/E2E-20261027-1/E2E-O3.png",
+      "note": ""
+    },
+    {
+      "id": "E2E-C7",
+      "title": "Chủ sở hữu không vào chi phí",
+      "result": "pass",
+      "evidence": "qa/evidence/E2E-20261027-1/E2E-C7.png",
+      "note": ""
+    },
+    {
+      "id": "E2E-R17",
+      "title": "Quản lý hủy booking E2E còn giữ chỗ để trả phòng",
+      "result": "pass",
+      "evidence": "qa/evidence/E2E-20261027-1/E2E-R17.png",
+      "note": ""
+    }
+  ]
+}

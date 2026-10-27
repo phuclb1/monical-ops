@@ -95,3 +95,97 @@ export function roomAvailabilityTable(
     })),
   );
 }
+
+export type NightPicks = Record<string, string[]>;
+export type StaySegment = { roomId: string; checkIn: string; checkOut: string; nights: string[] };
+
+function contiguousRuns(dates: string[]) {
+  const sorted = [...new Set(dates)].filter(Boolean).sort();
+  const runs: string[][] = [];
+  for (const date of sorted) {
+    const last = runs[runs.length - 1];
+    if (last && addDaysVN(last[last.length - 1], 1) === date) last.push(date);
+    else runs.push([date]);
+  }
+  return runs;
+}
+
+/** Collapse picked nights into one contiguous segment per room. A gap stays unbookable. */
+export function segmentsFromPicks(picks: NightPicks) {
+  const segments: StaySegment[] = [];
+  const gappedRoomIds: string[] = [];
+  for (const [roomId, dates] of Object.entries(picks)) {
+    const runs = contiguousRuns(dates);
+    if (!runs.length) continue;
+    if (runs.length > 1) {
+      gappedRoomIds.push(roomId);
+      continue;
+    }
+    const nights = runs[0];
+    segments.push({
+      roomId,
+      nights,
+      checkIn: nights[0],
+      checkOut: addDaysVN(nights[nights.length - 1], 1),
+    });
+  }
+  segments.sort((a, b) => a.checkIn.localeCompare(b.checkIn) || a.roomId.localeCompare(b.roomId));
+  return { segments, gappedRoomIds };
+}
+
+export function toggleNightPick(picks: NightPicks, roomId: string, date: string): NightPicks {
+  const current = picks[roomId] || [];
+  const nextDates = current.includes(date) ? current.filter((item) => item !== date) : [...current, date].sort();
+  const next = { ...picks };
+  if (nextDates.length) next[roomId] = nextDates;
+  else delete next[roomId];
+  return next;
+}
+
+export function toggleFreeStay(picks: NightPicks, roomId: string, nights: { date: string; available: boolean }[]): NightPicks {
+  const free = nights.filter((night) => night.available).map((night) => night.date);
+  const current = picks[roomId] || [];
+  const allOn = free.length > 0 && current.length === free.length && free.every((date) => current.includes(date));
+  const next = { ...picks };
+  if (!free.length || allOn) delete next[roomId];
+  else next[roomId] = [...free];
+  return next;
+}
+
+export function clipNightPicks(picks: NightPicks, rows: RoomAvailabilityRow[]): NightPicks {
+  if (!rows.length) return {};
+  const open = new Map(rows.map((row) => [row.roomId, new Set(row.nights.filter((night) => night.available).map((night) => night.date))]));
+  const next: NightPicks = {};
+  for (const [roomId, dates] of Object.entries(picks)) {
+    const nights = open.get(roomId);
+    if (!nights) continue;
+    const kept = [...new Set(dates)].filter((date) => nights.has(date)).sort();
+    if (kept.length) next[roomId] = kept;
+  }
+  return next;
+}
+
+export function uncoveredNights(stayNights: string[], picks: NightPicks) {
+  const covered = new Set(Object.values(picks).flat());
+  return stayNights.filter((date) => !covered.has(date));
+}
+
+/** Busiest night. A split stay keeps one party; overlapping rooms add up. */
+export function peakStayPax(segments: { nights: string[]; adults: number; children: number }[]) {
+  const byNight = new Map<string, { adults: number; children: number }>();
+  for (const segment of segments) {
+    for (const date of segment.nights) {
+      const row = byNight.get(date) || { adults: 0, children: 0 };
+      row.adults += Math.max(0, segment.adults || 0);
+      row.children += Math.max(0, segment.children || 0);
+      byNight.set(date, row);
+    }
+  }
+  let adults = 0;
+  let children = 0;
+  for (const row of byNight.values()) {
+    adults = Math.max(adults, row.adults);
+    children = Math.max(children, row.children);
+  }
+  return { adults, children };
+}

@@ -147,31 +147,41 @@ async function saveBooking(guest) {
   await waitForBookingReady(guest);
 }
 
+function addDaysVN(iso, days) {
+  const date = new Date(`${iso}T12:00:00+07:00`);
+  date.setDate(date.getDate() + days);
+  return new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Ho_Chi_Minh" }).format(date);
+}
+
+async function roomLabel(row) {
+  const label = row.locator("th span").first();
+  if (!(await label.count())) return "";
+  return (await label.innerText()).trim();
+}
+
 async function pickOpenRoom() {
-  const preferred = page.locator("label").filter({ hasText: `P.${ROOM}` }).locator('input[name="roomId"]');
-  if (await preferred.count()) {
-    if (!(await preferred.isChecked())) await preferred.check();
-    const extras = page.locator('input[name="roomId"][type="checkbox"]');
-    const n = await extras.count();
-    for (let i = 0; i < n; i += 1) {
-      const box = extras.nth(i);
-      const val = await box.getAttribute("value");
-      if (val !== `r-${ROOM}` && (await box.isChecked())) await box.uncheck();
-    }
+  const board = page.locator(".night-board");
+  await board.waitFor({ timeout: 15000 });
+  const search = page.getByPlaceholder("Tìm hạng / số phòng");
+  await search.fill(ROOM);
+  const rows = board.locator("tbody tr");
+  const count = await rows.count();
+  for (let index = 0; index < count; index += 1) {
+    const row = rows.nth(index);
+    if ((await roomLabel(row)) !== `P.${ROOM}`) continue;
+    const stay = row.getByRole("button", { name: "Cả kỳ", exact: true });
+    if (!(await stay.count())) break;
+    await stay.click();
+    await search.fill("");
     return ROOM;
   }
-  const boxes = page.locator('input[name="roomId"][type="checkbox"]');
-  const n = await boxes.count();
-  if (!n) throw new Error("Không còn phòng trống");
-  const box = boxes.first();
-  const id = await box.getAttribute("value");
-  await box.scrollIntoViewIfNeeded();
-  if (!(await box.isChecked())) await box.check();
-  for (let i = 1; i < n; i += 1) {
-    const item = boxes.nth(i);
-    if (await item.isChecked()) await item.uncheck();
-  }
-  return String(id || "").replace(/^r-/, "");
+  await search.fill("");
+  const stay = board.getByRole("button", { name: "Cả kỳ", exact: true }).first();
+  if (!(await stay.count())) throw new Error("Không còn phòng trống cả kỳ");
+  const number = ((await roomLabel(stay.locator("xpath=ancestor::tr[1]"))).match(/P\.(\S+)/) || [])[1] || "";
+  await stay.click();
+  if (!number) throw new Error("Không đọc được số phòng");
+  return number;
 }
 
 async function collectDue() {
@@ -248,6 +258,39 @@ try {
     guestBookingPath = new URL(page.url()).pathname;
     await must(shot, [GUEST, `P.${bookedRoom}`, "Đã đặt cọc", "Còn phải thu", "Đã giữ"]);
     await mustNot(shot, ["Giao việc HK", "Yêu cầu HK kiểm phòng standby"]);
+  });
+
+  await check("E2E-R3s", "Một booking ghép hai phòng theo từng đêm", async (shot) => {
+    await go("/sales/new");
+    const checkIn = await page.locator('input[name="checkIn"]').inputValue();
+    await page.locator('input[name="checkOut"]').fill(addDaysVN(checkIn, 2));
+    await page.locator(".night-board button.night-cell").first().waitFor({ timeout: 15000 });
+    const rows = page.locator(".night-board tbody tr");
+    const open = [];
+    const count = await rows.count();
+    for (let index = 0; index < count && open.length < 2; index += 1) {
+      const row = rows.nth(index);
+      const nights = row.locator("button.night-cell");
+      if ((await nights.count()) < 2) continue;
+      if (await nights.nth(0).isDisabled()) continue;
+      if (await nights.nth(1).isDisabled()) continue;
+      const number = ((await roomLabel(row)).match(/P\.(\S+)/) || [])[1];
+      if (!number) continue;
+      open.push({ nights, number });
+    }
+    if (open.length < 2) throw new Error("Không đủ hai phòng trống cả hai đêm");
+    await open[0].nights.nth(0).click();
+    await page.getByText("Còn đêm chưa gán phòng").first().waitFor({ timeout: 5000 });
+    if (await page.getByRole("button", { name: /Lưu/ }).isEnabled()) throw new Error("Lưu được khi còn đêm trống");
+    await open[1].nights.nth(1).click();
+    await page.getByRole("button", { name: "Lưu 2 chặng" }).waitFor({ timeout: 5000 });
+    const guest = "E2E Chang";
+    await page.locator('input[name="guestName"]').fill(guest);
+    await page.locator('input[name="guestPhone"]').fill("0900000199");
+    const now = page.locator('input[name="checkinNow"]');
+    if (await now.count()) await now.uncheck();
+    await saveBooking(guest);
+    await must(shot, [guest, `P.${open[0].number}`, `P.${open[1].number}`, "2 đêm", "Đã giữ"]);
   });
 
   await check("E2E-R4", "Sơ đồ ngày hiện booking E2E", async (shot) => {
@@ -608,7 +651,7 @@ try {
   await check("E2E-R17", "Quản lý hủy booking E2E còn giữ chỗ để trả phòng", async (shot) => {
     await logout();
     await login("quanly");
-    for (const name of ["E2E OTA Tai KS", "E2E OTA Phu Thu", "E2E Phu Thu", "E2E OTA"]) {
+    for (const name of ["E2E Chang", "E2E OTA Tai KS", "E2E OTA Phu Thu", "E2E Phu Thu", "E2E OTA"]) {
       await cancelOpenBooking(name);
     }
     await go(`/sales/bookings?q=${encodeURIComponent("E2E OTA")}`);

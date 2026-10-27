@@ -2,6 +2,7 @@
 
 import { Field } from "@/components/ui";
 import { defaultCheckout, roomMoveKind } from "@/lib/sales";
+import { CountSelect } from "./count-select";
 import { RoomDiscountFields } from "./discount";
 import { emptyDiscount, type DiscountState, type StayDates } from "./shared";
 
@@ -142,25 +143,21 @@ export function BookingRoomLines(props: {
             </div>
             <div className="grid grid-cols-2 gap-2">
               <Field label="Người lớn">
-                <input
+                <CountSelect
                   name={`adults-${line.saleId}`}
-                  type="number"
+                  value={adults}
                   min={1}
                   max={cap}
-                  value={adults}
-                  onChange={(e) => {
-                    const next = Math.min(cap, Math.max(1, Math.round(Number(e.target.value) || 1)));
-                    setRoomAdults((prev) => ({ ...prev, [line.saleId]: String(next) }));
-                  }}
+                  onChange={(next) => setRoomAdults((prev) => ({ ...prev, [line.saleId]: String(next) }))}
                 />
               </Field>
               <Field label="Trẻ em">
-                <input
+                <CountSelect
                   name={`children-${line.saleId}`}
-                  type="number"
-                  min={0}
                   value={children}
-                  onChange={(e) => setRoomChildren((prev) => ({ ...prev, [line.saleId]: e.target.value }))}
+                  min={0}
+                  max={Math.max(8, children)}
+                  onChange={(next) => setRoomChildren((prev) => ({ ...prev, [line.saleId]: String(next) }))}
                 />
               </Field>
             </div>

@@ -76,17 +76,15 @@ async function assertText(needles, excluded = []) {
 }
 
 async function pickOpenRoom() {
-  const boxes = page.locator('input[name="roomId"][type="checkbox"]');
-  const count = await boxes.count();
-  if (!count) throw new Error("Không còn phòng trống để tạo booking E2E");
-  const selected = boxes.first();
-  const id = await selected.getAttribute("value");
-  await selected.check();
-  for (let index = 1; index < count; index += 1) {
-    const box = boxes.nth(index);
-    if (await box.isChecked()) await box.uncheck();
-  }
-  return String(id || "").replace(/^r-/, "");
+  const board = page.locator(".night-board");
+  await board.waitFor({ timeout: 15000 });
+  const stay = board.getByRole("button", { name: "Cả kỳ", exact: true }).first();
+  if (!(await stay.count())) throw new Error("Không còn phòng trống cả kỳ");
+  const label = await stay.locator("xpath=ancestor::tr[1]").locator("th span").first().innerText();
+  const number = (label.match(/P\.(\S+)/) || [])[1] || "";
+  await stay.click();
+  if (!number) throw new Error("Không đọc được số phòng");
+  return number;
 }
 
 async function openEdit() {

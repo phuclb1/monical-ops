@@ -72,17 +72,15 @@ async function must(page, shot, needles) {
 }
 
 async function pickOpenRoom(page) {
-  const boxes = page.locator('input[name="roomId"][type="checkbox"]');
-  const n = await boxes.count();
-  if (!n) throw new Error("Không còn phòng trống");
-  const box = boxes.first();
-  await box.scrollIntoViewIfNeeded();
-  if (!(await box.isChecked())) await box.check();
-  for (let i = 1; i < n; i += 1) {
-    const item = boxes.nth(i);
-    if (await item.isChecked()) await item.uncheck();
-  }
-  return String((await box.getAttribute("value")) || "").replace(/^r-/, "");
+  const board = page.locator(".night-board");
+  await board.waitFor({ timeout: 15000 });
+  const stay = board.getByRole("button", { name: "Cả kỳ", exact: true }).first();
+  if (!(await stay.count())) throw new Error("Không còn phòng trống cả kỳ");
+  const label = await stay.locator("xpath=ancestor::tr[1]").locator("th span").first().innerText();
+  const number = (label.match(/P\.(\S+)/) || [])[1] || "";
+  await stay.click();
+  if (!number) throw new Error("Không đọc được số phòng");
+  return number;
 }
 
 async function createCheckedInBooking(page, { guest, phone, source, invoice }) {

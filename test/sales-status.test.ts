@@ -136,6 +136,20 @@ test("pax clamp, rollup, grouping, room move", () => {
   assert.deepEqual(splitBookingAdults(1, [2, 4, 2, 4]), [1, 1, 1, 1]);
   assert.deepEqual(splitBookingChildren(3, 2), [2, 1]);
   assert.deepEqual(bookingStayPax([{ adults: 1, children: 0 }, { adults: 2, children: 1 }]), { adults: 3, children: 1 });
+  assert.deepEqual(
+    bookingStayPax([
+      { adults: 2, children: 0, checkIn: "2026-10-20", checkOut: "2026-10-21" },
+      { adults: 2, children: 1, checkIn: "2026-10-21", checkOut: "2026-10-22" },
+    ]),
+    { adults: 2, children: 1 },
+  );
+  assert.deepEqual(
+    bookingStayPax([
+      { adults: 2, children: 0, checkIn: "2026-10-20", checkOut: "2026-10-22" },
+      { adults: 2, children: 1, checkIn: "2026-10-20", checkOut: "2026-10-22" },
+    ]),
+    { adults: 4, children: 1 },
+  );
   const caps = new Map<string, number>([["DELUXE", 2], ["FAMILY", 4]]);
   const split = legacyPaxAssignments(
     [

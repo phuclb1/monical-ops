@@ -5,6 +5,7 @@ import { PendingSubmit } from "@/components/pending-submit";
 import { Field, PayMethodField } from "@/components/ui";
 import { compressImage } from "@/lib/image";
 import { PAYMENT_METHOD_LABEL } from "@/lib/constants";
+import { formatDateNumeric } from "@/lib/datetime";
 import { formatVnd } from "@/lib/sales";
 import type { PaymentMethod } from "@/lib/types";
 import type { Room } from "./shared";
@@ -16,7 +17,7 @@ export function SaleFormSide(props: {
   payMethod: PaymentMethod;
   setPayMethod: (value: PaymentMethod) => void;
   selectedRooms: Room[];
-  quotes: { room: Room; rate: number; quote: { nights: number; gross?: number; subtotal: number; breakfastOff: number; discount: number }; discountKind: string; discountValue: number }[];
+  quotes: { room: Room; rate: number; checkIn?: string; checkOut?: string; quote: { nights: number; gross?: number; subtotal: number; breakfastOff: number; discount: number }; discountKind: string; discountValue: number }[];
   extraRows?: { key: string; name: string; qty: number; unit: string; unitPrice: number; amount: number }[];
   extraNights?: number;
   bookingTotal: number;
@@ -35,8 +36,9 @@ export function SaleFormSide(props: {
   commissionLabel?: string;
   commissionAmount?: number;
   showCheckinNow?: boolean;
-  today?: string;
   roomIds: string[];
+  canSave?: boolean;
+  saveHint?: string;
   saveLabel: string;
 }) {
   const {
@@ -65,8 +67,9 @@ export function SaleFormSide(props: {
     commissionLabel = "Hoa hồng",
     commissionAmount = 0,
     showCheckinNow,
-    today,
     roomIds,
+    canSave = true,
+    saveHint,
     saveLabel,
   } = props;
   const extrasTotal = extraRows.reduce((sum, row) => sum + row.amount, 0);
@@ -93,10 +96,13 @@ export function SaleFormSide(props: {
                   <span>
                     {ota
                       ? `${row.room.type} · P.${row.room.number} · ${row.quote.nights} đêm`
-                      : `${row.room.type} · ${row.quote.nights} đêm × ${formatVnd(row.rate)}`}
+                      : `P.${row.room.number} · ${row.quote.nights} đêm × ${formatVnd(row.rate)}`}
                   </span>
                   <span>{formatVnd(row.quote.gross ?? row.quote.subtotal + row.quote.breakfastOff)}</span>
                 </div>
+                {row.checkIn && row.checkOut ? (
+                  <p className="text-xs text-[#8a7a72]">{formatDateNumeric(row.checkIn)} → {formatDateNumeric(row.checkOut)}</p>
+                ) : null}
                 {row.quote.breakfastOff ? (
                   <div className="flex justify-between gap-2 text-xs text-[#c47b12]">
                     <span>Không ăn sáng</span>
@@ -240,11 +246,12 @@ export function SaleFormSide(props: {
       </Field>
       {showCheckinNow ? (
         <label className="flex items-center gap-2">
-          <input type="checkbox" name="checkinNow" value="1" defaultChecked={Boolean(today && defaults.checkIn <= today)} />
+          <input type="checkbox" name="checkinNow" value="1" />
           <span>Nhận phòng luôn (phòng đã đến ngày)</span>
         </label>
       ) : null}
-      <PendingSubmit className="w-full" disabled={!roomIds.length} pendingLabel="Đang lưu...">
+      {saveHint ? <p className="text-xs text-[#c23b3b]">{saveHint}</p> : null}
+      <PendingSubmit className="w-full" disabled={!roomIds.length || !canSave} pendingLabel="Đang lưu...">
         {saveLabel}
       </PendingSubmit>
       </div>
