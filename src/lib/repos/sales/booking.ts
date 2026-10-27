@@ -205,7 +205,6 @@ export async function updateBooking(
   await notifyBookingChange({
     actor: user,
     bookingId: key,
-    createdBy: [...active].sort((a, b) => a.createdAt.localeCompare(b.createdAt))[0]?.createdBy,
     title: `Sửa booking · ${guestName}`,
     body: `${user.fullName} · còn ${staying.length} phòng${removedNumbers.length ? ` · xóa ${removedNumbers.join(", ")}` : ""}`,
   });

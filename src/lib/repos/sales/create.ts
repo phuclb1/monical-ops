@@ -44,7 +44,6 @@ export async function createRoomSale(user: SessionUser, data: SaleInput) {
           .limit(1)
       )[0]
     : undefined;
-  const createdBy = existing?.createdBy || user.id;
   const pmsCode =
     data.pmsCode?.trim() || (origin === "ops" ? await nextOpsBookingCode(db, now) : "");
   if (!pmsCode) throw new Error("Tích ezCloud thì nhập mã PMS");
@@ -166,7 +165,6 @@ export async function createRoomSale(user: SessionUser, data: SaleInput) {
   await notifyBookingChange({
     actor: user,
     bookingId,
-    createdBy,
     title: `${existing ? "Thêm phòng" : "Đặt phòng"} · ${guestName}`,
     body: `${user.fullName} · ${roomLabel} · ${spanIn} → ${spanOut} · ${bookingTotal.toLocaleString("vi-VN")}₫`,
   });

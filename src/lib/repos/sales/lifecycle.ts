@@ -9,7 +9,7 @@ import type { SaleStatus, SessionUser } from "../../types";
 import { audit } from "../audit";
 import { bookingCheckinPaidReady } from "../../zalo-templates";
 import { dispatchCheckinPaidZalo } from "../../zalo-notify";
-import { bookingCreatedBy, notifyBookingChange } from "./notify";
+import { notifyBookingChange } from "./notify";
 import { syncBookingMoney } from "./money-sync";
 import { getBooking } from "./queries";
 import { applySaleRoomState } from "./stay";
@@ -130,11 +130,9 @@ export async function recordBookingRefund(
     }, { ...next, ...patch, txId: tx.id });
   }
   await syncBookingMoney(booking.id);
-  const createdBy = [...booking.rooms].sort((a, b) => a.createdAt.localeCompare(b.createdAt))[0]?.createdBy;
   await notifyBookingChange({
     actor: user,
     bookingId: booking.id,
-    createdBy,
     title: `Hoàn tiền · ${booking.guestName}`,
     body: `${user.fullName} · ${formatVnd(amount)} từ ${PAYMENT_METHOD_LABEL[method]} · ${STAY_REFUND_REASON_LABEL[reason]}`,
   });
@@ -168,11 +166,9 @@ export async function cancelBooking(user: SessionUser, bookingId: string, asNoSh
     await cancelRoomSale(user, row.id, asNoShow, { silent: true, refundDeposit: Boolean(opts?.refundDeposit), skipMoneySync: true });
   }
   await syncBookingMoney(booking.id);
-  const createdBy = [...booking.rooms].sort((a, b) => a.createdAt.localeCompare(b.createdAt))[0]?.createdBy;
   await notifyBookingChange({
     actor: user,
     bookingId: booking.id,
-    createdBy,
     title: `${asNoShow ? "No-show" : "Hủy booking"} · ${booking.guestName}`,
     body: `${user.fullName} · ${active.length} phòng · ${booking.roomLabel}`,
   });
@@ -277,7 +273,6 @@ export async function cancelRoomSale(user: SessionUser, id: string, asNoShow = f
   await notifyBookingChange({
     actor: user,
     bookingId,
-    createdBy: await bookingCreatedBy(bookingId, before.createdBy),
     title: `${asNoShow ? "No-show" : "Hủy phòng"} · ${before.guestName}`,
     body: `${user.fullName}`,
   });

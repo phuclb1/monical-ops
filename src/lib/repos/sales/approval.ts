@@ -5,7 +5,7 @@ import { nid, nowISO } from "../../datetime";
 import { can } from "../../permissions";
 import { bookingPayMethods, collectedSplit, parsePaymentMethod } from "../../sales";
 import type { SessionUser } from "../../types";
-import { notify } from "@/modules/notifications/models/notifications";
+import { notifyBookingChange } from "./notify";
 import { approvalChanges } from "../../booking-approval-diff";
 import { audit } from "../audit";
 import { listRooms } from "../rooms";
@@ -204,11 +204,11 @@ async function createRequest(
     requestedAt,
   });
   await audit(user.id, "booking", booking.id, "request", undefined, { requestId: id, summary });
-  await notify({
-    role: "manager",
+  await notifyBookingChange({
+    actor: user,
+    bookingId: booking.id,
     title: `Cần duyệt sửa booking · ${booking.guestName}`,
     body: `${user.fullName} · ${summary}`,
-    link: `/sales/bookings/${booking.id}`,
   });
   return { mode: "requested" as const, bookingId: booking.id, requestId: id };
 }
@@ -359,11 +359,11 @@ export async function approveBookingChange(user: SessionUser, requestId: string)
     requestId: request.id,
     summary: request.summary,
   });
-  await notify({
-    userId: request.requestedBy,
+  await notifyBookingChange({
+    actor: user,
+    bookingId: request.bookingId,
     title: "Đề nghị sửa booking đã được duyệt",
     body: `${user.fullName} · ${request.summary}`,
-    link: `/sales/bookings/${request.bookingId}`,
   });
   return request.bookingId;
 }
@@ -397,11 +397,11 @@ export async function rejectBookingChange(user: SessionUser, requestId: string, 
     summary: request.summary,
     reason,
   });
-  await notify({
-    userId: request.requestedBy,
+  await notifyBookingChange({
+    actor: user,
+    bookingId: request.bookingId,
     title: "Đề nghị sửa booking bị từ chối",
     body: `${user.fullName} · ${reason}`,
-    link: `/sales/bookings/${request.bookingId}`,
   });
   return request.bookingId;
 }

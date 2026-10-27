@@ -7,8 +7,7 @@ import { getSession } from "@/lib/auth";
 import { listNotifications } from "@/modules/notifications/models/notifications";
 
 function hintFor(role: string) {
-  if (role === "manager") return "Mọi thêm, sửa, hủy booking đều hiện ở đây.";
-  if (role === "reception") return "Chỉ hiện thêm, sửa, hủy booking do bạn tạo.";
+  if (role === "manager" || role === "reception") return "Mọi thêm, sửa, hủy và duyệt booking đều gửi cho lễ tân và quản lý.";
   return null;
 }
 

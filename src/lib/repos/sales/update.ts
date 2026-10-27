@@ -6,7 +6,7 @@ import { isActiveSaleStatus, normalizeDiscount } from "../../sales";
 import type { SessionUser } from "../../types";
 import { audit } from "../audit";
 import { assertSaleWindow, paymentOf, type SaleInput, uniqueSaleRoomIds } from "./helpers";
-import { bookingCreatedBy, notifyBookingChange } from "./notify";
+import { notifyBookingChange } from "./notify";
 import { bookingCheckinPaidReady } from "@/lib/zalo-templates";
 import { dispatchBookingZalo, dispatchCheckinPaidZalo } from "@/lib/zalo-notify";
 import { syncBookingMoney } from "./money-sync";
@@ -77,7 +77,6 @@ export async function updateRoomSale(user: SessionUser, id: string, data: SaleIn
   await notifyBookingChange({
     actor: user,
     bookingId,
-    createdBy: await bookingCreatedBy(bookingId, before.createdBy),
     title: `Sửa booking · ${guestName}`,
     body: `${user.fullName} · ${before.checkIn} → ${data.checkOut}`,
   });

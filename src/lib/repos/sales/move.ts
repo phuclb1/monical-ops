@@ -7,7 +7,7 @@ import type { SessionUser } from "../../types";
 import { audit } from "../audit";
 import { assertSaleWindow } from "./helpers";
 import { dispatchBookingWebhook } from "@/lib/booking-webhook";
-import { bookingCreatedBy, notifyBookingChange } from "./notify";
+import { notifyBookingChange } from "./notify";
 import { syncBookingMoney } from "./money-sync";
 
 export async function moveGanttSale(
@@ -55,7 +55,6 @@ export async function moveGanttSale(
   await notifyBookingChange({
     actor: user,
     bookingId,
-    createdBy: await bookingCreatedBy(bookingId, before.createdBy),
     title: `Sửa booking · ${before.guestName}`,
     body: `${user.fullName} · ${checkIn} → ${checkOut}`,
   });
