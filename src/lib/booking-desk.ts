@@ -412,7 +412,7 @@ SELECT DISTINCT bid FROM (
 ) lines
 WHERE bid NOT LIKE 'seq-hold-%'
   AND (
-    (status NOT IN ('cancelled', 'no_show') AND check_in >= ${from} AND check_in < ${to})
+    (status != 'cancelled' AND check_in >= ${from} AND check_in < ${to})
     OR (
       refunded_at IS NOT NULL
       AND substr(refunded_at, 1, 10) >= ${from}

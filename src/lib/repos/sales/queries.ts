@@ -33,6 +33,7 @@ import { withSaleRoom } from "./helpers";
 
 const GANTT_SALE_STATUSES = ["reserved", "inhouse", "departed"] as const;
 const LIVE_SALE_STATUSES = ["reserved", "inhouse", "departed"] as const;
+const REVENUE_SALE_STATUSES = [...LIVE_SALE_STATUSES, "no_show"] as const;
 
 function sortSales<T extends { checkIn: string; room?: { number: string } | null }>(sales: T[]) {
   return sales.sort((a, b) => b.checkIn.localeCompare(a.checkIn) || (a.room?.number || "").localeCompare(b.room?.number || ""));
@@ -324,7 +325,7 @@ export async function getBooking(id: string) {
 
 export const listBookingsByCheckIn = cache(async (from: string, toExclusive: string) => {
   const ids = await bookingIdsWhere(
-    and(gte(t.roomSales.checkIn, from), lt(t.roomSales.checkIn, toExclusive), inArray(t.roomSales.status, [...LIVE_SALE_STATUSES])),
+    and(gte(t.roomSales.checkIn, from), lt(t.roomSales.checkIn, toExclusive), inArray(t.roomSales.status, [...REVENUE_SALE_STATUSES])),
   );
   return listLeanBookings(ids);
 });
@@ -358,7 +359,7 @@ export const listHomeBookings = cache(async (today: string) => {
   const from = addDaysVN(today, -6);
   const to = addDaysVN(today, 1);
   const [checkInIds, createdIds, recent] = await Promise.all([
-    bookingIdsWhere(and(gte(t.roomSales.checkIn, from), lt(t.roomSales.checkIn, to), inArray(t.roomSales.status, [...LIVE_SALE_STATUSES]))),
+    bookingIdsWhere(and(gte(t.roomSales.checkIn, from), lt(t.roomSales.checkIn, to), inArray(t.roomSales.status, [...REVENUE_SALE_STATUSES]))),
     bookingIdsWhere(and(gte(t.roomSales.createdAt, today), lt(t.roomSales.createdAt, to))),
     recentBookingIds(6),
   ]);

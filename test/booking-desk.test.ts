@@ -101,6 +101,7 @@ test("booking desk SQL pages by rolled-up status and created time", async () => 
     ["s6", "b-out", "departed", "2026-10-10", today, "2026-09-01T00:00:00"],
     ["s7", "b-tmr", "reserved", "2026-10-14", "2026-10-16", "2026-10-13T01:00:00"],
     ["s8", "b-leave", "inhouse", "2026-10-10", today, "2026-10-01T00:00:00"],
+    ["s9", "b-ns", "no_show", "2026-10-31", "2026-11-01", "2026-10-28T00:00:00"],
   ] as const;
   for (const [id, bookingId, status, checkIn, checkOut, createdAt] of lines) {
     await client.execute({
@@ -160,7 +161,7 @@ test("booking desk SQL pages by rolled-up status and created time", async () => 
   const cash = await db.all(cashPeriodIdsQuery("2026-10-01", "2026-11-01"));
   assert.deepEqual(
     cash.map((row) => String((row as { bid: string }).bid)).sort(),
-    ["b-leave", "b-mix", "b-old", "b-out", "b-tmr"].sort(),
+    ["b-leave", "b-mix", "b-ns", "b-old", "b-out", "b-tmr"].sort(),
   );
 });
 
