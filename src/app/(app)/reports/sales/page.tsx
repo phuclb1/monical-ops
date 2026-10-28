@@ -206,6 +206,7 @@ export default async function SalesRevenuePage({
                     <span className="text-xs font-semibold">{formatVnd(row.total)}</span>
                     <span className="text-xs text-[#5c6665]">
                       {(() => {
+                        if (row.status === "no_show" && !isOtaSource(row.source)) return `Doanh thu cọc ${formatVnd(row.total)}`;
                         if (!isOtaDebt(row.source, row.otaPaymentMode)) {
                           return isOtaSource(row.source)
                             ? `Công nợ OTA 0₫ · Khách trả ${formatVnd(row.due)}`
@@ -268,7 +269,7 @@ export default async function SalesRevenuePage({
             ))}
           </div>
         ) : (
-          <Empty title="Chưa có booking đến ngày nhận" text="Doanh thu tự ghi nhận khi đến ngày check-in và booking không hủy." />
+          <Empty title="Chưa có booking đến ngày nhận" text="Doanh thu ghi khi đến ngày nhận. No-show trực tiếp lấy tiền cọc, no-show OTA lấy công nợ OTA." />
         )}
         {recognizedBounds.pages > 1 ? (
           <ListPager

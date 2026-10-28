@@ -53,7 +53,7 @@ export default async function DashboardPage() {
     { label: "Booking mới", value: String(newBookings.length), hint: "Tạo hôm nay" },
     { label: "Khách đến", value: String(arriving), hint: "Theo ngày nhận" },
     { label: "Khách đi", value: String(departing), hint: "Theo ngày trả" },
-    { label: "Doanh thu hôm nay", value: formatVnd(todayReport.recognizedMoney.total), hint: "Đến ngày nhận, chưa hủy" },
+    { label: "Doanh thu hôm nay", value: formatVnd(todayReport.recognizedMoney.total), hint: "Đến ngày nhận. No-show: cọc hoặc công nợ OTA" },
   ];
 
   return (

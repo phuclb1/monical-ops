@@ -294,6 +294,80 @@ test("cash flow splits inclusive VAT and OTA receivable or hotel commission paya
   assert.equal(report.totals.refundCount, 0);
 });
 
+test("no-show keeps the deposit: direct revenue is the deposit, OTA revenue is partner debt", () => {
+  const report = roomRevenueReport(
+    [
+      row({
+        checkIn: "2026-09-10",
+        checkOut: "2026-09-12",
+        status: "no_show",
+        total: 1_080_000,
+        due: 680_000,
+        source: "walk_in",
+        transferPaid: 400_000,
+      }),
+      row({
+        checkIn: "2026-09-11",
+        checkOut: "2026-09-12",
+        status: "no_show",
+        total: 1_080_000,
+        source: "agoda",
+        otaPaymentMode: "debt",
+        otaCommissionPercent: 15,
+        cashPaid: 50_000,
+      }),
+      row({
+        checkIn: "2026-09-12",
+        checkOut: "2026-09-13",
+        status: "no_show",
+        total: 2_000_000,
+        source: "booking",
+        otaPaymentMode: "hotel",
+        otaCommissionKind: "amount",
+        otaCommissionValue: 300_000,
+        companyPaid: 500_000,
+      }),
+      row({
+        checkIn: "2026-09-08",
+        checkOut: "2026-09-09",
+        status: "cancelled",
+        total: 1_080_000,
+        source: "phone",
+        transferPaid: 200_000,
+      }),
+    ],
+    "2026-09-01",
+    "2026-10-01",
+    "2026-09-12",
+  );
+  const cash = cashFlowReport(report.booked, "2026-09-01", "2026-10-01", "2026-09-12");
+
+  assert.equal(report.booked.length, 3);
+  assert.equal(report.recognized.length, 3);
+  assert.equal(report.booked[0].total, 400_000);
+  assert.equal(report.booked[0].due, 0);
+  assert.equal(report.recognizedMoney.total, 400_000 + 1_080_000 + 2_000_000);
+  assert.equal(report.recognizedPnl.direct, 400_000);
+  assert.equal(report.recognizedPnl.ota, 3_080_000);
+  assert.equal(report.recognizedSplit.pay.transfer, 400_000);
+  assert.equal(report.recognizedSplit.pay.cash, 0);
+  assert.equal(report.recognizedSplit.ota.gross, 3_080_000);
+  assert.deepEqual(
+    cash.rows.map((item) => item.flow.kind),
+    ["direct", "ota_debt", "ota_debt"],
+  );
+  assert.equal(cash.rows[0].flow.gross, 400_000);
+  assert.equal(cash.rows[0].flow.transfer, 400_000);
+  assert.equal(cash.rows[0].flow.guestDue, 0);
+  assert.equal(cash.rows[1].flow.receivable, 918_000);
+  assert.equal(cash.rows[1].flow.cash, 0);
+  assert.equal(cash.rows[1].flow.withheld, 162_000);
+  assert.equal(cash.rows[2].flow.receivable, 1_700_000);
+  assert.equal(cash.rows[2].flow.company, 0);
+  assert.equal(cash.rows[2].flow.payable, 0);
+  assert.equal(cash.totals.refundCount, 0);
+});
+
 test("cash flow records a deposit refund on the account and date it was returned", () => {
   const report = cashFlowReport(
     [

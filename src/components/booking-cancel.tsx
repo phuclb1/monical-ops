@@ -118,7 +118,8 @@ export function BookingCancelActions({
                   No-show
                 </h2>
                 <p className="mt-2 text-sm">
-                  {guestName} không đến. Không hoàn cọc — ghi no-show?
+                  {guestName} không đến. Không hoàn cọc. Trực tiếp ghi doanh thu bằng tiền cọc
+                  {paid ? ` (${formatVnd(paid)})` : ""}. OTA ghi doanh thu công nợ OTA.
                 </p>
               </>
             )}

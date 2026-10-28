@@ -192,6 +192,42 @@ function countsAsBookingRevenue(status: string) {
   return status !== "cancelled" && status !== "no_show";
 }
 
+/** No-show keeps the deposit. Direct revenue is that deposit; OTA revenue is the room charged to the partner. */
+function noShowRevenue<T extends BookingMoney>(row: T): T | null {
+  if (isOtaSource(row.source)) {
+    const roomTotal = "roomTotal" in row ? Math.max(0, Math.round(Number((row as { roomTotal?: number | null }).roomTotal) || 0)) : 0;
+    const total = roomTotal || Math.max(0, Math.round(row.total || 0));
+    if (!total) return null;
+    return {
+      ...row,
+      total,
+      due: 0,
+      otaPaymentMode: "debt",
+      cashPaid: 0,
+      transferPaid: 0,
+      companyPaid: 0,
+      deposit: 0,
+    };
+  }
+  const paid = salePaid(row);
+  if (!paid.deposit) return null;
+  return {
+    ...row,
+    total: paid.deposit,
+    due: 0,
+    cashPaid: paid.cashPaid,
+    transferPaid: paid.transferPaid,
+    companyPaid: paid.companyPaid,
+    deposit: paid.deposit,
+  };
+}
+
+function revenueBooking<T extends BookingMoney>(row: T): T | null {
+  if (row.status === "cancelled") return null;
+  if (row.status === "no_show") return noShowRevenue(row);
+  return row;
+}
+
 export const CASH_FLOW_KIND_LABEL = {
   direct: "Trực tiếp",
   ota_debt: "OTA công nợ",
@@ -317,9 +353,11 @@ function refundFlowOf<T extends BookingMoney>(row: T): CashFlowLine | null {
 }
 
 export function cashFlowReport<T extends BookingMoney>(bookings: T[], from: string, to: string, today = todayVN()) {
-  const stays = bookings
-    .filter((row) => countsAsBookingRevenue(row.status) && row.checkIn >= from && row.checkIn < to)
-    .map((booking) => ({ booking, flow: cashFlowOf(booking, today) }));
+  const stays = bookings.flatMap((row) => {
+    const booking = revenueBooking(row);
+    if (!booking || booking.checkIn < from || booking.checkIn >= to) return [];
+    return [{ booking, flow: cashFlowOf(booking, today) }];
+  });
   const refunds = bookings.flatMap((booking) => {
     const flow = refundFlowOf(booking);
     const date = String(booking.refundedAt || "").slice(0, 10);
@@ -640,7 +678,11 @@ export function filterActualCashFlow(
 }
 
 export function roomRevenueReport<T extends BookingMoney>(bookings: T[], from: string, to: string, today = todayVN()) {
-  const booked = bookings.filter((row) => countsAsBookingRevenue(row.status) && row.checkIn >= from && row.checkIn < to);
+  const booked = bookings.flatMap((row) => {
+    const booking = revenueBooking(row);
+    if (!booking || booking.checkIn < from || booking.checkIn >= to) return [];
+    return [booking];
+  });
   const recognized = booked.filter((row) => row.checkIn <= today);
   return {
     booked,
@@ -677,7 +719,10 @@ export function revenueTrend<T extends BookingMoney>(
             label: `T${Number(date.slice(5, 7))}`,
           };
         });
-  const live = bookings.filter((row) => countsAsBookingRevenue(row.status));
+  const live = bookings.flatMap((row) => {
+    const booking = revenueBooking(row);
+    return booking ? [booking] : [];
+  });
 
   return buckets.map((bucket) => {
     const rows = live.filter((row) => row.checkIn >= bucket.from && row.checkIn < bucket.to);
