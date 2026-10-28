@@ -1,10 +1,10 @@
-import { eq } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 import { getDb } from "@/db";
 import * as t from "@/db/schema";
 import { nowISO, todayVN } from "../../datetime";
 import { can } from "../../permissions";
 import { PAYMENT_METHOD_LABEL } from "../../constants";
-import { addRefundSplit, bookingInflowSplit, canSettleOtaDebt, collectedSplit, depositMethodOf, depositRefundSplit, formatVnd, guestCheckoutDue, isActiveSaleStatus, isOtaDebt, otaMoneySplit, parsePaymentMethod, parseStayRefundReason, refundSplitFromMethod, refundTotal, salePaid, stayRefundable, STAY_REFUND_REASON_LABEL } from "../../sales";
+import { addRefundSplit, bookingInflowSplit, canSettleOtaDebt, collectedSplit, depositMethodOf, depositRefundSplit, formatVnd, guestCheckoutDue, isActiveSaleStatus, isOtaDebt, otaMoneySplit, parsePaymentMethod, parseStayRefundReason, refundSplitFromMethod, refundTotal, salePaid, saleStatusToStay, stayRefundable, STAY_REFUND_REASON_LABEL } from "../../sales";
 import type { SaleStatus, SessionUser } from "../../types";
 import { audit } from "../audit";
 import { bookingCheckinPaidReady } from "../../zalo-templates";
@@ -143,6 +143,22 @@ function assertCanCancel(user: SessionUser) {
   if (!can(user.role, "cancelBooking")) throw new Error("Chỉ quản lý mới hủy booking");
 }
 
+async function releaseStayAfterSaleClose(actorId: string, sale: { roomId: string; pmsCode: string | null; status: string }) {
+  const code = sale.pmsCode?.trim();
+  if (!code) return;
+  const db = await getDb();
+  await db
+    .update(t.stays)
+    .set({ status: saleStatusToStay(sale.status), updatedAt: nowISO(), updatedBy: actorId })
+    .where(
+      and(
+        eq(t.stays.roomId, sale.roomId),
+        eq(t.stays.pmsCode, code),
+        inArray(t.stays.status, ["arriving", "inhouse", "departing"]),
+      ),
+    );
+}
+
 export async function cancelBooking(user: SessionUser, bookingId: string, asNoShow = false, opts?: { refundDeposit?: boolean }) {
   assertCanCancel(user);
   const booking = await getBooking(bookingId);
@@ -266,6 +282,7 @@ export async function cancelRoomSale(user: SessionUser, id: string, asNoShow = f
     .update(t.roomSales)
     .set({ status, ...refund, updatedAt: nowISO(), updatedBy: user.id })
     .where(eq(t.roomSales.id, id));
+  await releaseStayAfterSaleClose(user.id, { roomId: before.roomId, pmsCode: before.pmsCode, status });
   await audit(user.id, "room_sale", id, asNoShow ? "no_show" : "cancel", before, { status, ...refund });
   if (!opts?.skipMoneySync) await syncBookingMoney(before.bookingId || before.id);
   if (opts?.silent) return;

@@ -66,6 +66,7 @@ export {
   occupiesNight,
   summarizeSalesNight,
   isActiveSaleStatus,
+  stayBlocksAvailability,
   billableSaleRows,
   isGanttSaleStatus,
   isSaleOrigin,

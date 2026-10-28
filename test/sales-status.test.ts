@@ -32,6 +32,7 @@ import {
   rateForRoomMove,
   roomMoveKind,
   saleStatusToStay,
+  stayBlocksAvailability,
 } from "../src/lib/sales";
 
 test("stay windows and active statuses", () => {
@@ -174,6 +175,32 @@ test("pax clamp, rollup, grouping, room move", () => {
   assert.equal(saleStatusToStay("reserved"), "arriving");
   assert.equal(saleStatusToStay("no_show"), "no_show");
   assert.equal(saleStatusToStay("cancelled"), "departed");
+  assert.equal(
+    stayBlocksAvailability(
+      { roomId: "r-301", pmsCode: "BK-09-68", status: "arriving" },
+      [{ roomId: "r-301", pmsCode: "BK-09-68", status: "cancelled" }],
+    ),
+    false,
+  );
+  assert.equal(
+    stayBlocksAvailability(
+      { roomId: "r-301", pmsCode: "BK-09-68", status: "arriving" },
+      [{ roomId: "r-301", pmsCode: "BK-09-68", status: "no_show" }],
+    ),
+    false,
+  );
+  assert.equal(
+    stayBlocksAvailability(
+      { roomId: "r-301", pmsCode: "BK-10-2", status: "arriving" },
+      [{ roomId: "r-301", pmsCode: "BK-10-2", status: "reserved" }],
+    ),
+    true,
+  );
+  assert.equal(
+    stayBlocksAvailability({ roomId: "r-301", pmsCode: "BK-09-68", status: "departed" }, []),
+    false,
+  );
+  assert.equal(stayBlocksAvailability({ roomId: "r-301", pmsCode: "BK-orphan", status: "arriving" }, []), true);
   assert.equal(saleStatusToStay("inhouse", { checkOut: "2026-09-19", date: "2026-09-19" }), "departing");
   assert.equal(defaultCheckout("2026-09-19"), "2026-09-20");
 

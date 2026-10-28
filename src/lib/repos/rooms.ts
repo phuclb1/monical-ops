@@ -5,7 +5,7 @@ import * as t from "@/db/schema";
 import { notify } from "@/modules/notifications/models/notifications";
 import { nowISO } from "../datetime";
 import { can } from "../permissions";
-import { isActiveSaleStatus } from "../sales";
+import { isActiveSaleStatus, stayBlocksAvailability } from "../sales";
 import { defaultAdultsForRoomType, floorOf, roomIdOf, slugTypeName } from "../rooms-catalog";
 import { ACTIVE_SALE_STATUSES, type SessionUser } from "../types";
 import { audit } from "./audit";
@@ -22,10 +22,11 @@ export const listRoomTypes = cache(async () => {
 
 export async function listRoomBusyRanges() {
   const db = await getDb();
-  const [sales, stays] = await Promise.all([
+  const [sales, stays, closedSales] = await Promise.all([
     db
       .select({
         roomId: t.roomSales.roomId,
+        pmsCode: t.roomSales.pmsCode,
         checkIn: t.roomSales.checkIn,
         checkOut: t.roomSales.checkOut,
       })
@@ -34,16 +35,30 @@ export async function listRoomBusyRanges() {
     db
       .select({
         roomId: t.stays.roomId,
+        pmsCode: t.stays.pmsCode,
+        status: t.stays.status,
         checkIn: t.stays.arrivalDate,
         checkOut: t.stays.departureDate,
       })
       .from(t.stays)
       .where(inArray(t.stays.status, ["arriving", "inhouse", "departing"])),
+    db
+      .select({
+        roomId: t.roomSales.roomId,
+        pmsCode: t.roomSales.pmsCode,
+        status: t.roomSales.status,
+      })
+      .from(t.roomSales)
+      .where(inArray(t.roomSales.status, ["cancelled", "no_show"])),
   ]);
+  const linkedSales = [
+    ...sales.map((row) => ({ roomId: row.roomId, pmsCode: row.pmsCode, status: "reserved" })),
+    ...closedSales,
+  ];
   return [
     ...sales.map((row) => ({ roomId: row.roomId, checkIn: row.checkIn, checkOut: row.checkOut })),
     ...stays
-      .filter((row) => row.roomId)
+      .filter((row) => stayBlocksAvailability(row, linkedSales))
       .map((row) => ({ roomId: row.roomId as string, checkIn: row.checkIn, checkOut: row.checkOut })),
   ];
 }

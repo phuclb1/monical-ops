@@ -46,6 +46,22 @@ export function isActiveSaleStatus(status: string): status is SaleStatus {
   return ACTIVE_SALE_STATUSES.includes(status as SaleStatus);
 }
 
+const CLOSED_SALE_STATUSES = new Set(["cancelled", "no_show"]);
+
+/** A live stay keeps the room unless every linked sale for that room was cancelled or no-show. */
+export function stayBlocksAvailability(
+  stay: { roomId?: string | null; pmsCode?: string | null; status: string },
+  sales: { roomId: string; pmsCode?: string | null; status: string }[],
+) {
+  if (!stay.roomId) return false;
+  if (stay.status !== "arriving" && stay.status !== "inhouse" && stay.status !== "departing") return false;
+  const code = stay.pmsCode?.trim() || "";
+  if (!code) return true;
+  const linked = sales.filter((sale) => sale.roomId === stay.roomId && (sale.pmsCode || "").trim() === code);
+  if (!linked.length) return true;
+  return !linked.every((sale) => CLOSED_SALE_STATUSES.has(sale.status));
+}
+
 export function billableSaleRows<T extends { status: string }>(rooms: T[]) {
   const active = rooms.filter((row) => isActiveSaleStatus(row.status));
   return active.length ? active : rooms;
