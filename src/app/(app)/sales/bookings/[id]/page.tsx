@@ -72,8 +72,7 @@ export default async function BookingDetailPage({
     guestCollected: inflow?.guestCollected,
     otaCollected: inflow?.otaCollected,
   });
-  const guestPaymentDue = otaDebt ? moneySplit.guestDue : booking.due;
-  const payNextToExtras = Boolean(manage && firstActive && booking.extrasTotal > 0 && guestPaymentDue > 0);
+  const collectDue = otaDebt ? moneySplit.guestDue : booking.due;
   const life = bookingLifecycle(booking);
   const paidSplit = collectedSplit(booking.deposit, booking.checkinPaid);
   const payMethods = bookingPayMethods(booking);
@@ -250,13 +249,13 @@ export default async function BookingDetailPage({
               <p className="mb-2 text-xs font-semibold text-[#5c6665]">Giao dịch</p>
               <BookingTransactionList rows={booking.transactions || []} />
             </div>
-            {manage && firstActive && !payNextToExtras && (!otaDebt || moneySplit.guestDue > 0 || moneySplit.guestCollected > 0) ? (
+            {manage && collectDue > 0 ? (
               <div className="mt-3 border-t border-line pt-3">
                 <p className="mb-2 text-xs font-semibold text-[#5c6665]">{otaDebt ? "Thu phụ thu tại KS" : "Thanh toán"}</p>
                 <BookingPaymentPanel
                   bookingId={booking.id}
                   deposit={otaDebt ? moneySplit.guestCollected : booking.deposit}
-                  due={otaDebt ? moneySplit.guestDue : booking.due}
+                  due={collectDue}
                   cashPaid={booking.cashPaid}
                   transferPaid={booking.transferPaid}
                   companyPaid={booking.companyPaid}
@@ -369,19 +368,6 @@ export default async function BookingDetailPage({
                 types={extraTypes.filter((row) => row.active)}
                 extras={booking.extras}
               />
-              {payNextToExtras ? (
-                <div className="mt-4 border-t border-line pt-4">
-                  <p className="mb-2 text-sm font-bold">{otaDebt ? "Thu phụ thu tại KS" : "Thanh toán phụ thu"}</p>
-                  <BookingPaymentPanel
-                    bookingId={booking.id}
-                    deposit={otaDebt ? moneySplit.guestCollected : booking.deposit}
-                    due={guestPaymentDue}
-                    cashPaid={booking.cashPaid}
-                    transferPaid={booking.transferPaid}
-                    companyPaid={booking.companyPaid}
-                  />
-                </div>
-              ) : null}
             </Fold>
           ) : null}
 

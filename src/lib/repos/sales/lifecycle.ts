@@ -36,8 +36,6 @@ export async function recordBookingPayment(
 ) {
   const booking = await getBooking(bookingId);
   if (!booking) throw new Error("Không tìm thấy booking");
-  const active = booking.rooms.filter((row) => isActiveSaleStatus(row.status));
-  if (!active.length) throw new Error("Booking đã đóng, không thu thêm");
   const split = bookingOtaSplit(booking);
   const due = isOtaDebt(booking.source, booking.otaPaymentMode) ? split.guestDue : Math.max(0, Math.round(booking.due || 0));
   if (due <= 0) {

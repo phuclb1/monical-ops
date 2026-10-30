@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { addRoomsToBookingAction, checkinSaleAction, checkoutSaleAction } from "@/actions/sales";
+import { BookingPaymentPanel } from "@/components/booking-payment";
 import { AddBookingRoomsForm } from "@/components/sale-form";
 import { BookingCancelActions } from "@/components/booking-cancel";
 import { BookingRefundPanel } from "@/components/booking-refund";
@@ -79,6 +80,7 @@ export default async function SaleDetailPage({
         otaCollected: moneySplit?.otaCollected,
       })
     : 0;
+  const collectDue = otaDebt ? moneySplit?.guestDue || 0 : booking?.due || checkoutDue;
   const canCheckout = sale.status === "inhouse" && checkoutDue <= 0;
 
   return (
@@ -234,6 +236,16 @@ export default async function SaleDetailPage({
               <input type="hidden" name="id" value={sale.id} />
               <PendingSubmit className="w-full" pendingLabel="Đang nhận phòng...">Nhận phòng</PendingSubmit>
             </form>
+          ) : null}
+          {collectDue > 0 ? (
+            <BookingPaymentPanel
+              bookingId={sale.bookingKey}
+              deposit={otaDebt ? moneySplit?.guestCollected || 0 : booking?.deposit || sale.deposit || 0}
+              due={collectDue}
+              cashPaid={booking?.cashPaid || sale.cashPaid}
+              transferPaid={booking?.transferPaid || sale.transferPaid}
+              companyPaid={booking?.companyPaid || sale.companyPaid}
+            />
           ) : null}
           {sale.status === "inhouse" ? (
             canCheckout ? (
