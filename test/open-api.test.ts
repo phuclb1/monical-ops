@@ -249,6 +249,12 @@ test("open API không đòi đăng nhập", async () => {
   const one = await proxy(new NextRequest("https://platform.monicalhoteldalat.com/api/open/bookings/BK-10-1", { method: "GET" }));
   assert.equal(one.status, 200);
   assert.equal(one.headers.get("location"), null);
+
+  const availability = await proxy(
+    new NextRequest("https://platform.monicalhoteldalat.com/api/open/availability?from=2026-10-30&to=2026-10-31", { method: "GET" }),
+  );
+  assert.equal(availability.status, 200);
+  assert.equal(availability.headers.get("location"), null);
 });
 
 test("open API authorized đọc Bearer", () => {

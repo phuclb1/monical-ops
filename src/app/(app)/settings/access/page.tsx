@@ -93,6 +93,9 @@ export default async function AccessSettingsPage({
           <Field label="Lấy một booking">
             <input readOnly value={`${origin}/api/open/bookings/:id`} />
           </Field>
+          <Field label="Phòng trống theo ngày (không cần token)">
+            <input readOnly value={`${origin}/api/open/availability?from=YYYY-MM-DD&to=YYYY-MM-DD&type=DELUXE`} />
+          </Field>
         </div>
         <OpenApiTokenPanel hasToken={openApi.hasToken} hint={openApi.tokenHint} />
       </Card>

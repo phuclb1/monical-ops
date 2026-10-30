@@ -68,6 +68,12 @@ curl -sS "http://localhost:3000/api/open/bookings?pmsCode=BK-10-12" \
   -H "Authorization: Bearer $OPEN_API_SECRET"
 ```
 
+Phòng trống theo ngày và hạng phòng không cần token. `from` là đêm đầu, `to` là ngày trả (không tính đêm đó). `type` lọc tên hoặc mã hạng (`DELUXE`, `deluxe`); bỏ `type` để xem mọi hạng. Tối đa 62 đêm. Phòng OOO không tính. Response chỉ có số phòng còn trống, không có tên khách.
+
+```bash
+curl -sS "http://localhost:3000/api/open/availability?from=2026-10-30&to=2026-11-01&type=DELUXE"
+```
+
 Khi lễ tân / quản lý **tạo booking**, **đổi phòng**, **thêm ngày** hoặc **thêm phòng** trên Ops, worker POST JSON tới URL webhook đã lưu. Booking tạo từ Open API / ingest không gửi lại (tránh vòng).
 
 Payload webhook: `{ event, events, at, actor, bookingId, pmsCode, changes, booking }`. `event` là `booking.created` | `booking.room_changed` | `booking.dates_changed` | `booking.rooms_added`. Nếu có secret, header `X-Ops-Signature: sha256=HMAC(timestamp.body)` và `X-Ops-Timestamp`.
