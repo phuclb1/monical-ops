@@ -119,6 +119,7 @@ export function sidebarNav(role: Role): SidebarModel {
   if (rooms.length) blocks.push({ kind: "group", label: "Phòng", items: rooms });
 
   const manage = [
+    { href: "/control", label: "Kiểm soát", show: can(role, "viewControl") },
     { href: "/reports", label: "Báo cáo", show: can(role, "viewReports") },
     { href: "/reports/ledger", label: "Sổ cái", show: can(role, "viewLedger") },
     { href: "/expenses", label: "Chi phí", show: can(role, "manageExpenses") },

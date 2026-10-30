@@ -428,3 +428,17 @@ export async function listBookingChangeRequests(bookingId: string) {
     changes: approvalChanges(row.beforeJson, row.payloadJson, roomNumbers),
   }));
 }
+
+export async function listPendingBookingChanges() {
+  const db = await getDb();
+  return db
+    .select({
+      id: t.bookingChangeRequests.id,
+      bookingId: t.bookingChangeRequests.bookingId,
+      summary: t.bookingChangeRequests.summary,
+      requestedAt: t.bookingChangeRequests.requestedAt,
+    })
+    .from(t.bookingChangeRequests)
+    .where(eq(t.bookingChangeRequests.status, "pending"))
+    .orderBy(desc(t.bookingChangeRequests.requestedAt));
+}

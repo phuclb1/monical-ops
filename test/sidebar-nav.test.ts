@@ -10,7 +10,7 @@ function labels(role: Parameters<typeof sidebarNav>[0], group: string) {
 test("quản lý gom phòng, đưa báo cáo lên quản lý, và gộp cài đặt", () => {
   const nav = sidebarNav("manager");
   assert.deepEqual(labels("manager", "Phòng"), ["Sơ đồ phòng", "Đặt phòng", "Hạng phòng"]);
-  assert.deepEqual(labels("manager", "Quản lý"), ["Báo cáo", "Sổ cái", "Chi phí"]);
+  assert.deepEqual(labels("manager", "Quản lý"), ["Kiểm soát", "Báo cáo", "Sổ cái", "Chi phí"]);
   assert.deepEqual(nav.footer, [{ href: "/settings", label: "Cài đặt", match: ["/staff"] }]);
   assert.deepEqual(labels("manager", "Điều hành"), ["Dịch vụ kèm", "Bếp / ăn sáng", "Nhật ký", "Thông báo"]);
   const groupAt = nav.blocks.findIndex((block) => block.kind === "group" && block.label === "Quản lý");

@@ -1,0 +1,57 @@
+{
+  "runId": "CONTROL-20261030025018",
+  "date": "2026-10-30T02:50:35.002Z",
+  "commit": "2bd614c-dirty",
+  "env": "http://localhost:3002",
+  "guest": "E2E Control 30025018",
+  "room": "406",
+  "bookingPath": "/sales/bookings/8d06aca4-c2f8-4217-bd72-e3aee64c0134",
+  "pass": 6,
+  "fail": 0,
+  "total": 6,
+  "passRate": "100%",
+  "results": [
+    {
+      "id": "CTRL-01",
+      "title": "Lễ tân không truy cập được trang Kiểm soát",
+      "result": "pass",
+      "evidence": "qa/evidence/CONTROL-20261030025018/CTRL-01.png",
+      "note": ""
+    },
+    {
+      "id": "CTRL-02",
+      "title": "Quản lý thấy đủ 10 nhóm cảnh báo",
+      "result": "pass",
+      "evidence": "qa/evidence/CONTROL-20261030025018/CTRL-02.png",
+      "note": ""
+    },
+    {
+      "id": "CTRL-03",
+      "title": "Tạo booking cọc CK cá nhân để phát sinh cảnh báo",
+      "result": "pass",
+      "evidence": "qa/evidence/CONTROL-20261030025018/CTRL-03.png",
+      "note": ""
+    },
+    {
+      "id": "CTRL-04",
+      "title": "Bộ lọc cọc sai tài khoản hiện đúng booking",
+      "result": "pass",
+      "evidence": "qa/evidence/CONTROL-20261030025018/CTRL-04.png",
+      "note": ""
+    },
+    {
+      "id": "CTRL-05",
+      "title": "Resolve yêu cầu ghi chú và ẩn cảnh báo",
+      "result": "pass",
+      "evidence": "qa/evidence/CONTROL-20261030025018/CTRL-05.png",
+      "note": ""
+    },
+    {
+      "id": "CTRL-06",
+      "title": "Resolve được lưu sau khi tải lại",
+      "result": "pass",
+      "evidence": "qa/evidence/CONTROL-20261030025018/CTRL-06.png",
+      "note": ""
+    }
+  ]
+}

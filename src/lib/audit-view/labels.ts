@@ -23,6 +23,7 @@ export const AUDIT_ENTITIES = [
   "booking",
   "settings",
   "expense",
+  "control_issue",
 ] as const;
 
 export const AUDIT_ACTIONS = [
@@ -55,6 +56,7 @@ export const AUDIT_ACTIONS = [
   "approve",
   "reject",
   "conflict",
+  "resolve",
 ] as const;
 
 export const AUDIT_ENTITY_LABEL: Record<string, string> = {
@@ -79,6 +81,7 @@ export const AUDIT_ENTITY_LABEL: Record<string, string> = {
   booking: "Booking",
   settings: "Cấu hình",
   expense: "Chi phí",
+  control_issue: "Cảnh báo kiểm soát",
 };
 
 export const AUDIT_ACTION_LABEL: Record<string, string> = {
@@ -112,6 +115,7 @@ export const AUDIT_ACTION_LABEL: Record<string, string> = {
   approve: "Phê duyệt",
   reject: "Từ chối",
   conflict: "Xung đột",
+  resolve: "Đã xử lý",
 };
 
 export const FIELD_LABEL: Record<string, string> = {

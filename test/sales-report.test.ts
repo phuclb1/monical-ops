@@ -56,6 +56,7 @@ test("manager home and mobile navigation include dashboard and reports", () => {
     kind: "group",
     label: "Quản lý",
     items: [
+      { href: "/control", label: "Kiểm soát" },
       { href: "/reports", label: "Báo cáo" },
       { href: "/reports/ledger", label: "Sổ cái" },
       { href: "/expenses", label: "Chi phí" },

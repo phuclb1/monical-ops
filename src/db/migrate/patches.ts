@@ -248,4 +248,15 @@ export const SCHEMA_PATCHES = [
 )`,
   "CREATE INDEX IF NOT EXISTS booking_transactions_booking ON booking_transactions (booking_id, paid_at)",
   "CREATE INDEX IF NOT EXISTS booking_transactions_paid_on ON booking_transactions (paid_on)",
+  `CREATE TABLE IF NOT EXISTS control_issue_states (
+  fingerprint TEXT PRIMARY KEY,
+  kind TEXT NOT NULL,
+  booking_id TEXT NOT NULL,
+  first_seen_at TEXT NOT NULL,
+  last_seen_at TEXT NOT NULL,
+  resolved_at TEXT,
+  resolved_by TEXT,
+  resolve_note TEXT
+)`,
+  "CREATE INDEX IF NOT EXISTS control_issue_states_resolved ON control_issue_states (resolved_at, last_seen_at)",
 ];

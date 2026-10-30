@@ -16,6 +16,7 @@ export const CAN = {
   manageStaff: ["manager"] as Role[],
   manageSettings: ["manager"] as Role[],
   viewAudit: ["manager"] as Role[],
+  viewControl: ["manager"] as Role[],
   manageRooms: ["manager"] as Role[],
   manageSales: ["reception", "manager"] as Role[],
   approveBookingChange: ["manager"] as Role[],

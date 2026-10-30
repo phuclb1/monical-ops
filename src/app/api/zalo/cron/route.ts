@@ -1,4 +1,5 @@
 import { runDueZaloSchedules } from "@/lib/zalo-notify";
+import { runControlAuditPush } from "@/lib/repos";
 
 export const dynamic = "force-dynamic";
 
@@ -8,8 +9,11 @@ export async function GET(request: Request) {
   if (!expected || provided !== expected) {
     return Response.json({ ok: false }, { status: 403 });
   }
-  const sent = await runDueZaloSchedules();
-  return Response.json({ ok: true, sent });
+  const [sent, control] = await Promise.all([
+    runDueZaloSchedules(),
+    runControlAuditPush(),
+  ]);
+  return Response.json({ ok: true, sent, control });
 }
 
 async function cronToken() {

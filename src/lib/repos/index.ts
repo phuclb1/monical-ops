@@ -7,6 +7,13 @@ export {
 } from "@/modules/notifications/models/notifications";
 
 export { audit, listAuditLogs } from "./audit";
+export {
+  CONTROL_PUSH_INTERVAL_MS,
+  listControlIssues,
+  loadCurrentControlIssues,
+  resolveControlIssue,
+  runControlAuditPush,
+} from "./control";
 export { listUsers, getUser, usersByIds } from "./users";
 export { listDepartments, getStaff, createStaff, updateStaff, setStaffActive, resetStaffPassword } from "./staff";
 export {
@@ -30,6 +37,7 @@ export {
   getRoomSale,
   listBookingsByCheckIn,
   listBookingsOverlapping,
+  listControlBookingCandidates,
   listBookingsOnStayDate,
   listHomeBookings,
   listBookingDesk,
@@ -62,6 +70,7 @@ export {
   removeBookingExtra,
   approveBookingChange,
   listBookingChangeRequests,
+  listPendingBookingChanges,
   rejectBookingChange,
   submitAddExtra,
   submitAddRooms,

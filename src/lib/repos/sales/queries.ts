@@ -337,6 +337,17 @@ export const listBookingsOverlapping = cache(async (from: string, toExclusive: s
   return bookingsByIds(ids);
 });
 
+export async function listControlBookingCandidates(today: string, extraBookingIds: string[] = []) {
+  const cutoff = addDaysVN(today, -90);
+  const ids = await bookingIdsWhere(
+    or(
+      inArray(t.roomSales.status, [...ACTIVE_SALE_STATUSES]),
+      and(inArray(t.roomSales.status, ["departed", "cancelled", "no_show"]), gte(t.roomSales.checkOut, cutoff)),
+    ),
+  );
+  return bookingsByIds([...ids, ...extraBookingIds]);
+}
+
 export const listBookingsOnStayDate = cache(async (date: string) => {
   const ids = await bookingIdsWhere(or(eq(t.roomSales.checkIn, date), eq(t.roomSales.checkOut, date)));
   return bookingsByIds(ids);

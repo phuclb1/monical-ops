@@ -70,6 +70,17 @@ export const auditLogs = sqliteTable("audit_logs", {
   createdAt: text("created_at").notNull(),
 });
 
+export const controlIssueStates = sqliteTable("control_issue_states", {
+  fingerprint: text("fingerprint").primaryKey(),
+  kind: text("kind").notNull(),
+  bookingId: text("booking_id").notNull(),
+  firstSeenAt: text("first_seen_at").notNull(),
+  lastSeenAt: text("last_seen_at").notNull(),
+  resolvedAt: text("resolved_at"),
+  resolvedBy: text("resolved_by"),
+  resolveNote: text("resolve_note"),
+});
+
 export const zaloOutbox = sqliteTable("zalo_outbox", {
   id: text("id").primaryKey(),
   actorId: text("actor_id").notNull(),

@@ -297,6 +297,19 @@ Chạy độc lập trên staging bằng lễ tân `ngan.lt` và quản lý `qua
 
 > Sau sổ cái: APP-A2 / A5 / A9 / A10 **không còn** sửa tiền trên form booking. Tiền đi qua danh sách giao dịch (TX-* bên dưới). Approval e2e sẽ đổi sang trigger ngày/phòng.
 
+### E2E — trang Kiểm soát (`npm run qa:e2e:control`)
+
+Chạy local mặc định tại `http://localhost:3002`; có thể chạy staging bằng `npm run qa:e2e:control:staging`. Runner tự tạo booking cọc CK cá nhân, resolve cảnh báo rồi hủy booking để trả phòng.
+
+| ID | Làm gì | Kỳ vọng |
+|---|---|---|
+| CTRL-01 | Lễ tân mở `/control` | Bị chuyển về trang đặt phòng, không thấy nội dung Kiểm soát |
+| CTRL-02 | Quản lý mở `/control` | Có đủ 10 nhóm cảnh báo và menu Kiểm soát |
+| CTRL-03 | Quản lý tạo booking cọc 123.456₫ bằng CK cá nhân | Booking được tạo và ghi đúng phương thức thu |
+| CTRL-04 | Lọc `Cọc sai tài khoản` | Hiện booking vừa tạo cùng số tiền và nút `Đã xử lý` |
+| CTRL-05 | Thử resolve rồi nhập ghi chú | Ghi chú là bắt buộc; sau submit cảnh báo biến mất |
+| CTRL-06 | Tải lại trang sau resolve | Cảnh báo đã xử lý không xuất hiện lại |
+
 ### Sổ cái giao dịch booking — test local rồi staging
 
 Chạy **local trước** (`npm run db:reseed-local` · `http://localhost:3002` · `quanly` / `tuyen`). Pass hết rồi mới staging (`https://ops-staging.monicalhoteldalat.com`). Không deploy PRD cho đến khi TX-* pass cả hai môi trường.

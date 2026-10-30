@@ -241,6 +241,17 @@ CREATE TABLE IF NOT EXISTS audit_logs (
   created_at TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS audit_logs_entity_id ON audit_logs (entity_id);
+CREATE TABLE IF NOT EXISTS control_issue_states (
+  fingerprint TEXT PRIMARY KEY,
+  kind TEXT NOT NULL,
+  booking_id TEXT NOT NULL,
+  first_seen_at TEXT NOT NULL,
+  last_seen_at TEXT NOT NULL,
+  resolved_at TEXT,
+  resolved_by TEXT,
+  resolve_note TEXT
+);
+CREATE INDEX IF NOT EXISTS control_issue_states_resolved ON control_issue_states (resolved_at, last_seen_at);
 CREATE TABLE IF NOT EXISTS push_subscriptions (
   id TEXT PRIMARY KEY,
   user_id TEXT NOT NULL,

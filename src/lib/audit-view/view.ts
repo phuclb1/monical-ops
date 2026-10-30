@@ -24,6 +24,8 @@ export function auditHref(entity: string, entityId: string, before: unknown, aft
     case "booking":
     case "sale_extra":
       return typeof row.bookingId === "string" && row.bookingId ? `/sales/bookings/${row.bookingId}` : `/sales/bookings/${entityId}`;
+    case "control_issue":
+      return typeof row.bookingId === "string" && row.bookingId ? `/sales/bookings/${row.bookingId}` : "/control";
     case "room":
     case "room_type":
       return "/rooms/manage";
@@ -53,7 +55,7 @@ export function formatAuditWhen(iso: string) {
 }
 
 export function actionTone(action: string): "ok" | "warn" | "danger" | "gold" | "teal" | "neutral" {
-  if (action === "create" || action === "open" || action === "unlock" || action === "done" || action === "accept" || action === "approve") return "ok";
+  if (action === "create" || action === "open" || action === "unlock" || action === "done" || action === "accept" || action === "approve" || action === "resolve") return "ok";
   if (action === "delete" || action === "lock" || action === "cancel" || action === "close" || action === "reject" || action === "refund") return "danger";
   if (action === "ingest") return "gold";
   if (action === "update" || action === "save" || action === "status" || action === "rate" || action === "rename") return "teal";

@@ -32,6 +32,8 @@
     "qa:e2e:password:staging": "OPS_URL=https://ops-staging.monicalhoteldalat.com QA_RUN_ID=PASSWORD-$(date -u +%Y%m%d)-stg node scripts/qa-password-e2e.mjs",
     "qa:e2e:accounting": "node scripts/qa-accounting-e2e.mjs",
     "qa:e2e:accounting:staging": "OPS_URL=https://ops-staging.monicalhoteldalat.com QA_RUN_ID=ACCOUNTING-$(date -u +%Y%m%d)-stg node scripts/qa-accounting-e2e.mjs",
+    "qa:e2e:control": "node scripts/qa-control-e2e.mjs",
+    "qa:e2e:control:staging": "OPS_URL=https://ops-staging.monicalhoteldalat.com OPS_RECEPTION_USER=ngan.lt OPS_MANAGER_USER=quanly QA_RUN_ID=CONTROL-$(date -u +%Y%m%d%H%M%S)-stg node scripts/qa-control-e2e.mjs",
     "qa:perf": "node scripts/qa-perf.mjs",
     "qa:perf:staging": "OPS_URL=https://ops-staging.monicalhoteldalat.com QA_RUN_ID=PERF-$(date -u +%Y%m%d)-stg node scripts/qa-perf.mjs",
     "qa:perf:pwa:staging": "OPS_URL=https://ops-staging.monicalhoteldalat.com QA_RUN_ID=PERF-PWA-$(date -u +%Y%m%d)-stg node scripts/qa-perf-pwa.mjs",

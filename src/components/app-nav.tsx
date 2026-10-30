@@ -51,6 +51,7 @@ const ICONS: Record<string, typeof CalendarDays> = {
   "/incidents": ShieldAlert,
   "/reports": BarChart3,
   "/reports/ledger": BookOpen,
+  "/control": ShieldAlert,
   "/audit": ScrollText,
   "/staff": Users,
   "/roster": CalendarDays,
