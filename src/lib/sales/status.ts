@@ -62,9 +62,12 @@ export function stayBlocksAvailability(
   return !linked.every((sale) => CLOSED_SALE_STATUSES.has(sale.status));
 }
 
+const REVENUE_ROOM_STATUSES = new Set(["reserved", "inhouse", "departed"]);
+
+/** Revenue keeps reserved, in-house, and departed rooms. Cancelled and no-show drop out while any of those remain. */
 export function billableSaleRows<T extends { status: string }>(rooms: T[]) {
-  const active = rooms.filter((row) => isActiveSaleStatus(row.status));
-  return active.length ? active : rooms;
+  const revenue = rooms.filter((row) => REVENUE_ROOM_STATUSES.has(row.status));
+  return revenue.length ? revenue : rooms;
 }
 
 export function isGanttSaleStatus(status: string): status is SaleStatus {

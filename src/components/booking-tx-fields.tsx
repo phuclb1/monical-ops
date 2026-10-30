@@ -7,9 +7,13 @@ import { compressImage } from "@/lib/image";
 export function BookingTxFields({
   defaultPaidAt,
   showNote = true,
+  noteLabel = "Ghi chú",
+  notePlaceholder = "CK phụ, mã giao dịch...",
 }: {
   defaultPaidAt?: string;
   showNote?: boolean;
+  noteLabel?: string;
+  notePlaceholder?: string;
 }) {
   const [paidAt, setPaidAt] = useState(datetimeLocalVN(defaultPaidAt));
   const [photo, setPhoto] = useState("");
@@ -22,8 +26,8 @@ export function BookingTxFields({
       </label>
       {showNote ? (
         <label className="block">
-          <span className="mb-1.5 block text-xs font-semibold text-[#5c6665]">Ghi chú</span>
-          <input name="note" placeholder="CK phụ, mã giao dịch..." />
+          <span className="mb-1.5 block text-xs font-semibold text-[#5c6665]">{noteLabel}</span>
+          <input name="note" placeholder={notePlaceholder} />
         </label>
       ) : null}
       <input type="hidden" name="photo" value={photo} />

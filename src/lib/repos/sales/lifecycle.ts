@@ -237,6 +237,30 @@ export async function checkoutRoomSale(user: SessionUser, id: string, opts?: { s
   if (!opts?.skipMoneySync) await syncBookingMoney(before.bookingId || before.id);
 }
 
+export async function reopenRoomSale(user: SessionUser, id: string) {
+  if (!can(user.role, "approveBookingChange")) throw new Error("Chỉ quản lý mới mở lại phòng đã trả");
+  const db = await getDb();
+  const before = (await db.select().from(t.roomSales).where(eq(t.roomSales.id, id)).limit(1))[0];
+  if (!before) throw new Error("Không tìm thấy chỗ bán");
+  if (before.status !== "departed") throw new Error("Chỉ mở lại phòng đã trả");
+  const room = (await db.select().from(t.rooms).where(eq(t.rooms.id, before.roomId)).limit(1))[0];
+  if (!room) throw new Error("Không tìm thấy phòng");
+  if (room.opsStatus === "ooo") throw new Error(`P.${room.number} đang OOO, không thể mở lại`);
+  const occupied = (
+    await db
+      .select({ id: t.roomSales.id })
+      .from(t.roomSales)
+      .where(and(eq(t.roomSales.roomId, before.roomId), eq(t.roomSales.status, "inhouse")))
+      .limit(1)
+  )[0];
+  if (occupied) throw new Error("Phòng đang có booking khác ở");
+  const now = nowISO();
+  const patch = { status: "inhouse" as const, checkedOutAt: null, updatedAt: now, updatedBy: user.id };
+  await db.update(t.roomSales).set(patch).where(eq(t.roomSales.id, id));
+  await applySaleRoomState(user.id, { roomId: before.roomId, status: "inhouse" });
+  await audit(user.id, "room_sale", id, "status", before, patch);
+}
+
 export async function checkinBooking(user: SessionUser, bookingId: string) {
   const booking = await getBooking(bookingId);
   if (!booking) throw new Error("Không tìm thấy booking");

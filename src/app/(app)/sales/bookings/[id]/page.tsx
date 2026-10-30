@@ -20,7 +20,7 @@ import { extraDetail } from "@/lib/extras";
 import { maskName, maskPhone } from "@/lib/mask";
 import { can } from "@/lib/permissions";
 import { getBooking, listBookingChangeRequests, listBookingLogs, listRoomBusyRanges, listRooms, listRoomTypes, listSaleExtraTypes } from "@/lib/repos";
-import { bookingInflowSplit, bookingLifecycle, bookingPayMethods, bookingQuote, canSettleOtaDebt, collectedSplit, commissionAmount, depositRefundAllowed, formatVnd, guestCheckoutDue, isActiveSaleStatus, isOpsBookingCode, isOtaDebt, isOtaSource, otaMoneySplit, paidNote, parkingLabel, primaryPaymentMethod, refundParts, refundReasonLabel, refundTotal, stayRefundOverpay, stayRefundable } from "@/lib/sales";
+import { billableSaleRows, bookingInflowSplit, bookingLifecycle, bookingPayMethods, bookingQuote, canSettleOtaDebt, collectedSplit, commissionAmount, depositRefundAllowed, formatVnd, guestCheckoutDue, isActiveSaleStatus, isOpsBookingCode, isOtaDebt, isOtaSource, otaMoneySplit, paidNote, parkingLabel, primaryPaymentMethod, refundParts, refundReasonLabel, refundTotal, stayRefundOverpay, stayRefundable } from "@/lib/sales";
 import type { SaleOrigin, SaleSource } from "@/lib/types";
 
 export default async function BookingDetailPage({
@@ -51,7 +51,7 @@ export default async function BookingDetailPage({
   const guestPhone = booking.guestPhone ? (showPii ? booking.guestPhone : maskPhone(booking.guestPhone, user.role)) : "";
   const today = todayVN();
   const activeRooms = booking.rooms.filter((row) => isActiveSaleStatus(row.status));
-  const listedRooms = activeRooms.length ? activeRooms : booking.rooms;
+  const listedRooms = billableSaleRows(booking.rooms);
   const taken = new Set(activeRooms.map((row) => row.roomId));
   const extraRooms = rooms.filter((room) => !taken.has(room.id) && room.opsStatus !== "ooo").sort((a, b) => a.number.localeCompare(b.number));
   const firstActive = activeRooms[0];
@@ -72,6 +72,8 @@ export default async function BookingDetailPage({
     guestCollected: inflow?.guestCollected,
     otaCollected: inflow?.otaCollected,
   });
+  const guestPaymentDue = otaDebt ? moneySplit.guestDue : booking.due;
+  const payNextToExtras = Boolean(manage && firstActive && booking.extrasTotal > 0 && guestPaymentDue > 0);
   const life = bookingLifecycle(booking);
   const paidSplit = collectedSplit(booking.deposit, booking.checkinPaid);
   const payMethods = bookingPayMethods(booking);
@@ -248,7 +250,7 @@ export default async function BookingDetailPage({
               <p className="mb-2 text-xs font-semibold text-[#5c6665]">Giao dịch</p>
               <BookingTransactionList rows={booking.transactions || []} />
             </div>
-            {manage && firstActive && (!otaDebt || moneySplit.guestDue > 0 || moneySplit.guestCollected > 0) ? (
+            {manage && firstActive && !payNextToExtras && (!otaDebt || moneySplit.guestDue > 0 || moneySplit.guestCollected > 0) ? (
               <div className="mt-3 border-t border-line pt-3">
                 <p className="mb-2 text-xs font-semibold text-[#5c6665]">{otaDebt ? "Thu phụ thu tại KS" : "Thanh toán"}</p>
                 <BookingPaymentPanel
@@ -319,6 +321,7 @@ export default async function BookingDetailPage({
               today={today}
               bookingId={booking.id}
               readOnly={!manage}
+              canReopen={user.role === "manager"}
               checkoutDue={guestCheckoutDue(booking.due, booking.source, booking.otaPaymentMode, {
                 roomTotal: booking.roomTotal,
                 extrasTotal: booking.extrasTotal,
@@ -366,6 +369,19 @@ export default async function BookingDetailPage({
                 types={extraTypes.filter((row) => row.active)}
                 extras={booking.extras}
               />
+              {payNextToExtras ? (
+                <div className="mt-4 border-t border-line pt-4">
+                  <p className="mb-2 text-sm font-bold">{otaDebt ? "Thu phụ thu tại KS" : "Thanh toán phụ thu"}</p>
+                  <BookingPaymentPanel
+                    bookingId={booking.id}
+                    deposit={otaDebt ? moneySplit.guestCollected : booking.deposit}
+                    due={guestPaymentDue}
+                    cashPaid={booking.cashPaid}
+                    transferPaid={booking.transferPaid}
+                    companyPaid={booking.companyPaid}
+                  />
+                </div>
+              ) : null}
             </Fold>
           ) : null}
 

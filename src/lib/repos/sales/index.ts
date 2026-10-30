@@ -33,6 +33,7 @@ export {
   cancelBooking,
   checkinRoomSale,
   checkoutRoomSale,
+  reopenRoomSale,
   checkinBooking,
   checkoutBooking,
   cancelRoomSale,

@@ -52,7 +52,10 @@ export function BookingPaymentPanel({
         />
       </label>
       <PayMethodField label="Hình thức" value={method} onChange={setMethod} />
-      <BookingTxFields />
+      <BookingTxFields
+        noteLabel="Tài khoản nhận / ghi chú"
+        notePlaceholder="Tên chủ TK, ngân hàng, mã giao dịch..."
+      />
       {note ? <p className="text-xs text-[#5c6665]">Đã thu {note}</p> : null}
       {extra && extra < due ? <p className="text-xs text-[#5c6665]">Sau lần này còn {formatVnd(due - extra)}</p> : null}
       <PendingSubmit className="w-full" pendingLabel="Đang thu...">

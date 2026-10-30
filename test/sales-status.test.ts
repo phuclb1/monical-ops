@@ -13,6 +13,7 @@ import {
   bookingStayPax,
   formatOpsBookingCode,
   groupByBooking,
+  billableSaleRows,
   isActiveSaleStatus,
   isGanttSaleStatus,
   isLegacyOpsBookingCode,
@@ -58,6 +59,16 @@ test("stay windows and active statuses", () => {
   assert.equal(night.ooo, 1);
   assert.equal(night.sold, 1);
   assert.equal(night.revenue, 800_000);
+  assert.deepEqual(
+    billableSaleRows([
+      { id: "departed", status: "departed" },
+      { id: "inhouse", status: "inhouse" },
+      { id: "reserved", status: "reserved" },
+      { id: "cancelled", status: "cancelled" },
+    ]).map((row) => row.id),
+    ["departed", "inhouse", "reserved"],
+  );
+  assert.equal(billableSaleRows([{ id: "cancelled", status: "cancelled" }]).length, 1);
   assert.equal(isActiveSaleStatus("reserved"), true);
   assert.equal(isActiveSaleStatus("cancelled"), false);
   assert.equal(isGanttSaleStatus("departed"), true);

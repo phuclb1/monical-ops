@@ -95,6 +95,25 @@ export async function checkoutBookingRoomAction(formData: FormData) {
   redirect(back);
 }
 
+export async function reopenBookingRoomAction(formData: FormData) {
+  const user = await requireSales();
+  const bookingId = String(formData.get("bookingId") || "");
+  const id = String(formData.get("id") || "");
+  const back = `/sales/bookings/${bookingId}`;
+  try {
+    assertActionPace(user.id, "reopen", id);
+    const sale = await repo.getRoomSale(id);
+    if (!sale || sale.bookingKey !== bookingId) throw new Error("Phòng không thuộc booking này");
+    await repo.reopenRoomSale(user, id);
+  } catch (e) {
+    fail(back, e);
+  }
+  refresh();
+  revalidatePath(back);
+  revalidatePath(`/sales/${id}`);
+  redirect(back);
+}
+
 export async function checkinBookingAction(formData: FormData) {
   const user = await requireSales();
   const bookingId = String(formData.get("bookingId") || "");

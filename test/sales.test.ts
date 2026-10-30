@@ -125,6 +125,35 @@ test("payment split, due, labels, codes", () => {
   assert.equal(bookingSettledTotal(1_040_000, 2_340_000, 0), 1_040_000);
 });
 
+test("computeBookingMoney keeps departed rooms while another room is in house", () => {
+  const money = computeBookingMoney([
+    {
+      status: "departed",
+      rate: 750_000,
+      checkIn: "2026-10-26",
+      checkOut: "2026-10-30",
+      discountKind: "amount",
+      discountValue: 450_000,
+    },
+    {
+      status: "inhouse",
+      rate: 900_000,
+      checkIn: "2026-10-30",
+      checkOut: "2026-10-31",
+      discountKind: "amount",
+      discountValue: 400_000,
+    },
+    {
+      status: "cancelled",
+      rate: 1_000_000,
+      checkIn: "2026-10-26",
+      checkOut: "2026-10-28",
+    },
+  ]);
+  assert.equal(money.roomTotal, 3_050_000);
+  assert.equal(money.total, 3_050_000);
+});
+
 test("computeBookingMoney stores room quote, collected, refund and settled total", () => {
   const money = computeBookingMoney(
     [

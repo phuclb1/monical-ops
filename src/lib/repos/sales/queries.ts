@@ -160,8 +160,7 @@ function withBookingExtras<T extends {
 ) {
   const money = computeBookingMoney(view.rooms, extras);
   const rows = decorateExtras(extras, money.nights || view.nights);
-  const stored = Math.max(0, Math.round(view.bookingTotal || 0));
-  const total = stored || money.total;
+  const total = money.total;
   return {
     ...view,
     extras: rows,
@@ -176,8 +175,7 @@ function withBookingExtras<T extends {
 export function leanBookingFromRooms(id: string, rooms: DecoratedSale[], extras: (typeof t.saleExtras.$inferSelect)[] = []) {
   const view = toBookingView(id, rooms);
   const money = computeBookingMoney(rooms, extras);
-  const stored = Math.max(0, Math.round(view.bookingTotal || 0));
-  const total = stored || money.total;
+  const total = money.total;
   return {
     ...view,
     extras: decorateExtras(extras, money.nights || view.nights),

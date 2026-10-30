@@ -6,6 +6,7 @@ export {
   checkoutBookingAction,
   checkinBookingRoomAction,
   checkoutBookingRoomAction,
+  reopenBookingRoomAction,
   checkinSaleAction,
   checkoutSaleAction,
   cancelSaleAction,

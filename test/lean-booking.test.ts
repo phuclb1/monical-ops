@@ -52,11 +52,11 @@ function sale(partial: Record<string, unknown> = {}) {
   };
 }
 
-test("lean booking uses stored bookingTotal and due without extras", () => {
+test("lean booking totals the room quote even when the stored booking total is stale", () => {
   const rooms = [sale({ bookingTotal: 1_200_000, deposit: 200_000, transferPaid: 200_000 })];
   const lean = leanBookingFromRooms("b1", rooms as never);
-  assert.equal(lean.total, 1_200_000);
-  assert.equal(lean.due, bookingDue(1_200_000, 200_000, 0));
+  assert.equal(lean.total, 1_000_000);
+  assert.equal(lean.due, bookingDue(1_000_000, 200_000, 0));
   assert.equal(lean.guestName, "Nguyễn A");
   assert.equal(lean.roomLabel, "P.101");
   assert.equal(lean.extras.length, 0);
