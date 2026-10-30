@@ -43,12 +43,12 @@ export default async function SaleDetailPage({
   const active = sale.status === "reserved" || sale.status === "inhouse";
   const otherActive = sale.peers.some((row) => isActiveSaleStatus(row.status));
   const hold = otherActive ? 0 : collectedSplit(sale.deposit || 0, sale.checkinPaid).hold;
-  const canRefund = hold > 0 && depositRefundAllowed(sale.checkIn, today);
+  const canRefund = sale.status === "reserved" && hold > 0 && depositRefundAllowed(sale.checkIn, today);
   const refunds = refundParts(sale);
   const staySource = booking || sale;
   const alreadyRefunded = refundTotal(staySource);
   const stayRefundableAmount = stayRefundable(staySource.deposit || 0, alreadyRefunded);
-  const canStayRefund = can(user.role, "cancelBooking") && (sale.status === "departed" || sale.status === "inhouse") && stayRefundableAmount > 0;
+  const canStayRefund = can(user.role, "cancelBooking") && sale.status === "departed" && !sale.peers.some((row) => row.status === "inhouse") && stayRefundableAmount > 0;
   const group = [sale, ...sale.peers].sort((a, b) => (a.room?.number || "").localeCompare(b.room?.number || ""));
   const booked = bookingQuote(group);
   const quote = booked.lines[group.findIndex((row) => row.id === sale.id)] || booked.lines[0];

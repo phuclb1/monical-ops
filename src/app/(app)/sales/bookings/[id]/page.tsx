@@ -77,12 +77,12 @@ export default async function BookingDetailPage({
   const paidSplit = collectedSplit(booking.deposit, booking.checkinPaid);
   const payMethods = bookingPayMethods(booking);
   const earliestIn = activeRooms.reduce((min, row) => (row.checkIn < min ? row.checkIn : min), activeRooms[0]?.checkIn || booking.checkIn);
-  const canRefund = paidSplit.hold > 0 && depositRefundAllowed(earliestIn, today);
+  const checkedIn = booking.rooms.some((row) => row.status === "inhouse");
+  const canRefund = !checkedIn && paidSplit.hold > 0 && depositRefundAllowed(earliestIn, today);
   const refunds = refundParts(booking);
   const alreadyRefunded = refundTotal(booking);
   const stayRefundableAmount = stayRefundable(booking.deposit, alreadyRefunded);
-  const stayed = booking.rooms.some((row) => row.status === "departed" || row.status === "inhouse");
-  const canStayRefund = can(user.role, "cancelBooking") && stayed && stayRefundableAmount > 0;
+  const canStayRefund = can(user.role, "cancelBooking") && !checkedIn && booking.rooms.some((row) => row.status === "departed") && stayRefundableAmount > 0;
   const holdSuffix = ` · ${PAYMENT_METHOD_LABEL[payMethods.deposit]}`;
   const checkinSuffix = ` · ${PAYMENT_METHOD_LABEL[payMethods.checkin]}`;
   const busy = busyRanges.filter((row) => !activeRooms.some((sale) => sale.roomId === row.roomId && sale.checkIn === row.checkIn && sale.checkOut === row.checkOut));
