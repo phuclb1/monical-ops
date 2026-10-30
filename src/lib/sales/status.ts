@@ -70,8 +70,11 @@ export function billableSaleRows<T extends { status: string }>(rooms: T[]) {
   return revenue.length ? revenue : rooms;
 }
 
+/** Bookings the room chart draws, and the only rows that keep a room. */
+export const GANTT_SALE_STATUSES = ["reserved", "inhouse", "departed"] as const;
+
 export function isGanttSaleStatus(status: string): status is SaleStatus {
-  return status === "reserved" || status === "inhouse" || status === "departed";
+  return (GANTT_SALE_STATUSES as readonly string[]).includes(status);
 }
 
 export function isSaleOrigin(value: string): value is SaleOrigin {

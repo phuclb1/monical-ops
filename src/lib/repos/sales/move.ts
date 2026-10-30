@@ -9,6 +9,7 @@ import { assertSaleWindow } from "./helpers";
 import { dispatchBookingWebhook } from "@/lib/booking-webhook";
 import { notifyBookingChange } from "./notify";
 import { syncBookingMoney } from "./money-sync";
+import { followStayRoom } from "./stay";
 
 export async function moveGanttSale(
   user: SessionUser,
@@ -49,6 +50,7 @@ export async function moveGanttSale(
     updatedBy: user.id,
   };
   await db.update(t.roomSales).set(patch).where(eq(t.roomSales.id, before.id));
+  await followStayRoom(user.id, { pmsCode: before.pmsCode, fromRoomId: before.roomId, toRoomId: next.id });
   await syncBookingMoney(bookingKey(before));
   await audit(user.id, "room_sale", before.id, "update", before, patch);
   const bookingId = bookingKey(before);

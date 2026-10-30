@@ -10,6 +10,7 @@ import { notifyBookingChange } from "./notify";
 import { bookingCheckinPaidReady } from "@/lib/zalo-templates";
 import { dispatchBookingZalo, dispatchCheckinPaidZalo } from "@/lib/zalo-notify";
 import { syncBookingMoney } from "./money-sync";
+import { followStayRoom } from "./stay";
 import { getBooking } from "./queries";
 
 export async function updateRoomSale(user: SessionUser, id: string, data: SaleInput) {
@@ -56,6 +57,7 @@ export async function updateRoomSale(user: SessionUser, id: string, data: SaleIn
     updatedBy: user.id,
   };
   await db.update(t.roomSales).set(patch).where(eq(t.roomSales.id, id));
+  await followStayRoom(user.id, { pmsCode: before.pmsCode, fromRoomId: before.roomId, toRoomId: roomId });
   const shared = {
     guestName: patch.guestName,
     guestPhone: patch.guestPhone,

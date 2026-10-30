@@ -68,6 +68,7 @@ export {
   isActiveSaleStatus,
   stayBlocksAvailability,
   billableSaleRows,
+  GANTT_SALE_STATUSES,
   isGanttSaleStatus,
   isSaleOrigin,
   isSaleSource,

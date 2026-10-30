@@ -27,6 +27,7 @@ import { dispatchBookingWebhook, bookingWebhookRooms } from "@/lib/booking-webho
 import { getBooking } from "./queries";
 import { cancelRoomSale } from "./lifecycle";
 import { syncBookingMoney } from "./money-sync";
+import { followStayRoom } from "./stay";
 
 export type BookingUpdateInput = {
   assignments: {
@@ -189,6 +190,7 @@ export async function updateBooking(
     };
     const after = { ...row, ...patch };
     await db.update(t.roomSales).set(patch).where(eq(t.roomSales.id, row.id));
+    await followStayRoom(user.id, { pmsCode: row.pmsCode, fromRoomId: row.roomId, toRoomId: next.id });
     if (auditChanges(row, after).length) {
       await audit(user.id, "room_sale", row.id, "update", row, after);
     }

@@ -5,9 +5,9 @@ import * as t from "@/db/schema";
 import { notify } from "@/modules/notifications/models/notifications";
 import { nowISO } from "../datetime";
 import { can } from "../permissions";
-import { isActiveSaleStatus, stayBlocksAvailability } from "../sales";
+import { GANTT_SALE_STATUSES, isActiveSaleStatus } from "../sales";
 import { defaultAdultsForRoomType, floorOf, roomIdOf, slugTypeName } from "../rooms-catalog";
-import { ACTIVE_SALE_STATUSES, type SessionUser } from "../types";
+import { type SessionUser } from "../types";
 import { audit } from "./audit";
 
 export const listRooms = cache(async () => {
@@ -20,47 +20,17 @@ export const listRoomTypes = cache(async () => {
   return db.select().from(t.roomTypes).orderBy(t.roomTypes.sortOrder, t.roomTypes.name);
 });
 
+/** Same bookings the room chart draws. A room change on the chart releases the old room here too. */
 export async function listRoomBusyRanges() {
   const db = await getDb();
-  const [sales, stays, closedSales] = await Promise.all([
-    db
-      .select({
-        roomId: t.roomSales.roomId,
-        pmsCode: t.roomSales.pmsCode,
-        checkIn: t.roomSales.checkIn,
-        checkOut: t.roomSales.checkOut,
-      })
-      .from(t.roomSales)
-      .where(inArray(t.roomSales.status, [...ACTIVE_SALE_STATUSES])),
-    db
-      .select({
-        roomId: t.stays.roomId,
-        pmsCode: t.stays.pmsCode,
-        status: t.stays.status,
-        checkIn: t.stays.arrivalDate,
-        checkOut: t.stays.departureDate,
-      })
-      .from(t.stays)
-      .where(inArray(t.stays.status, ["arriving", "inhouse", "departing"])),
-    db
-      .select({
-        roomId: t.roomSales.roomId,
-        pmsCode: t.roomSales.pmsCode,
-        status: t.roomSales.status,
-      })
-      .from(t.roomSales)
-      .where(inArray(t.roomSales.status, ["cancelled", "no_show"])),
-  ]);
-  const linkedSales = [
-    ...sales.map((row) => ({ roomId: row.roomId, pmsCode: row.pmsCode, status: "reserved" })),
-    ...closedSales,
-  ];
-  return [
-    ...sales.map((row) => ({ roomId: row.roomId, checkIn: row.checkIn, checkOut: row.checkOut })),
-    ...stays
-      .filter((row) => stayBlocksAvailability(row, linkedSales))
-      .map((row) => ({ roomId: row.roomId as string, checkIn: row.checkIn, checkOut: row.checkOut })),
-  ];
+  return db
+    .select({
+      roomId: t.roomSales.roomId,
+      checkIn: t.roomSales.checkIn,
+      checkOut: t.roomSales.checkOut,
+    })
+    .from(t.roomSales)
+    .where(inArray(t.roomSales.status, [...GANTT_SALE_STATUSES]));
 }
 
 export async function createRoomType(

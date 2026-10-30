@@ -14,6 +14,7 @@ import {
   ganttSpan,
   groupByBooking,
   billableSaleRows,
+  GANTT_SALE_STATUSES,
   isActiveSaleStatus,
   isGanttSaleStatus,
   nightlyNetFromLine,
@@ -31,7 +32,6 @@ import { ACTIVE_SALE_STATUSES } from "../../types";
 import { listRooms, listRoomTypes } from "../rooms";
 import { withSaleRoom } from "./helpers";
 
-const GANTT_SALE_STATUSES = ["reserved", "inhouse", "departed"] as const;
 const LIVE_SALE_STATUSES = ["reserved", "inhouse", "departed"] as const;
 const REVENUE_SALE_STATUSES = [...LIVE_SALE_STATUSES, "no_show"] as const;
 
