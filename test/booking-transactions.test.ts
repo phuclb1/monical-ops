@@ -3,6 +3,7 @@ import { test } from "node:test";
 import {
   backfillTxsForBooking,
   canSettleOtaDebt,
+  depositEditPlan,
   groupSalesForBackfill,
   projectBookingPaid,
 } from "../src/lib/sales";
@@ -149,6 +150,50 @@ test("projectBookingPaid sums inflows and refunds", () => {
   assert.equal(paid.refundTotal, 100_000);
   assert.equal(paid.refundedAt, "2026-10-08");
   assert.equal(paid.checkinMethod, "company");
+});
+
+test("manager deposit edit updates one row, inserts, or keeps legacy columns", () => {
+  const deposit = { id: "tx-d", kind: "deposit", amount: 500_000 };
+  const checkin = { id: "tx-c", kind: "checkin", amount: 800_000 };
+  assert.deepEqual(depositEditPlan({ transactions: [deposit], amount: 300_000 }), {
+    ok: true,
+    op: "update",
+    txId: "tx-d",
+    amount: 300_000,
+  });
+  assert.deepEqual(depositEditPlan({ transactions: [deposit], amount: 0 }), {
+    ok: true,
+    op: "delete",
+    txId: "tx-d",
+    amount: 0,
+  });
+  assert.equal(depositEditPlan({ transactions: [deposit, { id: "tx-d2", kind: "deposit", amount: 100_000 }], amount: 50_000 }).ok, false);
+  assert.deepEqual(depositEditPlan({ transactions: [deposit, { id: "tx-d2", kind: "deposit", amount: 100_000 }], txId: "tx-d2", amount: 50_000 }), {
+    ok: true,
+    op: "update",
+    txId: "tx-d2",
+    amount: 50_000,
+  });
+  assert.deepEqual(depositEditPlan({ transactions: [checkin], amount: 200_000 }), {
+    ok: true,
+    op: "insert",
+    amount: 200_000,
+  });
+  assert.deepEqual(depositEditPlan({ transactions: [], amount: 200_000, checkinPaid: 800_000 }), {
+    ok: true,
+    op: "columns",
+    amount: 200_000,
+  });
+  assert.equal(depositEditPlan({ transactions: [], amount: 100_000, otaDebt: true }).ok, false);
+  assert.equal(depositEditPlan({ transactions: [checkin], amount: 100_000, otaDebt: true }).ok, false);
+  assert.equal(depositEditPlan({ transactions: [{ id: "pay", kind: "payment", amount: 100_000 }], txId: "pay", amount: 50_000 }).ok, false);
+  const underRefund = depositEditPlan({
+    transactions: [deposit, { id: "tx-r", kind: "refund", amount: 400_000 }],
+    amount: 100_000,
+  });
+  assert.equal(underRefund.ok, false);
+  assert.equal(depositEditPlan({ transactions: [deposit, checkin], amount: 200_000, refunded: 900_000 }).ok, true);
+  assert.equal(depositEditPlan({ transactions: [], amount: 100_000, checkinPaid: 800_000, refunded: 950_000 }).ok, false);
 });
 
 test("canSettleOtaDebt only after full checkout with remaining due", () => {

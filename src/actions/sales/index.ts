@@ -11,6 +11,7 @@ export {
   checkoutSaleAction,
   cancelSaleAction,
   recordBookingPaymentAction,
+  updateBookingDepositAction,
   settleOtaDebtAction,
   recordBookingRefundAction,
   updateBookingAction,

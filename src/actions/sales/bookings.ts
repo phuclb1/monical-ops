@@ -216,6 +216,26 @@ export async function recordBookingPaymentAction(formData: FormData) {
   redirect(back);
 }
 
+export async function updateBookingDepositAction(formData: FormData) {
+  const user = await requireSales();
+  const bookingId = String(formData.get("bookingId") || "");
+  const back = `/sales/bookings/${bookingId}`;
+  const txId = String(formData.get("txId") || "").trim();
+  try {
+    assertActionPace(user.id, "edit-deposit", bookingId);
+    await repo.updateBookingDeposit(user, bookingId, {
+      txId: txId || undefined,
+      amount: parseMoney(formData.get("amount")),
+      paymentMethod: parsePaymentMethod(formData.get("paymentMethod")),
+    });
+  } catch (e) {
+    fail(back, e);
+  }
+  refresh();
+  revalidatePath(back);
+  redirect(back);
+}
+
 export async function settleOtaDebtAction(formData: FormData) {
   const user = await requireSales();
   const bookingId = String(formData.get("bookingId") || "");

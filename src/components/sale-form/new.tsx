@@ -110,7 +110,7 @@ export function SaleForm({
   const [previewGuest, setPreviewGuest] = useState({ name: "", phone: "" });
   const [extras, setExtras] = useState<DraftExtra[]>([]);
   const [deposit, setDeposit] = useState(defaults.deposit ? String(defaults.deposit) : "");
-  const [payMethod, setPayMethod] = useState<PaymentMethod>("personal");
+  const [payMethod, setPayMethod] = useState<PaymentMethod>("company");
   const [invoiceOn, setInvoiceOn] = useState(Boolean(defaults.invoiceRequested));
   const ota = isOtaSource(source);
   const otaDebt = ota && otaPaymentMode === "debt";

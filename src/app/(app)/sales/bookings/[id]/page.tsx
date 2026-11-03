@@ -8,6 +8,7 @@ import { BookingExtrasPanel } from "@/components/booking-extras";
 import { BookingOtaSettlePanel } from "@/components/booking-ota-settle";
 import { BookingPaymentPanel } from "@/components/booking-payment";
 import { BookingRefundPanel } from "@/components/booking-refund";
+import { BookingDepositEdit } from "@/components/booking-deposit-edit";
 import { BookingTransactionList } from "@/components/booking-transactions";
 import { BookingRoomList } from "@/components/booking-room-list";
 import { BookingLog } from "@/components/booking-log";
@@ -21,7 +22,7 @@ import { maskName, maskPhone } from "@/lib/mask";
 import { can } from "@/lib/permissions";
 import { getBooking, listBookingChangeRequests, listBookingLogs, listRoomBusyRanges, listRooms, listRoomTypes, listSaleExtraTypes } from "@/lib/repos";
 import { billableSaleRows, bookingInflowSplit, bookingLifecycle, bookingPayMethods, bookingQuote, canSettleOtaDebt, collectedSplit, commissionAmount, depositRefundAllowed, formatVnd, guestCheckoutDue, isActiveSaleStatus, isOpsBookingCode, isOtaDebt, isOtaSource, otaMoneySplit, paidNote, parkingLabel, primaryPaymentMethod, refundParts, refundReasonLabel, refundTotal, stayRefundOverpay, stayRefundable } from "@/lib/sales";
-import type { SaleOrigin, SaleSource } from "@/lib/types";
+import type { PaymentMethod, SaleOrigin, SaleSource } from "@/lib/types";
 
 export default async function BookingDetailPage({
   params,
@@ -83,6 +84,14 @@ export default async function BookingDetailPage({
   const alreadyRefunded = refundTotal(booking);
   const stayRefundableAmount = stayRefundable(booking.deposit, alreadyRefunded);
   const canStayRefund = can(user.role, "cancelBooking") && !checkedIn && booking.rooms.some((row) => row.status === "departed") && stayRefundableAmount > 0;
+  const canEditDeposit = can(user.role, "editBookingDeposit");
+  const depositTxs = (booking.transactions || []).filter((row) => row.kind === "deposit" && row.amount > 0);
+  const depositMethodRaw = depositTxs.length === 1 ? depositTxs[0].method : payMethods.deposit;
+  const depositMethod: PaymentMethod =
+    depositMethodRaw === "cash" || depositMethodRaw === "company" || depositMethodRaw === "personal"
+      ? depositMethodRaw
+      : payMethods.deposit;
+  const editDepositOnRows = canEditDeposit && (otaDebt || depositTxs.length > 1);
   const holdSuffix = ` · ${PAYMENT_METHOD_LABEL[payMethods.deposit]}`;
   const checkinSuffix = ` · ${PAYMENT_METHOD_LABEL[payMethods.checkin]}`;
   const busy = busyRanges.filter((row) => !activeRooms.some((sale) => sale.roomId === row.roomId && sale.checkIn === row.checkIn && sale.checkOut === row.checkOut));
@@ -229,6 +238,17 @@ export default async function BookingDetailPage({
                 <p className="mt-1 text-sm font-semibold">Còn phải thu {formatVnd(booking.due)}</p>
               </>
             )}
+            {canEditDeposit && !otaDebt && depositTxs.length <= 1 ? (
+              <BookingDepositEdit
+                bookingId={booking.id}
+                txId={depositTxs[0]?.id}
+                amount={depositTxs[0]?.amount ?? paidSplit.hold}
+                method={depositMethod}
+              />
+            ) : null}
+            {canEditDeposit && !otaDebt && depositTxs.length > 1 ? (
+              <p className="mt-1 text-xs text-[#5c6665]">Nhiều khoản cọc — sửa từng dòng trong giao dịch.</p>
+            ) : null}
             {refunds.map((part) => (
               <p key={part.method} className="mt-1 text-sm font-semibold text-[#c23b3b]">
                 {refundReasonLabel(booking.refundReason)} {formatVnd(part.amount)} từ {PAYMENT_METHOD_LABEL[part.method]}
@@ -247,7 +267,7 @@ export default async function BookingDetailPage({
             <p className="mt-1 text-sm">{booking.invoiceRequested ? "Yêu cầu xuất hóa đơn" : "Không xuất hóa đơn"}</p>
             <div className="mt-3 border-t border-line pt-3">
               <p className="mb-2 text-xs font-semibold text-[#5c6665]">Giao dịch</p>
-              <BookingTransactionList rows={booking.transactions || []} />
+              <BookingTransactionList rows={booking.transactions || []} bookingId={booking.id} editDeposit={editDepositOnRows} />
             </div>
             {manage && collectDue > 0 ? (
               <div className="mt-3 border-t border-line pt-3">
@@ -386,7 +406,7 @@ export default async function BookingDetailPage({
               <p className="mb-2 text-xs text-[#5c6665]">Sửa tên, SĐT, kênh. Số người lớn theo từng phòng, mặc định bằng hạng phòng và chỉ giảm được. Đổi sang phòng bất kỳ hạng nào. Xóa bớt phòng, giữ ít nhất một phòng.</p>
               {user.role === "reception" ? (
                 <p className="mb-3 rounded-xl bg-[#fff1d6] px-3 py-2 text-xs font-semibold text-[#9a5b00]">
-                  Đổi ngày, phòng, xóa phòng, ăn sáng, chiết khấu hoặc hoa hồng OTA sẽ gửi quản lý duyệt. Booking chỉ đổi sau khi được duyệt. Tiền thu/hoàn ở danh sách giao dịch.
+                  Đổi ngày, phòng, xóa phòng, ăn sáng, chiết khấu hoặc hoa hồng OTA sẽ gửi quản lý duyệt. Booking chỉ đổi sau khi được duyệt. Số đặt cọc chỉ quản lý sửa. Thu thêm và hoàn ghi trong danh sách giao dịch.
                 </p>
               ) : null}
               <BookingForm

@@ -12,6 +12,9 @@ test("chỉ quản lý nhập được chi phí", () => {
 
 test("chỉ quản lý được hủy booking", () => {
   assert.equal(can("manager", "cancelBooking"), true);
+  assert.equal(can("manager", "editBookingDeposit"), true);
+  assert.equal(can("reception", "editBookingDeposit"), false);
+  assert.equal(can("accounting", "editBookingDeposit"), false);
   assert.equal(can("reception", "cancelBooking"), false);
   assert.equal(can("hk", "cancelBooking"), false);
   assert.equal(can("accounting", "cancelBooking"), false);

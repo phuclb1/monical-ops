@@ -1,6 +1,6 @@
 import { dateStartISO, paidOnVN } from "../datetime";
 import type { PaymentMethod } from "../types";
-import { bookingPayMethods, collectedSplit, depositMethodOf, isPaymentMethod, parsePaymentMethod, primaryPaymentMethod, salePaid } from "./money";
+import { bookingPayMethods, collectedSplit, depositMethodOf, formatVnd, isPaymentMethod, parsePaymentMethod, primaryPaymentMethod, salePaid } from "./money";
 import { bookingKey, isActiveSaleStatus, isOtaDebt, otaMoneySplit } from "./status";
 
 export const BOOKING_TX_KINDS = ["deposit", "checkin", "payment", "ota", "refund"] as const;
@@ -263,6 +263,89 @@ export function backfillTxsForBooking(rooms: BackfillSale[]): BackfillTx[] {
     rows.push({ kind: "refund", amount: Math.round(head.refundCash), method: "cash", paidAt: refundAt, paidOn: refundOn, note: "", photo: null, createdBy });
   }
   return rows.filter((row) => row.amount > 0);
+}
+
+export type DepositEditPlan =
+  | { ok: true; op: "noop" }
+  | { ok: true; op: "update" | "delete"; txId: string; amount: number }
+  | { ok: true; op: "insert"; amount: number }
+  | { ok: true; op: "columns"; amount: number }
+  | { ok: false; message: string };
+
+function inflowAfterDeposit(
+  txs: { id: string; kind: string; amount: number }[],
+  exceptId: string | null,
+  replacement: number,
+) {
+  let guest = 0;
+  let refund = 0;
+  let seen = !exceptId;
+  for (const tx of txs) {
+    if (exceptId && tx.id === exceptId) {
+      guest += Math.max(0, Math.round(replacement || 0));
+      seen = true;
+      continue;
+    }
+    const amount = Math.max(0, Math.round(tx.amount || 0));
+    if (!amount) continue;
+    if (tx.kind === "refund") refund += amount;
+    else if (isGuestInflowTxKind(tx.kind)) guest += amount;
+  }
+  if (!seen) return null;
+  if (!exceptId) guest += Math.max(0, Math.round(replacement || 0));
+  return { guest, refund };
+}
+
+/** How a manager's deposit correction is stored: one deposit row, a new row, or the legacy paid columns. */
+export function depositEditPlan(input: {
+  transactions: { id: string; kind: string; amount: number }[];
+  txId?: string;
+  amount: number;
+  otaDebt?: boolean;
+  checkinPaid?: number;
+  refunded?: number;
+}): DepositEditPlan {
+  const amount = Math.max(0, Math.round(input.amount || 0));
+  const txs = input.transactions || [];
+  const deposits = txs.filter((tx) => tx.kind === "deposit" && Math.round(tx.amount || 0) > 0);
+  const refunded = Math.max(0, Math.round(input.refunded || 0));
+  const checkinPaid = Math.max(0, Math.round(input.checkinPaid || 0));
+
+  function tooLow(guest: number, refundFromTxs = 0): DepositEditPlan | null {
+    const floor = Math.max(refunded, refundFromTxs);
+    if (guest >= floor) return null;
+    return { ok: false, message: `Không giảm cọc dưới số đã hoàn ${formatVnd(floor)}` };
+  }
+
+  if (input.txId) {
+    const tx = txs.find((row) => row.id === input.txId);
+    if (!tx || tx.kind !== "deposit") return { ok: false, message: "Không tìm thấy khoản đặt cọc" };
+    const after = inflowAfterDeposit(txs, tx.id, amount);
+    if (!after) return { ok: false, message: "Không tìm thấy khoản đặt cọc" };
+    const low = tooLow(after.guest, after.refund);
+    if (low) return low;
+    if (!amount) return { ok: true, op: "delete", txId: tx.id, amount: 0 };
+    return { ok: true, op: "update", txId: tx.id, amount };
+  }
+
+  if (deposits.length > 1) {
+    return { ok: false, message: "Booking có nhiều khoản cọc. Sửa từng khoản trong danh sách giao dịch." };
+  }
+  if (deposits.length === 1) return depositEditPlan({ ...input, txId: deposits[0].id });
+
+  if (txs.length) {
+    if (input.otaDebt) return { ok: false, message: "Booking công nợ OTA không ghi đặt cọc" };
+    if (!amount) return { ok: true, op: "noop" };
+    const after = inflowAfterDeposit(txs, null, amount);
+    const low = tooLow(after?.guest || amount, after?.refund || 0);
+    if (low) return low;
+    return { ok: true, op: "insert", amount };
+  }
+
+  if (input.otaDebt) return { ok: false, message: "Booking công nợ OTA không ghi đặt cọc" };
+  const low = tooLow(amount + checkinPaid);
+  if (low) return low;
+  return { ok: true, op: "columns", amount };
 }
 
 export function groupSalesForBackfill(sales: BackfillSale[]) {

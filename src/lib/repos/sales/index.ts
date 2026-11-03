@@ -28,6 +28,7 @@ export type { BookingUpdateInput } from "./booking";
 export { moveGanttSale } from "./move";
 export {
   recordBookingPayment,
+  updateBookingDeposit,
   recordBookingRefund,
   settleOtaDebt,
   cancelBooking,

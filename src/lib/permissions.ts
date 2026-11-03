@@ -21,6 +21,7 @@ export const CAN = {
   manageSales: ["reception", "manager"] as Role[],
   approveBookingChange: ["manager"] as Role[],
   cancelBooking: ["manager"] as Role[],
+  editBookingDeposit: ["manager"] as Role[],
   manageRates: ["manager"] as Role[],
   manageExpenses: ["manager"] as Role[],
 };

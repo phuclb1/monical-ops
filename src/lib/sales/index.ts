@@ -108,6 +108,7 @@ export {
   BOOKING_TX_KIND_LABEL,
   backfillTxsForBooking,
   bookingInflowSplit,
+  depositEditPlan,
   canSettleOtaDebt,
   groupSalesForBackfill,
   isBookingTxKind,

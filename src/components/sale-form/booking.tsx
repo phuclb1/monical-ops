@@ -474,7 +474,7 @@ export function BookingForm({
         </div>
       ) : null}
       {lockMoney ? (
-        <p className="text-xs text-[#5c6665]">Tiền cọc / thu thêm / hoàn sửa ở danh sách giao dịch bên trái.</p>
+        <p className="text-xs text-[#5c6665]">Số đặt cọc do quản lý sửa ở cột bên trái. Thu thêm và hoàn ghi trong danh sách giao dịch.</p>
       ) : otaDebt ? (
         <>
           <input type="hidden" name="deposit" value="0" />
