@@ -107,6 +107,7 @@ export {
   BOOKING_TX_KINDS,
   BOOKING_TX_KIND_LABEL,
   backfillTxsForBooking,
+  bookingCollectedLines,
   bookingInflowSplit,
   depositEditPlan,
   canSettleOtaDebt,
@@ -117,7 +118,7 @@ export {
   parsePhotoData,
   projectBookingPaid,
 } from "./transactions";
-export type { BackfillSale, BackfillTx, BookingPaidProjection, BookingTxKind } from "./transactions";
+export type { BackfillSale, BackfillTx, BookingCollectedLine, BookingPaidProjection, BookingTxKind } from "./transactions";
 export type { OtaMoneySplit, OtaMoneySplitInput } from "./status";
 export { bookingSearchText, matchesBookingSearch } from "./search";
 export type { BookingSearchRow } from "./search";

@@ -48,6 +48,44 @@ export function isGuestInflowTxKind(kind: string) {
   return kind === "deposit" || kind === "checkin" || kind === "payment";
 }
 
+export type BookingCollectedLine = {
+  key: string;
+  label: string;
+  amount: number;
+  method: PaymentMethod;
+};
+
+const COLLECTED_LINE_LABEL = {
+  deposit: "Đã đặt cọc",
+  checkin: "Thu đủ khi check-in",
+  payment: "Thu thêm",
+} as const;
+
+/** One summary row per kind and account, in transaction order. */
+export function bookingCollectedLines(
+  txs: { kind: string; amount: number; method: string }[],
+  opts?: { depositLabel?: string },
+): BookingCollectedLine[] {
+  const depositLabel = opts?.depositLabel || COLLECTED_LINE_LABEL.deposit;
+  const lines: BookingCollectedLine[] = [];
+  for (const tx of txs) {
+    if (tx.kind !== "deposit" && tx.kind !== "checkin" && tx.kind !== "payment") continue;
+    const amount = Math.max(0, Math.round(tx.amount || 0));
+    if (!amount) continue;
+    const method = isPaymentMethod(tx.method) ? tx.method : parsePaymentMethod(tx.method);
+    const key = `${tx.kind}:${method}`;
+    const found = lines.find((row) => row.key === key);
+    if (found) found.amount += amount;
+    else lines.push({
+      key,
+      label: tx.kind === "deposit" ? depositLabel : COLLECTED_LINE_LABEL[tx.kind],
+      amount,
+      method,
+    });
+  }
+  return lines;
+}
+
 /** Split inflows so OTA settle does not count as guest phụ thu. */
 export function bookingInflowSplit(txs: { kind: string; amount: number }[]) {
   let guest = 0;

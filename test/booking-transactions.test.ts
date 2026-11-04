@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import {
   backfillTxsForBooking,
+  bookingCollectedLines,
   canSettleOtaDebt,
   depositEditPlan,
   groupSalesForBackfill,
@@ -194,6 +195,20 @@ test("manager deposit edit updates one row, inserts, or keeps legacy columns", (
   assert.equal(underRefund.ok, false);
   assert.equal(depositEditPlan({ transactions: [deposit, checkin], amount: 200_000, refunded: 900_000 }).ok, true);
   assert.equal(depositEditPlan({ transactions: [], amount: 100_000, checkinPaid: 800_000, refunded: 950_000 }).ok, false);
+});
+
+test("collected lines keep each payment account instead of one inferred method", () => {
+  const lines = bookingCollectedLines([
+    { kind: "deposit", amount: 650_000, method: "personal" },
+    { kind: "payment", amount: 520_000, method: "company" },
+    { kind: "payment", amount: 300_000, method: "personal" },
+    { kind: "ota", amount: 1_000_000, method: "company" },
+  ]);
+  assert.deepEqual(lines, [
+    { key: "deposit:personal", label: "Đã đặt cọc", amount: 650_000, method: "personal" },
+    { key: "payment:company", label: "Thu thêm", amount: 520_000, method: "company" },
+    { key: "payment:personal", label: "Thu thêm", amount: 300_000, method: "personal" },
+  ]);
 });
 
 test("canSettleOtaDebt only after full checkout with remaining due", () => {

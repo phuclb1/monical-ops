@@ -21,8 +21,17 @@ import { extraDetail } from "@/lib/extras";
 import { maskName, maskPhone } from "@/lib/mask";
 import { can } from "@/lib/permissions";
 import { getBooking, listBookingChangeRequests, listBookingLogs, listRoomBusyRanges, listRooms, listRoomTypes, listSaleExtraTypes } from "@/lib/repos";
-import { billableSaleRows, bookingInflowSplit, bookingLifecycle, bookingPayMethods, bookingQuote, canSettleOtaDebt, collectedSplit, commissionAmount, depositRefundAllowed, formatVnd, guestCheckoutDue, isActiveSaleStatus, isOpsBookingCode, isOtaDebt, isOtaSource, otaMoneySplit, paidNote, parkingLabel, primaryPaymentMethod, refundParts, refundReasonLabel, refundTotal, stayRefundOverpay, stayRefundable } from "@/lib/sales";
+import { billableSaleRows, bookingCollectedLines, bookingInflowSplit, bookingLifecycle, bookingPayMethods, bookingQuote, canSettleOtaDebt, collectedSplit, commissionAmount, depositRefundAllowed, formatVnd, guestCheckoutDue, isActiveSaleStatus, isOpsBookingCode, isOtaDebt, isOtaSource, otaMoneySplit, paidNote, parkingLabel, primaryPaymentMethod, refundParts, refundReasonLabel, refundTotal, stayRefundOverpay, stayRefundable } from "@/lib/sales";
+import type { BookingCollectedLine } from "@/lib/sales";
 import type { PaymentMethod, SaleOrigin, SaleSource } from "@/lib/types";
+
+function CollectedLineList({ lines }: { lines: BookingCollectedLine[] }) {
+  return lines.map((row) => (
+    <p key={row.key} className="mt-1 text-sm text-[#1b7a4e]">
+      {row.label} {formatVnd(row.amount)} · {PAYMENT_METHOD_LABEL[row.method]}
+    </p>
+  ));
+}
 
 export default async function BookingDetailPage({
   params,
@@ -92,8 +101,11 @@ export default async function BookingDetailPage({
       ? depositMethodRaw
       : payMethods.deposit;
   const editDepositOnRows = canEditDeposit && (otaDebt || depositTxs.length > 1);
-  const holdSuffix = ` · ${PAYMENT_METHOD_LABEL[payMethods.deposit]}`;
+  const holdSuffix = ` · ${PAYMENT_METHOD_LABEL[depositMethod]}`;
   const checkinSuffix = ` · ${PAYMENT_METHOD_LABEL[payMethods.checkin]}`;
+  const collectedLines = (booking.transactions || []).length
+    ? bookingCollectedLines(booking.transactions || [], { depositLabel: ota ? "Đặt cọc" : "Đã đặt cọc" })
+    : null;
   const busy = busyRanges.filter((row) => !activeRooms.some((sale) => sale.roomId === row.roomId && sale.checkIn === row.checkIn && sale.checkOut === row.checkOut));
 
   return (
@@ -210,31 +222,53 @@ export default async function BookingDetailPage({
             ) : ota ? (
               <>
                 <p className="mt-1 text-sm">Công nợ OTA {formatVnd(0)}</p>
-                {paidSplit.hold ? (
-                  <p className="mt-1 text-sm text-[#1b7a4e]">
-                    Đặt cọc {formatVnd(paidSplit.hold)}
-                    {holdSuffix}
-                  </p>
-                ) : null}
-                {paidSplit.checkin ? (
-                  <p className="mt-1 text-sm text-[#1b7a4e]">Thu đủ khi check-in {formatVnd(paidSplit.checkin)}{checkinSuffix}</p>
-                ) : null}
-                {!paidSplit.total ? <p className="mt-1 text-sm text-[#c47b12]">Chưa thu tại KS</p> : null}
+                {collectedLines ? (
+                  <>
+                    <CollectedLineList lines={collectedLines} />
+                    {!collectedLines.length ? <p className="mt-1 text-sm text-[#c47b12]">Chưa thu tại KS</p> : null}
+                  </>
+                ) : (
+                  <>
+                    {paidSplit.hold ? (
+                      <p className="mt-1 text-sm text-[#1b7a4e]">
+                        Đặt cọc {formatVnd(paidSplit.hold)}
+                        {holdSuffix}
+                      </p>
+                    ) : null}
+                    {paidSplit.checkin ? (
+                      <p className="mt-1 text-sm text-[#1b7a4e]">Thu đủ khi check-in {formatVnd(paidSplit.checkin)}{checkinSuffix}</p>
+                    ) : null}
+                    {!paidSplit.total ? <p className="mt-1 text-sm text-[#c47b12]">Chưa thu tại KS</p> : null}
+                  </>
+                )}
                 <p className="mt-1 text-sm font-semibold">Còn khách thanh toán {formatVnd(booking.due)}</p>
               </>
             ) : (
               <>
-                {paidSplit.hold ? (
-                  <p className="mt-1 text-sm text-[#1b7a4e]">
-                    Đã đặt cọc {formatVnd(paidSplit.hold)}
-                    {holdSuffix}
-                  </p>
+                {collectedLines ? (
+                  <>
+                    {collectedLines.some((row) => row.key.startsWith("deposit:")) ? (
+                      <CollectedLineList lines={collectedLines.filter((row) => row.key.startsWith("deposit:"))} />
+                    ) : (
+                      <p className="mt-1 text-sm text-[#c47b12]">Chưa đặt cọc</p>
+                    )}
+                    <CollectedLineList lines={collectedLines.filter((row) => !row.key.startsWith("deposit:"))} />
+                  </>
                 ) : (
-                  <p className="mt-1 text-sm text-[#c47b12]">Chưa đặt cọc</p>
+                  <>
+                    {paidSplit.hold ? (
+                      <p className="mt-1 text-sm text-[#1b7a4e]">
+                        Đã đặt cọc {formatVnd(paidSplit.hold)}
+                        {holdSuffix}
+                      </p>
+                    ) : (
+                      <p className="mt-1 text-sm text-[#c47b12]">Chưa đặt cọc</p>
+                    )}
+                    {paidSplit.checkin ? (
+                      <p className="mt-1 text-sm text-[#1b7a4e]">Thu đủ khi check-in {formatVnd(paidSplit.checkin)}{checkinSuffix}</p>
+                    ) : null}
+                  </>
                 )}
-                {paidSplit.checkin ? (
-                  <p className="mt-1 text-sm text-[#1b7a4e]">Thu đủ khi check-in {formatVnd(paidSplit.checkin)}{checkinSuffix}</p>
-                ) : null}
                 <p className="mt-1 text-sm font-semibold">Còn phải thu {formatVnd(booking.due)}</p>
               </>
             )}
@@ -325,7 +359,7 @@ export default async function BookingDetailPage({
               deposit={paidSplit.hold}
               canNoShow={canNoShow}
               canRefund={canRefund}
-              accountLabel={PAYMENT_METHOD_LABEL[payMethods.deposit]}
+              accountLabel={PAYMENT_METHOD_LABEL[depositMethod]}
             />
           ) : null}
         </aside>
