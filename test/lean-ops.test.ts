@@ -38,9 +38,13 @@ test("removed ops paths redirect to the role home", async () => {
   assert.equal(isRemovedOpsPath("/rooms/abc"), true);
   assert.equal(isRemovedOpsPath("/rooms/manage"), false);
   assert.equal(isRemovedOpsPath("/kitchen"), false);
+  assert.equal(isRemovedOpsPath("/kiem-tra-phong"), false);
   const response = await request("/tasks", reception);
   assert.equal(response.status, 307);
   assert.equal(new URL(response.headers.get("location") || "").pathname, "/sales/bookings");
+  const availability = await request("/kiem-tra-phong", reception);
+  assert.equal(availability.status, 200);
+  assert.equal(availability.headers.get("location"), null);
 });
 
 test("kitchen stays on breakfast pages and is sent home from booking", async () => {

@@ -57,7 +57,6 @@ const REMOVED_OPS_ROOTS = [
   "/reception",
   "/rooms",
   "/reports/work",
-  "/kiem-tra-phong",
 ] as const;
 
 export function isPausedOpsRole(role: Role) {

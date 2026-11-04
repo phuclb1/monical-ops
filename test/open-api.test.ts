@@ -255,6 +255,10 @@ test("open API không đòi đăng nhập", async () => {
   );
   assert.equal(availability.status, 200);
   assert.equal(availability.headers.get("location"), null);
+
+  const page = await proxy(new NextRequest("https://platform.monicalhoteldalat.com/kiem-tra-phong", { method: "GET" }));
+  assert.equal(page.status, 200);
+  assert.equal(page.headers.get("location"), null);
 });
 
 test("open API authorized đọc Bearer", () => {

@@ -93,6 +93,9 @@ export default async function AccessSettingsPage({
           <Field label="Lấy một booking">
             <input readOnly value={`${origin}/api/open/bookings/:id`} />
           </Field>
+          <Field label="Trang kiểm tra phòng trống (không cần đăng nhập)">
+            <input readOnly value={`${origin}/kiem-tra-phong`} />
+          </Field>
           <Field label="Phòng trống theo ngày (không cần token)">
             <input readOnly value={`${origin}/api/open/availability?from=YYYY-MM-DD&to=YYYY-MM-DD&type=DELUXE`} />
           </Field>

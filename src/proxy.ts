@@ -15,6 +15,7 @@ const PUBLIC = [
   "/login",
   "/forgot-password",
   "/reset-password",
+  "/kiem-tra-phong",
   "/tin-tuc",
   "/sitemap.xml",
   "/robots.txt",
@@ -58,7 +59,7 @@ export async function proxy(request: NextRequest) {
 
   if (PUBLIC.some((p) => pathname === p || pathname.startsWith(`${p}/`))) {
     const res = NextResponse.next();
-    if (pathname === "/sw.js") return withCache(res, "public, max-age=0, must-revalidate");
+    if (pathname === "/sw.js" || pathname === "/kiem-tra-phong") return withCache(res, "public, max-age=0, must-revalidate");
     if (pathname.startsWith("/tin-tuc") || pathname === "/sitemap.xml" || pathname === "/robots.txt") {
       return withCache(res, "public, s-maxage=3600, stale-while-revalidate=86400");
     }
