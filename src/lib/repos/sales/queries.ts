@@ -27,6 +27,7 @@ import {
   salePaid,
   summarizeSalesNight,
 } from "../../sales";
+import { CONTROL_FROM } from "../../control-issues";
 import { extraAmount } from "../../extras";
 import { ACTIVE_SALE_STATUSES } from "../../types";
 import { listRooms, listRoomTypes } from "../rooms";
@@ -338,9 +339,12 @@ export const listBookingsOverlapping = cache(async (from: string, toExclusive: s
 export async function listControlBookingCandidates(today: string, extraBookingIds: string[] = []) {
   const cutoff = addDaysVN(today, -90);
   const ids = await bookingIdsWhere(
-    or(
-      inArray(t.roomSales.status, [...ACTIVE_SALE_STATUSES]),
-      and(inArray(t.roomSales.status, ["departed", "cancelled", "no_show"]), gte(t.roomSales.checkOut, cutoff)),
+    and(
+      gte(t.roomSales.checkIn, CONTROL_FROM),
+      or(
+        inArray(t.roomSales.status, [...ACTIVE_SALE_STATUSES]),
+        and(inArray(t.roomSales.status, ["departed", "cancelled", "no_show"]), gte(t.roomSales.checkOut, cutoff)),
+      ),
     ),
   );
   return bookingsByIds([...ids, ...extraBookingIds]);

@@ -47,7 +47,7 @@ export default async function ControlPage({
         <p className="text-xs font-semibold uppercase tracking-[0.14em] text-teal">Quản lý</p>
         <h1 className="text-2xl font-bold">Kiểm soát</h1>
         <p className="mt-1 text-sm text-[#5c6665]">
-          Phát hiện lệch tiền và trạng thái booking. Khi còn lỗi, quản lý nhận một push tổng hợp mỗi 30 phút.
+          Chỉ booking nhận phòng từ 01/11/2026. Tháng 9 và tháng 10 không còn trong danh sách. Khi còn lỗi, quản lý nhận một push tổng hợp mỗi 30 phút.
         </p>
       </header>
 

@@ -16,6 +16,8 @@ export const CONTROL_ISSUE_KINDS = [
 ] as const;
 
 export const CONTROL_PUSH_INTERVAL_MS = 30 * 60 * 1000;
+/** Kiểm soát bắt đầu từ booking nhận phòng tháng 11/2026. */
+export const CONTROL_FROM = "2026-11-01";
 
 export type ControlIssueKind = (typeof CONTROL_ISSUE_KINDS)[number];
 
@@ -156,6 +158,18 @@ function splitOtaMoney(booking: ControlBooking) {
   });
 }
 
+function controlCheckIn(booking: ControlBooking) {
+  return [booking.checkIn, ...booking.rooms.map((room) => room.checkIn)]
+    .map((value) => String(value || "").slice(0, 10))
+    .filter((value) => /^\d{4}-\d{2}-\d{2}$/.test(value))
+    .sort()[0] || "";
+}
+
+export function inControlPeriod(booking: ControlBooking) {
+  const checkIn = controlCheckIn(booking);
+  return Boolean(checkIn) && checkIn >= CONTROL_FROM;
+}
+
 function isRecentClosed(booking: ControlBooking, cutoff: string) {
   return booking.rooms.some((room) => room.status === "departed" && room.checkOut >= cutoff);
 }
@@ -174,12 +188,13 @@ export function findControlIssues(
   today = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Ho_Chi_Minh" }).format(now),
 ): ControlIssue[] {
   const issues: ControlIssue[] = [];
+  const watched = bookings.filter(inControlPeriod);
   const cutoff = new Date(`${today}T12:00:00+07:00`);
   cutoff.setDate(cutoff.getDate() - 90);
   const closedCutoff = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Ho_Chi_Minh" }).format(cutoff);
-  const byId = new Map(bookings.map((booking) => [booking.id, booking]));
+  const byId = new Map(watched.map((booking) => [booking.id, booking]));
 
-  for (const booking of bookings) {
+  for (const booking of watched) {
     const active = booking.rooms.some((room) => isActiveSaleStatus(room.status));
     const inhouse = booking.rooms.some((room) => room.status === "inhouse");
     const recentClosed = isRecentClosed(booking, closedCutoff);
@@ -254,7 +269,7 @@ export function findControlIssues(
     }));
   }
 
-  const activeRooms = bookings.flatMap((booking) =>
+  const activeRooms = watched.flatMap((booking) =>
     booking.rooms
       .filter((room) => isActiveSaleStatus(room.status))
       .map((room) => ({ booking, room })),
