@@ -75,6 +75,9 @@ export type ControlBooking = {
   due: number;
   roomTotal?: number | null;
   extrasTotal?: number | null;
+  otaCommissionKind?: string | null;
+  otaCommissionValue?: number | null;
+  otaCommissionPercent?: number | null;
   deposit?: number | null;
   checkinPaid?: number | null;
   checkinMethod?: string | null;
@@ -147,6 +150,9 @@ function splitOtaMoney(booking: ControlBooking) {
     refunded: booking.refundTotal ?? inflow?.refunded,
     guestCollected: inflow?.guestCollected,
     otaCollected: inflow?.otaCollected,
+    otaCommissionKind: booking.otaCommissionKind,
+    otaCommissionValue: booking.otaCommissionValue,
+    otaCommissionPercent: booking.otaCommissionPercent,
   });
 }
 

@@ -68,6 +68,9 @@ export default async function SaleDetailPage({
         refunded: booking.refundTotal ?? inflow?.refunded,
         guestCollected: inflow?.guestCollected,
         otaCollected: inflow?.otaCollected,
+        otaCommissionKind: booking.otaCommissionKind,
+        otaCommissionValue: booking.otaCommissionValue,
+        otaCommissionPercent: booking.otaCommissionPercent,
       })
     : null;
   const checkoutDue = booking

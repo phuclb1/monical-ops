@@ -219,8 +219,11 @@ export default async function SalesRevenuePage({
                           extrasTotal: row.extrasTotal,
                           deposit: row.deposit,
                           refunded: row.refundTotal,
+                          otaCommissionKind: row.otaCommissionKind,
+                          otaCommissionValue: row.otaCommissionValue,
+                          otaCommissionPercent: row.otaCommissionPercent,
                         });
-                        if (!split.extrasTotal) return `Công nợ OTA ${formatVnd(split.otaDue || row.due)}`;
+                        if (!split.extrasTotal) return `Công nợ OTA ${formatVnd(split.roomTotal > 0 ? split.otaDue : row.due)}`;
                         return [
                           `Công nợ OTA ${formatVnd(split.otaDue)}`,
                           split.guestDue > 0 ? `Phụ thu ${formatVnd(split.guestDue)}` : null,

@@ -58,6 +58,9 @@ function dueLabel(row: {
   extrasTotal?: number | null;
   deposit?: number | null;
   refundTotal?: number | null;
+  otaCommissionKind?: string | null;
+  otaCommissionValue?: number | null;
+  otaCommissionPercent?: number | null;
 }) {
   if (!isOtaDebt(row.source, row.otaPaymentMode)) {
     return isOtaSource(row.source) ? `Còn khách thanh toán ${formatVnd(row.due)}` : `Còn ${formatVnd(row.due)}`;
@@ -69,6 +72,9 @@ function dueLabel(row: {
     extrasTotal: row.extrasTotal,
     deposit: row.deposit,
     refunded: row.refundTotal,
+    otaCommissionKind: row.otaCommissionKind,
+    otaCommissionValue: row.otaCommissionValue,
+    otaCommissionPercent: row.otaCommissionPercent,
   });
   if (split.extrasTotal && (split.otaDue > 0 || split.guestDue > 0)) {
     const parts = [
@@ -77,7 +83,7 @@ function dueLabel(row: {
     ].filter(Boolean);
     return parts.join(" · ") || `Công nợ OTA ${formatVnd(0)}`;
   }
-  return `Công nợ OTA ${formatVnd(split.otaDue || row.due)}`;
+  return `Công nợ OTA ${formatVnd(split.roomTotal > 0 ? split.otaDue : row.due)}`;
 }
 
 function invoiceLabel(row: { invoiceRequested?: boolean | null; rooms?: { invoiceRequested?: boolean | null }[] }) {

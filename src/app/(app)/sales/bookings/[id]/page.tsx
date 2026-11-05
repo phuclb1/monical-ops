@@ -81,6 +81,9 @@ export default async function BookingDetailPage({
     refunded: booking.refundTotal ?? inflow?.refunded,
     guestCollected: inflow?.guestCollected,
     otaCollected: inflow?.otaCollected,
+    otaCommissionKind: booking.otaCommissionKind,
+    otaCommissionValue: booking.otaCommissionValue,
+    otaCommissionPercent: booking.otaCommissionPercent,
   });
   const collectDue = otaDebt ? moneySplit.guestDue : booking.due;
   const life = bookingLifecycle(booking);

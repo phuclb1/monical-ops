@@ -120,6 +120,27 @@ test("OTA / walk-in source aliases and booking codes", () => {
     otaMoneySplit({
       source: "agoda",
       otaPaymentMode: "debt",
+      roomTotal: 1_530_000,
+      otaCommissionKind: "amount",
+      otaCommissionValue: 306_000,
+      otaCollected: 1_224_000,
+    }).otaDue,
+    0,
+  );
+  assert.equal(
+    otaMoneySplit({
+      source: "agoda",
+      otaPaymentMode: "debt",
+      roomTotal: 1_000_000,
+      otaCommissionKind: "percent",
+      otaCommissionValue: 18,
+    }).otaDue,
+    820_000,
+  );
+  assert.equal(
+    otaMoneySplit({
+      source: "agoda",
+      otaPaymentMode: "debt",
       roomTotal: 1_000_000,
       extrasTotal: 150_000,
       guestCollected: 150_000,

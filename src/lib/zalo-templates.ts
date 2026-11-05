@@ -248,6 +248,9 @@ type DigestBooking = {
   extrasTotal?: number | null;
   deposit?: number | null;
   refundTotal?: number | null;
+  otaCommissionKind?: string | null;
+  otaCommissionValue?: number | null;
+  otaCommissionPercent?: number | null;
   rooms: DigestRoom[];
 };
 
@@ -270,6 +273,9 @@ export function receptionDigest(bookings: DigestBooking[], date: string) {
       extrasTotal: booking.extrasTotal,
       deposit: booking.deposit,
       refunded: booking.refundTotal,
+      otaCommissionKind: booking.otaCommissionKind,
+      otaCommissionValue: booking.otaCommissionValue,
+      otaCommissionPercent: booking.otaCommissionPercent,
     });
     if (isOtaDebt(booking.source, booking.otaPaymentMode)) due += split.guestDue;
     else due += amount;

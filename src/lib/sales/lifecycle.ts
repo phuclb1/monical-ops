@@ -37,6 +37,9 @@ export type BookingLifeInput = {
   roomTotal?: number | null;
   extrasTotal?: number | null;
   refundTotal?: number | null;
+  otaCommissionKind?: string | null;
+  otaCommissionValue?: number | null;
+  otaCommissionPercent?: number | null;
   transactions?: { kind: string; amount: number }[];
 };
 
@@ -86,6 +89,9 @@ export function bookingLifecycle(booking: BookingLifeInput): BookingLifecycle {
         refunded: booking.refundTotal ?? inflow?.refunded,
         guestCollected: inflow?.guestCollected,
         otaCollected: inflow?.otaCollected,
+        otaCommissionKind: booking.otaCommissionKind,
+        otaCommissionValue: booking.otaCommissionValue,
+        otaCommissionPercent: booking.otaCommissionPercent,
       }).guestCollected > 0
     : collected > 0;
   const active = isActiveSaleStatus(status);

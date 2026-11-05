@@ -1,6 +1,7 @@
 import { SALE_SOURCE_GROUPS } from "../constants";
 import type { SaleOrigin, SaleSource, SaleStatus } from "../types";
 import { ACTIVE_SALE_STATUSES, SALE_SOURCES } from "../types";
+import { commissionAmount } from "./money";
 import { nightlyNetFromLine } from "./quote";
 
 const OTA_SOURCES = new Set<string>(SALE_SOURCE_GROUPS.find((group) => group.label === "OTA")?.values ?? []);
@@ -110,6 +111,9 @@ export type OtaMoneySplitInput = {
   guestCollected?: number | null;
   /** OTA settle inflows */
   otaCollected?: number | null;
+  otaCommissionKind?: string | null;
+  otaCommissionValue?: number | null;
+  otaCommissionPercent?: number | null;
 };
 
 export type OtaMoneySplit = {
@@ -118,7 +122,7 @@ export type OtaMoneySplit = {
   extrasTotal: number;
   collected: number;
   due: number;
-  /** Room amount still owed by OTA partner */
+  /** Room amount still owed by OTA, after commission */
   otaDue: number;
   /** Extras still owed by guest at the hotel (cash / personal / company) */
   guestDue: number;
@@ -126,7 +130,13 @@ export type OtaMoneySplit = {
   otaCollected: number;
 };
 
-/** OTA công nợ: tiền phòng do OTA trả; phụ thu vẫn thu khách tại KS. */
+function otaWithheld(roomTotal: number, input: OtaMoneySplitInput) {
+  const kind = input.otaCommissionKind === "amount" ? "amount" : "percent";
+  const value = input.otaCommissionValue || (kind === "percent" ? input.otaCommissionPercent || 0 : 0);
+  return commissionAmount(roomTotal, kind, value);
+}
+
+/** OTA công nợ: tiền phòng trừ hoa hồng do OTA trả; phụ thu vẫn thu khách tại KS. */
 export function otaMoneySplit(input: OtaMoneySplitInput): OtaMoneySplit {
   const roomTotal = Math.max(0, Math.round(input.roomTotal || 0));
   const extrasTotal = Math.max(0, Math.round(input.extrasTotal || 0));
@@ -160,6 +170,7 @@ export function otaMoneySplit(input: OtaMoneySplitInput): OtaMoneySplit {
 
   const guestPaid = hasKindSplit ? guestCollected : Math.min(collected, extrasTotal);
   const otaPaid = hasKindSplit ? otaCollected : Math.max(0, collected - extrasTotal);
+  const withheld = otaWithheld(roomTotal, input);
 
   return {
     otaDebt: true,
@@ -167,7 +178,7 @@ export function otaMoneySplit(input: OtaMoneySplitInput): OtaMoneySplit {
     extrasTotal,
     collected,
     due,
-    otaDue: Math.max(0, roomTotal - otaPaid),
+    otaDue: Math.max(0, roomTotal - withheld - otaPaid),
     guestDue: Math.max(0, extrasTotal - guestPaid),
     guestCollected: guestPaid,
     otaCollected: otaPaid,

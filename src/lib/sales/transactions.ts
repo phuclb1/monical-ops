@@ -171,6 +171,9 @@ export function canSettleOtaDebt(booking: {
   extrasTotal?: number | null;
   deposit?: number | null;
   refundTotal?: number | null;
+  otaCommissionKind?: string | null;
+  otaCommissionValue?: number | null;
+  otaCommissionPercent?: number | null;
   transactions?: { kind: string; amount: number }[];
   rooms: { status: string }[];
 }) {
@@ -187,6 +190,9 @@ export function canSettleOtaDebt(booking: {
     refunded: booking.refundTotal ?? inflow?.refunded,
     guestCollected: inflow?.guestCollected,
     otaCollected: inflow?.otaCollected,
+    otaCommissionKind: booking.otaCommissionKind,
+    otaCommissionValue: booking.otaCommissionValue,
+    otaCommissionPercent: booking.otaCommissionPercent,
   });
   return split.otaDue > 0;
 }

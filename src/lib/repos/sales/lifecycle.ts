@@ -26,6 +26,9 @@ function bookingOtaSplit(booking: NonNullable<Awaited<ReturnType<typeof getBooki
     refunded: booking.refundTotal ?? inflow?.refunded,
     guestCollected: inflow?.guestCollected,
     otaCollected: inflow?.otaCollected,
+    otaCommissionKind: booking.otaCommissionKind,
+    otaCommissionValue: booking.otaCommissionValue,
+    otaCommissionPercent: booking.otaCommissionPercent,
   });
 }
 
