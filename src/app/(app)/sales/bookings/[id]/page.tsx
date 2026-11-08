@@ -15,6 +15,7 @@ import { BookingLog } from "@/components/booking-log";
 import { BookingLifeChips, BookingLifecycleBar } from "@/components/booking-lifecycle";
 import { Card, Fold } from "@/components/ui";
 import { getSession } from "@/lib/auth";
+import { chartReturnHref, withChartReturn } from "@/lib/chart-return";
 import { PAYMENT_METHOD_LABEL, SALE_ORIGIN_LABEL, SALE_SOURCE_LABEL } from "@/lib/constants";
 import { formatDateLong, todayVN } from "@/lib/datetime";
 import { extraDetail } from "@/lib/extras";
@@ -38,7 +39,7 @@ export default async function BookingDetailPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ error?: string; approval?: string }>;
+  searchParams: Promise<{ error?: string; approval?: string; from?: string }>;
 }) {
   const user = await getSession();
   if (!user) redirect("/login");
@@ -46,7 +47,8 @@ export default async function BookingDetailPage({
   if (!manage && !can(user.role, "viewBookings")) redirect("/more");
   const showPii = can(user.role, "viewGuestPii");
   const { id } = await params;
-  const { error, approval } = await searchParams;
+  const { error, approval, from } = await searchParams;
+  const chartBack = chartReturnHref(from);
   const [booking, rooms, types, busyRanges, extraTypes, logs, approvals] = await Promise.all([
     getBooking(id),
     listRooms(),
@@ -115,8 +117,8 @@ export default async function BookingDetailPage({
     <main className="booking-desk space-y-3 px-3 py-4 md:space-y-4">
       <div>
         <div className="flex items-center justify-between gap-3">
-          <Link href="/sales/bookings" className="inline-flex min-h-11 items-center text-sm font-semibold text-teal">
-            ← Đặt phòng
+          <Link href={chartBack || "/sales/bookings"} className="inline-flex min-h-11 items-center text-sm font-semibold text-teal">
+            {chartBack ? "← Sơ đồ phòng" : "← Đặt phòng"}
           </Link>
           <div className="flex items-center gap-3">
             {manage ? (
@@ -124,7 +126,7 @@ export default async function BookingDetailPage({
                 In xác nhận
               </Link>
             ) : null}
-            <Link href={`/sales?date=${booking.checkIn}`} className="inline-flex min-h-11 items-center text-sm font-semibold text-teal">
+            <Link href={chartBack || `/sales?date=${booking.checkIn}`} className="inline-flex min-h-11 items-center text-sm font-semibold text-teal">
               Sơ đồ
             </Link>
           </div>
@@ -346,7 +348,7 @@ export default async function BookingDetailPage({
               <div className="mt-3 space-y-2 border-t border-line pt-3">
                 <p className="text-xs text-[#5c6665]">Check in và check out nằm trên từng phòng.</p>
                 {[...readyIn, ...staying].map((row) => (
-                  <Link key={row.id} href={`/sales/${row.id}`} className="cta-link w-full">
+                  <Link key={row.id} href={chartBack ? withChartReturn(`/sales/${row.id}`, chartBack) : `/sales/${row.id}`} className="cta-link w-full">
                     P.{row.room?.number || "—"} · Nhận / trả phòng
                   </Link>
                 ))}

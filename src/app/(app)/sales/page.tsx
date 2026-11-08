@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { QueryForm, QuerySubmit } from "@/components/query-form";
 import { Card, Chip, Empty, Field, Stat, TabChip } from "@/components/ui";
 import { getSession } from "@/lib/auth";
+import { withChartReturn } from "@/lib/chart-return";
 import { SALE_SOURCE_LABEL, SALE_STATUS_LABEL } from "@/lib/constants";
 import { addDaysVN, addMonthsVN, formatDayMonth, formatMonthLong, startOfMonthVN, todayVN } from "@/lib/datetime";
 import { maskName } from "@/lib/mask";
@@ -150,6 +151,7 @@ export default async function SalesPage({
     const text = nextQuery.toString();
     return text ? `/sales?${text}` : "/sales";
   };
+  const chart = salesHref({});
   const lastDay = addDaysVN(to, -1);
   const rangeLabel = view === "month" ? formatMonthLong(date) : `${formatDayMonth(from)} – ${formatDayMonth(lastDay)}`;
 
@@ -166,7 +168,7 @@ export default async function SalesPage({
         </div>
         {manage ? (
         <div className="flex flex-col items-end gap-1 md:flex-row md:items-center md:gap-3">
-          <Link href={`/sales/new?date=${today}`} className="cta-link">
+          <Link href={withChartReturn(`/sales/new?date=${today}`, chart)} className="cta-link">
             Bán phòng
           </Link>
           <Link href="/sales/bookings" className="flex min-h-11 items-center text-sm font-semibold text-teal">
@@ -274,7 +276,7 @@ export default async function SalesPage({
             rows={ganttRows}
             compact={view === "month"}
             types={types}
-            back={salesHref({})}
+            back={chart}
             group={group}
             readOnly={!manage}
           />
@@ -304,7 +306,7 @@ export default async function SalesPage({
                 );
                 const className = "flex min-h-14 items-center justify-between gap-2 rounded-xl bg-sand px-3 py-2.5";
                 return openBooking ? (
-                  <Link key={row.id} href={`/sales/bookings/${row.id}`} className={className}>
+                  <Link key={row.id} href={withChartReturn(`/sales/bookings/${row.id}`, chart)} className={className}>
                     {body}
                   </Link>
                 ) : (

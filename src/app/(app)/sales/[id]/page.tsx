@@ -8,6 +8,7 @@ import { BookingRefundPanel } from "@/components/booking-refund";
 import { PendingSubmit } from "@/components/pending-submit";
 import { Card, Chip } from "@/components/ui";
 import { getSession } from "@/lib/auth";
+import { chartReturnHref, withChartReturn } from "@/lib/chart-return";
 import { PAYMENT_METHOD_LABEL, SALE_ORIGIN_LABEL, SALE_SOURCE_LABEL, SALE_STATUS_LABEL } from "@/lib/constants";
 import { formatDateLong, formatDateTime, todayVN } from "@/lib/datetime";
 import { can } from "@/lib/permissions";
@@ -28,13 +29,14 @@ export default async function SaleDetailPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ error?: string }>;
+  searchParams: Promise<{ error?: string; from?: string }>;
 }) {
   const user = await getSession();
   if (!user) redirect("/login");
   if (!can(user.role, "manageSales")) redirect("/more");
   const { id } = await params;
-  const { error } = await searchParams;
+  const { error, from } = await searchParams;
+  const chartBack = chartReturnHref(from);
   const [sale, rooms] = await Promise.all([getRoomSale(id), listRooms()]);
   if (!sale) notFound();
   const booking = await getBooking(sale.bookingKey);
@@ -89,10 +91,10 @@ export default async function SaleDetailPage({
   return (
     <main className="space-y-3 px-3 py-4">
       <div>
-        <Link href={`/sales?date=${sale.checkIn}`} className="inline-flex min-h-11 items-center text-sm font-semibold text-teal">
+        <Link href={chartBack || `/sales?date=${sale.checkIn}`} className="inline-flex min-h-11 items-center text-sm font-semibold text-teal">
           ← Sơ đồ bán phòng
         </Link>
-        <Link href={`/sales/bookings/${sale.bookingKey}`} className="ml-3 inline-flex min-h-11 items-center text-sm font-semibold text-teal">
+        <Link href={chartBack ? withChartReturn(`/sales/bookings/${sale.bookingKey}`, chartBack) : `/sales/bookings/${sale.bookingKey}`} className="ml-3 inline-flex min-h-11 items-center text-sm font-semibold text-teal">
           Đặt phòng
         </Link>
         <div className="mt-2 flex items-start justify-between gap-3">
@@ -209,7 +211,7 @@ export default async function SaleDetailPage({
             {group.map((row) => (
               <Link
                 key={row.id}
-                href={`/sales/${row.id}`}
+                href={chartBack ? withChartReturn(`/sales/${row.id}`, chartBack) : `/sales/${row.id}`}
                 aria-current={row.id === sale.id ? "page" : undefined}
                 className={`flex min-h-12 items-center justify-between gap-2 rounded-xl px-3 py-2 text-sm ${row.id === sale.id ? "bg-[#e8f3f2]" : "bg-sand"}`}
               >
@@ -293,7 +295,7 @@ export default async function SaleDetailPage({
       ) : null}
 
       {active ? (
-        <Link href={`/sales/bookings/${sale.bookingKey}`} className="cta-link w-full">
+        <Link href={chartBack ? withChartReturn(`/sales/bookings/${sale.bookingKey}`, chartBack) : `/sales/bookings/${sale.bookingKey}`} className="cta-link w-full">
           {otaDebt ? "Sửa phòng · chiết khấu" : "Sửa phòng · cọc · chiết khấu"}
         </Link>
       ) : null}

@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useRef, useState, useTransition, type PointerEvent as ReactPointerEvent } from "react";
 import { moveGanttSaleAction } from "@/actions/sales";
 import { ParkingIcons } from "@/components/parking-icons";
+import { withChartReturn } from "@/lib/chart-return";
 import { WEEKDAYS, addDaysVN, formatDateNumeric, weekdayISO } from "@/lib/datetime";
 import { bookingKey, catalogRate, isOtaSource, nightsBetween, rateForRoomMove, roomMoveKind } from "@/lib/sales";
 import { GanttUpgradeDialog } from "./dialog";
@@ -40,6 +41,10 @@ export function RoomGantt({
 
   function roomOf(id: string) {
     return rows.find((row) => row.room.id === id)?.room;
+  }
+
+  function bookingPath(sale: GanttSale) {
+    return withChartReturn(`/sales/bookings/${bookingKey(sale)}`, back);
   }
 
   function hitAt(clientX: number, clientY: number): Hover | null {
@@ -147,7 +152,7 @@ export function RoomGantt({
     const next = drag;
     setDrag(null);
     if (!next.moved) {
-      router.push(`/sales/bookings/${bookingKey(next.sale)}`);
+      router.push(bookingPath(next.sale));
       return;
     }
     if (next.hover) applyDrop(next.sale, next.fromRoomId, next.nights, next.hover);
@@ -224,7 +229,7 @@ export function RoomGantt({
                           return (
                             <a
                               key={day}
-                              href={`/sales/new?room=${row.room.id}&date=${day}`}
+                              href={withChartReturn(`/sales/new?room=${row.room.id}&date=${day}`, back)}
                               className={openClass}
                               title={`Bán P.${row.room.number} · ${day}`}
                             />
@@ -254,7 +259,7 @@ export function RoomGantt({
                             onPointerUp={readOnly ? undefined : onBarUp}
                             onPointerCancel={readOnly ? undefined : () => setDrag(null)}
                             onClick={() => {
-                              if (readOnly || checkedOut) router.push(`/sales/bookings/${bookingKey(bar.sale)}`);
+                              if (readOnly || checkedOut) router.push(bookingPath(bar.sale));
                             }}
                             disabled={pending}
                           >

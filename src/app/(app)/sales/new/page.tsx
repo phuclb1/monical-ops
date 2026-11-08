@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { createSaleAction } from "@/actions/sales";
 import { SaleForm } from "@/components/sale-form";
 import { getSession } from "@/lib/auth";
+import { chartReturnHref } from "@/lib/chart-return";
 import { defaultCheckout } from "@/lib/sales";
 import { todayVN } from "@/lib/datetime";
 import { can } from "@/lib/permissions";
@@ -11,12 +12,13 @@ import { listRoomBusyRanges, listRooms, listRoomTypes, listSaleExtraTypes } from
 export default async function NewSalePage({
   searchParams,
 }: {
-  searchParams: Promise<{ room?: string; date?: string; error?: string }>;
+  searchParams: Promise<{ room?: string; date?: string; error?: string; from?: string }>;
 }) {
   const user = await getSession();
   if (!user) redirect("/login");
   if (!can(user.role, "manageSales")) redirect("/more");
-  const { date: rawDate, error } = await searchParams;
+  const { date: rawDate, error, from } = await searchParams;
+  const chartBack = chartReturnHref(from);
   const today = todayVN();
   const date = rawDate && /^\d{4}-\d{2}-\d{2}$/.test(rawDate) ? rawDate : today;
   const [rooms, types, busy, extraTypes] = await Promise.all([
@@ -32,7 +34,7 @@ export default async function NewSalePage({
       <div className="flex items-start justify-between gap-3 md:items-center">
         <div>
           <div className="flex flex-wrap items-center gap-x-3">
-            <Link href={`/sales?date=${date}`} className="inline-flex min-h-11 items-center text-sm font-semibold text-teal">
+            <Link href={chartBack || `/sales?date=${date}`} className="inline-flex min-h-11 items-center text-sm font-semibold text-teal">
               ← Sơ đồ bán phòng
             </Link>
             <Link href="/sales/bookings" className="inline-flex min-h-11 items-center text-sm font-semibold text-teal">
