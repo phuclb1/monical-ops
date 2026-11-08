@@ -55,7 +55,18 @@ type BookingMoney = {
   otaCommissionPercent?: number | null;
   otaCommissionKind?: string | null;
   otaCommissionValue?: number | null;
+  roomTotal?: number | null;
+  extrasTotal?: number | null;
 };
+
+function commissionBase(row: BookingMoney) {
+  const extras = Math.max(0, Math.round(Number(row.extrasTotal) || 0));
+  if (row.roomTotal != null && Number.isFinite(Number(row.roomTotal))) {
+    const room = Math.max(0, Math.round(Number(row.roomTotal) || 0));
+    if (room > 0 || extras > 0) return room;
+  }
+  return Math.max(0, Math.round(row.total || 0) - extras);
+}
 
 /** Hoa hồng quản lý kênh OTA: 5% doanh thu OTA net sau hoa hồng sàn. */
 export const OTA_MGMT_COMMISSION_RATE = 0.05;
@@ -66,7 +77,7 @@ function feeOf(row: BookingMoney) {
   if (!isOtaSource(row.source)) return 0;
   const kind = row.otaCommissionKind === "amount" ? "amount" : "percent";
   const value = row.otaCommissionValue || (kind === "percent" ? row.otaCommissionPercent || 0 : 0);
-  return commissionAmount(row.total, kind, value);
+  return commissionAmount(commissionBase(row), kind, value);
 }
 
 export type BookingRevenuePnl = {

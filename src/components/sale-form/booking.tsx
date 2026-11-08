@@ -195,8 +195,8 @@ export function BookingForm({
   const bookingTotal = booked.total + extrasTotal;
   const commissionAmount = ota
     ? commissionKind === "amount"
-      ? Math.min(bookingTotal, commissionValue)
-      : Math.round(bookingTotal * commissionValue / 100)
+      ? Math.min(booked.total, commissionValue)
+      : Math.round(booked.total * commissionValue / 100)
     : 0;
   const commissionLabel = commissionKind === "amount" ? "Hoa hồng" : `Hoa hồng ${commissionValue}%`;
   const savedCommissionKind = defaults.otaCommissionKind === "amount" ? "amount" : "percent";
@@ -368,7 +368,7 @@ export function BookingForm({
             </select>
           </Field>
           <OtaCommissionFields kind={commissionKind} value={commission} onKind={setCommissionKind} onValue={setCommission} />
-          <p className="-mt-1 text-xs text-[#5c6665]">Hoa hồng phải trả đối tác: {formatVnd(commissionAmount)}</p>
+          <p className="-mt-1 text-xs text-[#5c6665]">Hoa hồng phải trả đối tác, tính trên tiền phòng: {formatVnd(commissionAmount)}</p>
         </>
       ) : (
         <>

@@ -137,7 +137,7 @@ function issue(
     detail,
     amount: extra.amount,
     date: extra.date,
-    manualResolve: extra.manualResolve ?? false,
+    manualResolve: extra.manualResolve ?? true,
   };
 }
 
@@ -238,7 +238,6 @@ export function findControlIssues(
           fingerprint: `bad_deposit_method:${booking.id}:${tx.id}`,
           amount: tx.amount,
           date: tx.paidAt || undefined,
-          manualResolve: true,
         }));
       }
     } else {
@@ -247,7 +246,6 @@ export function findControlIssues(
         issues.push(issue(booking, "bad_deposit_method", `Cọc cũ ${hold.toLocaleString("vi-VN")}₫ không qua CK công ty`, {
           fingerprint: `bad_deposit_method:${booking.id}:legacy`,
           amount: hold,
-          manualResolve: true,
         }));
       }
     }

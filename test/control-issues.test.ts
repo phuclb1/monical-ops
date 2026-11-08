@@ -69,6 +69,7 @@ test("detects money and lifecycle issues", () => {
     "zero_total",
     "over_refund",
   ]));
+  assert.equal(rows.every((row) => row.manualResolve), true);
 });
 
 test("detects overdue arrival and pending approval", () => {

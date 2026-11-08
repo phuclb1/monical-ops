@@ -39,7 +39,7 @@ export default async function OwnerRevenuePage({
           Theo ngày nhận. Ròng về KS = tổng − VAT − các hoa hồng.
         </p>
         <p className="hidden text-sm text-[#5c6665] md:block">
-          Theo ngày nhận trong kỳ, booking không hủy / no-show. Tổng doanh thu là khoản thu từ booking. VAT 8% tách từ giá đã gồm thuế. Hoa hồng sàn theo từng booking OTA; hoa hồng quản lý OTA 5% trên OTA net; hoa hồng tổng quản lý (AN) 6% tổng doanh thu. Doanh thu ròng về khách sạn = tổng − VAT − các khoản hoa hồng.
+          Theo ngày nhận trong kỳ, booking không hủy / no-show. Tổng doanh thu là khoản thu từ booking. VAT 8% tách từ giá đã gồm thuế. Hoa hồng sàn OTA tính trên tiền phòng, không gồm phụ thu; hoa hồng quản lý OTA 5% trên OTA net; hoa hồng tổng quản lý (AN) 6% tổng doanh thu. Doanh thu ròng về khách sạn = tổng − VAT − các khoản hoa hồng.
         </p>
       </div>
 

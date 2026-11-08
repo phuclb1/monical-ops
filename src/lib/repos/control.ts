@@ -30,11 +30,15 @@ async function issueStateMap() {
 }
 
 function visibleIssues(issues: ControlIssue[], states: Awaited<ReturnType<typeof issueStateMap>>) {
-  return issues.filter((issue) => !(issue.manualResolve && states.get(issue.fingerprint)?.resolvedAt));
+  return issues.filter((issue) => {
+    const state = states.get(issue.fingerprint);
+    return !(issue.manualResolve && state?.resolvedBy && state.resolvedAt);
+  });
 }
 
 export async function listControlIssues(now = new Date()) {
-  const [issues, states] = await Promise.all([loadCurrentControlIssues(now), issueStateMap()]);
+  const issues = await loadCurrentControlIssues(now);
+  const states = await syncControlIssueStates(issues, now.toISOString());
   return visibleIssues(issues, states);
 }
 
@@ -43,11 +47,16 @@ async function syncControlIssueStates(issues: ControlIssue[], at: string) {
   const states = await issueStateMap();
   const current = new Set(issues.map((issue) => issue.fingerprint));
   for (const state of states.values()) {
-    if (state.resolvedAt || current.has(state.fingerprint)) continue;
-    await db
-      .update(t.controlIssueStates)
-      .set({ resolvedAt: at, resolvedBy: null, resolveNote: null })
-      .where(eq(t.controlIssueStates.fingerprint, state.fingerprint));
+    if (current.has(state.fingerprint)) continue;
+    if (!state.resolvedAt || state.resolvedBy) {
+      await db
+        .update(t.controlIssueStates)
+        .set({ resolvedAt: at, resolvedBy: null, resolveNote: null })
+        .where(eq(t.controlIssueStates.fingerprint, state.fingerprint));
+      state.resolvedAt = at;
+      state.resolvedBy = null;
+      state.resolveNote = null;
+    }
   }
 
   for (const issue of issues) {
@@ -65,7 +74,7 @@ async function syncControlIssueStates(issues: ControlIssue[], at: string) {
       });
       continue;
     }
-    const keepManualResolution = issue.manualResolve && Boolean(prior.resolvedAt);
+    const keepManualResolution = issue.manualResolve && Boolean(prior.resolvedBy && prior.resolvedAt);
     await db
       .update(t.controlIssueStates)
       .set({

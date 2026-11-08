@@ -183,10 +183,10 @@ export default async function BookingDetailPage({
             ) : null}
             {ota ? (
               <p className="mt-1 text-sm text-[#c47b12]">
-                Hoa hồng{" "}
+                Hoa hồng trên tiền phòng{" "}
                 {booking.otaCommissionKind === "amount"
-                  ? formatVnd(commissionAmount(booking.total, "amount", booking.otaCommissionValue))
-                  : `${booking.otaCommissionValue || booking.otaCommissionPercent || 0}% · ${formatVnd(commissionAmount(booking.total, "percent", booking.otaCommissionValue || booking.otaCommissionPercent))}`}
+                  ? formatVnd(commissionAmount(booking.roomTotal, "amount", booking.otaCommissionValue))
+                  : `${booking.otaCommissionValue || booking.otaCommissionPercent || 0}% · ${formatVnd(commissionAmount(booking.roomTotal, "percent", booking.otaCommissionValue || booking.otaCommissionPercent))}`}
               </p>
             ) : null}
             {otaDebt ? null : <p className="mt-1 text-sm">{ota ? "Phải thu khi check-in" : "Phải thu"} {formatVnd(booking.total)}</p>}

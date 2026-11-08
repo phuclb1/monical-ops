@@ -47,7 +47,7 @@ export default async function ControlPage({
         <p className="text-xs font-semibold uppercase tracking-[0.14em] text-teal">Quản lý</p>
         <h1 className="text-2xl font-bold">Kiểm soát</h1>
         <p className="mt-1 text-sm text-[#5c6665]">
-          Chỉ booking nhận phòng từ 01/11/2026. Tháng 9 và tháng 10 không còn trong danh sách. Khi còn lỗi, quản lý nhận một push tổng hợp mỗi 30 phút.
+          Chỉ booking nhận phòng từ 01/11/2026. Mỗi cảnh báo hết theo một trong hai cách: sửa booking để tự hết, hoặc ghi nhận đã xử lý kèm lý do. Khi còn lỗi, quản lý nhận một push tổng hợp mỗi 30 phút.
         </p>
       </header>
 
@@ -100,28 +100,31 @@ export default async function ControlPage({
                     </p>
                   </div>
                   <Link href={`/sales/bookings/${issue.bookingId}`} className="shrink-0 text-xs font-semibold text-teal">
-                    Mở booking
+                    Sửa booking
                   </Link>
                 </div>
 
-                {issue.manualResolve ? (
-                  <form action={resolveControlIssueAction} className="mt-3 flex flex-col gap-2 border-t border-line pt-3 sm:flex-row">
-                    <input type="hidden" name="fingerprint" value={issue.fingerprint} />
-                    <input type="hidden" name="kind" value={activeKind || ""} />
-                    <input
-                      name="note"
-                      required
-                      minLength={3}
-                      maxLength={500}
-                      placeholder="Ghi chú cách đã xử lý..."
-                      aria-label="Ghi chú xử lý"
-                      className="min-w-0 flex-1"
-                    />
-                    <PendingSubmit variant="ghost" pendingLabel="Đang lưu..." className="sm:min-h-10">
-                      Đã xử lý
-                    </PendingSubmit>
-                  </form>
-                ) : null}
+                <div className="mt-3 space-y-2 border-t border-line pt-3">
+                  <p className="text-xs text-[#5c6665]">Sửa booking để cảnh báo tự hết khi dữ liệu đúng.</p>
+                  {issue.manualResolve ? (
+                    <form action={resolveControlIssueAction} className="flex flex-col gap-2 sm:flex-row">
+                      <input type="hidden" name="fingerprint" value={issue.fingerprint} />
+                      <input type="hidden" name="kind" value={activeKind || ""} />
+                      <input
+                        name="note"
+                        required
+                        minLength={3}
+                        maxLength={500}
+                        placeholder="Lý do đã xử lý thủ công..."
+                        aria-label="Ghi chú xử lý"
+                        className="min-w-0 flex-1"
+                      />
+                      <PendingSubmit variant="ghost" pendingLabel="Đang lưu..." className="sm:min-h-10">
+                        Đã xử lý
+                      </PendingSubmit>
+                    </form>
+                  ) : null}
+                </div>
               </article>
             ))}
           </div>

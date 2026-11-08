@@ -9,6 +9,8 @@ function row(partial: {
   checkOut: string;
   status: string;
   total?: number;
+  roomTotal?: number;
+  extrasTotal?: number;
   due?: number;
   source?: string;
   invoiceRequested?: boolean;
@@ -29,6 +31,8 @@ function row(partial: {
     checkOut: partial.checkOut,
     status: partial.status,
     total: partial.total ?? 1_000_000,
+    roomTotal: partial.roomTotal,
+    extrasTotal: partial.extrasTotal,
     due: partial.due ?? 0,
     deposit: (partial.cashPaid || 0) + (partial.transferPaid || 0) + (partial.companyPaid || 0),
     cashPaid: partial.cashPaid,
@@ -149,6 +153,30 @@ test("revenue is recognized on the check-in date when the booking is not cancell
     [100, 200, 300],
   );
   assert.equal(report.recognizedMoney.total, 600);
+});
+
+test("OTA commission uses the room charge and leaves surcharges out", () => {
+  const report = roomRevenueReport(
+    [
+      row({
+        checkIn: "2026-10-28",
+        checkOut: "2026-10-31",
+        status: "departed",
+        total: 2_720_000,
+        roomTotal: 2_580_000,
+        extrasTotal: 140_000,
+        source: "booking",
+        otaPaymentMode: "hotel",
+        otaCommissionPercent: 15,
+      }),
+    ],
+    "2026-10-01",
+    "2026-11-01",
+    "2026-11-08",
+  );
+
+  assert.equal(report.pnl.total, 2_720_000);
+  assert.equal(report.pnl.platformCommission, 387_000);
 });
 
 test("recognized month splits direct collections and OTA after commission", () => {

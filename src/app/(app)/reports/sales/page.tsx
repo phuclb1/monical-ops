@@ -77,10 +77,10 @@ export default async function SalesRevenuePage({
         <div>
           <h1 className="text-xl font-bold">Báo cáo doanh thu</h1>
           <p className="text-xs text-[#5c6665] md:hidden">
-            Theo ngày nhận. Ròng về KS = tổng − VAT − hoa hồng sàn − HH QL OTA 5% − HH AN 6%.
+            Theo ngày nhận. Hoa hồng sàn tính trên tiền phòng. Ròng về KS = tổng − VAT − hoa hồng sàn − HH QL OTA 5% − HH AN 6%.
           </p>
           <p className="hidden text-sm text-[#5c6665] md:block">
-            Theo ngày nhận trong kỳ, booking không hủy / no-show. Tổng doanh thu là khoản thu từ booking (doanh thu thuần). Giá đã gồm VAT 8%. Hoa hồng sàn OTA cộng theo từng booking. Doanh thu OTA net = OTA − hoa hồng sàn; hoa hồng quản lý OTA = 5% khoản đó; hoa hồng tổng quản lý (AN) = 6% tổng doanh thu. Doanh thu ròng về khách sạn = tổng − VAT − hoa hồng sàn − HH quản lý OTA − HH AN.
+            Theo ngày nhận trong kỳ, booking không hủy / no-show. Tổng doanh thu là khoản thu từ booking (doanh thu thuần). Giá đã gồm VAT 8%. Hoa hồng sàn OTA tính trên tiền phòng, không gồm phụ thu. Doanh thu OTA net = OTA − hoa hồng sàn; hoa hồng quản lý OTA = 5% khoản đó; hoa hồng tổng quản lý (AN) = 6% tổng doanh thu. Doanh thu ròng về khách sạn = tổng − VAT − hoa hồng sàn − HH quản lý OTA − HH AN.
           </p>
         </div>
       </div>
