@@ -13,6 +13,11 @@ export type BookingDraft = {
   adults: number;
   children: number;
   rate: number;
+  total: number;
+  nightLines: { date: string; amount: number }[];
+  otaTotal: number;
+  commission: number;
+  commissionKind: "amount" | "percent";
   pmsCode: string;
   notes: string;
   breakfast: boolean;
@@ -64,20 +69,30 @@ export function extractBooking(mail: Mail): BookingDraft | null {
   const roomType = lines.find((line) => /^(standard|deluxe|superior|suite|villa)\b/i.test(line)) || "";
   const adults = Number(mail.text.match(/Người lớn\s+(\d+)/)?.[1] || mail.text.match(/(\d+)\s+khách/)?.[1] || 1);
   const children = Number(mail.text.match(/Trẻ em\s+(\d+)/)?.[1] || 0);
-  const rate = money(mail.text.match(/Tổng tiền:\s*([^\n]+)/)?.[1] || "");
+  const checkIn = dates[0] || "";
+  const checkOut = dates[1] || "";
+  const nightLines = nightlyPrices(lines);
+  const total = labeledMoney(lines, "Tổng tiền") || labeledMoney(lines, "Tổng tạm tính");
+  const priced = roomPrice(nightLines, labeledMoney(lines, "Giá đêm") || labeledMoney(lines, "Giá phòng"), total, checkIn, checkOut, mail.text);
+  const commission = labeledCommission(lines);
   return {
     id: "",
     guestName: partyIndex >= 0 ? lines[partyIndex + 1] || "" : "",
     guestEmail,
     guestPhone: "",
     source: channel(emailIndex >= 0 ? lines[emailIndex + 1] || "" : mail.subject),
-    checkIn: dates[0] || "",
-    checkOut: dates[1] || "",
+    checkIn,
+    checkOut,
     roomType,
     roomNumber: "",
     adults: Number.isFinite(adults) && adults > 0 ? adults : 1,
     children: Number.isFinite(children) && children > 0 ? children : 0,
-    rate,
+    rate: priced.rate,
+    total: priced.total,
+    nightLines,
+    otaTotal: priced.otaTotal,
+    commission: commission.value,
+    commissionKind: commission.kind,
     pmsCode: code,
     notes: [benefits && `Benefits: ${benefits}`, requests && `Requests: ${requests}`, paymentNote && `Thu: ${paymentNote}`]
       .filter(Boolean)
@@ -104,7 +119,7 @@ export async function extractBookingWithModel(mail: Mail, apiKey: string, fallba
         {
           role: "system",
           content:
-            "Trích booking khách sạn từ email. Chỉ trả JSON với các khóa: isNewBooking, guestName, guestEmail, guestPhone, source, checkIn, checkOut, roomType, adults, children, rate, pmsCode, breakfast, paymentNote, notes, statusLabel. checkIn và checkOut là YYYY-MM-DD. rate là số VND, không có dấu chấm. source là agoda, booking, traveloka, expedia, airbnb, ezcloud hoặc ota. isNewBooking là true khi đây là đặt phòng mới.",
+            "Trích booking khách sạn từ email. Chỉ trả JSON với các khóa: isNewBooking, guestName, guestEmail, guestPhone, source, checkIn, checkOut, roomType, adults, children, nightlyRate, total, commission, commissionKind, pmsCode, breakfast, paymentNote, notes, statusLabel. checkIn và checkOut là YYYY-MM-DD. nightlyRate là giá một đêm (VND, số nguyên), không phải tổng cả kỳ. total là tổng tiền phòng. commission là hoa hồng. commissionKind là amount hoặc percent. source là agoda, booking, traveloka, expedia, airbnb, ezcloud hoặc ota. isNewBooking là true khi đây là đặt phòng mới.",
         },
         { role: "user", content: `Tiêu đề: ${mail.subject}\n\n${mail.text.slice(0, 6000)}` },
       ],
@@ -132,7 +147,11 @@ export async function extractBookingWithModel(mail: Mail, apiKey: string, fallba
     roomType: text(parsed.roomType) || base.roomType,
     adults: numberOr(parsed.adults, base.adults || 1),
     children: numberOr(parsed.children, base.children),
-    rate: numberOr(parsed.rate, base.rate),
+    rate: base.rate || numberOr(parsed.nightlyRate, numberOr(parsed.rate, 0)),
+    total: base.total || numberOr(parsed.total, 0),
+    commission: base.commission || numberOr(parsed.commission, 0),
+    commissionKind: base.commission ? base.commissionKind : parsed.commissionKind === "percent" ? "percent" : "amount",
+    otaTotal: base.otaTotal || numberOr(parsed.total, 0),
     pmsCode: text(parsed.pmsCode) || base.pmsCode,
     notes: text(parsed.notes) || base.notes,
     breakfast: typeof parsed.breakfast === "boolean" ? parsed.breakfast : base.breakfast,
@@ -281,6 +300,9 @@ export async function createOpsBooking(token: string, draft: BookingDraft) {
       notes: draft.notes,
       deposit: 0,
       paymentMethod: "cash",
+      otaTotal: draft.otaTotal || undefined,
+      otaCommissionKind: draft.commission ? draft.commissionKind : undefined,
+      otaCommissionValue: draft.commission || undefined,
       rooms: [
         {
           roomNumber: draft.roomNumber,
@@ -325,7 +347,10 @@ function draftText(draft: BookingDraft) {
     `Hạng: ${draft.roomType || "(chưa rõ)"}`,
     draft.roomNumber ? `Phòng: ${draft.roomNumber}` : "",
     `Khách ở: ${draft.adults} người lớn, ${draft.children} trẻ em`,
-    draft.rate ? `Tổng: ${formatVnd(draft.rate)}` : "",
+    ...(draft.nightLines || []).map((row) => `${row.date}: ${formatVnd(row.amount)}`),
+    draft.rate ? `Giá/đêm: ${formatVnd(draft.rate)}` : "",
+    draft.total ? `Tổng: ${formatVnd(draft.total)}` : "",
+    draft.commission ? `Hoa hồng: ${draft.commissionKind === "percent" ? `${draft.commission}%` : formatVnd(draft.commission)}` : "",
     draft.paymentNote ? `Thu: ${draft.paymentNote}` : "",
     draft.breakfast ? "Ăn sáng: có" : "",
   ]
@@ -347,6 +372,11 @@ function emptyDraft(): BookingDraft {
     adults: 1,
     children: 0,
     rate: 0,
+    total: 0,
+    nightLines: [],
+    otaTotal: 0,
+    commission: 0,
+    commissionKind: "amount",
     pmsCode: "",
     notes: "",
     breakfast: false,
@@ -381,6 +411,82 @@ function channel(value: string) {
   if (compact.includes("airbnb")) return "airbnb";
   if (compact.includes("ezcloud")) return "ezcloud";
   return "ota";
+}
+
+function nightlyPrices(lines: string[]) {
+  const rows: { date: string; amount: number }[] = [];
+  for (let index = 0; index < lines.length; index += 1) {
+    const match = lines[index].match(/^(\d{1,2})\s+tháng\s+(\d{1,2}),?\s+(\d{4})\b/i);
+    if (!match || lines[index].includes(" - ")) continue;
+    const amount = money(lines[index + 1] || "");
+    if (!amount || !/vnd|đ/i.test(lines[index + 1] || "")) continue;
+    rows.push({ date: isoDate(Number(match[3]), Number(match[2]), Number(match[1])), amount });
+  }
+  return rows;
+}
+
+function roomPrice(
+  nightLines: { date: string; amount: number }[],
+  labeledNight: number,
+  total: number,
+  checkIn: string,
+  checkOut: string,
+  text: string,
+) {
+  const stay = stayNights(checkIn, checkOut) || Number(text.match(/(\d+)\s+đêm/i)?.[1] || 0);
+  if (nightLines.length > 1 && new Set(nightLines.map((row) => row.amount)).size > 1) {
+    const sum = nightLines.reduce((sum, row) => sum + row.amount, 0);
+    return { rate: splitNightly(sum, nightLines.length), total: total || sum, otaTotal: sum };
+  }
+  if (nightLines.length) {
+    const rate = nightLines[0].amount;
+    const span = Math.max(nightLines.length, stay || 1);
+    return { rate, total: total || rate * span, otaTotal: rate * span };
+  }
+  if (labeledNight) {
+    const span = Math.max(stay, 1);
+    return { rate: labeledNight, total: total || labeledNight * span, otaTotal: labeledNight * span };
+  }
+  const span = Math.max(stay, 1);
+  return { rate: total ? splitNightly(total, span) : 0, total, otaTotal: total };
+}
+
+function labeledMoney(lines: string[], label: string) {
+  const pattern = new RegExp(`^${label}\\s*:?\\s*(.*)$`, "i");
+  for (let index = 0; index < lines.length; index += 1) {
+    const match = lines[index].match(pattern);
+    if (!match) continue;
+    return money(match[1] || "") || money(lines[index + 1] || "");
+  }
+  return 0;
+}
+
+function labeledCommission(lines: string[]) {
+  const pattern = /^Hoa hồng\s*:?\s*(.*)$/i;
+  for (let index = 0; index < lines.length; index += 1) {
+    const match = lines[index].match(pattern);
+    if (!match) continue;
+    const raw = (match[1] || lines[index + 1] || "").trim();
+    if (raw.includes("%")) {
+      const value = Math.min(100, Math.max(0, Math.round(Number(raw.replace("%", "").replace(",", ".")) || 0)));
+      return { kind: "percent" as const, value };
+    }
+    return { kind: "amount" as const, value: money(raw) };
+  }
+  return { kind: "amount" as const, value: 0 };
+}
+
+function stayNights(checkIn: string, checkOut: string) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(checkIn) || !/^\d{4}-\d{2}-\d{2}$/.test(checkOut)) return 0;
+  const start = Date.parse(`${checkIn}T00:00:00Z`);
+  const end = Date.parse(`${checkOut}T00:00:00Z`);
+  if (!Number.isFinite(start) || !Number.isFinite(end) || end <= start) return 0;
+  return Math.round((end - start) / 86_400_000);
+}
+
+function splitNightly(total: number, nights: number) {
+  if (nights <= 1) return total;
+  return Math.floor(total / nights);
 }
 
 function money(value: string) {

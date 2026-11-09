@@ -48,6 +48,23 @@ test("open API parse: số phòng, alias ngày, mặc định nguồn", () => {
   });
   assert.equal(ez.source, "ezcloud");
   assert.equal(ez.rooms[0]?.breakfast, false);
+
+  const priced = parseOpenBookingCreate({
+    guestName: "C",
+    origin: "ezcloud",
+    source: "agoda",
+    checkIn: "2026-11-08",
+    checkOut: "2026-11-09",
+    pmsCode: "EZ-2",
+    rooms: [{ roomNumber: "205", rate: 813000 }],
+    otaCommissionKind: "amount",
+    otaCommissionValue: "162.600",
+    otaTotal: 813000,
+  });
+  assert.equal(priced.otaCommissionKind, "amount");
+  assert.equal(priced.otaCommissionValue, 162600);
+  assert.equal(priced.otaTotal, 813000);
+  assert.equal(priced.rooms[0]?.rate, 813000);
 });
 
 test("open API parse từ chối thiếu tên / phòng / ngày", () => {

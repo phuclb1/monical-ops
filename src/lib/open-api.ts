@@ -247,6 +247,9 @@ export type OpenBookingCreateDraft = {
   invoiceRequested: boolean;
   checkinNow: boolean;
   rooms: OpenBookingRoomDraft[];
+  otaCommissionKind?: "percent" | "amount";
+  otaCommissionValue?: number;
+  otaTotal?: number;
 };
 
 export function parseOpenBookingCreate(body: unknown): OpenBookingCreateDraft {
@@ -262,6 +265,8 @@ export function parseOpenBookingCreate(body: unknown): OpenBookingCreateDraft {
   const source = sourceRaw ? parseSaleSource(sourceRaw) : origin === "ezcloud" ? "ezcloud" : "walk_in";
   const rooms = collectRoomDrafts(record, checkIn, checkOut);
   if (!rooms.length) throw new Error("Chọn phòng");
+  const commission = parseCommission(record);
+  const otaTotal = record.otaTotal == null || record.otaTotal === "" ? undefined : moneyOf(record.otaTotal);
   return {
     guestName,
     guestPhone: text(record.guestPhone),
@@ -276,6 +281,8 @@ export function parseOpenBookingCreate(body: unknown): OpenBookingCreateDraft {
     invoiceRequested: Boolean(record.invoiceRequested),
     checkinNow: Boolean(record.checkinNow),
     rooms,
+    ...commission,
+    ...(otaTotal ? { otaTotal } : {}),
   };
 }
 
@@ -322,7 +329,22 @@ export async function openSaleInputFromDraft(draft: OpenBookingCreateDraft): Pro
     checkinNow: draft.checkinNow,
     pmsCode: draft.pmsCode,
     notes: draft.notes,
+    ...(draft.otaCommissionValue ? { otaCommissionKind: draft.otaCommissionKind, otaCommissionValue: draft.otaCommissionValue } : {}),
+    ...(draft.otaTotal ? { otaTotal: draft.otaTotal } : {}),
   };
+}
+
+function parseCommission(record: Record<string, unknown>) {
+  const raw = record.otaCommissionValue ?? record.commission;
+  if (raw == null || raw === "") return {};
+  const kindText = text(record.otaCommissionKind || record.commissionKind).toLowerCase();
+  const asText = String(raw);
+  const kind = kindText === "percent" || asText.includes("%") ? "percent" : "amount";
+  const value = kind === "percent"
+    ? Math.min(100, Math.max(0, Math.round(Number(asText.replace("%", "").replace(",", ".")) || 0)))
+    : moneyOf(raw);
+  if (!value) return {};
+  return { otaCommissionKind: kind as "percent" | "amount", otaCommissionValue: value };
 }
 
 function collectRoomDrafts(record: Record<string, unknown>, checkIn: string, checkOut: string): OpenBookingRoomDraft[] {
