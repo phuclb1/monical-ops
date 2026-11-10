@@ -6,6 +6,7 @@ export type BookingDraft = {
   guestEmail: string;
   guestPhone: string;
   source: string;
+  origin: string;
   checkIn: string;
   checkOut: string;
   roomType: string;
@@ -81,6 +82,7 @@ export function extractBooking(mail: Mail): BookingDraft | null {
     guestEmail,
     guestPhone: "",
     source: channel(emailIndex >= 0 ? lines[emailIndex + 1] || "" : mail.subject),
+    origin: "ezcloud",
     checkIn,
     checkOut,
     roomType,
@@ -293,10 +295,10 @@ export async function createOpsBooking(token: string, draft: BookingDraft) {
       guestName: draft.guestName,
       guestPhone: draft.guestPhone,
       source: draft.source || "ota",
-      origin: "ezcloud",
+      origin: draft.origin === "ops" ? "ops" : "ezcloud",
       checkIn: draft.checkIn,
       checkOut: draft.checkOut,
-      pmsCode: draft.pmsCode,
+      ...(draft.pmsCode ? { pmsCode: draft.pmsCode } : {}),
       notes: draft.notes,
       deposit: 0,
       paymentMethod: "cash",
@@ -358,6 +360,41 @@ function draftText(draft: BookingDraft) {
     .join("\n");
 }
 
+export function websiteDraft(input: {
+  guestName: string;
+  guestPhone: string;
+  guestEmail: string;
+  checkIn: string;
+  checkOut: string;
+  roomType: string;
+  adults: number;
+  children: number;
+  rate: number;
+  notes: string;
+}): BookingDraft {
+  const nights = stayNights(input.checkIn, input.checkOut);
+  const roomTotal = input.rate && nights ? input.rate * nights : 0;
+  return {
+    ...emptyDraft(),
+    guestName: input.guestName,
+    guestPhone: input.guestPhone,
+    guestEmail: input.guestEmail,
+    source: "ezcloud",
+    origin: "ops",
+    checkIn: input.checkIn,
+    checkOut: input.checkOut,
+    roomType: input.roomType,
+    adults: input.adults,
+    children: input.children,
+    rate: input.rate,
+    total: roomTotal,
+    otaTotal: roomTotal,
+    notes: [input.notes.trim(), "Đặt từ website monicalhoteldalat.com"].filter(Boolean).join("\n"),
+    statusLabel: "Website",
+    paymentNote: "Thu tại khách sạn",
+  };
+}
+
 function emptyDraft(): BookingDraft {
   return {
     id: "",
@@ -365,6 +402,7 @@ function emptyDraft(): BookingDraft {
     guestEmail: "",
     guestPhone: "",
     source: "ota",
+    origin: "ezcloud",
     checkIn: "",
     checkOut: "",
     roomType: "",

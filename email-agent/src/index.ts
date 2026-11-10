@@ -18,6 +18,7 @@ import {
   replyAction,
   roomCatalog,
   suggestCatalogTypes,
+  websiteDraft,
   type BookingDraft,
 } from "./booking";
 import {
@@ -29,6 +30,7 @@ import {
   sameSecret,
   sendTelegram,
 } from "./telegram";
+import { parseWebsiteBooking, websiteAuthorized, websiteCors, type WebsiteBookingInput } from "./website";
 
 type ChatRow = { chat_id: string };
 type DraftRow = { id: string; chat_id: string; status: string; payload: string };
@@ -94,6 +96,22 @@ export class EmailAgent extends Agent<Env> {
     ]);
   }
 
+  async handleWebsite(input: WebsiteBookingInput) {
+    const chatId = this.env.TELEGRAM_CHAT_ID || this.chatIds()[0] || "";
+    if (!this.env.TELEGRAM_BOT_TOKEN || !chatId) throw new Error("Chưa có Telegram");
+    const draft = websiteDraft(input);
+    draft.id = crypto.randomUUID().slice(0, 8);
+    this.saveDraft(chatId, "ask", draft);
+    await this.notify(chatId, askText(draft), [
+      [
+        { text: "Check phòng trống", data: `c:${draft.id}` },
+        { text: "Không cần check", data: `s:${draft.id}` },
+      ],
+      [{ text: "Huỷ", data: `n:${draft.id}` }],
+    ]);
+    return draft.id;
+  }
+
   async handleTelegram(update: TelegramUpdate) {
     const callback = update.callback_query;
     if (callback?.id && this.env.TELEGRAM_BOT_TOKEN) await answerCallback(this.env.TELEGRAM_BOT_TOKEN, callback.id);
@@ -156,7 +174,10 @@ export class EmailAgent extends Agent<Env> {
     } else {
       const names = await suggestCatalogTypes(this.env.OPENAI_API_KEY || "", otaType, catalog.types);
       const byName = new Map(catalog.types.map((row) => [row.type.toUpperCase(), row]));
-      chosen = names.map((name) => byName.get(name.toUpperCase())).filter((row) => Boolean(row));
+      chosen = names.flatMap((name) => {
+        const row = byName.get(name.toUpperCase());
+        return row ? [row] : [];
+      });
       note = `OTA ghi "${otaType || "(không rõ)"}". Không có hạng đúng tên trên Ops.${chosen.length ? ` Đề xuất: ${chosen.map((row) => row.type).join(", ")}.` : ""}`;
     }
     const picks = chosen.flatMap((row) => row.rooms.map((room) => ({ room, type: row.type, label: exact ? room : `${row.type} ${room}` })));
@@ -287,9 +308,37 @@ function agentStub(env: Env) {
   return env.EmailAgent.get(env.EmailAgent.idFromName("agent"));
 }
 
+function websiteToken(env: Env) {
+  return (env as Env & { WEBSITE_API_TOKEN?: string }).WEBSITE_API_TOKEN || "";
+}
+
+function websiteResponse(request: Request, body: unknown, status = 200) {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { "Content-Type": "application/json", ...websiteCors(request) },
+  });
+}
+
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
+    if (url.pathname === "/web/bookings") {
+      if (request.method === "OPTIONS") return new Response(null, { status: 204, headers: websiteCors(request) });
+      if (request.method !== "POST") return websiteResponse(request, { ok: false, error: "Chỉ nhận POST" }, 405);
+      if (!websiteAuthorized(request, websiteToken(env))) return websiteResponse(request, { ok: false, error: "Unauthorized" }, 401);
+      let body: unknown;
+      try {
+        body = await request.json();
+      } catch {
+        return websiteResponse(request, { ok: false, error: "JSON không hợp lệ" }, 400);
+      }
+      try {
+        const id = await agentStub(env).handleWebsite(parseWebsiteBooking(body));
+        return websiteResponse(request, { ok: true, id }, 201);
+      } catch (error) {
+        return websiteResponse(request, { ok: false, error: error instanceof Error ? error.message : "Không nhận được đặt phòng" }, 400);
+      }
+    }
     if (url.pathname !== "/telegram") return new Response("ops-email-agent");
     const provided = request.headers.get("X-Telegram-Bot-Api-Secret-Token") || "";
     if (!env.TELEGRAM_WEBHOOK_SECRET || !sameSecret(provided, env.TELEGRAM_WEBHOOK_SECRET)) {
