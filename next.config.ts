@@ -2,7 +2,7 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   allowedDevOrigins: ["127.0.0.1", "localhost"],
-  serverExternalPackages: ["html2canvas", "jspdf", "zca-js", "ws", "tough-cookie"],
+  serverExternalPackages: ["html2canvas", "jspdf", "ws", "tough-cookie"],
   experimental: {
     staleTimes: {
       dynamic: 30,

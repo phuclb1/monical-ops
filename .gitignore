@@ -55,5 +55,6 @@ tmp/
 
 # Windows Zalo sender secrets and install output
 /zalo-win/config.json
+/zalo-win/.env
 /zalo-win/agent.log
 /zalo-win/node_modules

@@ -259,4 +259,21 @@ export const SCHEMA_PATCHES = [
   resolve_note TEXT
 )`,
   "CREATE INDEX IF NOT EXISTS control_issue_states_resolved ON control_issue_states (resolved_at, last_seen_at)",
+  `CREATE TABLE IF NOT EXISTS zalo_agent_jobs (
+  id TEXT PRIMARY KEY,
+  kind TEXT NOT NULL,
+  actor_id TEXT NOT NULL,
+  payload TEXT NOT NULL DEFAULT '{}',
+  status TEXT NOT NULL,
+  events TEXT NOT NULL DEFAULT '[]',
+  result TEXT,
+  attempts INTEGER NOT NULL DEFAULT 0,
+  error TEXT,
+  claim_id TEXT,
+  claimed_at TEXT,
+  finished_at TEXT,
+  created_at TEXT NOT NULL
+)`,
+  "CREATE INDEX IF NOT EXISTS zalo_agent_jobs_status ON zalo_agent_jobs (status, created_at)",
+  "CREATE INDEX IF NOT EXISTS zalo_agent_jobs_kind_status ON zalo_agent_jobs (kind, status, created_at)",
 ];

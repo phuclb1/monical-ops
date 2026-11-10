@@ -1,0 +1,9 @@
+node_modules
+agent.log
+config.json
+.env
+.env.*
+*.md
+install.ps1
+uninstall.ps1
+start.py

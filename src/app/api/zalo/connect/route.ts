@@ -2,13 +2,12 @@ import { getSession } from "@/lib/auth";
 import { tooManyRequests } from "@/lib/api-rate-limit";
 import { takeRateLimit } from "@/lib/rate-limit";
 import { can } from "@/lib/permissions";
-import { connectZaloAccount } from "@/lib/zalo-client";
+import { loadZaloAgentJob, parseJobEvents } from "@/lib/zalo-agent-jobs";
+import { startZaloLoginJob } from "@/lib/zalo-client";
 import { loadZaloPublicStatus } from "@/lib/zalo-session";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 180;
-
-let connecting = false;
 
 export async function POST(request: Request) {
   const user = await getSession();
@@ -18,42 +17,64 @@ export async function POST(request: Request) {
   if (!limited.ok) return tooManyRequests(limited, "Đang kết nối quá nhanh. Hãy đợi một lát.");
   const status = await loadZaloPublicStatus();
   if (!status.phone) return Response.json({ error: "Hãy lưu số Zalo trước khi quét mã." }, { status: 400 });
-  if (connecting) return Response.json({ error: "Đang chờ một mã QR khác. Hãy đợi hoặc tải lại trang." }, { status: 409 });
 
-  connecting = true;
+  const jobId = await startZaloLoginJob(user.id, status.phone);
   const encoder = new TextEncoder();
-  let retries = 0;
   const stream = new ReadableStream({
     async start(controller) {
       const send = (payload: Record<string, string>) => {
         if (request.signal.aborted) return;
         controller.enqueue(encoder.encode(`data: ${JSON.stringify(payload)}\n\n`));
       };
+      let cursor = 0;
+      let finished = false;
       try {
-        await connectZaloAccount(user.id, status.phone, {
-          signal: request.signal,
-          onQr: (image) => send({ status: "qr", image }),
-          onScanned: (name) => send({ status: "scanned", name }),
-          onExpired: () => {
-            retries += 1;
-            if (retries <= 2) return true;
-            send({ status: "expired", message: "Mã QR hết hạn. Bấm kết nối lại." });
-            return false;
-          },
-          onDeclined: () => send({ status: "declined", message: "Đã từ chối mã QR trên điện thoại." }),
-        });
-        if (!request.signal.aborted) send({ status: "done" });
+        send({ status: "wait", message: "Đang chờ máy local tạo mã QR..." });
+        const deadline = Date.now() + 170_000;
+        while (!request.signal.aborted && Date.now() < deadline) {
+          const job = await loadZaloAgentJob(jobId);
+          if (!job) {
+            send({ status: "error", message: "Lệnh kết nối Zalo đã mất." });
+            finished = true;
+            break;
+          }
+          const events = parseJobEvents(job.events);
+          while (cursor < events.length) {
+            const event = events[cursor++];
+            send({
+              status: event.status,
+              ...(event.image ? { image: event.image } : {}),
+              ...(event.name ? { name: event.name } : {}),
+              ...(event.message ? { message: event.message } : {}),
+            });
+            if (event.status === "error" || event.status === "expired" || event.status === "declined") finished = true;
+          }
+          if (job.status === "done") {
+            send({ status: "done" });
+            finished = true;
+            break;
+          }
+          if (job.status === "failed") {
+            send({ status: "error", message: job.error || "Máy local không kết nối được Zalo." });
+            finished = true;
+            break;
+          }
+          if (finished) break;
+          await sleep(400);
+        }
+        if (!finished && !request.signal.aborted) {
+          send({ status: "error", message: "Hết thời gian chờ máy local. Kiểm tra agent Zalo trên Mac." });
+        }
       } catch (error) {
-        if (request.signal.aborted) return;
-        const message = error instanceof Error ? error.message : "";
-        if (/abort/i.test(message)) return;
-        send({ status: "error", message: message || "Không kết nối được Zalo." });
+        if (!request.signal.aborted) {
+          const message = error instanceof Error ? error.message : "";
+          send({ status: "error", message: message || "Không kết nối được Zalo." });
+        }
       } finally {
-        connecting = false;
         try {
           controller.close();
         } catch {
-          connecting = false;
+          // stream already closed
         }
       }
     },
@@ -66,4 +87,8 @@ export async function POST(request: Request) {
       "X-Accel-Buffering": "no",
     },
   });
+}
+
+function sleep(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }

@@ -39,7 +39,10 @@ export function ZaloConnectButton() {
         const line = part.split("\n").find((item) => item.startsWith("data:"));
         if (!line) continue;
         const event = JSON.parse(line.slice(5).trim()) as { status?: string; image?: string; name?: string; message?: string };
-        if (event.status === "qr" && event.image) {
+        if (event.status === "wait") {
+          setPhase("wait");
+          if (event.message) setError("");
+        } else if (event.status === "qr" && event.image) {
           setPhase("qr");
           setImage(event.image);
         } else if (event.status === "scanned") {
@@ -67,7 +70,7 @@ export function ZaloConnectButton() {
   return (
     <div className="space-y-3">
       <Btn type="button" onClick={connect} disabled={phase === "wait" || phase === "qr" || phase === "scanned"}>
-        {phase === "wait" ? "Đang tạo mã..." : "Kết nối Zalo"}
+        {phase === "wait" ? "Đang chờ máy local..." : "Kết nối Zalo"}
       </Btn>
       {phase === "qr" && image ? (
         <div className="space-y-2">
@@ -89,6 +92,9 @@ export function ZaloGroupManager({
   groups: { slot: ZaloGroupSlot; label: string; groupId: string; groupName: string }[];
 }) {
   const [options, setOptions] = useState<{ id: string; name: string; members: number }[] | null>(null);
+  const [names, setNames] = useState<Record<string, string>>(
+    Object.fromEntries(groups.map((slot) => [slot.slot, slot.groupName || ""])),
+  );
   const [error, setError] = useState("");
   const [pending, setPending] = useState(false);
 
@@ -107,7 +113,7 @@ export function ZaloGroupManager({
   return (
     <div className="space-y-4">
       <Btn type="button" variant="ghost" onClick={load} disabled={!connected || pending}>
-        {pending ? "Đang tải nhóm..." : "Tải danh sách nhóm Zalo"}
+        {pending ? "Đang tải từ máy local..." : "Tải danh sách nhóm Zalo"}
       </Btn>
       {!connected ? <p className="text-sm text-[#5c6665]">Kết nối Zalo rồi mới chọn được nhóm.</p> : null}
       {error ? <p className="text-sm font-medium text-[#c23b3b]">{error}</p> : null}
@@ -119,12 +125,20 @@ export function ZaloGroupManager({
         return (
           <form key={slot.slot} action={saveZaloGroupSlotAction} className="space-y-3 border-t border-line pt-3">
             <input type="hidden" name="slot" value={slot.slot} />
+            <input type="hidden" name="groupName" value={names[slot.slot] || ""} />
             <div>
               <h3 className="font-bold">{slot.label}</h3>
               <p className="text-sm text-[#5c6665]">{slot.groupName ? `Đang chọn: ${slot.groupName}` : "Chưa chọn nhóm Zalo."}</p>
             </div>
             <Field label="Nhóm Zalo">
-              <select name="groupId" defaultValue={slot.groupId}>
+              <select
+                name="groupId"
+                defaultValue={slot.groupId}
+                onChange={(event) => {
+                  const selected = choices.find((group) => group.id === event.target.value);
+                  setNames((current) => ({ ...current, [slot.slot]: selected?.name || "" }));
+                }}
+              >
                 <option value="">Chưa chọn</option>
                 {choices.map((group) => (
                   <option key={group.id} value={group.id}>
@@ -240,7 +254,7 @@ export function ZaloTestSend({
   return (
     <div className="space-y-3">
       <Btn type="button" variant="ghost" onClick={load} disabled={!connected || pending}>
-        {pending ? "Đang tải nhóm..." : "Tải nhóm để chọn chỗ gửi"}
+        {pending ? "Đang tải từ máy local..." : "Tải nhóm để chọn chỗ gửi"}
       </Btn>
       {error ? <p className="text-sm font-medium text-[#c23b3b]">{error}</p> : null}
       <form action={sendZaloTestAction} className="space-y-3">

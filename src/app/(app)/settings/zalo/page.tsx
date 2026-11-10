@@ -9,6 +9,7 @@ import { formatDateTime } from "@/lib/datetime";
 import { can } from "@/lib/permissions";
 import { sepayWebhookUrl } from "@/lib/sepay";
 import { platformOrigin } from "@/lib/site";
+import { agentSeenFresh, loadZaloAgentSeen } from "@/lib/zalo-agent-jobs";
 import { loadZaloPublicStatus } from "@/lib/zalo-session";
 import { ZALO_GROUP_SLOTS, ZALO_MESSAGE_DEFS } from "@/lib/zalo-messages";
 import { zaloOutboxCounts } from "@/lib/zalo-outbox";
@@ -47,7 +48,8 @@ export default async function ZaloSettingsPage({
   if (!can(user.role, "manageSettings")) redirect("/settings");
   const { error, saved, tab } = await searchParams;
   const current = tab === "messages" ? "messages" : "groups";
-  const [zalo, queue] = await Promise.all([loadZaloPublicStatus(), zaloOutboxCounts()]);
+  const [zalo, queue, agentSeen] = await Promise.all([loadZaloPublicStatus(), zaloOutboxCounts(), loadZaloAgentSeen()]);
+  const agentOnline = agentSeenFresh(agentSeen);
   const webhookUrl = sepayWebhookUrl(await platformOrigin());
   const savedText = saved ? SAVED[saved] || "" : "";
 
@@ -72,7 +74,9 @@ export default async function ZaloSettingsPage({
             <span className="text-sm font-semibold">Bật gửi tin Zalo</span>
           </label>
           <p className="text-xs leading-5 text-[#5c6665]">
-            Tắt thì không xếp tin mới. Tin đã xếp được máy Windows tại khách sạn gửi, không gửi từ máy chủ Mỹ.
+            Tắt thì không xếp tin mới. QR, tải nhóm và gửi tin chạy trên máy local qua hàng đợi D1, không chạy zca-js trên Cloudflare.
+            {` Agent: ${agentOnline ? "online" : "offline"}.`}
+            {agentSeen ? ` Lần poll gần nhất: ${formatDateTime(agentSeen)}.` : ""}
             {queue.pending ? ` Đang chờ gửi: ${queue.pending}.` : ""}
             {queue.failed ? ` Lỗi: ${queue.failed}.` : ""}
           </p>
@@ -99,11 +103,11 @@ export default async function ZaloSettingsPage({
             <p>Ghi cookie lần cuối: {formatDateTime(zalo.savedAt)}.</p>
             <p>Cookie mã hóa còn tới {formatDateTime(zalo.encryptUntil)}. Cookie đăng nhập còn tới {formatDateTime(zalo.loginUntil)}.</p>
             <p className="text-xs leading-5 text-[#5c6665]">
-              Mỗi lần gửi tin hoặc tải nhóm, cookie mới được ghi lại. Cookie mã hóa khoảng 7 ngày nếu không dùng. Cookie đăng nhập khoảng 1 năm. Mở Zalo Web trên cùng số này làm phiên đã lưu hết hiệu lực.
+              Máy local giữ phiên zca-js và đẩy cookie mới lên Ops. Cookie mã hóa khoảng 7 ngày nếu không dùng. Cookie đăng nhập khoảng 1 năm. Mở Zalo Web trên cùng số này làm phiên đã lưu hết hiệu lực.
             </p>
           </div>
         ) : (
-          <p className="mb-3 text-sm text-[#5c6665]">Chưa có phiên. Lưu số, rồi quét mã để lưu cookie vào cơ sở dữ liệu.</p>
+          <p className="mb-3 text-sm text-[#5c6665]">Chưa có phiên. Bật agent Zalo trên Mac, lưu số, rồi quét mã QR.</p>
         )}
         {zalo.phone ? <ZaloConnectButton /> : <p className="text-sm">Lưu số Zalo trước khi kết nối.</p>}
         {zalo.connected ? (

@@ -95,6 +95,22 @@ export const zaloOutbox = sqliteTable("zalo_outbox", {
   createdAt: text("created_at").notNull(),
 });
 
+export const zaloAgentJobs = sqliteTable("zalo_agent_jobs", {
+  id: text("id").primaryKey(),
+  kind: text("kind").notNull(),
+  actorId: text("actor_id").notNull(),
+  payload: text("payload").notNull().default("{}"),
+  status: text("status").notNull(),
+  events: text("events").notNull().default("[]"),
+  result: text("result"),
+  attempts: integer("attempts").notNull().default(0),
+  error: text("error"),
+  claimId: text("claim_id"),
+  claimedAt: text("claimed_at"),
+  finishedAt: text("finished_at"),
+  createdAt: text("created_at").notNull(),
+});
+
 export const appSettings = sqliteTable("app_settings", {
   key: text("key").primaryKey(),
   value: text("value").notNull(),

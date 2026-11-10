@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 import { requireSession } from "@/lib/auth";
 import { can } from "@/lib/permissions";
 import { audit } from "@/lib/repos";
-import { listZaloGroups, rememberZaloGroup, sendZaloToGroup } from "@/lib/zalo-client";
+import { listZaloGroups, sendZaloToGroup } from "@/lib/zalo-client";
 import { clearZaloLogin, loadZaloMessages, loadZaloPublicStatus, saveZaloChannel, saveZaloEnabled, saveZaloGroupSlot, saveZaloMessage, saveZaloPhone, zaloChannel } from "@/lib/zalo-session";
 import { normalizeZaloPhone, zaloPhoneError } from "@/lib/zalo";
 import { sendChannelPreview, sendMessagePreview, sendReceptionZalo } from "@/lib/zalo-notify";
@@ -59,16 +59,12 @@ export async function saveZaloGroupSlotAction(formData: FormData) {
   const slot = String(formData.get("slot") || "");
   if (!isZaloGroupSlot(slot)) redirect(zaloBack("groups", { error: "Không có nhóm này." }));
   const groupId = String(formData.get("groupId") || "");
-  let groupName = "";
+  const groupName = String(formData.get("groupName") || "").trim();
   if (groupId) {
     if (!/^\d+$/.test(groupId)) redirect(zaloBack("groups", { error: "Chọn một nhóm Zalo." }));
-    try {
-      groupName = (await rememberZaloGroup(user.id, groupId)).name;
-    } catch (error) {
-      redirect(zaloBack("groups", { error: error instanceof Error ? error.message : "Không lưu được nhóm." }));
-    }
+    if (!groupName) redirect(zaloBack("groups", { error: "Tải lại danh sách nhóm rồi chọn." }));
   }
-  await saveZaloGroupSlot(user.id, { slot, groupId, groupName });
+  await saveZaloGroupSlot(user.id, { slot, groupId, groupName: groupId ? groupName : "" });
   await audit(user.id, "settings", "zalo_group", "save", undefined, { slot, groupId, groupName });
   redirect(zaloBack("groups", { saved: slot }));
 }
@@ -124,17 +120,12 @@ export async function saveZaloChannelAction(formData: FormData) {
   if (!template) redirect(`/settings/zalo?error=${encodeURIComponent("Nhập mẫu tin.")}`);
   if (template.length > 2000) redirect(`/settings/zalo?error=${encodeURIComponent("Mẫu tin dài quá 2000 ký tự.")}`);
   const groupId = String(formData.get("groupId") || "");
-  let groupName = "";
+  const groupName = String(formData.get("groupName") || "").trim();
   if (groupId) {
     if (!/^\d+$/.test(groupId)) redirect(`/settings/zalo?error=${encodeURIComponent("Chọn một nhóm Zalo.")}`);
-    try {
-      const group = await rememberZaloGroup(user.id, groupId);
-      groupName = group.name;
-    } catch (error) {
-      redirect(`/settings/zalo?error=${encodeURIComponent(error instanceof Error ? error.message : "Không lưu được nhóm.")}`);
-    }
+    if (!groupName) redirect(`/settings/zalo?error=${encodeURIComponent("Tải lại danh sách nhóm rồi chọn.")}`);
   }
-  await saveZaloChannel(user.id, { key, groupId, groupName, template });
+  await saveZaloChannel(user.id, { key, groupId, groupName: groupId ? groupName : "", template });
   await audit(user.id, "settings", "zalo_channel", "save", undefined, { key, groupId, groupName, label: zaloChannelDef(key).label });
   redirect(`/settings/zalo?saved=${key}`);
 }

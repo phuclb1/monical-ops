@@ -1,0 +1,9 @@
+services:
+  zalo-agent:
+    build: .
+    container_name: monical-zalo-agent
+    restart: unless-stopped
+    env_file:
+      - .env
+    volumes:
+      - ./agent.log:/app/agent.log
