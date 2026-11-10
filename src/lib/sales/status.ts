@@ -241,6 +241,20 @@ export function isOpsBookingCode(code: string | null | undefined) {
   return Boolean(parseOpsBookingCode(value));
 }
 
+export const CHANNEL_CODE_LABEL = "Mã kênh: ";
+
+export function channelCodeLine(code: string | null | undefined) {
+  const value = String(code || "").trim();
+  return value ? `${CHANNEL_CODE_LABEL}${value}` : "";
+}
+
+export function withChannelCode(notes: string | null | undefined, code: string | null | undefined) {
+  const line = channelCodeLine(code);
+  const text = String(notes || "").trim();
+  if (!line || text.includes(line)) return text;
+  return [text, line].filter(Boolean).join("\n");
+}
+
 export function isLegacyOpsBookingCode(code: string | null | undefined) {
   const value = String(code || "").trim();
   if (!value) return false;

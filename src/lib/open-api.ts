@@ -1,9 +1,12 @@
-import { catalogRate, parseMoney, parseSaleSource } from "@/lib/sales";
+import { SALE_SOURCE_LABEL } from "@/lib/constants";
+import { catalogRate, isOpsBookingCode, parseMoney, parseSaleSource, withChannelCode } from "@/lib/sales";
 import { loadOpenApiToken } from "@/lib/open-api-settings";
 import { listRooms, listRoomTypes } from "@/lib/repos/rooms";
 import { bookingsByIds, findBookingRefByPmsCode, getBooking, listOpenBookingRefs } from "@/lib/repos/sales/queries";
 import type { SaleInput } from "@/lib/repos/sales/helpers";
 import type { SessionUser } from "@/lib/types";
+
+export { findBookingRefByPmsCode };
 
 export const OPEN_API_ACTOR_ID = "open-api-agent";
 
@@ -11,7 +14,7 @@ export function openApiActor(): SessionUser {
   return {
     id: OPEN_API_ACTOR_ID,
     username: "open-api",
-    fullName: "Open API",
+    fullName: "Monical Agent",
     role: "manager",
     departmentId: "",
     departmentCode: "management",
@@ -241,6 +244,7 @@ export type OpenBookingCreateDraft = {
   checkIn: string;
   checkOut: string;
   pmsCode: string;
+  channelCode: string;
   notes: string;
   deposit: number;
   paymentMethod: string;
@@ -267,7 +271,7 @@ export function parseOpenBookingCreate(body: unknown): OpenBookingCreateDraft {
   if (!rooms.length) throw new Error("Chọn phòng");
   const commission = parseCommission(record);
   const otaTotal = record.otaTotal == null || record.otaTotal === "" ? undefined : moneyOf(record.otaTotal);
-  return {
+  return foldChannelReference({
     guestName,
     guestPhone: text(record.guestPhone),
     source,
@@ -275,6 +279,7 @@ export function parseOpenBookingCreate(body: unknown): OpenBookingCreateDraft {
     checkIn,
     checkOut,
     pmsCode: text(record.pmsCode),
+    channelCode: "",
     notes: text(record.notes),
     deposit: moneyOf(record.deposit),
     paymentMethod: text(record.paymentMethod) || "cash",
@@ -283,6 +288,36 @@ export function parseOpenBookingCreate(body: unknown): OpenBookingCreateDraft {
     rooms,
     ...commission,
     ...(otaTotal ? { otaTotal } : {}),
+  });
+}
+
+export function agentBookingName(guestName: string, source: string, channelCode: string) {
+  const code = channelCode.trim();
+  const platform = source in SALE_SOURCE_LABEL ? SALE_SOURCE_LABEL[source as keyof typeof SALE_SOURCE_LABEL] : source.trim();
+  let name = guestName.trim();
+  const tail = ` - ${platform} - ${code}`;
+  if (!code || !platform) return name;
+  if (name.endsWith(tail)) return name;
+  const marker = ` - ${code}`;
+  if (name.endsWith(marker)) {
+    const head = name.slice(0, -marker.length);
+    const split = head.lastIndexOf(" - ");
+    name = (split > 0 ? head.slice(0, split) : head).trim();
+  }
+  return `${name} - ${platform} - ${code}`;
+}
+
+export function foldChannelReference(draft: OpenBookingCreateDraft): OpenBookingCreateDraft {
+  const code = draft.pmsCode.trim();
+  if (!code || isOpsBookingCode(code)) return { ...draft, channelCode: "" };
+  if (draft.source === "walk_in" || draft.source === "ota") throw new Error("Chọn đúng nền tảng");
+  return {
+    ...draft,
+    origin: "ops",
+    pmsCode: "",
+    channelCode: code,
+    guestName: agentBookingName(draft.guestName, draft.source, code),
+    notes: withChannelCode(draft.notes, code),
   };
 }
 

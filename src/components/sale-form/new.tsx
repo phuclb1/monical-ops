@@ -99,7 +99,7 @@ export function SaleForm({
   const [breakfast, setBreakfast] = useState<Record<string, boolean>>({});
   const [rates, setRates] = useState<Record<string, string>>({});
   const [discounts, setDiscounts] = useState<Record<string, DiscountState>>({});
-  const [source, setSource] = useState(defaults.source || "walk_in");
+  const [source, setSource] = useState(defaults.source || "");
   const [otaPaymentMode, setOtaPaymentMode] = useState<"debt" | "hotel">("debt");
   const [commissionKind, setCommissionKind] = useState<CommissionKind>("percent");
   const [commission, setCommission] = useState("");
@@ -156,12 +156,14 @@ export function SaleForm({
         return room ? [`P.${room.number}`] : [];
       })
     : [];
-  const saveHint = gappedLabels.length
+  const saveHint = !source
+    ? "Chọn nền tảng."
+    : gappedLabels.length
     ? `${gappedLabels.join(", ")} đang đứt quãng. Mỗi phòng chỉ một chặng liền đêm.`
     : activeRoomIds.length && uncovered.length
       ? `Còn đêm chưa gán phòng: ${uncovered.slice(0, 8).map((date) => formatDayMonth(date)).join(", ")}${uncovered.length > 8 ? "…" : ""}.`
       : "";
-  const canSave = !allowMultiple || (activeRoomIds.length > 0 && !gappedLabels.length && !uncovered.length);
+  const canSave = Boolean(source) && (!allowMultiple || (activeRoomIds.length > 0 && !gappedLabels.length && !uncovered.length));
   const shownRates = Object.fromEntries(selectedRooms.map((room) => {
     const stay = lineDates[room.id] || sharedStay;
     if (rateTouched[room.id]) return [room.id, rates[room.id] || ""];
@@ -360,6 +362,7 @@ export function SaleForm({
       <Field label="Nền tảng">
         <select
           name="source"
+          required
           value={source}
           onChange={(e) => {
             const next = e.target.value;
@@ -367,6 +370,9 @@ export function SaleForm({
             if (otaDebtByDefault(next)) setOtaPaymentMode("debt");
           }}
         >
+          <option value="" disabled>
+            Chọn nền tảng
+          </option>
           {SALE_SOURCE_GROUPS.map((group) => (
             <optgroup key={group.label} label={group.label}>
               {group.values.map((value) => (

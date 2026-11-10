@@ -98,6 +98,18 @@ export function sameSecret(left: string, right: string) {
   return diff === 0;
 }
 
+export const DESK_USERNAMES = ["xxxlevn", "monical48"] as const;
+
+export function normalizeTelegramUsername(value: string | null | undefined) {
+  return String(value || "").trim().replace(/^@/, "").toLowerCase();
+}
+
+export function deskChatIds(known: { username: string; chatId: string }[], fallback: string[] = []) {
+  const byName = new Map(known.map((row) => [normalizeTelegramUsername(row.username), row.chatId]));
+  const ids = [...new Set(DESK_USERNAMES.map((name) => byName.get(name) || "").filter(Boolean))];
+  return ids.length ? ids : fallback.filter(Boolean);
+}
+
 export type TelegramButton = { text: string; data: string };
 
 export async function sendTelegram(token: string, chatId: string, text: string, buttons: TelegramButton[][] = []) {
@@ -113,16 +125,30 @@ export async function sendTelegram(token: string, chatId: string, text: string, 
         : undefined,
     }),
   });
+  const payload = (await response.json()) as { ok?: boolean; description?: string; result?: { message_id?: number } };
+  if (!response.ok || !payload.ok) {
+    throw new Error(payload.description || `Telegram HTTP ${response.status}`);
+  }
+  return payload.result?.message_id || 0;
+}
+
+export async function deleteTelegram(token: string, chatId: string, messageId: number) {
+  if (!messageId) return;
+  const response = await fetch(`https://api.telegram.org/bot${token}/deleteMessage`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ chat_id: chatId, message_id: messageId }),
+  });
   const payload = (await response.json()) as { ok?: boolean; description?: string };
   if (!response.ok || !payload.ok) {
     throw new Error(payload.description || `Telegram HTTP ${response.status}`);
   }
 }
 
-export async function answerCallback(token: string, callbackId: string) {
+export async function answerCallback(token: string, callbackId: string, text = "") {
   await fetch(`https://api.telegram.org/bot${token}/answerCallbackQuery`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ callback_query_id: callbackId }),
+    body: JSON.stringify({ callback_query_id: callbackId, text: text || undefined }),
   });
 }

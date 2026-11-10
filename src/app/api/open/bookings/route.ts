@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { limitRequest } from "@/lib/api-rate-limit";
 import { createRoomSale } from "@/lib/repos/sales/create";
 import {
+  findBookingRefByPmsCode,
   getOpenBooking,
   listOpenBookings,
   openApiActor,
@@ -62,6 +63,16 @@ export async function POST(request: Request) {
 
   try {
     const draft = parseOpenBookingCreate(body);
+    if (draft.channelCode) {
+      const existingId = await findBookingRefByPmsCode(draft.channelCode);
+      if (existingId) {
+        const booking = await getOpenBooking(existingId);
+        return NextResponse.json(
+          { ok: false, error: `Mã kênh ${draft.channelCode} đã có trên Ops`, booking },
+          { status: 409 },
+        );
+      }
+    }
     const input = await openSaleInputFromDraft(draft);
     const created = await createRoomSale(openApiActor(), input);
     const booking = await getOpenBooking(created.bookingId);

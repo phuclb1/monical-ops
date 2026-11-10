@@ -68,6 +68,7 @@ test("audit target, href, actor, tone", () => {
   assert.equal(auditHref("room_sale", "s1", null, { bookingId: "bk1" }), "/sales/bookings/bk1");
   assert.equal(auditHref("breakfast", "x", null, null), "/kitchen");
   assert.equal(auditActorName(INGEST_ACTOR_ID, "ignored"), "Agent PMS");
+  assert.equal(auditActorName("open-api-agent", null), "Monical Agent");
   assert.equal(auditActorName("u1", "  Nga  "), "Nga");
   assert.equal(actionTone("create"), "ok");
   assert.equal(actionTone("cancel"), "danger");

@@ -1,4 +1,5 @@
 import { TZ } from "../datetime";
+import { OPEN_API_ACTOR_ID } from "@/lib/open-api";
 import { INGEST_ACTOR_ID } from "./labels";
 import { asRecord, auditChanges, type AuditChange } from "./diff";
 
@@ -40,6 +41,7 @@ export function auditHref(entity: string, entityId: string, before: unknown, aft
 
 export function auditActorName(actorId: string, fullName: string | null | undefined) {
   if (actorId === INGEST_ACTOR_ID) return "Agent PMS";
+  if (actorId === OPEN_API_ACTOR_ID) return "Monical Agent";
   return fullName?.trim() || actorId;
 }
 

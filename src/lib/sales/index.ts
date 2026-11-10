@@ -81,6 +81,8 @@ export {
   formatOpsBookingCode,
   parseOpsBookingCode,
   isOpsBookingCode,
+  channelCodeLine,
+  withChannelCode,
   isLegacyOpsBookingCode,
   bookingKey,
 } from "./status";

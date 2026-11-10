@@ -23,9 +23,12 @@ import {
 } from "./booking";
 import {
   answerCallback,
+  deleteTelegram,
+  deskChatIds,
   forwardMessage,
   isStartCommand,
   isStopCommand,
+  normalizeTelegramUsername,
   plainText,
   sameSecret,
   sendTelegram,
@@ -33,16 +36,20 @@ import {
 import { parseWebsiteBooking, websiteAuthorized, websiteCors, type WebsiteBookingInput } from "./website";
 
 type ChatRow = { chat_id: string };
+type UserRow = { username: string; chat_id: string };
+type CopyRow = { chat_id: string; message_id: number };
 type DraftRow = { id: string; chat_id: string; status: string; payload: string };
 
-const STARTED = "Đã bật thông báo. Chỉ mail booking mới hoặc huỷ gửi tới agent@monicalhoteldalat.com mới được nhắn vào đây.";
+const STARTED = "Đã bật thông báo. Booking gửi cùng lúc cho @xxxlevn và @monical48. Ai bấm trước thì tin bên kia bị xoá.";
 
+type TelegramUser = { username?: string };
 type TelegramUpdate = {
-  message?: { text?: string; chat?: { id?: number } };
+  message?: { text?: string; chat?: { id?: number }; from?: TelegramUser };
   callback_query?: {
     id?: string;
     data?: string;
-    message?: { chat?: { id?: number } };
+    from?: TelegramUser;
+    message?: { message_id?: number; chat?: { id?: number } };
   };
 };
 
@@ -55,8 +62,7 @@ export class EmailAgent extends Agent<Env> {
     const kind = isCancelBooking(mail) ? "cancel" : isNewBooking(mail) ? "new" : "skip";
     console.log(JSON.stringify({ from: email.from, to: email.to, subject, kind }));
     if (!isBookingMail(mail)) return;
-    const chatId = this.env.TELEGRAM_CHAT_ID || this.chatIds()[0] || "";
-    if (!this.env.TELEGRAM_BOT_TOKEN || !chatId) {
+    if (!this.env.TELEGRAM_BOT_TOKEN || !this.deskChatIds().length) {
       console.log("telegram: chưa có chat.");
       return;
     }
@@ -64,7 +70,7 @@ export class EmailAgent extends Agent<Env> {
       const draft = extractBooking(mail);
       if (!draft) return;
       const existing = await existingOpsBooking(this.env.OPS_OPEN_API_TOKEN || "", draft.pmsCode);
-      await this.notify(chatId, cancelText(draft, existing));
+      await this.fanout(cancelText(draft, existing));
       return;
     }
     const extracted = extractBooking(mail);
@@ -72,49 +78,37 @@ export class EmailAgent extends Agent<Env> {
       ? await extractBookingWithModel(mail, this.env.OPENAI_API_KEY, extracted).catch(() => extracted)
       : extracted;
     if (!draft?.guestName || !draft.checkIn || !draft.checkOut) {
-      await this.notify(chatId, forwardMessage({ from: email.from, to: email.to, subject, text }));
+      await this.fanout(forwardMessage({ from: email.from, to: email.to, subject, text }));
       return;
     }
     const existing = await existingOpsBooking(this.env.OPS_OPEN_API_TOKEN || "", draft.pmsCode);
     if (existing) {
-      await this.notify(chatId, `Booking ${draft.pmsCode} đã có trên Ops: ${existing}`);
+      await this.fanout(`Booking ${draft.pmsCode} đã có trên Ops: ${existing}`);
       return;
     }
-    const open = this.openDraft(chatId);
-    if (open?.pmsCode === draft.pmsCode) {
-      await this.notify(chatId, `Đang chờ xác nhận booking ${draft.pmsCode}.`);
+    const open = this.openDraftByCode(draft.pmsCode);
+    if (open) {
+      console.log(JSON.stringify({ pmsCode: draft.pmsCode, status: open.status, resume: true }));
+      await this.fanout(askText(open.draft), this.askButtons(open.draft.id), open.draft.id);
       return;
     }
     draft.id = crypto.randomUUID().slice(0, 8);
-    this.saveDraft(chatId, "ask", draft);
-    await this.notify(chatId, askText(draft), [
-      [
-        { text: "Check phòng trống", data: `c:${draft.id}` },
-        { text: "Không cần check", data: `s:${draft.id}` },
-      ],
-      [{ text: "Huỷ", data: `n:${draft.id}` }],
-    ]);
+    this.saveDraft("", "ask", draft);
+    await this.fanout(askText(draft), this.askButtons(draft.id), draft.id);
   }
 
   async handleWebsite(input: WebsiteBookingInput) {
-    const chatId = this.env.TELEGRAM_CHAT_ID || this.chatIds()[0] || "";
-    if (!this.env.TELEGRAM_BOT_TOKEN || !chatId) throw new Error("Chưa có Telegram");
+    if (!this.env.TELEGRAM_BOT_TOKEN || !this.deskChatIds().length) throw new Error("Chưa có Telegram");
     const draft = websiteDraft(input);
     draft.id = crypto.randomUUID().slice(0, 8);
-    this.saveDraft(chatId, "ask", draft);
-    await this.notify(chatId, askText(draft), [
-      [
-        { text: "Check phòng trống", data: `c:${draft.id}` },
-        { text: "Không cần check", data: `s:${draft.id}` },
-      ],
-      [{ text: "Huỷ", data: `n:${draft.id}` }],
-    ]);
+    this.saveDraft("", "ask", draft);
+    await this.fanout(askText(draft), this.askButtons(draft.id), draft.id);
     return draft.id;
   }
 
   async handleTelegram(update: TelegramUpdate) {
+    this.rememberUser(update);
     const callback = update.callback_query;
-    if (callback?.id && this.env.TELEGRAM_BOT_TOKEN) await answerCallback(this.env.TELEGRAM_BOT_TOKEN, callback.id);
     const chatId = callback?.message?.chat?.id || update.message?.chat?.id;
     const text = update.message?.text || "";
     if (!chatId || !this.env.TELEGRAM_BOT_TOKEN) return;
@@ -133,7 +127,16 @@ export class EmailAgent extends Agent<Env> {
     const action = data ? data.slice(0, 1) : replyAction(text);
     const draftId = data.includes(":") ? data.split(":")[1] : this.openDraft(target)?.id || "";
     const draft = draftId ? this.draftById(draftId) : this.openDraft(target);
-    if (!draft) return;
+    if (!draft || !action) {
+      if (callback?.id) await answerCallback(this.env.TELEGRAM_BOT_TOKEN, callback.id);
+      return;
+    }
+    if (!this.claimDraft(draft.id, target)) {
+      if (callback?.id) await answerCallback(this.env.TELEGRAM_BOT_TOKEN, callback.id, "Tin này đã được người kia nhận.");
+      return;
+    }
+    await this.dropOtherCopies(draft.id, target);
+    if (callback?.id) await answerCallback(this.env.TELEGRAM_BOT_TOKEN, callback.id);
     if (action === "c" || action === "check") await this.checkDraft(target, draft);
     else if (action === "s" || action === "skip") await this.askRoom(target, draft);
     else if (action === "p") await this.useRoom(target, draft, data.split(":")[2] || "");
@@ -143,6 +146,79 @@ export class EmailAgent extends Agent<Env> {
       this.setStatus(draft.id, "cancelled");
       await this.notify(target, `Đã huỷ draft ${draft.pmsCode || draft.guestName}.`);
     }
+  }
+
+  private askButtons(id: string) {
+    return [
+      [
+        { text: "Check phòng trống", data: `c:${id}` },
+        { text: "Không cần check", data: `s:${id}` },
+      ],
+      [{ text: "Huỷ", data: `n:${id}` }],
+    ];
+  }
+
+  private rememberUser(update: TelegramUpdate) {
+    const from = update.message?.from || update.callback_query?.from;
+    const chatId = update.message?.chat?.id || update.callback_query?.message?.chat?.id;
+    const username = normalizeTelegramUsername(from?.username);
+    if (!username || !chatId) return;
+    this.ensureChats();
+    const id = String(chatId);
+    this.sql`INSERT OR REPLACE INTO telegram_users (username, chat_id) VALUES (${username}, ${id})`;
+  }
+
+  private deskChatIds() {
+    this.ensureChats();
+    const known = this.sql<UserRow>`SELECT username, chat_id FROM telegram_users`.map((row) => ({
+      username: row.username,
+      chatId: row.chat_id,
+    }));
+    const fallbackId = this.env.TELEGRAM_CHAT_ID || this.chatIds()[0] || "";
+    return deskChatIds(known, fallbackId ? [fallbackId] : []);
+  }
+
+  private async fanout(text: string, buttons: { text: string; data: string }[][] = [], draftId = "") {
+    const owner = draftId ? this.draftOwner(draftId) : "";
+    const chats = owner ? [owner] : this.deskChatIds();
+    const sent = await Promise.all(
+      chats.map(async (chatId) => {
+        try {
+          const messageId = await sendTelegram(this.env.TELEGRAM_BOT_TOKEN, chatId, text, buttons);
+          return { chatId, messageId };
+        } catch (error) {
+          console.log(`telegram: ${error instanceof Error ? error.message : "gửi thất bại"}`);
+          return { chatId, messageId: 0 };
+        }
+      }),
+    );
+    if (!draftId) return;
+    for (const row of sent) {
+      if (row.messageId) this.rememberCopy(draftId, row.chatId, row.messageId);
+    }
+  }
+
+  private claimDraft(id: string, chatId: string) {
+    this.ensureChats();
+    const row = this.sql<{ chat_id: string }>`SELECT chat_id FROM booking_drafts WHERE id = ${id} LIMIT 1`[0];
+    if (!row) return false;
+    if (row.chat_id === chatId) return true;
+    if (row.chat_id) return false;
+    this.sql`UPDATE booking_drafts SET chat_id = ${chatId} WHERE id = ${id} AND chat_id = ''`;
+    const next = this.sql<{ chat_id: string }>`SELECT chat_id FROM booking_drafts WHERE id = ${id} LIMIT 1`[0];
+    return next?.chat_id === chatId;
+  }
+
+  private async dropOtherCopies(draftId: string, keepChatId: string) {
+    const rows = this.sql<CopyRow>`SELECT chat_id, message_id FROM draft_messages WHERE draft_id = ${draftId} AND chat_id != ${keepChatId}`;
+    await Promise.all(
+      rows.map((row) =>
+        deleteTelegram(this.env.TELEGRAM_BOT_TOKEN, row.chat_id, row.message_id).catch((error) => {
+          console.log(`telegram: ${error instanceof Error ? error.message : "xoá thất bại"}`);
+        }),
+      ),
+    );
+    this.sql`DELETE FROM draft_messages WHERE draft_id = ${draftId} AND chat_id != ${keepChatId}`;
   }
 
   async rememberChat(chatId: number) {
@@ -228,9 +304,9 @@ export class EmailAgent extends Agent<Env> {
         await this.notify(chatId, `Booking ${draft.pmsCode} đã có trên Ops: ${existing}`);
         return;
       }
-      const id = await createOpsBooking(token, draft);
+      const created = await createOpsBooking(token, draft);
       this.setStatus(draft.id, "done");
-      await this.notify(chatId, createdText(draft, id));
+      await this.notify(chatId, createdText(draft, created.id, created.pmsCode));
     } catch (error) {
       await this.notify(chatId, `Chưa tạo được booking: ${error instanceof Error ? error.message : "lỗi Ops"}`);
     }
@@ -260,11 +336,18 @@ export class EmailAgent extends Agent<Env> {
 
   private ensureChats() {
     this.sql`CREATE TABLE IF NOT EXISTS telegram_chats (chat_id TEXT PRIMARY KEY)`;
+    this.sql`CREATE TABLE IF NOT EXISTS telegram_users (username TEXT PRIMARY KEY, chat_id TEXT NOT NULL)`;
     this.sql`CREATE TABLE IF NOT EXISTS booking_drafts (
       id TEXT PRIMARY KEY,
       chat_id TEXT NOT NULL,
       status TEXT NOT NULL,
       payload TEXT NOT NULL
+    )`;
+    this.sql`CREATE TABLE IF NOT EXISTS draft_messages (
+      draft_id TEXT NOT NULL,
+      chat_id TEXT NOT NULL,
+      message_id INTEGER NOT NULL,
+      PRIMARY KEY (draft_id, chat_id, message_id)
     )`;
   }
 
@@ -276,7 +359,19 @@ export class EmailAgent extends Agent<Env> {
   private saveDraft(chatId: string, status: string, draft: BookingDraft) {
     this.ensureChats();
     const payload = JSON.stringify(draft);
-    this.sql`INSERT OR REPLACE INTO booking_drafts (id, chat_id, status, payload) VALUES (${draft.id}, ${chatId}, ${status}, ${payload})`;
+    const current = this.sql<{ chat_id: string }>`SELECT chat_id FROM booking_drafts WHERE id = ${draft.id} LIMIT 1`[0];
+    const owner = current?.chat_id || chatId;
+    this.sql`INSERT OR REPLACE INTO booking_drafts (id, chat_id, status, payload) VALUES (${draft.id}, ${owner}, ${status}, ${payload})`;
+  }
+
+  private draftOwner(id: string) {
+    this.ensureChats();
+    return this.sql<{ chat_id: string }>`SELECT chat_id FROM booking_drafts WHERE id = ${id} LIMIT 1`[0]?.chat_id || "";
+  }
+
+  private rememberCopy(draftId: string, chatId: string, messageId: number) {
+    this.ensureChats();
+    this.sql`INSERT OR REPLACE INTO draft_messages (draft_id, chat_id, message_id) VALUES (${draftId}, ${chatId}, ${messageId})`;
   }
 
   private setStatus(id: string, status: string) {
@@ -286,8 +381,28 @@ export class EmailAgent extends Agent<Env> {
 
   private openDraft(chatId: string) {
     this.ensureChats();
-    const row = this.sql<DraftRow>`SELECT id, chat_id, status, payload FROM booking_drafts WHERE chat_id = ${chatId} AND status IN ('ask', 'room', 'pick', 'confirm') ORDER BY rowid DESC LIMIT 1`[0];
+    const row = this.sql<DraftRow>`SELECT id, chat_id, status, payload FROM booking_drafts
+      WHERE status IN ('ask', 'room', 'pick', 'confirm')
+        AND (
+          chat_id = ${chatId}
+          OR (
+            chat_id = ''
+            AND id IN (SELECT draft_id FROM draft_messages WHERE chat_id = ${chatId})
+          )
+        )
+      ORDER BY rowid DESC LIMIT 1`[0];
     return row ? this.parseDraft(row) : null;
+  }
+
+  private openDraftByCode(code: string) {
+    if (!code) return null;
+    this.ensureChats();
+    const rows = this.sql<DraftRow>`SELECT id, chat_id, status, payload FROM booking_drafts WHERE status IN ('ask', 'room', 'pick', 'confirm')`;
+    const row = rows.find((item) => {
+      const draft = JSON.parse(item.payload) as BookingDraft;
+      return draft.pmsCode === code;
+    });
+    return row ? { status: row.status, draft: this.parseDraft(row) } : null;
   }
 
   private draftById(id: string) {

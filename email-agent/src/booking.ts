@@ -82,7 +82,7 @@ export function extractBooking(mail: Mail): BookingDraft | null {
     guestEmail,
     guestPhone: "",
     source: channel(emailIndex >= 0 ? lines[emailIndex + 1] || "" : mail.subject),
-    origin: "ezcloud",
+    origin: "ops",
     checkIn,
     checkOut,
     roomType,
@@ -121,7 +121,7 @@ export async function extractBookingWithModel(mail: Mail, apiKey: string, fallba
         {
           role: "system",
           content:
-            "Trích booking khách sạn từ email. Chỉ trả JSON với các khóa: isNewBooking, guestName, guestEmail, guestPhone, source, checkIn, checkOut, roomType, adults, children, nightlyRate, total, commission, commissionKind, pmsCode, breakfast, paymentNote, notes, statusLabel. checkIn và checkOut là YYYY-MM-DD. nightlyRate là giá một đêm (VND, số nguyên), không phải tổng cả kỳ. total là tổng tiền phòng. commission là hoa hồng. commissionKind là amount hoặc percent. source là agoda, booking, traveloka, expedia, airbnb, ezcloud hoặc ota. isNewBooking là true khi đây là đặt phòng mới.",
+            "Trích booking khách sạn từ email. Chỉ trả JSON với các khóa: isNewBooking, guestName, guestEmail, guestPhone, source, checkIn, checkOut, roomType, adults, children, nightlyRate, total, commission, commissionKind, pmsCode, breakfast, paymentNote, notes, statusLabel. checkIn và checkOut là YYYY-MM-DD. nightlyRate là giá một đêm (VND, số nguyên), không phải tổng cả kỳ. total là tổng tiền phòng. commission là hoa hồng. commissionKind là amount hoặc percent. pmsCode là mã đặt phòng của kênh, không phải mã Ops. source là agoda, booking, traveloka, trip, expedia, airbnb, ezcloud hoặc ota. isNewBooking là true khi đây là đặt phòng mới.",
         },
         { role: "user", content: `Tiêu đề: ${mail.subject}\n\n${mail.text.slice(0, 6000)}` },
       ],
@@ -143,7 +143,7 @@ export async function extractBookingWithModel(mail: Mail, apiKey: string, fallba
     guestName: text(parsed.guestName) || base.guestName,
     guestEmail: text(parsed.guestEmail) || base.guestEmail,
     guestPhone: text(parsed.guestPhone) || base.guestPhone,
-    source: channel(text(parsed.source) || base.source),
+    source: preferBookingSource(text(parsed.source), base.source),
     checkIn: dateOr(text(parsed.checkIn), base.checkIn),
     checkOut: dateOr(text(parsed.checkOut), base.checkOut),
     roomType: text(parsed.roomType) || base.roomType,
@@ -190,8 +190,8 @@ export function pickedText(draft: BookingDraft) {
   return `${draftText(draft)}\nĐã gắn phòng ${draft.roomNumber} vào draft.`;
 }
 
-export function createdText(draft: BookingDraft, id: string) {
-  return `Đã tạo booking ${id} trên Ops.\nKhách: ${draft.guestName}\nMã: ${draft.pmsCode}\nPhòng: ${draft.roomNumber}\n${OPS_BASE}/sales/bookings/${id}`;
+export function createdText(draft: BookingDraft, id: string, opsCode = "") {
+  return `Đã tạo booking ${id} trên Ops.\nKhách: ${draft.guestName}\nMã Ops: ${opsCode || "(Ops cấp khi lưu)"}\nMã kênh: ${draft.pmsCode || "(không có)"}\nPhòng: ${draft.roomNumber}\n${OPS_BASE}/sales/bookings/${id}`;
 }
 
 export function replyAction(text: string) {
@@ -294,8 +294,8 @@ export async function createOpsBooking(token: string, draft: BookingDraft) {
     body: JSON.stringify({
       guestName: draft.guestName,
       guestPhone: draft.guestPhone,
-      source: draft.source || "ota",
-      origin: draft.origin === "ops" ? "ops" : "ezcloud",
+      source: draft.source,
+      origin: "ops",
       checkIn: draft.checkIn,
       checkOut: draft.checkOut,
       ...(draft.pmsCode ? { pmsCode: draft.pmsCode } : {}),
@@ -319,12 +319,12 @@ export async function createOpsBooking(token: string, draft: BookingDraft) {
   const payload = (await response.json().catch(() => ({}))) as {
     ok?: boolean;
     error?: string;
-    booking?: { id?: string };
+    booking?: { id?: string; pmsCode?: string | null };
   };
   if (!response.ok || !payload.ok || !payload.booking?.id) {
     throw new Error(payload.error || `Ops HTTP ${response.status}`);
   }
-  return payload.booking.id;
+  return { id: payload.booking.id, pmsCode: payload.booking.pmsCode || "" };
 }
 
 export async function existingOpsBooking(token: string, pmsCode: string) {
@@ -402,7 +402,7 @@ function emptyDraft(): BookingDraft {
     guestEmail: "",
     guestPhone: "",
     source: "ota",
-    origin: "ezcloud",
+    origin: "ops",
     checkIn: "",
     checkOut: "",
     roomType: "",
@@ -437,6 +437,12 @@ function heuristicTypes(wanted: string, types: CatalogType[]) {
     .map((row) => row.type);
 }
 
+export function preferBookingSource(primary: string, fallback: string) {
+  const picked = channel(primary);
+  const base = channel(fallback);
+  return picked !== "ota" ? picked : base;
+}
+
 function channel(value: string) {
   const compact = value
     .toLowerCase()
@@ -445,6 +451,7 @@ function channel(value: string) {
   if (compact.includes("agoda")) return "agoda";
   if (compact.includes("booking")) return "booking";
   if (compact.includes("traveloka")) return "traveloka";
+  if (compact.includes("trip") || compact.includes("ctrip")) return "trip";
   if (compact.includes("expedia")) return "expedia";
   if (compact.includes("airbnb")) return "airbnb";
   if (compact.includes("ezcloud")) return "ezcloud";

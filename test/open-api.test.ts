@@ -67,6 +67,49 @@ test("open API parse: số phòng, alias ngày, mặc định nguồn", () => {
   assert.equal(priced.rooms[0]?.rate, 813000);
 });
 
+test("mã kênh OTA không chiếm chỗ mã Ops", () => {
+  const draft = parseOpenBookingCreate({
+    guestName: "HAN JIHEE",
+    source: "Trip.com",
+    origin: "ops",
+    checkIn: "2026-11-27",
+    checkOut: "2026-11-30",
+    pmsCode: "604367209",
+    notes: "Đặt qua Trip.com",
+    roomNumber: "305",
+  });
+  assert.equal(draft.source, "trip");
+  assert.equal(draft.origin, "ops");
+  assert.equal(draft.pmsCode, "");
+  assert.equal(draft.channelCode, "604367209");
+  assert.equal(draft.guestName, "HAN JIHEE - Trip.com - 604367209");
+  assert.match(draft.notes, /Đặt qua Trip\.com/);
+  assert.match(draft.notes, /Mã kênh: 604367209/);
+  assert.throws(
+    () =>
+      parseOpenBookingCreate({
+        guestName: "A",
+        source: "ota",
+        checkIn: "2026-11-27",
+        checkOut: "2026-11-30",
+        pmsCode: "604367209",
+        roomNumber: "305",
+      }),
+    /nền tảng/,
+  );
+
+  const again = parseOpenBookingCreate({
+    guestName: "HAN JIHEE",
+    source: "trip",
+    checkIn: "2026-11-27",
+    checkOut: "2026-11-30",
+    pmsCode: "BK-11-113",
+    roomNumber: "305",
+  });
+  assert.equal(again.pmsCode, "BK-11-113");
+  assert.equal(again.notes, "");
+});
+
 test("open API parse từ chối thiếu tên / phòng / ngày", () => {
   assert.throws(() => parseOpenBookingCreate({ checkIn: "2026-10-15", checkOut: "2026-10-16", roomNumber: "401" }), /tên khách/i);
   assert.throws(() => parseOpenBookingCreate({ guestName: "A", checkIn: "2026-10-15", checkOut: "2026-10-16" }), /Chọn phòng/);

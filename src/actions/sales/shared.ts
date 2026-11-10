@@ -115,7 +115,7 @@ export function saleFromForm(formData: FormData) {
     discounts,
     guestName: String(formData.get("guestName") || ""),
     guestPhone: String(formData.get("guestPhone") || ""),
-    source: String(formData.get("source") || "walk_in"),
+    source: String(formData.get("source") || ""),
     otaPaymentMode: String(formData.get("otaPaymentMode") || "") === "hotel" ? "hotel" as const : "debt" as const,
     otaCommissionKind: parseCommissionKind(formData.get("otaCommissionKind")),
     otaCommissionValue: parseCommissionValue(formData.get("otaCommissionKind"), formData.get("otaCommissionValue")),

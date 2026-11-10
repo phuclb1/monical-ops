@@ -8,6 +8,7 @@ import {
   bookingStayPax,
   bookingDue,
   bookingKey,
+  channelCodeLine,
   bookingRefundKeep,
   bookingQuote,
   computeBookingMoney,
@@ -304,6 +305,11 @@ export async function resolveBookingKey(id: string) {
   return keys[0] ?? null;
 }
 
+function channelNameLike(code: string) {
+  const escaped = code.replace(/[\\%_]/g, (char) => `\\${char}`);
+  return `% - ${escaped}`;
+}
+
 export async function findBookingRefByPmsCode(code: string) {
   const value = code.trim();
   if (!value) return null;
@@ -311,7 +317,11 @@ export async function findBookingRefByPmsCode(code: string) {
   const rows = await db
     .select({ id: t.roomSales.id, bookingId: t.roomSales.bookingId })
     .from(t.roomSales)
-    .where(sql`lower(${t.roomSales.pmsCode}) = ${value.toLowerCase()}`)
+    .where(or(
+      sql`lower(${t.roomSales.pmsCode}) = ${value.toLowerCase()}`,
+      sql`instr(${t.roomSales.notes}, ${channelCodeLine(value)}) > 0`,
+      sql`${t.roomSales.guestName} LIKE ${channelNameLike(value)} ESCAPE '\\'`,
+    ))
     .limit(1);
   return rows[0] ? bookingKey(rows[0]) : null;
 }
