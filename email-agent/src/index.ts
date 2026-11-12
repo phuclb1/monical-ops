@@ -22,6 +22,20 @@ import {
   type BookingDraft,
 } from "./booking";
 import {
+  classifyDeskAsk,
+  deskButtonIntent,
+  deskHelp,
+  deskMenu,
+  deskQueryDate,
+  formatDesk,
+  loadDesk,
+  parseDeskAsk,
+  setDeskCommands,
+  shouldOfferDeskHelp,
+  todayInVietnam,
+  type DeskIntent,
+} from "./desk";
+import {
   answerCallback,
   deleteTelegram,
   deskChatIds,
@@ -40,7 +54,11 @@ type UserRow = { username: string; chat_id: string };
 type CopyRow = { chat_id: string; message_id: number };
 type DraftRow = { id: string; chat_id: string; status: string; payload: string };
 
-const STARTED = "Đã bật thông báo. Booking gửi cùng lúc cho @xxxlevn và @monical48. Ai bấm trước thì tin bên kia bị xoá.";
+const STARTED = "Đã bật thông báo. Booking gửi cùng lúc cho @xxxlevn và @monical48. Ai bấm trước thì tin bên kia bị xoá.\n\nHỏi số liệu như chat: /list, khách chưa check out, doanh thu tháng này. /help để xem thêm.";
+
+function foldStart(text: string) {
+  return /^start(?:@\w+)?$/i.test(text.trim());
+}
 
 type TelegramUser = { username?: string };
 type TelegramUpdate = {
@@ -113,9 +131,14 @@ export class EmailAgent extends Agent<Env> {
     const text = update.message?.text || "";
     if (!chatId || !this.env.TELEGRAM_BOT_TOKEN) return;
     const target = String(chatId);
-    if (isStartCommand(text)) {
+    const today = todayInVietnam();
+    if (isStartCommand(text) || foldStart(text)) {
       await this.rememberChat(chatId);
       await this.notify(target, STARTED);
+      await this.notify(target, "Chọn một câu hỏi:", deskMenu());
+      await setDeskCommands(this.env.TELEGRAM_BOT_TOKEN).catch((error) => {
+        console.log(`telegram commands: ${error instanceof Error ? error.message : "lỗi"}`);
+      });
       return;
     }
     if (isStopCommand(text)) {
@@ -123,12 +146,36 @@ export class EmailAgent extends Agent<Env> {
       await this.notify(target, "Đã tắt thông báo email.");
       return;
     }
+    const button = deskButtonIntent(callback?.data || "", today);
+    if (button) {
+      if (callback?.id) await answerCallback(this.env.TELEGRAM_BOT_TOKEN, callback.id);
+      await this.answerDesk(target, button);
+      return;
+    }
+    if (text) {
+      const intent = parseDeskAsk(text, today);
+      const bareRoom = /^\d{2,4}$/.test(text.trim());
+      if (intent.kind !== "none" && !(bareRoom && this.openDraft(target))) {
+        await this.answerDesk(target, intent);
+        return;
+      }
+    }
     const data = callback?.data || "";
     const action = data ? data.slice(0, 1) : replyAction(text);
     const draftId = data.includes(":") ? data.split(":")[1] : this.openDraft(target)?.id || "";
     const draft = draftId ? this.draftById(draftId) : this.openDraft(target);
     if (!draft || !action) {
       if (callback?.id) await answerCallback(this.env.TELEGRAM_BOT_TOKEN, callback.id);
+      if (text && !callback && !draft && shouldOfferDeskHelp(text)) {
+        if (!this.deskChatIds().includes(target)) {
+          await this.notify(target, "Chỉ @xxxlevn và @monical48 xem được số liệu.");
+          return;
+        }
+        const guessed: DeskIntent = text.trim().startsWith("/")
+          ? { kind: "help" }
+          : await classifyDeskAsk(text, this.env.OPENAI_API_KEY || "", today);
+        await this.answerDesk(target, guessed.kind === "none" ? { kind: "help" } : guessed);
+      }
       return;
     }
     if (!this.claimDraft(draft.id, target)) {
@@ -146,6 +193,25 @@ export class EmailAgent extends Agent<Env> {
       this.setStatus(draft.id, "cancelled");
       await this.notify(target, `Đã huỷ draft ${draft.pmsCode || draft.guestName}.`);
     }
+  }
+
+  private async answerDesk(chatId: string, intent: DeskIntent) {
+    if (!this.deskChatIds().includes(chatId)) {
+      await this.notify(chatId, "Chỉ @xxxlevn và @monical48 xem được số liệu.");
+      return;
+    }
+    if (intent.kind === "help" || intent.kind === "none") {
+      await this.notify(chatId, deskHelp(), deskMenu());
+      return;
+    }
+    const today = todayInVietnam();
+    const loaded = await loadDesk(this.env.OPS_OPEN_API_TOKEN || "", deskQueryDate(intent, today), intent.kind === "find" ? intent.query : "");
+    if (!loaded.ok) {
+      await this.notify(chatId, loaded.error);
+      return;
+    }
+    const buttons = intent.kind === "summary" ? deskMenu() : [];
+    await this.notify(chatId, formatDesk(intent, loaded.brief).slice(0, 4000), buttons);
   }
 
   private askButtons(id: string) {
@@ -330,7 +396,14 @@ export class EmailAgent extends Agent<Env> {
     try {
       await sendTelegram(this.env.TELEGRAM_BOT_TOKEN, chatId, text, buttons);
     } catch (error) {
-      console.log(`telegram: ${error instanceof Error ? error.message : "gửi thất bại"}`);
+      const message = error instanceof Error ? error.message : "gửi thất bại";
+      console.log(`telegram: ${message}`);
+      if (!buttons.length) return;
+      try {
+        await sendTelegram(this.env.TELEGRAM_BOT_TOKEN, chatId, text);
+      } catch (retryError) {
+        console.log(`telegram: ${retryError instanceof Error ? retryError.message : "gửi thất bại"}`);
+      }
     }
   }
 

@@ -365,6 +365,11 @@ export const listBookingsOnStayDate = cache(async (date: string) => {
   return bookingsByIds(ids);
 });
 
+export async function listInhouseBookings() {
+  const ids = await bookingIdsWhere(eq(t.roomSales.status, "inhouse"));
+  return bookingsByIds(ids);
+}
+
 async function recentBookingIds(limit: number) {
   const db = await getDb();
   const rows = await db.all<{ bid: string }>(sql`

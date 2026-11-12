@@ -9,6 +9,7 @@ export {
   listBookingsOverlapping,
   listControlBookingCandidates,
   listBookingsOnStayDate,
+  listInhouseBookings,
   listHomeBookings,
   listOpenBookingRefs,
   findBookingRefByPmsCode,

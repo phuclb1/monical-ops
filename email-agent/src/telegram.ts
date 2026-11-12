@@ -146,9 +146,10 @@ export async function deleteTelegram(token: string, chatId: string, messageId: n
 }
 
 export async function answerCallback(token: string, callbackId: string, text = "") {
-  await fetch(`https://api.telegram.org/bot${token}/answerCallbackQuery`, {
+  const response = await fetch(`https://api.telegram.org/bot${token}/answerCallbackQuery`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ callback_query_id: callbackId, text: text || undefined }),
   });
+  await response.arrayBuffer().catch(() => undefined);
 }
