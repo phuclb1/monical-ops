@@ -62,13 +62,12 @@ export const ZALO_MESSAGE_DEFS = [
   },
   {
     id: "money-in",
-    name: "Tiền vào tài khoản",
+    name: "Tiền về",
     kind: "trigger" as const,
     event: "money_in" as const,
     group: "accounting" as const,
-    fields: "{{nganHang}} {{soTk}} {{taiKhoanPhu}} {{soTien}} {{noiDung}} {{luc}} {{soDu}} {{maGd}} {{maThanhToan}}",
-    template:
-      "Có tiền vào tài khoản\nNgân hàng: {{nganHang}}\nSố TK: {{soTk}}\nSố tiền: {{soTien}}\nNội dung: {{noiDung}}\nLúc: {{luc}}\nSố dư: {{soDu}}\nMã GD: {{maGd}}",
+    fields: "{{soTien}} {{taiKhoan}} {{nganHang}} {{soTk}} {{noiDung}} {{luc}} {{soDu}} {{maGd}}",
+    template: "Tài khoản công ty đã nhận khoản tiền {{soTien}} từ tài khoản {{taiKhoan}} của ngân hàng {{nganHang}}\nNội dung CK: {{noiDung}}",
   },
 ] as const;
 
@@ -90,6 +89,11 @@ const PREVIOUS_MESSAGE_TEMPLATES: Record<string, string[]> = {
   ],
   "booking-checkin-paid": [
     "Đã check-in và thu đủ {{ma}}\nKhách: {{khach}}\nPhòng: {{phong}}\nNhận {{nhan}} · trả {{tra}}\nĐã thu: {{daThu}}\nNgười ghi nhận: {{xuLy}}",
+  ],
+  "money-in": [
+    "Có tiền vào tài khoản\nNgân hàng: {{nganHang}}\nSố TK: {{soTk}}\nSố tiền: {{soTien}}\nNội dung: {{noiDung}}\nLúc: {{luc}}\nSố dư: {{soDu}}\nMã GD: {{maGd}}",
+    "Có tiền vào tài khoản\nTài khoản: {{tenTk}}\nNgân hàng: {{nganHang}}\nSố TK: {{soTk}}\nSố tiền: {{soTien}}\nNội dung: {{noiDung}}\nLúc: {{luc}}\nSố dư: {{soDu}}\nMã GD: {{maGd}}",
+    "Tài khoản công ty đã nhận khoản tiền {{soTien}} từ tài khoản {{taiKhoan}} của ngân hàng {{nganHang}}",
   ],
 };
 

@@ -359,7 +359,9 @@ export type MoneyInNotice = {
 
 export function moneyInZaloVars(input: MoneyInNotice) {
   const detail = input.content.trim() || input.description.trim() || "—";
+  const account = input.accountNumber.trim() || input.subAccount.trim() || "—";
   return {
+    taiKhoan: account,
     nganHang: input.gateway.trim() || "—",
     soTk: input.accountNumber.trim() || "—",
     taiKhoanPhu: input.subAccount.trim() || "—",

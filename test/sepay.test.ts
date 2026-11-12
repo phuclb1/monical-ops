@@ -64,6 +64,25 @@ test("tin kế toán điền số tiền, ngân hàng và giờ Việt Nam", () 
   assert.match(text, /10\.000₫/);
   assert.match(text, /02\/07\/2024 11:08/);
   assert.match(text, /105\.010\.000₫/);
+  const sentence = renderZaloTemplate(
+    "Tài khoản công ty đã nhận khoản tiền {{soTien}} từ tài khoản {{taiKhoan}} của ngân hàng {{nganHang}}\nNội dung CK: {{noiDung}}",
+    moneyInZaloVars({
+      gateway: parsed.tx.gateway,
+      accountNumber: parsed.tx.accountNumber,
+      subAccount: parsed.tx.subAccount,
+      amount: parsed.tx.transferAmount,
+      content: parsed.tx.content,
+      description: parsed.tx.description,
+      at: parsed.tx.transactionDate,
+      balance: parsed.tx.accumulated,
+      reference: parsed.tx.referenceCode,
+      code: parsed.tx.code,
+    }),
+  );
+  assert.equal(
+    sentence,
+    "Tài khoản công ty đã nhận khoản tiền 10.000₫ từ tài khoản 1017588888 của ngân hàng Vietcombank\nNội dung CK: NGUYEN VAN A chuyen tien",
+  );
 });
 
 test("chữ ký HMAC đúng raw body và API key", async () => {

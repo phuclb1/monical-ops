@@ -34,7 +34,7 @@ export async function POST(request: Request) {
 
   try {
     const result = await dispatchMoneyInZalo(parsed.tx);
-    if (result.reason === "no-group") return sepayJson({ success: false, message: "Chưa chọn nhóm kế toán" }, 500);
+    if (result.reason === "no-group") return sepayJson({ success: false, message: "Chưa chọn nhóm nhận tin tiền về" }, 500);
     await markSepayNotified(parsed.tx.id);
     return sepayJson({ success: true });
   } catch (error) {

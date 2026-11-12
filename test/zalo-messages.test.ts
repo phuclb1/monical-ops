@@ -52,8 +52,24 @@ test("nhóm và tin đọc từ cấu hình cũ khi chưa có bản mới", () =
   const moneyIn = messages.find((item) => item.id === "money-in");
   assert.equal(moneyIn?.event, "money_in");
   assert.equal(moneyIn?.group, "accounting");
-  assert.match(moneyIn?.template || "", /Có tiền vào tài khoản/);
-  assert.match(moneyIn?.template || "", /\{\{soTien\}\}/);
+  assert.equal(
+    moneyIn?.template,
+    "Tài khoản công ty đã nhận khoản tiền {{soTien}} từ tài khoản {{taiKhoan}} của ngân hàng {{nganHang}}\nNội dung CK: {{noiDung}}",
+  );
+  const savedMoney = normalizeZaloMessages([
+    {
+      id: "money-in",
+      template: "Có tiền vào tài khoản\nNgân hàng: {{nganHang}}\nSố TK: {{soTk}}\nSố tiền: {{soTien}}\nNội dung: {{noiDung}}\nLúc: {{luc}}\nSố dư: {{soDu}}\nMã GD: {{maGd}}",
+    },
+  ]);
+  assert.equal(savedMoney.find((item) => item.id === "money-in")?.template, moneyIn?.template);
+  const savedSentence = normalizeZaloMessages([
+    {
+      id: "money-in",
+      template: "Tài khoản công ty đã nhận khoản tiền {{soTien}} từ tài khoản {{taiKhoan}} của ngân hàng {{nganHang}}",
+    },
+  ]);
+  assert.equal(savedSentence.find((item) => item.id === "money-in")?.template, moneyIn?.template);
   const savedOld = normalizeZaloMessages([
     {
       id: "booking-checkin-paid",
