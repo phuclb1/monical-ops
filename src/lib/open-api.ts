@@ -1,5 +1,5 @@
 import { SALE_SOURCE_LABEL } from "@/lib/constants";
-import { catalogRate, isOpsBookingCode, parseMoney, parseSaleSource, withChannelCode } from "@/lib/sales";
+import { catalogRate, isOpsBookingCode, isOtaSource, parseMoney, parseSaleSource, withChannelCode } from "@/lib/sales";
 import { loadOpenApiToken } from "@/lib/open-api-settings";
 import { listRooms, listRoomTypes } from "@/lib/repos/rooms";
 import { bookingsByIds, findBookingRefByPmsCode, getBooking, listOpenBookingRefs } from "@/lib/repos/sales/queries";
@@ -269,9 +269,13 @@ export function parseOpenBookingCreate(body: unknown): OpenBookingCreateDraft {
   const source = sourceRaw ? parseSaleSource(sourceRaw) : origin === "ezcloud" ? "ezcloud" : "walk_in";
   const rooms = collectRoomDrafts(record, checkIn, checkOut);
   if (!rooms.length) throw new Error("Chọn phòng");
+  const ota = isOtaSource(source);
+  if (ota) {
+    for (const room of rooms) room.rate = undefined;
+  }
   const commission = parseCommission(record);
-  const otaTotal = record.otaTotal == null || record.otaTotal === "" ? undefined : moneyOf(record.otaTotal);
-  return foldChannelReference({
+  const otaTotal = ota ? readBill(record) : undefined;
+  const draft = foldChannelReference({
     guestName,
     guestPhone: text(record.guestPhone),
     source,
@@ -287,8 +291,10 @@ export function parseOpenBookingCreate(body: unknown): OpenBookingCreateDraft {
     checkinNow: Boolean(record.checkinNow),
     rooms,
     ...commission,
-    ...(otaTotal ? { otaTotal } : {}),
+    ...(otaTotal != null ? { otaTotal } : {}),
   });
+  if (isOtaSource(draft.source) && draft.otaTotal == null) throw new Error("Nhập tổng bill");
+  return draft;
 }
 
 export function agentBookingName(guestName: string, source: string, channelCode: string) {
@@ -339,7 +345,7 @@ export async function openSaleInputFromDraft(draft: OpenBookingCreateDraft): Pro
     const checkIn = row.checkIn || draft.checkIn;
     const checkOut = row.checkOut || draft.checkOut;
     dates[room.id] = { checkIn, checkOut };
-    rates[room.id] = row.rate ?? catalogRate(typeByName.get(room.type), checkIn);
+    rates[room.id] = isOtaSource(draft.source) ? 0 : (row.rate ?? catalogRate(typeByName.get(room.type), checkIn));
     if (row.adults != null) adultsByRoom[room.id] = row.adults;
     if (row.children != null) childrenByRoom[room.id] = row.children;
     breakfasts[room.id] = row.breakfast !== false;
@@ -365,8 +371,13 @@ export async function openSaleInputFromDraft(draft: OpenBookingCreateDraft): Pro
     pmsCode: draft.pmsCode,
     notes: draft.notes,
     ...(draft.otaCommissionValue ? { otaCommissionKind: draft.otaCommissionKind, otaCommissionValue: draft.otaCommissionValue } : {}),
-    ...(draft.otaTotal ? { otaTotal: draft.otaTotal } : {}),
+    ...(draft.otaTotal != null ? { otaTotal: draft.otaTotal } : {}),
   };
+}
+
+function readBill(record: Record<string, unknown>) {
+  const raw = [record.otaTotal, record.totalBill, record.bill, record.total].find((value) => value != null && value !== "");
+  return raw == null ? undefined : moneyOf(raw);
 }
 
 function parseCommission(record: Record<string, unknown>) {

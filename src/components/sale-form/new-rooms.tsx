@@ -133,7 +133,7 @@ export function SaleFormRooms(props: {
       {selectedRooms.length ? (
         <div className={`sale-rooms space-y-2 ${ota ? "is-ota" : ""}`}>
           <p className="text-xs font-semibold text-[#5c6665] md:hidden">Thông tin phòng</p>
-          {ota ? <p className="text-xs text-[#5c6665]">Chọn hạng và số phòng. Giá lấy từ tổng booking, không nhập giá từng phòng.</p> : null}
+          {ota ? <p className="text-xs text-[#5c6665]">Chọn phòng. Tiền lấy từ tổng bill, không nhập giá phòng.</p> : null}
           <div className="sale-rooms-head">
             <span>Phòng</span>
             <span>Ngày</span>

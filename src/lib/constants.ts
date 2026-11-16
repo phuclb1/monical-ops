@@ -12,6 +12,8 @@ export const HOTEL_BANK_HOLDER = process.env.NEXT_PUBLIC_HOTEL_BANK_HOLDER ?? "C
 export const HOTEL_BANK_NUMBER = process.env.NEXT_PUBLIC_HOTEL_BANK_NUMBER ?? "1273326868";
 export const HOTEL_BANK_NAME = process.env.NEXT_PUBLIC_HOTEL_BANK_NAME ?? "Vietcombank CN Lâm Đồng";
 export const HOTEL_BANK_QR = process.env.NEXT_PUBLIC_HOTEL_BANK_QR ?? "/QRCODE.png";
+export const HOTEL_VIETQR_BANK = process.env.NEXT_PUBLIC_HOTEL_VIETQR_BANK ?? "Vietcombank";
+export const HOTEL_VIETQR_ACCOUNT = process.env.NEXT_PUBLIC_HOTEL_VIETQR_ACCOUNT ?? "QRPSEP1ZZZZ55600375";
 export const CHECK_IN_TIME = "14:00";
 export const CHECK_OUT_TIME = "12:00";
 

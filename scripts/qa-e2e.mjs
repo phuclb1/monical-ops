@@ -215,7 +215,10 @@ async function cancelOpenBooking(name) {
   }
 }
 
+const onlyCases = (process.env.QA_ONLY || "").split(",").map((id) => id.trim()).filter(Boolean);
+
 async function check(id, title, fn) {
+  if (onlyCases.length && !onlyCases.includes(id)) return;
   const row = { id, title, result: "fail", evidence: "", note: "" };
   try {
     const shot = join(outDir, `${id}.png`);
@@ -541,6 +544,51 @@ try {
     await must(shot, ["Sổ cái", guest, "Thu thêm", "150.000₫", "CK cá nhân"]);
   });
 
+  await check("E2E-O6", "Sửa tổng bill — confirm hiện bill, hoa hồng và công nợ mới", async (shot) => {
+    const guest = "E2E OTA Bill";
+    await logout();
+    await login("quanly");
+    await go("/sales/new");
+    await page.locator('select[name="source"]').selectOption("agoda");
+    const checkIn = await page.locator('input[name="checkIn"]').first().inputValue();
+    await page.locator('input[name="checkOut"]').first().fill(addDaysVN(checkIn, 3));
+    await ready();
+    await pickOpenRoom();
+    await page.locator('select[name="otaCommissionKind"]').selectOption("amount");
+    await page.locator('input[name="otaCommissionValue"]').fill("100000");
+    await page.locator('input[name="otaTotal"]').fill("1000000");
+    await page.locator('input[name="guestName"]').fill(guest);
+    await page.locator('input[name="guestPhone"]').fill("0900000508");
+    const now = page.locator('input[name="checkinNow"]');
+    if (await now.count()) await now.uncheck();
+    await saveBooking(guest);
+    await must(shot, [guest, "Phòng 1.000.000₫", "Hoa hồng trên tiền phòng 100.000₫", "Công nợ OTA 900.000₫"]);
+    await mustNot(shot, ["999.999"]);
+    const editor = page.locator("details").filter({ has: page.locator("summary", { hasText: "Sửa booking" }) });
+    await editor.locator("summary").click();
+    await editor.locator('input[name="otaTotal"]').fill("1500001");
+    await editor.locator('input[name="otaCommissionValue"]').fill("200000");
+    await editor.getByRole("button", { name: "Lưu booking" }).click();
+    const dialog = page.getByRole("dialog", { name: "Xác nhận lưu booking" });
+    await dialog.waitFor({ timeout: 10000 });
+    const dialogText = await dialog.innerText();
+    await page.screenshot({ path: shot, fullPage: true });
+    for (const label of ["Tổng bill", "1.500.001₫", "Hoa hồng", "200.000₫", "Công nợ OTA", "1.300.001₫"]) {
+      if (!dialogText.includes(label)) throw new Error(`Confirm thiếu ${label}`);
+    }
+    if (dialogText.includes("999.999") || dialogText.includes("1.000.000") || dialogText.includes("900.000")) {
+      throw new Error(`Confirm còn số cũ: ${dialogText.replace(/\s+/g, " ").slice(0, 240)}`);
+    }
+    await Promise.all([
+      page.waitForURL(/\/sales\/bookings\//, { timeout: 25000 }),
+      dialog.getByRole("button", { name: "Lưu booking" }).click(),
+    ]);
+    await waitForBookingReady(guest);
+    await must(shot, [guest, "Phòng 1.500.001₫", "Hoa hồng trên tiền phòng 200.000₫", "Công nợ OTA 1.300.001₫"]);
+    await mustNot(shot, ["999.999", "900.000₫", "Công nợ OTA 1.500.001₫"]);
+    await cancelOpenBooking(guest);
+  });
+
   await check("E2E-CF1", "Dòng tiền một trang, tổng cả kỳ vẫn hiện", async (shot) => {
     await go("/reports/cash");
     await must(shot, ["Báo cáo dòng tiền", "Xuất Excel", "Tiền mặt"]);
@@ -651,7 +699,7 @@ try {
   await check("E2E-R17", "Quản lý hủy booking E2E còn giữ chỗ để trả phòng", async (shot) => {
     await logout();
     await login("quanly");
-    for (const name of ["E2E Chang", "E2E OTA Tai KS", "E2E OTA Phu Thu", "E2E Phu Thu", "E2E OTA"]) {
+    for (const name of ["E2E Chang", "E2E OTA Tai KS", "E2E OTA Phu Thu", "E2E Phu Thu", "E2E OTA", "E2E OTA Bill"]) {
       await cancelOpenBooking(name);
     }
     await go(`/sales/bookings?q=${encodeURIComponent("E2E OTA")}`);

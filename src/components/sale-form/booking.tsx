@@ -5,7 +5,7 @@ import { PendingSubmit } from "@/components/pending-submit";
 import { Field, MoneyMethodField } from "@/components/ui";
 import { SALE_SOURCE_GROUPS, SALE_SOURCE_LABEL } from "@/lib/constants";
 import { formatDateNumeric } from "@/lib/datetime";
-import { bookingDue, bookingPayMethods, bookingQuote, catalogRate, collectedSplit, formatVnd, isOtaDebt, isOtaSource, nightsBetween, otaDebtByDefault, parseMoney, parseDiscountValue, rangesOverlap, rateForRoomMove, roomAdultCap, roomMoveKind } from "@/lib/sales";
+import { bookingDue, bookingPayMethods, bookingQuote, catalogRate, collectedSplit, commissionAmount as commissionOf, formatVnd, isOtaDebt, isOtaSource, nightsBetween, otaDebtByDefault, parseMoney, parseDiscountValue, rangesOverlap, rateForRoomMove, ratesFromBookingTotal, roomAdultCap, roomMoveKind } from "@/lib/sales";
 import { extraAmount } from "@/lib/extras";
 import type { PaymentMethod } from "@/lib/types";
 import { OtaCommissionFields, type CommissionKind } from "./commission";
@@ -24,6 +24,7 @@ export function BookingForm({
   defaults,
   requiresApproval = false,
   lockMoney = false,
+  canEditPrice = false,
 }: {
   action: (formData: FormData) => void | Promise<void>;
   lines: {
@@ -47,6 +48,7 @@ export function BookingForm({
   extras?: { name: string; qty: number; unitPrice: number; unit: string }[];
   requiresApproval?: boolean;
   lockMoney?: boolean;
+  canEditPrice?: boolean;
   defaults: {
     bookingId: string;
     guestName?: string;
@@ -70,6 +72,7 @@ export function BookingForm({
     transferPaid?: number;
     companyPaid?: number;
     notes?: string;
+    roomTotal?: number;
   };
 }) {
   const [removed, setRemoved] = useState<string[]>([]);
@@ -99,6 +102,23 @@ export function BookingForm({
   const [otaPaymentMode, setOtaPaymentMode] = useState<"debt" | "hotel">(
     defaults.otaPaymentMode === "hotel" ? "hotel" : "debt",
   );
+  const [rates, setRates] = useState<Record<string, string>>(() =>
+    Object.fromEntries(lines.map((line) => [line.saleId, line.rate ? String(line.rate) : ""])),
+  );
+  const [otaTotal, setOtaTotal] = useState(() => {
+    if (isOtaSource(defaults.source || "") && defaults.roomTotal) return String(defaults.roomTotal);
+    const quote = bookingQuote(
+      lines.map((line) => ({
+        rate: line.rate,
+        checkIn: line.checkIn,
+        checkOut: line.checkOut,
+        breakfast: line.breakfast,
+        discountKind: line.discountKind,
+        discountValue: line.discountValue,
+      })),
+    );
+    return quote.total ? String(quote.total) : "";
+  });
   const [commissionKind, setCommissionKind] = useState<CommissionKind>(defaults.otaCommissionKind === "amount" ? "amount" : "percent");
   const [commission, setCommission] = useState(() => {
     const value = defaults.otaCommissionValue || (defaults.otaCommissionKind === "amount" ? 0 : defaults.otaCommissionPercent || 0);
@@ -157,12 +177,25 @@ export function BookingForm({
     });
   }
 
-  const quoteInputs = kept.map((line) => {
+  const otaRateList = canEditPrice && ota
+    ? ratesFromBookingTotal(
+        parseMoney(otaTotal),
+        kept.map((line) => {
+          const stay = stayOf(line.saleId, { checkIn: line.checkIn, checkOut: line.checkOut });
+          return Math.max(0, nightsBetween(stay.checkIn, stay.checkOut));
+        }),
+      )
+    : [];
+  const quoteInputs = kept.map((line, index) => {
     const roomId = picks[line.saleId] || line.roomId;
     const room = rooms.find((item) => item.id === roomId);
     const stay = stayOf(line.saleId, { checkIn: line.checkIn, checkOut: line.checkOut });
     const kind = roomMoveKind(line.type, room?.type || line.type, types);
-    const rate = rateForRoomMove(kind, catalogRate(types.find((type) => type.name === room?.type), stay.checkIn), line.rate, ota);
+    const rate = canEditPrice && ota
+      ? otaRateList[index] || 0
+      : canEditPrice
+        ? parseMoney(rates[line.saleId])
+        : rateForRoomMove(kind, catalogRate(types.find((type) => type.name === room?.type), stay.checkIn), line.rate, ota);
     return {
       line,
       room,
@@ -171,8 +204,8 @@ export function BookingForm({
       checkIn: stay.checkIn,
       checkOut: stay.checkOut,
       breakfast: breakfast[line.saleId] !== false,
-      discountKind: discounts[line.saleId]?.kind || "none",
-      discountValue: parseDiscountValue(discounts[line.saleId]?.kind, discounts[line.saleId]?.value),
+      discountKind: canEditPrice && ota ? "none" : discounts[line.saleId]?.kind || "none",
+      discountValue: canEditPrice && ota ? 0 : parseDiscountValue(discounts[line.saleId]?.kind, discounts[line.saleId]?.value),
     };
   });
   const booked = bookingQuote(
@@ -192,12 +225,10 @@ export function BookingForm({
   }));
   const extraRows = extras.map((row) => ({ ...row, amount: extraAmount(row, booked.nights) }));
   const extrasTotal = extraRows.reduce((sum, row) => sum + row.amount, 0);
-  const bookingTotal = booked.total + extrasTotal;
-  const commissionAmount = ota
-    ? commissionKind === "amount"
-      ? Math.min(booked.total, commissionValue)
-      : Math.round(booked.total * commissionValue / 100)
-    : 0;
+  const roomBill = ota ? parseMoney(otaTotal) : booked.total;
+  const bookingTotal = roomBill + extrasTotal;
+  const commissionAmount = ota ? commissionOf(roomBill, commissionKind, commissionValue) : 0;
+  const otaPayable = Math.max(0, roomBill - commissionAmount);
   const commissionLabel = commissionKind === "amount" ? "Hoa hồng" : `Hoa hồng ${commissionValue}%`;
   const savedCommissionKind = defaults.otaCommissionKind === "amount" ? "amount" : "percent";
   const savedCommissionValue = defaults.otaCommissionValue || (savedCommissionKind === "percent" ? defaults.otaCommissionPercent || 0 : 0);
@@ -311,15 +342,19 @@ export function BookingForm({
   ];
   const confirmMoney = ota
     ? [
-        { label: "Tiền phòng", value: formatVnd(booked.total) },
+        { label: "Tổng bill", value: formatVnd(roomBill) },
         ...(extrasTotal ? [{ label: otaDebt ? "Phụ thu thu tại KS" : "Phụ thu", value: formatVnd(extrasTotal) }] : []),
         { label: commissionLabel, value: formatVnd(commissionAmount) },
         ...(otaDebt
           ? [
-              { label: "Công nợ OTA", value: formatVnd(booked.total), emphasis: !extrasTotal },
+              { label: "Công nợ OTA", value: formatVnd(otaPayable), emphasis: !extrasTotal },
               ...(extrasTotal ? [{ label: "Phụ thu (tiền mặt / CK)", value: formatVnd(extrasTotal), emphasis: true }] : []),
             ]
-          : [{ label: "Còn phải thu", value: formatVnd(due), emphasis: true }]),
+          : [
+              ...(holdAmount ? [{ label: "Đặt cọc", value: `−${formatVnd(holdAmount)}` }] : []),
+              ...(checkinAmount ? [{ label: "Thu đủ khi check-in", value: `−${formatVnd(checkinAmount)}` }] : []),
+              { label: "Còn phải thu", value: formatVnd(due), emphasis: true },
+            ]),
       ]
     : [
         { label: "Phải thu", value: formatVnd(bookingTotal) },
@@ -367,8 +402,24 @@ export function BookingForm({
               <option value="hotel">Thanh toán tại KS — khách trả khi check-in</option>
             </select>
           </Field>
+          {canEditPrice ? (
+            <Field label="Tổng bill (₫)">
+              <input
+                name="otaTotal"
+                inputMode="numeric"
+                required
+                value={otaTotal}
+                onChange={(e) => setOtaTotal(e.target.value)}
+                placeholder="0"
+              />
+            </Field>
+          ) : null}
           <OtaCommissionFields kind={commissionKind} value={commission} onKind={setCommissionKind} onValue={setCommission} />
-          <p className="-mt-1 text-xs text-[#5c6665]">Hoa hồng phải trả đối tác, tính trên tiền phòng: {formatVnd(commissionAmount)}</p>
+          <p className="-mt-1 text-xs text-[#5c6665]">
+            {canEditPrice
+              ? `Tổng bill ${formatVnd(roomBill)} · hoa hồng ${formatVnd(commissionAmount)} · ${otaDebt ? `công nợ OTA ${formatVnd(otaPayable)}` : `còn phải thu ${formatVnd(due)}`}`
+              : `Hoa hồng phải trả đối tác, tính trên tiền phòng: ${formatVnd(commissionAmount)}`}
+          </p>
         </>
       ) : (
         <>
@@ -449,6 +500,9 @@ export function BookingForm({
         childrenOf={childrenOf}
         setRoomAdults={setRoomAdults}
         setRoomChildren={setRoomChildren}
+        editRate={canEditPrice && !ota}
+        rates={rates}
+        setRoomRate={(saleId, value) => setRates((prev) => ({ ...prev, [saleId]: value.replace(/[^\d]/g, "") }))}
       />
       {removed.length ? (
         <div className="space-y-2">
@@ -474,7 +528,11 @@ export function BookingForm({
         </div>
       ) : null}
       {lockMoney ? (
-        <p className="text-xs text-[#5c6665]">Số đặt cọc do quản lý sửa ở cột bên trái. Thu thêm và hoàn ghi trong danh sách giao dịch.</p>
+        <p className="text-xs text-[#5c6665]">
+          {canEditPrice
+            ? "Khoản thu sửa trong danh sách giao dịch: số tiền và tài khoản nhận."
+            : "Giá bán, hoa hồng và khoản thu chỉ quản lý sửa."}
+        </p>
       ) : otaDebt ? (
         <>
           <input type="hidden" name="deposit" value="0" />
@@ -508,6 +566,7 @@ export function BookingForm({
       </Field>
       <p className="text-xs text-[#5c6665]">
         Sửa tên, SĐT, số khách, kênh. Đổi sang phòng bất kỳ hạng nào. Ngày, ăn sáng và chiết khấu theo từng phòng.
+        {canEditPrice ? " Giá bán theo từng phòng, hoặc tổng bill và hoa hồng với OTA." : ""}
         {lines.length > 1 ? " Xóa bớt phòng vẫn giữ các phòng còn lại — muốn hủy hết thì dùng Hủy booking." : ""}
       </p>
       <BookingQuote
@@ -524,6 +583,7 @@ export function BookingForm({
         commissionLabel={commissionLabel}
         commissionAmount={commissionAmount}
         due={due}
+        roomBill={ota ? roomBill : undefined}
       />
       <PendingSubmit className="w-full" pendingLabel="Đang lưu...">
         {confirmLabel}

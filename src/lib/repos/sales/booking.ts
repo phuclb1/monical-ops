@@ -3,6 +3,7 @@ import { getDb } from "@/db";
 import * as t from "@/db/schema";
 import { nowISO, todayVN } from "../../datetime";
 import { auditChanges } from "../../audit-view";
+import { can } from "../../permissions";
 import {
   bookingKey,
   catalogRate,
@@ -12,9 +13,11 @@ import {
   isActiveSaleStatus,
   isOtaSource,
   isSaleSource,
+  nightsBetween,
   normalizeCommission,
   normalizeDiscount,
   rateForRoomMove,
+  ratesFromBookingTotal,
   roomMoveKind,
 } from "../../sales";
 import type { SessionUser } from "../../types";
@@ -40,6 +43,7 @@ export type BookingUpdateInput = {
     children?: number;
     discountKind?: string;
     discountValue?: number;
+    rate?: number;
   }[];
   guestName?: string;
   guestPhone?: string;
@@ -66,6 +70,7 @@ export type BookingUpdateInput = {
   paymentMethod?: string;
   notes?: string;
   removedSaleIds?: string[];
+  otaTotal?: number;
 };
 
 export async function updateBooking(
@@ -139,6 +144,20 @@ export async function updateBooking(
   const seen = new Set<string>();
   const now = nowISO();
   const today = todayVN();
+  const editPrice = can(user.role, "manageRates");
+  const windows = staying.map((row) => {
+    const assignment = nextBySale.get(row.id);
+    const nextIn = row.status === "reserved" && assignment?.checkIn ? assignment.checkIn : row.checkIn;
+    const nextOut = assignment?.checkOut || row.checkOut;
+    return { nextIn, nextOut };
+  });
+  const allocated =
+    editPrice && data.otaTotal != null && isOtaSource(source)
+      ? ratesFromBookingTotal(
+          data.otaTotal,
+          windows.map((row) => Math.max(0, nightsBetween(row.nextIn, row.nextOut))),
+        )
+      : null;
   for (const [index, row] of staying.entries()) {
     const pax = stayingPax[index];
     const assignment = nextBySale.get(row.id);
@@ -154,16 +173,24 @@ export async function updateBooking(
     const next = await assertSaleWindow(nextRoomId, nextIn, nextOut, active.map((item) => item.id));
     const kind = roomMoveKind(current.type, next.type, types);
     if (!kind) throw new Error(`P.${next.number} không thuộc hạng phòng đã khai báo`);
-    const nextRate = rateForRoomMove(
-      kind,
-      catalogRate(types.find((type) => type.name === next.type), nextIn),
-      row.rate,
-      isOtaSource(source),
-    );
-    const { discountKind, discountValue } = normalizeDiscount(
-      assignment?.discountKind ?? row.discountKind,
-      assignment?.discountValue ?? row.discountValue,
-    );
+    const explicitRate = editPrice && assignment?.rate != null ? Math.max(0, Math.round(assignment.rate)) : null;
+    const nextRate = allocated
+      ? allocated[index] || 0
+      : explicitRate != null
+        ? explicitRate
+        : rateForRoomMove(
+            kind,
+            catalogRate(types.find((type) => type.name === next.type), nextIn),
+            row.rate,
+            isOtaSource(source),
+          );
+    const priced = allocated
+      ? { discountKind: "none" as const, discountValue: 0 }
+      : normalizeDiscount(
+          assignment?.discountKind ?? row.discountKind,
+          assignment?.discountValue ?? row.discountValue,
+        );
+    const { discountKind, discountValue } = priced;
     const patch = {
       roomId: next.id,
       guestName,
@@ -184,6 +211,11 @@ export async function updateBooking(
       breakfast: assignment?.breakfast ?? row.breakfast !== false,
       discountKind,
       discountValue,
+      ...(allocated
+        ? { otaBill: Math.max(0, Math.round(data.otaTotal || 0)) }
+        : isOtaSource(source)
+          ? {}
+          : { otaBill: null }),
       ...(notes !== undefined ? { notes } : {}),
       updatedAt: now,
       updatedBy: user.id,

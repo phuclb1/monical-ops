@@ -9,11 +9,14 @@ import {
   HOTEL_EMAIL,
   HOTEL_LETTERHEAD,
   HOTEL_PHONE,
+  HOTEL_VIETQR_ACCOUNT,
+  HOTEL_VIETQR_BANK,
   HOTEL_WEBSITE,
   SALE_SOURCE_LABEL,
 } from "@/lib/constants";
 import { formatDateNumeric, formatStayStamp, todayVN } from "@/lib/datetime";
 import { billableSaleRows, bookingDisplayCode, bookingQuote, formatVndLetter, isOtaDebt, isOtaSource, parkingLabel } from "@/lib/sales";
+import { bookingVietQrUrl } from "@/lib/vietqr";
 import type { SaleSource } from "@/lib/types";
 import type { getBooking } from "@/lib/repos";
 
@@ -61,6 +64,9 @@ export function BookingConfirmation({ booking }: { booking: Booking }) {
   const afterDiscount = booking.total;
   const ota = isOtaSource(booking.source);
   const otaDebt = isOtaDebt(booking.source, booking.otaPaymentMode);
+  const payQr = ota ? "" : bookingVietQrUrl(booking.due, code);
+  const bankAccount = payQr ? HOTEL_VIETQR_ACCOUNT : HOTEL_BANK_NUMBER;
+  const bankName = payQr ? HOTEL_VIETQR_BANK : HOTEL_BANK_NAME;
 
   return (
     <article className="booking-sheet">
@@ -173,25 +179,32 @@ export function BookingConfirmation({ booking }: { booking: Booking }) {
         <h2>THANH TOÁN</h2>
         <div className="booking-sheet-pay">
           <div className="booking-sheet-bank">
-            {HOTEL_BANK_QR ? (
-              <img src={HOTEL_BANK_QR} alt="QR chuyển khoản Vietcombank" className="booking-sheet-qr" />
+            {payQr || HOTEL_BANK_QR ? (
+              <img
+                src={payQr || HOTEL_BANK_QR}
+                alt={payQr ? "QR thu đủ tiền booking" : "QR chuyển khoản Vietcombank"}
+                className={payQr ? "booking-sheet-qr is-pay" : "booking-sheet-qr"}
+              />
             ) : null}
-            <table className="booking-sheet-kv">
-              <tbody>
-                <tr>
-                  <th>Chủ tài khoản</th>
-                  <td>{HOTEL_BANK_HOLDER || "—"}</td>
-                </tr>
-                <tr>
-                  <th>Số tài khoản</th>
-                  <td>{HOTEL_BANK_NUMBER || "—"}</td>
-                </tr>
-                <tr>
-                  <th>Ngân hàng</th>
-                  <td>{HOTEL_BANK_NAME || "—"}</td>
-                </tr>
-              </tbody>
-            </table>
+            <div>
+              <table className="booking-sheet-kv">
+                <tbody>
+                  <tr>
+                    <th>Chủ tài khoản</th>
+                    <td>{HOTEL_BANK_HOLDER || "—"}</td>
+                  </tr>
+                  <tr>
+                    <th>Số tài khoản</th>
+                    <td>{bankAccount || "—"}</td>
+                  </tr>
+                  <tr>
+                    <th>Ngân hàng</th>
+                    <td>{bankName || "—"}</td>
+                  </tr>
+                </tbody>
+              </table>
+              {payQr ? <p className="booking-sheet-qr-note">Nội dung CK: Thu đủ tiền booking {code}</p> : null}
+            </div>
           </div>
           {otaDebt ? (
             <table className="booking-sheet-sum">

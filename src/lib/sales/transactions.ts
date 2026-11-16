@@ -392,6 +392,30 @@ export function depositEditPlan(input: {
   return { ok: true, op: "columns", amount };
 }
 
+/** Manager correction of one collected row: amount and receiving account. Zero deletes the row. */
+export function collectionEditPlan(input: {
+  transactions: { id: string; kind: string; amount: number }[];
+  txId: string;
+  amount: number;
+  refunded?: number;
+}): { ok: true; op: "update" | "delete"; txId: string; amount: number } | { ok: false; message: string } {
+  const amount = Math.max(0, Math.round(input.amount || 0));
+  const txs = input.transactions || [];
+  const tx = txs.find((row) => row.id === input.txId);
+  if (!tx || !isInflowTxKind(tx.kind)) return { ok: false, message: "Không tìm thấy khoản thu" };
+  let guest = 0;
+  let refundFromTx = 0;
+  for (const row of txs) {
+    const next = row.id === tx.id ? amount : Math.max(0, Math.round(row.amount || 0));
+    if (row.kind === "refund") refundFromTx += Math.max(0, Math.round(row.amount || 0));
+    else if (isGuestInflowTxKind(row.kind)) guest += next;
+  }
+  const floor = Math.max(Math.max(0, Math.round(input.refunded || 0)), refundFromTx);
+  if (guest < floor) return { ok: false, message: `Không giảm khoản thu dưới số đã hoàn ${formatVnd(floor)}` };
+  if (!amount) return { ok: true, op: "delete", txId: tx.id, amount: 0 };
+  return { ok: true, op: "update", txId: tx.id, amount };
+}
+
 export function groupSalesForBackfill(sales: BackfillSale[]) {
   const groups = new Map<string, BackfillSale[]>();
   for (const sale of sales) {

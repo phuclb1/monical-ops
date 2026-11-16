@@ -93,6 +93,7 @@ CREATE TABLE IF NOT EXISTS room_sales (
   refund_reason TEXT NOT NULL DEFAULT '',
   refund_total INTEGER NOT NULL DEFAULT 0,
   booking_total INTEGER NOT NULL DEFAULT 0,
+  ota_bill INTEGER,
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL,
   created_by TEXT,

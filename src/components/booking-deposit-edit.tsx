@@ -9,12 +9,18 @@ export function BookingDepositEdit({
   amount,
   method,
   label,
+  saveLabel,
+  amountLabel,
+  methodLabel,
 }: {
   bookingId: string;
   txId?: string;
   amount: number;
   method: PaymentMethod;
   label?: string;
+  saveLabel?: string;
+  amountLabel?: string;
+  methodLabel?: string;
 }) {
   const held = Math.max(0, Math.round(amount || 0));
   return (
@@ -31,13 +37,13 @@ export function BookingDepositEdit({
             inputMode="numeric"
             defaultValue={held ? String(held) : ""}
             placeholder="0"
-            aria-label="Số tiền đặt cọc"
+            aria-label={amountLabel || "Số tiền đặt cọc"}
             className="min-w-0 flex-1"
             style={{ width: "auto" }}
           />
           <select
             name="paymentMethod"
-            aria-label="Hình thức đặt cọc"
+            aria-label={methodLabel || "Tài khoản nhận"}
             defaultValue={method}
             className="shrink-0"
             style={{ width: "10.75rem" }}
@@ -49,9 +55,9 @@ export function BookingDepositEdit({
             ))}
           </select>
         </div>
-        {held ? <p className="text-xs text-[#5c6665]">Nhập 0 để xóa khoản đặt cọc này.</p> : null}
+        {held ? <p className="text-xs text-[#5c6665]">Nhập 0 để xóa khoản này.</p> : null}
         <PendingSubmit className="w-full" pendingLabel="Đang lưu...">
-          Lưu cọc
+          {saveLabel || "Lưu cọc"}
         </PendingSubmit>
       </form>
     </details>

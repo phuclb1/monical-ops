@@ -61,7 +61,8 @@ export async function createRoomSale(user: SessionUser, data: SaleInput) {
   const stayChildren = roomPax.reduce((sum, row) => sum + row.children, 0);
   const hasBreakfast = rooms.some((row) => row.breakfast !== false);
   const breakfastPax = clampBreakfastPax(stayAdults, stayChildren, data.breakfastAdults, data.breakfastChildren, hasBreakfast);
-  if (!requestedBookingId && isOtaSource(data.source) && data.otaTotal != null) {
+  if (!requestedBookingId && isOtaSource(data.source)) {
+    if (data.otaTotal == null) throw new Error("Nhập tổng bill");
     const allocated = ratesFromBookingTotal(
       data.otaTotal,
       rooms.map((row) => nightsBetween(row.checkIn, row.checkOut)),
@@ -72,6 +73,9 @@ export async function createRoomSale(user: SessionUser, data: SaleInput) {
       row.discountValue = 0;
     });
   }
+  const otaBill = !requestedBookingId && isOtaSource(data.source) && data.otaTotal != null
+    ? Math.max(0, Math.round(data.otaTotal))
+    : null;
   const quote = bookingQuote(
     rooms.map((row) => ({
       rate: row.rate,
@@ -83,7 +87,7 @@ export async function createRoomSale(user: SessionUser, data: SaleInput) {
     })),
   );
   const preparedExtras = requestedBookingId ? [] : await resolveSaleExtras(data.extras || []);
-  const bookingTotal = quote.total + preparedExtras.reduce((sum, row) => sum + extraAmount(row, quote.nights), 0);
+  const bookingTotal = (otaBill != null ? otaBill : quote.total) + preparedExtras.reduce((sum, row) => sum + extraAmount(row, quote.nights), 0);
   const ids: string[] = [];
   for (const [index, row] of rooms.entries()) {
     const pax = roomPax[index];
@@ -112,6 +116,7 @@ export async function createRoomSale(user: SessionUser, data: SaleInput) {
       cars: Math.max(0, data.cars || 0),
       bikes: Math.max(0, data.bikes || 0),
       rate: row.rate,
+      otaBill,
       discountKind: row.discountKind,
       discountValue: row.discountValue,
       deposit: paid.deposit,

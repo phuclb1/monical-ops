@@ -197,11 +197,13 @@ export function SaleForm({
       ? booked.nights
       : Math.max(0, nightsBetween(sharedStay.checkIn, sharedStay.checkOut));
   const extraRows = extras.map((row) => ({ ...row, amount: extraAmount(row, extraNights) }));
-  const bookingTotal = booked.total + extraRows.reduce((sum, row) => sum + row.amount, 0);
+  const typedOtaTotal = parseMoney(otaTotal);
+  const roomBill = ota ? typedOtaTotal : booked.total;
+  const bookingTotal = roomBill + extraRows.reduce((sum, row) => sum + row.amount, 0);
   const commissionAmount = ota
     ? commissionKind === "amount"
-      ? Math.min(booked.total, commissionValue)
-      : Math.round(booked.total * commissionValue / 100)
+      ? Math.min(roomBill, commissionValue)
+      : Math.round(roomBill * commissionValue / 100)
     : 0;
   const commissionLabel = commissionKind === "amount" ? "Hoa hồng" : `Hoa hồng ${commissionValue}%`;
   const depositAmount = ota ? 0 : parseMoney(deposit);
@@ -331,8 +333,6 @@ export function SaleForm({
 
   const splitStay = segments.some((segment) => segment.checkIn !== sharedStay.checkIn || segment.checkOut !== sharedStay.checkOut);
   const saveLabel = activeRoomIds.length > 1 ? (splitStay ? `Lưu ${activeRoomIds.length} chặng` : `Lưu ${activeRoomIds.length} phòng`) : submitLabel;
-  const typedOtaTotal = parseMoney(otaTotal);
-  const otaShort = ota && typedOtaTotal > booked.total ? typedOtaTotal - booked.total : 0;
 
   function onSubmit(event: FormEvent<HTMLFormElement>) {
     if (skipConfirm.current) {
@@ -392,7 +392,7 @@ export function SaleForm({
               <option value="hotel">Thanh toán tại KS — khách trả khách sạn</option>
             </select>
           </Field>
-          <Field label="Tổng booking (₫)">
+          <Field label="Tổng bill (₫)">
             <input
               name="otaTotal"
               inputMode="numeric"
@@ -402,14 +402,10 @@ export function SaleForm({
               placeholder="0"
             />
           </Field>
-          <p className="-mt-1 text-xs text-[#5c6665]">Tiền phòng của cả booking. Chọn hạng và số phòng, không nhập giá từng phòng.</p>
-          {otaShort ? (
-            <p className="-mt-1 text-xs text-[#9a5b00]">
-              Còn {formatVnd(otaShort)} không chia hết theo số đêm. Tổng lưu {formatVnd(booked.total)}.
-            </p>
-          ) : null}
           <OtaCommissionFields kind={commissionKind} value={commission} onKind={setCommissionKind} onValue={setCommission} />
-          <p className="-mt-1 text-xs text-[#5c6665]">Hoa hồng phải trả đối tác, tính trên tiền phòng: {formatVnd(commissionAmount)}</p>
+          <p className="-mt-1 text-xs text-[#5c6665]">
+            Nhập tổng bill và hoa hồng. Không dùng giá phòng. Hoa hồng: {formatVnd(commissionAmount)}
+          </p>
         </>
       ) : (
         <>
@@ -548,14 +544,14 @@ export function SaleForm({
           money={
             ota
               ? [
-                  { label: "Tổng tiền phòng", value: formatVnd(booked.total) },
+                  { label: "Tổng bill", value: formatVnd(roomBill) },
                   ...(extraRows.length
                     ? [{ label: otaDebt ? "Phụ thu thu tại KS" : "Phụ thu", value: formatVnd(extraRows.reduce((sum, row) => sum + row.amount, 0)) }]
                     : []),
                   { label: commissionLabel, value: formatVnd(commissionAmount) },
                   ...(otaDebt
                     ? [
-                        { label: "Công nợ OTA", value: formatVnd(booked.total), emphasis: !extraRows.length },
+                        { label: "Công nợ OTA", value: formatVnd(Math.max(0, roomBill - commissionAmount)), emphasis: !extraRows.length },
                         ...(extraRows.length
                           ? [{ label: "Phụ thu (tiền mặt / CK)", value: formatVnd(extraRows.reduce((sum, row) => sum + row.amount, 0)), emphasis: true }]
                           : []),
@@ -568,7 +564,6 @@ export function SaleForm({
                   { label: "Còn phải thu", value: formatVnd(due), emphasis: true },
                 ]
           }
-          note={otaShort ? `Còn ${formatVnd(otaShort)} không chia hết theo số đêm.` : undefined}
           confirmLabel={saveLabel}
           onCancel={() => setConfirming(false)}
           onConfirm={confirmSave}

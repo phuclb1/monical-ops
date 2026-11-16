@@ -41,8 +41,11 @@ export function BookingRoomLines(props: {
   childrenOf: (line: Line) => number;
   setRoomAdults: (value: Record<string, string> | ((prev: Record<string, string>) => Record<string, string>)) => void;
   setRoomChildren: (value: Record<string, string> | ((prev: Record<string, string>) => Record<string, string>)) => void;
+  editRate?: boolean;
+  rates?: Record<string, string>;
+  setRoomRate?: (saleId: string, value: string) => void;
 }) {
-  const { lines, types, picks, setPicks, setDates, breakfast, setBreakfast, discounts, setDiscounts, optionsFor, stayOf, onRemove, capFor, adultsOf, childrenOf, setRoomAdults, setRoomChildren } = props;
+  const { lines, types, picks, setPicks, setDates, breakfast, setBreakfast, discounts, setDiscounts, optionsFor, stayOf, onRemove, capFor, adultsOf, childrenOf, setRoomAdults, setRoomChildren, editRate, rates = {}, setRoomRate } = props;
   return (
     <>
       {lines.map((line, index) => {
@@ -173,6 +176,17 @@ export function BookingRoomLines(props: {
               />
               <span>Ăn sáng</span>
             </label>
+            {editRate ? (
+              <Field label="Giá bán / đêm (₫)">
+                <input
+                  name={`rate-${line.saleId}`}
+                  inputMode="numeric"
+                  value={rates[line.saleId] ?? ""}
+                  onChange={(e) => setRoomRate?.(line.saleId, e.target.value)}
+                  placeholder="0"
+                />
+              </Field>
+            ) : null}
             <RoomDiscountFields
               namePrefix={line.saleId}
               discount={discounts[line.saleId] || emptyDiscount()}

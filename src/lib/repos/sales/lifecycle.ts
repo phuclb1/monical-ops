@@ -4,7 +4,7 @@ import * as t from "@/db/schema";
 import { nowISO, todayVN } from "../../datetime";
 import { can } from "../../permissions";
 import { PAYMENT_METHOD_LABEL } from "../../constants";
-import { addRefundSplit, bookingInflowSplit, bookingPayMethods, canSettleOtaDebt, collectedSplit, depositEditPlan, depositMethodOf, depositRefundSplit, formatVnd, guestCheckoutDue, isActiveSaleStatus, isOtaDebt, otaMoneySplit, paidFromParts, parsePaymentMethod, parseStayRefundReason, refundSplitFromMethod, refundTotal, salePaid, saleStatusToStay, stayRefundable, STAY_REFUND_REASON_LABEL } from "../../sales";
+import { addRefundSplit, bookingInflowSplit, bookingPayMethods, canSettleOtaDebt, collectedSplit, collectionEditPlan, depositEditPlan, depositMethodOf, depositRefundSplit, formatVnd, guestCheckoutDue, isActiveSaleStatus, isInflowTxKind, isOtaDebt, otaMoneySplit, paidFromParts, parsePaymentMethod, parseStayRefundReason, refundSplitFromMethod, refundTotal, salePaid, saleStatusToStay, stayRefundable, STAY_REFUND_REASON_LABEL } from "../../sales";
 import type { SaleStatus, SessionUser } from "../../types";
 import { audit } from "../audit";
 import { bookingCheckinPaidReady } from "../../zalo-templates";
@@ -66,13 +66,40 @@ export async function updateBookingDeposit(
   bookingId: string,
   data: { txId?: string; amount?: number; paymentMethod?: string },
 ) {
-  if (!can(user.role, "editBookingDeposit")) throw new Error("Chỉ quản lý sửa số tiền đặt cọc");
+  if (!can(user.role, "editBookingDeposit")) throw new Error("Chỉ quản lý sửa khoản thu");
   const booking = await getBooking(bookingId);
   if (!booking) throw new Error("Không tìm thấy booking");
   const wasPaid = bookingCheckinPaidReady(booking);
   const paidSplit = collectedSplit(salePaid(booking).deposit, booking.checkinPaid);
   const methods = bookingPayMethods(booking);
   const method = parsePaymentMethod(data.paymentMethod || methods.deposit);
+  const named = data.txId ? (booking.transactions || []).find((row) => row.id === data.txId) : undefined;
+  if (data.txId && named && isInflowTxKind(named.kind)) {
+    const plan = collectionEditPlan({
+      transactions: booking.transactions || [],
+      txId: data.txId,
+      amount: data.amount || 0,
+      refunded: refundTotal(booking),
+    });
+    if (!plan.ok) throw new Error(plan.message);
+    const currentMethod = parsePaymentMethod(named.method);
+    if (plan.op === "update" && plan.amount === named.amount && method === currentMethod) return booking.id;
+    const db = await getDb();
+    if (plan.op === "delete") {
+      await db.delete(t.bookingTransactions).where(eq(t.bookingTransactions.id, named.id));
+    } else {
+      await db.update(t.bookingTransactions).set({ amount: plan.amount, method }).where(eq(t.bookingTransactions.id, named.id));
+    }
+    await finishDepositEdit(
+      user,
+      booking,
+      wasPaid,
+      { deposit: named.amount, paymentMethod: currentMethod },
+      plan.amount ? { deposit: plan.amount, paymentMethod: method } : { deposit: 0 },
+      named.kind === "deposit" ? "Sửa cọc" : "Sửa khoản thu",
+    );
+    return booking.id;
+  }
   const plan = depositEditPlan({
     transactions: booking.transactions || [],
     txId: data.txId,
@@ -145,6 +172,7 @@ async function finishDepositEdit(
   wasPaid: boolean,
   before: { deposit: number; paymentMethod?: string },
   after: { deposit: number; paymentMethod?: string },
+  title = "Sửa cọc",
 ) {
   await syncBookingMoney(booking.id);
   await audit(user.id, "booking", booking.id, "update", before, after);
@@ -155,7 +183,7 @@ async function finishDepositEdit(
   await notifyBookingChange({
     actor: user,
     bookingId: booking.id,
-    title: `Sửa cọc · ${booking.guestName}`,
+    title: `${title} · ${booking.guestName}`,
     body: `${user.fullName} · ${formatVnd(before.deposit)} → ${formatVnd(after.deposit)}${methodNote}`,
   });
   await dispatchCheckinPaidZalo(user.id, booking.id, wasPaid).catch((error) => console.error("zalo booking", error));

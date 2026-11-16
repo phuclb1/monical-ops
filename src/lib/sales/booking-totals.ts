@@ -19,6 +19,7 @@ type MoneyRoom = {
   refundCash?: number | null;
   refundTransfer?: number | null;
   refundCompany?: number | null;
+  otaBill?: number | null;
 };
 
 type MoneyExtra = { qty: number; unitPrice: number; unit: string };
@@ -49,15 +50,16 @@ export function computeBookingMoney(rooms: MoneyRoom[], extras: MoneyExtra[] = [
   const checkOut = priced.reduce((max, row) => (row.checkOut > max ? row.checkOut : max), head.checkOut);
   const nights = Math.max(quote.nights, nightsBetween(checkIn, checkOut));
   const extrasTotal = extras.reduce((sum, row) => sum + extraAmount(row, nights), 0);
-  const roomTotal = quote.total;
+  const storedBill = priced.reduce((max, row) => Math.max(max, Math.round(Number(row.otaBill) || 0)), 0);
+  const roomTotal = storedBill > 0 ? storedBill : quote.total;
   const quoted = roomTotal + extrasTotal;
   const refunded = rooms.reduce((max, row) => Math.max(max, refundTotal(row)), 0);
   const total = bookingSettledTotal(quoted, paid.deposit, refunded);
   return {
     nights,
-    subtotal: quote.subtotal,
-    discount: quote.discount,
-    breakfastOff: quote.breakfastOff,
+    subtotal: storedBill > 0 ? storedBill : quote.subtotal,
+    discount: storedBill > 0 ? 0 : quote.discount,
+    breakfastOff: storedBill > 0 ? 0 : quote.breakfastOff,
     roomTotal,
     extrasTotal,
     quoted,

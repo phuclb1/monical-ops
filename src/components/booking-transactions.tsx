@@ -1,7 +1,7 @@
 import { BookingDepositEdit } from "@/components/booking-deposit-edit";
 import { PAYMENT_METHOD_LABEL } from "@/lib/constants";
 import { formatDateTime } from "@/lib/datetime";
-import { BOOKING_TX_KIND_LABEL, formatVnd, isBookingTxKind } from "@/lib/sales";
+import { BOOKING_TX_KIND_LABEL, formatVnd, isBookingTxKind, isInflowTxKind } from "@/lib/sales";
 import type { PaymentMethod } from "@/lib/types";
 
 function payMethod(value: string): PaymentMethod {
@@ -53,8 +53,17 @@ export function BookingTransactionList({
                 </a>
               ) : null}
             </div>
-            {editDeposit && bookingId && kind === "deposit" && row.amount > 0 ? (
-              <BookingDepositEdit bookingId={bookingId} txId={row.id} amount={row.amount} method={payMethod(row.method)} />
+            {editDeposit && bookingId && isInflowTxKind(kind) && row.amount > 0 ? (
+              <BookingDepositEdit
+                bookingId={bookingId}
+                txId={row.id}
+                amount={row.amount}
+                method={payMethod(row.method)}
+                label="Sửa số tiền"
+                saveLabel="Lưu khoản thu"
+                amountLabel="Số tiền"
+                methodLabel="Tài khoản nhận"
+              />
             ) : null}
           </li>
         );

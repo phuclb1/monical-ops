@@ -276,4 +276,5 @@ export const SCHEMA_PATCHES = [
 )`,
   "CREATE INDEX IF NOT EXISTS zalo_agent_jobs_status ON zalo_agent_jobs (status, created_at)",
   "CREATE INDEX IF NOT EXISTS zalo_agent_jobs_kind_status ON zalo_agent_jobs (kind, status, created_at)",
+  "ALTER TABLE room_sales ADD COLUMN ota_bill INTEGER",
 ];

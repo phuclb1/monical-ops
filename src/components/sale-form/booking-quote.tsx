@@ -18,12 +18,14 @@ export function BookingQuote(props: {
   commissionLabel?: string;
   commissionAmount?: number;
   due: number;
+  roomBill?: number;
 }) {
-  const { quotes, extraRows, booked, bookingTotal, depositAmount, checkinAmount = 0, depositPayMethod, checkinPayMethod, ota, otaDebt, commissionLabel = "Hoa hồng", commissionAmount = 0, due } = props;
+  const { quotes, extraRows, booked, bookingTotal, depositAmount, checkinAmount = 0, depositPayMethod, checkinPayMethod, ota, otaDebt, commissionLabel = "Hoa hồng", commissionAmount = 0, due, roomBill } = props;
   const depositSuffix = ` · ${PAYMENT_METHOD_LABEL[depositPayMethod]}`;
   const checkinSuffix = ` · ${PAYMENT_METHOD_LABEL[checkinPayMethod]}`;
   const extrasTotal = extraRows.reduce((sum, row) => sum + row.amount, 0);
-  const roomTotal = Math.max(0, bookingTotal - extrasTotal);
+  const roomTotal = roomBill != null ? roomBill : Math.max(0, bookingTotal - extrasTotal);
+  const otaPayable = Math.max(0, roomTotal - commissionAmount);
   return (
       <div className="rounded-xl bg-sand px-3 py-2 text-sm">
         <ul className="space-y-1">
@@ -35,7 +37,7 @@ export function BookingQuote(props: {
                   {row.kind === "upgrade" ? ` · nâng` : row.kind === "downgrade" ? ` · hạ` : ""}
                   {row.rateKept ? ` · giữ tiền` : ""} · {row.quote.nights} đêm
                 </span>
-                <span>{formatVnd(row.quote.gross ?? row.quote.subtotal + row.quote.breakfastOff)}</span>
+                {roomBill == null ? <span>{formatVnd(row.quote.gross ?? row.quote.subtotal + row.quote.breakfastOff)}</span> : null}
               </div>
               {row.quote.breakfastOff ? (
                 <div className="flex justify-between gap-2 text-xs text-[#c47b12]">
@@ -62,13 +64,19 @@ export function BookingQuote(props: {
           ))}
           {ota ? (
             <>
+              {roomBill != null ? (
+                <li className="flex justify-between gap-2 font-semibold">
+                  <span>Tổng bill</span>
+                  <span>{formatVnd(roomBill)}</span>
+                </li>
+              ) : null}
               <li className="flex justify-between gap-2 text-[#c47b12]">
                 <span>{commissionLabel}</span>
                 <span>{formatVnd(commissionAmount)}</span>
               </li>
               <li className="flex justify-between gap-2 font-bold">
                 <span>Công nợ OTA</span>
-                <span>{formatVnd(otaDebt ? roomTotal : 0)}</span>
+                <span>{formatVnd(otaDebt ? otaPayable : 0)}</span>
               </li>
               {otaDebt && extrasTotal ? (
                 <>

@@ -64,7 +64,50 @@ test("open API parse: số phòng, alias ngày, mặc định nguồn", () => {
   assert.equal(priced.otaCommissionKind, "amount");
   assert.equal(priced.otaCommissionValue, 162600);
   assert.equal(priced.otaTotal, 813000);
-  assert.equal(priced.rooms[0]?.rate, 813000);
+  assert.equal(priced.rooms[0]?.rate, undefined);
+
+  const bill = parseOpenBookingCreate({
+    guestName: "D",
+    source: "Agoda",
+    checkIn: "2026-11-08",
+    checkOut: "2026-11-10",
+    roomNumber: "205",
+    rate: 900000,
+    bill: "1.500.000",
+    commission: "180.000",
+  });
+  assert.equal(bill.otaTotal, 1500000);
+  assert.equal(bill.otaCommissionKind, "amount");
+  assert.equal(bill.otaCommissionValue, 180000);
+  assert.equal(bill.rooms[0]?.rate, undefined);
+
+  const aliased = parseOpenBookingCreate({
+    guestName: "E",
+    source: "booking",
+    checkIn: "2026-11-08",
+    checkOut: "2026-11-09",
+    rooms: [{ roomNumber: "206", rate: 400000 }],
+    total: 700000,
+    commissionKind: "percent",
+    commission: "18%",
+  });
+  assert.equal(aliased.otaTotal, 700000);
+  assert.equal(aliased.otaCommissionKind, "percent");
+  assert.equal(aliased.otaCommissionValue, 18);
+  assert.equal(aliased.rooms[0]?.rate, undefined);
+
+  assert.throws(
+    () =>
+      parseOpenBookingCreate({
+        guestName: "F",
+        source: "agoda",
+        checkIn: "2026-11-08",
+        checkOut: "2026-11-09",
+        roomNumber: "205",
+        rate: 900000,
+      }),
+    /tổng bill/i,
+  );
 });
 
 test("mã kênh OTA không chiếm chỗ mã Ops", () => {
@@ -77,6 +120,8 @@ test("mã kênh OTA không chiếm chỗ mã Ops", () => {
     pmsCode: "604367209",
     notes: "Đặt qua Trip.com",
     roomNumber: "305",
+    total: 1200000,
+    commission: 180000,
   });
   assert.equal(draft.source, "trip");
   assert.equal(draft.origin, "ops");
@@ -105,6 +150,7 @@ test("mã kênh OTA không chiếm chỗ mã Ops", () => {
     checkOut: "2026-11-30",
     pmsCode: "BK-11-113",
     roomNumber: "305",
+    bill: 900000,
   });
   assert.equal(again.pmsCode, "BK-11-113");
   assert.equal(again.notes, "");

@@ -121,7 +121,7 @@ export async function extractBookingWithModel(mail: Mail, apiKey: string, fallba
         {
           role: "system",
           content:
-            "Trích booking khách sạn từ email. Chỉ trả JSON với các khóa: isNewBooking, guestName, guestEmail, guestPhone, source, checkIn, checkOut, roomType, adults, children, nightlyRate, total, commission, commissionKind, pmsCode, breakfast, paymentNote, notes, statusLabel. checkIn và checkOut là YYYY-MM-DD. nightlyRate là giá một đêm (VND, số nguyên), không phải tổng cả kỳ. total là tổng tiền phòng. commission là hoa hồng. commissionKind là amount hoặc percent. pmsCode là mã đặt phòng của kênh, không phải mã Ops. source là agoda, booking, traveloka, trip, expedia, airbnb, ezcloud hoặc ota. isNewBooking là true khi đây là đặt phòng mới.",
+            "Trích booking khách sạn từ email. Chỉ trả JSON với các khóa: isNewBooking, guestName, guestEmail, guestPhone, source, checkIn, checkOut, roomType, adults, children, nightlyRate, total, commission, commissionKind, pmsCode, breakfast, paymentNote, notes, statusLabel. checkIn và checkOut là YYYY-MM-DD. total là tổng bill (VND, số nguyên), không tính từ giá phòng. commission là hoa hồng nhập trực tiếp. commissionKind là amount hoặc percent. nightlyRate chỉ là giá một đêm khi email không có tổng bill. pmsCode là mã đặt phòng của kênh, không phải mã Ops. source là agoda, booking, traveloka, trip, expedia, airbnb, ezcloud hoặc ota. isNewBooking là true khi đây là đặt phòng mới.",
         },
         { role: "user", content: `Tiêu đề: ${mail.subject}\n\n${mail.text.slice(0, 6000)}` },
       ],
@@ -302,13 +302,17 @@ export async function createOpsBooking(token: string, draft: BookingDraft) {
       notes: draft.notes,
       deposit: 0,
       paymentMethod: "cash",
-      otaTotal: draft.otaTotal || undefined,
-      otaCommissionKind: draft.commission ? draft.commissionKind : undefined,
-      otaCommissionValue: draft.commission || undefined,
+      ...(otaChannel(draft.source)
+        ? {
+            otaTotal: draft.otaTotal || draft.total || undefined,
+            otaCommissionKind: draft.commission ? draft.commissionKind : undefined,
+            otaCommissionValue: draft.commission || undefined,
+          }
+        : {}),
       rooms: [
         {
           roomNumber: draft.roomNumber,
-          rate: draft.rate || undefined,
+          ...(otaChannel(draft.source) ? {} : { rate: draft.rate || undefined }),
           adults: draft.adults,
           children: draft.children,
           breakfast: draft.breakfast,
@@ -470,6 +474,10 @@ function nightlyPrices(lines: string[]) {
   return rows;
 }
 
+function otaChannel(source: string) {
+  return ["booking", "agoda", "traveloka", "trip", "expedia", "airbnb", "ota"].includes(source);
+}
+
 function roomPrice(
   nightLines: { date: string; amount: number }[],
   labeledNight: number,
@@ -479,21 +487,20 @@ function roomPrice(
   text: string,
 ) {
   const stay = stayNights(checkIn, checkOut) || Number(text.match(/(\d+)\s+đêm/i)?.[1] || 0);
+  const span = Math.max(stay, nightLines.length, 1);
+  if (total) return { rate: splitNightly(total, span), total, otaTotal: total };
   if (nightLines.length > 1 && new Set(nightLines.map((row) => row.amount)).size > 1) {
     const sum = nightLines.reduce((sum, row) => sum + row.amount, 0);
-    return { rate: splitNightly(sum, nightLines.length), total: total || sum, otaTotal: sum };
+    return { rate: splitNightly(sum, nightLines.length), total: sum, otaTotal: sum };
   }
   if (nightLines.length) {
     const rate = nightLines[0].amount;
-    const span = Math.max(nightLines.length, stay || 1);
-    return { rate, total: total || rate * span, otaTotal: rate * span };
+    return { rate, total: rate * span, otaTotal: rate * span };
   }
   if (labeledNight) {
-    const span = Math.max(stay, 1);
-    return { rate: labeledNight, total: total || labeledNight * span, otaTotal: labeledNight * span };
+    return { rate: labeledNight, total: labeledNight * span, otaTotal: labeledNight * span };
   }
-  const span = Math.max(stay, 1);
-  return { rate: total ? splitNightly(total, span) : 0, total, otaTotal: total };
+  return { rate: 0, total: 0, otaTotal: 0 };
 }
 
 function labeledMoney(lines: string[], label: string) {

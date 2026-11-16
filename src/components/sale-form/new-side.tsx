@@ -98,7 +98,7 @@ export function SaleFormSide(props: {
                       ? `${row.room.type} · P.${row.room.number} · ${row.quote.nights} đêm`
                       : `P.${row.room.number} · ${row.quote.nights} đêm × ${formatVnd(row.rate)}`}
                   </span>
-                  <span>{formatVnd(row.quote.gross ?? row.quote.subtotal + row.quote.breakfastOff)}</span>
+                  {ota ? null : <span>{formatVnd(row.quote.gross ?? row.quote.subtotal + row.quote.breakfastOff)}</span>}
                 </div>
                 {row.checkIn && row.checkOut ? (
                   <p className="text-xs text-[#8a7a72]">{formatDateNumeric(row.checkIn)} → {formatDateNumeric(row.checkOut)}</p>
@@ -128,13 +128,17 @@ export function SaleFormSide(props: {
             ))}
             {ota ? (
               <>
+                <li className="flex justify-between gap-2 font-semibold">
+                  <span>Tổng bill</span>
+                  <span>{formatVnd(roomTotal)}</span>
+                </li>
                 <li className="flex justify-between gap-2 text-[#c47b12]">
                   <span>{commissionLabel}</span>
                   <span>{formatVnd(commissionAmount)}</span>
                 </li>
                 <li className="flex justify-between gap-2 font-bold">
                   <span>Công nợ OTA</span>
-                  <span>{formatVnd(otaDebt ? roomTotal : 0)}</span>
+                  <span>{formatVnd(otaDebt ? Math.max(0, roomTotal - commissionAmount) : 0)}</span>
                 </li>
                 {otaDebt && extrasTotal ? (
                   <>

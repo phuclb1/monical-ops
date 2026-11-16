@@ -96,6 +96,17 @@ export function ratesFromBookingTotal(total: number, nightCounts: number[]) {
   return rates;
 }
 
+export function alignQuoteTotal<T extends { gross: number; subtotal: number; total: number }>(lines: T[], bill: number) {
+  const target = Math.max(0, Math.round(bill || 0));
+  if (!lines.length) return lines;
+  const gap = target - lines.reduce((sum, line) => sum + line.total, 0);
+  if (!gap) return lines;
+  return lines.map((line, index) => {
+    if (index !== lines.length - 1) return line;
+    return { ...line, gross: line.gross + gap, subtotal: line.subtotal + gap, total: line.total + gap };
+  });
+}
+
 export function bookingQuote<T extends QuoteLineInput>(rooms: T[]) {
   const lines = rooms.map((row) => {
     const nights = Math.max(0, nightsBetween(row.checkIn, row.checkOut));

@@ -1,0 +1,21 @@
+{
+  "runId": "E2E-20261115-bill2",
+  "date": "2026-11-15T04:42:41.314Z",
+  "commit": "64f8c33-dirty",
+  "env": "http://localhost:3002",
+  "guest": "E2E Van A",
+  "room": "101",
+  "pass": 1,
+  "fail": 0,
+  "total": 1,
+  "passRate": "100%",
+  "results": [
+    {
+      "id": "E2E-O6",
+      "title": "Sửa tổng bill — confirm hiện bill, hoa hồng và công nợ mới",
+      "result": "pass",
+      "evidence": "qa/evidence/E2E-20261115-bill2/E2E-O6.png",
+      "note": ""
+    }
+  ]
+}

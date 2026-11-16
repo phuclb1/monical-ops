@@ -36,6 +36,7 @@ export const roomSales = sqliteTable("room_sales", {
   refundedAt: text("refunded_at"),
   refundReason: text("refund_reason").notNull().default(""),
   bookingTotal: integer("booking_total").notNull().default(0),
+  otaBill: integer("ota_bill"),
   breakfast: integer("breakfast", { mode: "boolean" }).notNull().default(true),
   breakfastAdults: integer("breakfast_adults"),
   breakfastChildren: integer("breakfast_children"),

@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import * as repo from "@/lib/repos";
+import { can } from "@/lib/permissions";
 import { collectedSplit, isActiveSaleStatus, parseCommissionKind, parseCommissionValue, parseDiscountKind, parseDiscountValue, parseMoney, parsePaymentMethod, parseStayRefundReason, salePaid } from "@/lib/sales";
 import { assertActionPace } from "@/lib/rate-limit";
 import { actionBack, assertDepositRefund, fail, refresh, requireCancel, requireRefund, requireSales, saleFromForm } from "./shared";
@@ -285,6 +286,7 @@ export async function updateBookingAction(formData: FormData) {
   const user = await requireSales();
   const bookingId = String(formData.get("bookingId") || "");
   const back = `/sales/bookings/${bookingId}`;
+  const editPrice = can(user.role, "manageRates");
   const assignments = formData.getAll("saleId").map((saleId) => ({
     saleId: String(saleId),
     roomId: String(formData.get(`room-${saleId}`) || ""),
@@ -295,6 +297,7 @@ export async function updateBookingAction(formData: FormData) {
     children: formData.get(`children-${saleId}`) == null ? undefined : Number(formData.get(`children-${saleId}`)),
     discountKind: parseDiscountKind(formData.get(`discountKind-${saleId}`)),
     discountValue: parseDiscountValue(formData.get(`discountKind-${saleId}`), formData.get(`discountValue-${saleId}`)),
+    rate: editPrice && formData.has(`rate-${saleId}`) ? parseMoney(formData.get(`rate-${saleId}`)) : undefined,
   }));
   let result: { mode: "applied" | "requested"; bookingId: string };
   try {
@@ -314,6 +317,7 @@ export async function updateBookingAction(formData: FormData) {
       bikes: Math.max(0, Number(formData.get("bikes") || 0) || 0),
       notes: String(formData.get("notes") || ""),
       removedSaleIds: formData.getAll("removeSaleId").map(String).filter(Boolean),
+      otaTotal: editPrice && formData.has("otaTotal") ? parseMoney(formData.get("otaTotal")) : undefined,
     });
   } catch (e) {
     fail(back, e);

@@ -22,7 +22,7 @@ import { extraDetail } from "@/lib/extras";
 import { maskName, maskPhone } from "@/lib/mask";
 import { can } from "@/lib/permissions";
 import { getBooking, listBookingChangeRequests, listBookingLogs, listRoomBusyRanges, listRooms, listRoomTypes, listSaleExtraTypes } from "@/lib/repos";
-import { billableSaleRows, bookingCollectedLines, bookingInflowSplit, bookingLifecycle, bookingPayMethods, bookingQuote, canSettleOtaDebt, collectedSplit, commissionAmount, depositRefundAllowed, formatVnd, guestCheckoutDue, isActiveSaleStatus, isOpsBookingCode, isOtaDebt, isOtaSource, otaMoneySplit, paidNote, parkingLabel, primaryPaymentMethod, refundParts, refundReasonLabel, refundTotal, stayRefundOverpay, stayRefundable } from "@/lib/sales";
+import { alignQuoteTotal, billableSaleRows, bookingCollectedLines, bookingInflowSplit, bookingLifecycle, bookingPayMethods, bookingQuote, canSettleOtaDebt, collectedSplit, commissionAmount, depositRefundAllowed, formatVnd, guestCheckoutDue, isActiveSaleStatus, isOpsBookingCode, isOtaDebt, isOtaSource, otaMoneySplit, paidNote, parkingLabel, primaryPaymentMethod, refundParts, refundReasonLabel, refundTotal, stayRefundOverpay, stayRefundable } from "@/lib/sales";
 import type { BookingCollectedLine } from "@/lib/sales";
 import type { PaymentMethod, SaleOrigin, SaleSource } from "@/lib/types";
 
@@ -68,10 +68,11 @@ export default async function BookingDetailPage({
   const extraRooms = rooms.filter((room) => !taken.has(room.id) && room.opsStatus !== "ooo").sort((a, b) => a.number.localeCompare(b.number));
   const firstActive = activeRooms[0];
   const booked = bookingQuote(listedRooms);
+  const ota = isOtaSource(booking.source);
+  const quoteLines = ota && booking.roomTotal !== booked.total ? alignQuoteTotal(booked.lines, booking.roomTotal) : booked.lines;
   const canNoShow = Boolean(activeRooms.length) && activeRooms.every((row) => row.status === "reserved");
   const readyIn = activeRooms.filter((row) => row.status === "reserved" && today >= row.checkIn);
   const staying = activeRooms.filter((row) => row.status === "inhouse");
-  const ota = isOtaSource(booking.source);
   const otaDebt = isOtaDebt(booking.source, booking.otaPaymentMode);
   const inflow = booking.transactions?.length ? bookingInflowSplit(booking.transactions) : null;
   const moneySplit = otaMoneySplit({
@@ -105,7 +106,7 @@ export default async function BookingDetailPage({
     depositMethodRaw === "cash" || depositMethodRaw === "company" || depositMethodRaw === "personal"
       ? depositMethodRaw
       : payMethods.deposit;
-  const editDepositOnRows = canEditDeposit && (otaDebt || depositTxs.length > 1);
+  const editDepositOnRows = canEditDeposit;
   const holdSuffix = ` · ${PAYMENT_METHOD_LABEL[depositMethod]}`;
   const checkinSuffix = ` · ${PAYMENT_METHOD_LABEL[payMethods.checkin]}`;
   const collectedLines = (booking.transactions || []).length
@@ -277,16 +278,8 @@ export default async function BookingDetailPage({
                 <p className="mt-1 text-sm font-semibold">Còn phải thu {formatVnd(booking.due)}</p>
               </>
             )}
-            {canEditDeposit && !otaDebt && depositTxs.length <= 1 ? (
-              <BookingDepositEdit
-                bookingId={booking.id}
-                txId={depositTxs[0]?.id}
-                amount={depositTxs[0]?.amount ?? paidSplit.hold}
-                method={depositMethod}
-              />
-            ) : null}
-            {canEditDeposit && !otaDebt && depositTxs.length > 1 ? (
-              <p className="mt-1 text-xs text-[#5c6665]">Nhiều khoản cọc — sửa từng dòng trong giao dịch.</p>
+            {canEditDeposit && !otaDebt && !depositTxs.length ? (
+              <BookingDepositEdit bookingId={booking.id} amount={paidSplit.hold} method={depositMethod} />
             ) : null}
             {refunds.map((part) => (
               <p key={part.method} className="mt-1 text-sm font-semibold text-[#c23b3b]">
@@ -375,7 +368,7 @@ export default async function BookingDetailPage({
             <p className="mb-3 text-xs text-[#5c6665]">Check in khi khách đến, check out khi khách đi. Hệ thống ghi giờ và chuyển phòng sang có khách.</p>
             <BookingRoomList
               rooms={listedRooms}
-              quotes={booked.lines}
+              quotes={quoteLines}
               today={today}
               bookingId={booking.id}
               readOnly={!manage}
@@ -399,7 +392,7 @@ export default async function BookingDetailPage({
                 refunded: alreadyRefunded,
                 total: booking.total,
                 deposit: booking.deposit,
-                due: booking.due,
+                due: otaDebt ? moneySplit.otaDue : booking.due,
               }}
             />
           </Card>
@@ -445,7 +438,7 @@ export default async function BookingDetailPage({
               <p className="mb-2 text-xs text-[#5c6665]">Sửa tên, SĐT, kênh. Số người lớn theo từng phòng, mặc định bằng hạng phòng và chỉ giảm được. Đổi sang phòng bất kỳ hạng nào. Xóa bớt phòng, giữ ít nhất một phòng.</p>
               {user.role === "reception" ? (
                 <p className="mb-3 rounded-xl bg-[#fff1d6] px-3 py-2 text-xs font-semibold text-[#9a5b00]">
-                  Đổi ngày, phòng, xóa phòng, ăn sáng, chiết khấu hoặc hoa hồng OTA sẽ gửi quản lý duyệt. Booking chỉ đổi sau khi được duyệt. Số đặt cọc chỉ quản lý sửa. Thu thêm và hoàn ghi trong danh sách giao dịch.
+                  Đổi ngày, phòng, xóa phòng, ăn sáng, chiết khấu hoặc hoa hồng OTA sẽ gửi quản lý duyệt. Booking chỉ đổi sau khi được duyệt. Giá bán, hoa hồng và khoản thu chỉ quản lý sửa.
                 </p>
               ) : null}
               <BookingForm
@@ -471,6 +464,7 @@ export default async function BookingDetailPage({
                 extras={booking.extras}
                 requiresApproval={user.role === "reception"}
                 lockMoney
+                canEditPrice={user.role === "manager"}
                 defaults={{
                   bookingId: booking.id,
                   guestName: booking.guestName,
@@ -494,6 +488,7 @@ export default async function BookingDetailPage({
                   transferPaid: booking.transferPaid,
                   companyPaid: booking.companyPaid,
                   notes: booking.notes || "",
+                  roomTotal: booking.roomTotal,
                 }}
               />
             </Fold>

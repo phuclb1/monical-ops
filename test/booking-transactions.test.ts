@@ -4,6 +4,7 @@ import {
   backfillTxsForBooking,
   bookingCollectedLines,
   canSettleOtaDebt,
+  collectionEditPlan,
   depositEditPlan,
   groupSalesForBackfill,
   projectBookingPaid,
@@ -195,6 +196,28 @@ test("manager deposit edit updates one row, inserts, or keeps legacy columns", (
   assert.equal(underRefund.ok, false);
   assert.equal(depositEditPlan({ transactions: [deposit, checkin], amount: 200_000, refunded: 900_000 }).ok, true);
   assert.equal(depositEditPlan({ transactions: [], amount: 100_000, checkinPaid: 800_000, refunded: 950_000 }).ok, false);
+});
+
+test("manager can retarget any collected row", () => {
+  const rows = [
+    { id: "pay", kind: "payment", amount: 200_000 },
+    { id: "ota", kind: "ota", amount: 1_000_000 },
+    { id: "refund", kind: "refund", amount: 50_000 },
+  ];
+  assert.deepEqual(collectionEditPlan({ transactions: rows, txId: "pay", amount: 80_000 }), {
+    ok: true,
+    op: "update",
+    txId: "pay",
+    amount: 80_000,
+  });
+  assert.deepEqual(collectionEditPlan({ transactions: rows, txId: "ota", amount: 0 }), {
+    ok: true,
+    op: "delete",
+    txId: "ota",
+    amount: 0,
+  });
+  assert.equal(collectionEditPlan({ transactions: rows, txId: "refund", amount: 10_000 }).ok, false);
+  assert.equal(collectionEditPlan({ transactions: rows, txId: "pay", amount: 10_000, refunded: 80_000 }).ok, false);
 });
 
 test("collected lines keep each payment account instead of one inferred method", () => {
