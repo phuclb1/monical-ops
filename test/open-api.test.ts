@@ -5,6 +5,7 @@ import {
   isMachineBookingActor,
   normalizeRoomNumber,
   openBookingChangedSince,
+  openCreateDuplicateKey,
   parseOpenBookingCreate,
   parseOpenSince,
   requestMatchesOpenApiSecret,
@@ -154,6 +155,19 @@ test("mã kênh OTA không chiếm chỗ mã Ops", () => {
   });
   assert.equal(again.pmsCode, "BK-11-113");
   assert.equal(again.notes, "");
+  assert.deepEqual(openCreateDuplicateKey(draft), { code: "604367209", label: "Mã kênh" });
+  assert.deepEqual(openCreateDuplicateKey(again), { code: "BK-11-113", label: "Mã booking" });
+
+  const fresh = parseOpenBookingCreate({
+    guestName: "A",
+    source: "walk_in",
+    origin: "ops",
+    checkIn: "2026-11-27",
+    checkOut: "2026-11-30",
+    roomNumber: "305",
+    rate: 900000,
+  });
+  assert.equal(openCreateDuplicateKey(fresh), null);
 });
 
 test("open API parse từ chối thiếu tên / phòng / ngày", () => {

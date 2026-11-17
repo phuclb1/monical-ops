@@ -327,6 +327,15 @@ export function foldChannelReference(draft: OpenBookingCreateDraft): OpenBooking
   };
 }
 
+export function openCreateDuplicateKey(draft: OpenBookingCreateDraft) {
+  if (draft.origin === "ops" && draft.pmsCode.trim()) {
+    return { code: draft.pmsCode.trim(), label: "Mã booking" };
+  }
+  const channel = draft.channelCode.trim();
+  if (!channel) return null;
+  return { code: channel, label: "Mã kênh" };
+}
+
 export async function openSaleInputFromDraft(draft: OpenBookingCreateDraft): Promise<SaleInput> {
   const rooms = await listRooms();
   const types = await listRoomTypes();
