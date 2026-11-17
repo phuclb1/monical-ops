@@ -169,7 +169,7 @@ try {
       "Tổng tiền bằng 0",
       "Hoàn vượt tiền thu",
       "Cọc sai tài khoản",
-      "OTA thiếu điện thoại",
+      "OTA thiếu hoa hồng",
     ]);
   });
 

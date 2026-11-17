@@ -12,7 +12,7 @@ export const CONTROL_ISSUE_KINDS = [
   "zero_total",
   "over_refund",
   "bad_deposit_method",
-  "ota_phone_missing",
+  "ota_commission_missing",
 ] as const;
 
 export const CONTROL_PUSH_INTERVAL_MS = 30 * 60 * 1000;
@@ -31,7 +31,7 @@ export const CONTROL_ISSUE_LABEL: Record<ControlIssueKind, string> = {
   zero_total: "Tổng tiền bằng 0",
   over_refund: "Hoàn vượt tiền thu",
   bad_deposit_method: "Cọc sai tài khoản",
-  ota_phone_missing: "OTA thiếu điện thoại",
+  ota_commission_missing: "OTA thiếu hoa hồng",
 };
 
 export const CONTROL_ISSUE_TONE: Record<ControlIssueKind, "danger" | "warn" | "gold"> = {
@@ -44,7 +44,7 @@ export const CONTROL_ISSUE_TONE: Record<ControlIssueKind, "danger" | "warn" | "g
   zero_total: "warn",
   over_refund: "danger",
   bad_deposit_method: "warn",
-  ota_phone_missing: "warn",
+  ota_commission_missing: "warn",
 };
 
 export type ControlRoom = {
@@ -174,11 +174,10 @@ function isRecentClosed(booking: ControlBooking, cutoff: string) {
   return booking.rooms.some((room) => room.status === "departed" && room.checkOut >= cutoff);
 }
 
-function firstCheckedInAt(booking: ControlBooking) {
-  return booking.rooms
-    .map((room) => room.checkedInAt)
-    .filter((value): value is string => Boolean(value))
-    .sort()[0];
+function otaCommissionEntered(booking: ControlBooking) {
+  const kind = booking.otaCommissionKind === "amount" ? "amount" : "percent";
+  const value = booking.otaCommissionValue || (kind === "percent" ? booking.otaCommissionPercent || 0 : 0);
+  return Math.round(value) > 0;
 }
 
 export function findControlIssues(
@@ -250,11 +249,8 @@ export function findControlIssues(
       }
     }
 
-    if (isOtaSource(booking.source) && inhouse && !booking.guestPhone?.trim()) {
-      const checkedInAt = firstCheckedInAt(booking);
-      if (checkedInAt && now.getTime() - new Date(checkedInAt).getTime() >= 60 * 60 * 1000) {
-        issues.push(issue(booking, "ota_phone_missing", "Đã check-in hơn 1 giờ nhưng chưa có số điện thoại khách", { date: checkedInAt }));
-      }
+    if (isOtaSource(booking.source) && (active || recentClosed) && !otaCommissionEntered(booking)) {
+      issues.push(issue(booking, "ota_commission_missing", "Booking OTA bắt buộc phải có hoa hồng"));
     }
   }
 

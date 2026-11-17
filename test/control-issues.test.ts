@@ -125,25 +125,26 @@ test("legacy deposit method is still audited", () => {
   assert.equal(rows.some((row) => row.fingerprint === "bad_deposit_method:bk-1:legacy"), true);
 });
 
-test("OTA phone warning starts exactly one hour after first check-in", () => {
-  const ota = booking({
-    source: "agoda",
-    otaPaymentMode: "debt",
-    guestPhone: "",
-    rooms: [{
-      id: "sale-1",
-      roomId: "room-1",
-      status: "inhouse",
-      checkIn: "2026-11-28",
-      checkOut: "2026-11-29",
-      checkedInAt: "2026-11-28T12:00:00.000Z",
-      room: { number: "101" },
-    }],
-  });
-  const before = findControlIssues([ota], [], new Date("2026-11-28T12:59:59.999Z"), "2026-11-28");
-  const at = findControlIssues([ota], [], new Date("2026-11-28T13:00:00.000Z"), "2026-11-28");
-  assert.equal(before.some((row) => row.kind === "ota_phone_missing"), false);
-  assert.equal(at.some((row) => row.kind === "ota_phone_missing"), true);
+test("OTA bookings must have commission", () => {
+  const missing = findControlIssues([
+    booking({ source: "agoda", otaPaymentMode: "debt", otaCommissionKind: "percent", otaCommissionValue: 0, otaCommissionPercent: 0 }),
+  ], [], new Date("2026-11-28T14:00:00.000Z"), "2026-11-28");
+  assert.equal(missing.some((row) => row.kind === "ota_commission_missing"), true);
+
+  const percent = findControlIssues([
+    booking({ source: "booking", otaPaymentMode: "debt", otaCommissionKind: "percent", otaCommissionValue: 18 }),
+  ], [], new Date("2026-11-28T14:00:00.000Z"), "2026-11-28");
+  assert.equal(percent.some((row) => row.kind === "ota_commission_missing"), false);
+
+  const amount = findControlIssues([
+    booking({ source: "agoda", otaPaymentMode: "hotel", otaCommissionKind: "amount", otaCommissionValue: 150_000 }),
+  ], [], new Date("2026-11-28T14:00:00.000Z"), "2026-11-28");
+  assert.equal(amount.some((row) => row.kind === "ota_commission_missing"), false);
+
+  const direct = findControlIssues([
+    booking({ source: "walk_in", otaCommissionValue: 0 }),
+  ], [], new Date("2026-11-28T14:00:00.000Z"), "2026-11-28");
+  assert.equal(direct.some((row) => row.kind === "ota_commission_missing"), false);
 });
 
 test("detects OTA debt separately from guest extras", () => {
